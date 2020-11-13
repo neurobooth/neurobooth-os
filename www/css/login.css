@@ -1,0 +1,12 @@
+.container {
+    height: 100vh;
+    width: 1000px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.row {
+    width: 100%;
+}
+  
+  
