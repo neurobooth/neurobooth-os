@@ -6,7 +6,7 @@ import os
 eel.init('www', ['.js', '.html', '.jpg'])
 con = sql.connect('users.db')
 c = con.cursor()
-
+subject = ''
 def create_db():
     
 
@@ -42,12 +42,14 @@ def login(username,password):
         return 0
 
 @eel.expose
-def get_data_mt(file_name, data):
+def get_data_mt(sub_id, file_name, data):
+    print(sub_id)
+    subject = sub_id
     with open(os.path.join('data', file_name + '.json'), 'w', encoding='utf-8') as f:
         json.dump(data[1:-1], f, ensure_ascii=False, indent=4)
 
 @eel.expose
-def get_data(results, score, outcomes):
+def get_data_dsst(results, score, outcomes):
     print(results, score, outcomes)
 
 

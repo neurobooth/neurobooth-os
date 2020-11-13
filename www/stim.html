@@ -10,6 +10,8 @@
     <script src="js/jspsych-6.0.4/plugins/jspsych-instructions.js"></script>
     <script src="js/jspsych-6.0.4/plugins/jspsych-fullscreen.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <link href="js/jspsych-6.0.4/css/jspsych-mousetracking.css" rel="stylesheet" type="text/css"></link>
     <script src="eel.js"></script>
 
@@ -123,7 +125,8 @@ var instructions = {
             rt: rt,
             bp: bp
             };
-            eel.get_data_mt(file_name, jsPsych.data.get().json())
+            eel.get_data_mt(partN+"_"+IDsub.toString(), file_name, jsPsych.data.get().json())
+            window.location.assign("DSC_simplified_oneProbe_2020.html")
         }
   }
   }
@@ -146,7 +149,7 @@ var instructions = {
   timeline.push(dataLog)
   timeline.push({
     type: 'fullscreen',
-    fullscreen_mode: false
+    fullscreen_mode: true
   });
   
   timeline.push(conclusion)
