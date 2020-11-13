@@ -42,13 +42,16 @@ def login(username,password):
         return 0
 
 @eel.expose
-def get_data(file_name, data):
+def get_data_mt(file_name, data):
     with open(os.path.join('data', file_name + '.json'), 'w', encoding='utf-8') as f:
         json.dump(data[1:-1], f, ensure_ascii=False, indent=4)
 
+@eel.expose
+def get_data(results, score, outcomes):
+    print(results, score, outcomes)
+
 
 if __name__ == "__main__":
-    size = (600, 400) #size of App Window
     create_db()  
-    eel.start('register.html')
+    eel.start('register.html', size= (3840, 2160), cmdline_args=['--start-fullscreen', '--kisok'], geometry={'size': (3840, 2160), 'position': (0, 0)})
    
