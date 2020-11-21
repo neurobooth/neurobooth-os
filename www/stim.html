@@ -103,6 +103,7 @@ var instructions = {
    stimulus: " ",
    trial_duration: 100,
    on_finish: function(data) {
+         eel.js_trigger('stop_recording')
         var data1 = jsPsych.data.get().filter([{trial_type: "mousetracking"}]).last(nMain);
         if (file_name == null){
           file_name = "mousetracking_"+partN+"_"+IDsub.toString()}
@@ -145,7 +146,10 @@ var instructions = {
 
   timeline.push(p_details)
   timeline.push(instructions)
+
+  eel.js_trigger('start_recording')
   timeline.push(test_procedure)
+  
   timeline.push(dataLog)
   timeline.push({
     type: 'fullscreen',

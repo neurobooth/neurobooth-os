@@ -353,7 +353,7 @@
             outcomes.sdRTc = tmp2.length ? tmp2.sd().round(2) : 0;
             outcomes.responseDevice = tmp3;
             outcomes.testVersion = testVersion;
-
+            eel.js_trigger('stop_recording')
             eel.get_data_dsst(results,score,outcomes)
             window.location.assign("login.html")
 
@@ -410,9 +410,11 @@
         // corresponding digit
         var frameDigit = [0,0,0,1,3,2,0,1];
 
+        eel.js_trigger('start_recording')
+
         // push all components into the frames chain
         for(var i=0; i<frameType.length; i++)
-        {
+        {//eel.js_trigger(frameType[i] + frameType[i] + frameSymbol[i] + frameDigit[i])
             frameSequence.push(
                     {
                         type: frameType[i],
