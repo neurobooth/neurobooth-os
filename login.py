@@ -4,6 +4,11 @@ import json
 import os
 import socket
 import time
+from pylsl import StreamInfo, StreamOutlet
+from time import time
+info = StreamInfo('Markers', 'Markers', 1, 0, 'int32', 'myuidw43536')
+outlet = StreamOutlet(info)
+
 
 eel.init('www', ['.js', '.html', '.jpg'])
 con = sql.connect('users.db')
@@ -65,6 +70,8 @@ def js_trigger(message):
     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) 
     s.connect((host,port)) 
     print(message)
+    timestamp = time()
+    outlet.push_sample([1], timestamp)
     # Define the port on which you want to connect 
     
 
