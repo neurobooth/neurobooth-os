@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <script src="js/jspsych-6.0.4/jspsych.js"></script>
+  <script src="js/jspsych-6.0.4/plugins/jspsych-audio-button-response.js"></script>
+  <script src="js/jspsych-6.0.4/plugins/jspsych-html-button-response.js"></script>
+  <script src="js/jspsych-6.0.4/plugins/jspsych-audio-keyboard-response.js"></script>
+  <script src="js/jspsych-6.0.4/plugins/jspsych-html-keyboard-response.js"></script>
+  <script src="js/jspsych-6.0.4/plugins/jspsych-fullscreen.js"></script>
+  <link rel="stylesheet" href="js/jspsych-6.0.4/css/jspsych.css">
+  <style>
+    img {
+      width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+</body>
+<script>
+
+
+  var fullscreen = {
+    type: 'fullscreen',
+    fullscreen_mode: true
+  }
+
+  var pre_trial = {
+   type: 'html-button-response',
+   //stimulus: 'beep.wav',
+   stimulus: '<div style="max-width:600px;"><p>Click the button to start the task.</p></div>',
+   choices: ['Start']
+  }
+
+  var trigger = {
+   type: 'html-button-response',
+   //stimulus: 'beep.wav',
+   stimulus: '<div style="max-width:600px;"><p>Click the button to start the task.</p></div>',
+   choices: ['Start']
+  }
+  var node = {
+    timeline: [
+      {
+        type: 'audio-button-response',
+        stimulus: 'beep.mp3',
+        choices: [],//jsPsych.NO_KEYS,
+        prompt: '<div style="display: block; position:relative; top:0px; right:400px; background-color: #001000; '+
+          'width: 100px; height: 100px;"></div></div>',
+        trial_duration: 800,
+        background_color: '#008000',
+      },
+      {
+        type: 'html-keyboard-response',
+        choices: ['none'], // Y or N
+        stimulus:'<div style="display: block; position:relative; top:0px; right:-400px; background-color: #001000; '+
+          'width: 100px; height: 100px;"></div></div>',
+        trial_duration: 800,
+      }
+    ],
+    randomize_order: false,
+    repetitions: 20
+  }
+
+// beep();
+// setInterval(beep, 500);
+
+  jsPsych.init({
+    timeline: [pre_trial, node],
+    use_webaudio: false,
+    show_progress_bar: false,
+    //on_finish: window.location.assign("index_task_lists.html"),
+  });
+
+</script>
+
+</html>

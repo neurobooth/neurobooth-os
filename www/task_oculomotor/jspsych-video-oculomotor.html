@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="../jspsych.js"></script>
+    <script src="../plugins/jspsych-video-button-response.js"></script>
+    <script src="../plugins/jspsych-html-button-response.js"></script>
+    <script src="../plugins/jspsych-fullscreen.js"></script>    
+    <link rel="stylesheet" href="../css/jspsych.css"></link>
+  </head>
+  <body></body>
+  <style>
+    #display_stage_background {
+        width: 100vw;
+        background-color: grey;
+        z-index: -1;
+    }
+
+    #display_stage {
+        position: fixed;
+        left: 1vw;
+        top: 1vh;
+        height: 98vh;
+        width: 98vw;
+        background-color: grey;
+        box-shadow: 1px 1px 1px #999;
+        border-radius: 15px;
+        z-index: 0;
+        overflow-y: hidden;
+        overflow-x: hidden;
+    }
+  </style>
+
+  <div id='display_stage_background'></div>
+  <div id='display_stage'></div>
+  <script>
+
+  var pre_trial = {
+    type: 'html-button-response',
+    stimulus: '<div style="max-width:600px;"><p>Click the button to start the task.</p></div>',
+    choices: ['continue']
+  }
+
+  var trial1 = {
+    type: 'video-button-response',
+    sources: ['reoculomotortasks/Horizontal_saccade_FINAL.mp4'],
+    choices: ['skip'],
+
+    margin_vertical: '10px',
+    margin_horizontal: '8px',
+    width: 1800,
+    //height: 600,
+    autoplay: true,
+    //controls: true,
+    //start: 8,
+    //stop: 9,
+    rate: 1.5,
+    //trial_duration: 2000,
+    
+    response_ends_trial: true
+  }
+
+
+  var trial2 = {
+    type: 'video-button-response',
+    sources: ['reoculomotortasks/Horizontal_smoothpursuit20_FINAL.mp4'],
+    choices: ['skip'],
+
+    margin_vertical: '10px',
+    margin_horizontal: '8px',
+    width: 1800,
+    //height: 600,
+    autoplay: true,
+    //controls: true,
+    //start: 8,
+    //stop: 9,
+    rate: 1.5,
+    //trial_duration: 2000,
+    
+    response_ends_trial: true
+  }
+  
+  var fullscreen = {
+    type: 'fullscreen',
+    fullscreen_mode: true
+      }
+
+  jsPsych.init({
+
+    show_preload_progress_bar: true,
+    timeline: [fullscreen, trial1, trial2, ],
+    display_element: 'display_stage',
+    on_finish: function() { jsPsych.data.displayData(); }
+  });
+
+  </script>
+</html>
+

@@ -16,7 +16,7 @@ function username_check(result) {
 }
 function login_check(result) {
   if(result == 1){
-      window.location.assign("stim.html")
+      window.location.assign("index_task_lists.html")
       //window.location.assign("DSC_simplified_oneProbe_2020.html")
   }
   else{
