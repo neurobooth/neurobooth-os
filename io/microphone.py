@@ -7,7 +7,7 @@ import numpy as np
 def audio_stream(FORMAT=pyaudio.paFloat32,
                  CHANNELS=1,
                  RATE=44100,
-                 CHUNK=256,
+                 CHUNK=1024,
                  SAMPLE_RATE=200):
     
     # Create audio object
