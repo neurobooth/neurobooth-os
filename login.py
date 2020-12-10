@@ -90,7 +90,7 @@ def js_trigger(message):
 def get_inlet(name): 
     marker_streams = resolve_byprop('name', name)
     if marker_streams:
-        inlet_marker = StreamIntlet(marker_streams[0])
+        inlet_marker = StreamInlet(marker_streams[0])
     else:
         inlet_marker = False
         print("Can't find Markers stream.")

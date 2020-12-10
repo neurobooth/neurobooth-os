@@ -9,6 +9,7 @@
   <script src="js/jspsych-6.0.4/plugins/jspsych-audio-keyboard-response.js"></script>
   <script src="js/jspsych-6.0.4/plugins/jspsych-html-keyboard-response.js"></script>
   <script src="js/jspsych-6.0.4/plugins/jspsych-fullscreen.js"></script>
+  <script src="eel.js"></script>
   <link rel="stylesheet" href="js/jspsych-6.0.4/css/jspsych.css">
   <style>
     img {
@@ -30,16 +31,11 @@
   var pre_trial = {
    type: 'html-button-response',
    //stimulus: 'beep.wav',
-   stimulus: '<div style="max-width:600px;"><p>Click the button to start the task.</p></div>',
-   choices: ['Start']
+   stimulus: '<div style="max-width:600px;"><p>Gaze at the moving square and clap when the square reaches its destination. \n Click the button to start the task.</p></div>',
+   choices: ['Start'],
+   on_finish: function(){send_marker("start-synchTask", 1)}
   }
 
-  var trigger = {
-   type: 'html-button-response',
-   //stimulus: 'beep.wav',
-   stimulus: '<div style="max-width:600px;"><p>Click the button to start the task.</p></div>',
-   choices: ['Start']
-  }
   var node = {
     timeline: [
       {
@@ -49,7 +45,7 @@
         prompt: '<div style="display: block; position:relative; top:0px; right:400px; background-color: #001000; '+
           'width: 100px; height: 100px;"></div></div>',
         trial_duration: 800,
-        background_color: '#008000',
+        on_finish: function(){send_marker("event-R-synchTask", 0)}
       },
       {
         type: 'html-keyboard-response',
@@ -57,20 +53,30 @@
         stimulus:'<div style="display: block; position:relative; top:0px; right:-400px; background-color: #001000; '+
           'width: 100px; height: 100px;"></div></div>',
         trial_duration: 800,
+        on_finish: function(){send_marker("event-L-synchTask", 0)}
       }
     ],
     randomize_order: false,
     repetitions: 20
   }
 
+
+  var post_trial = {
+   type: 'html-button-response',
+   //stimulus: 'beep.wav',
+   stimulus: '<div style="max-width:600px;"><p>Well done! Terrific job!. \n Click the button to go back to the tasks list.</p></div>',
+   choices: ['Go Back'],
+   on_finish: function(){send_marker("end-synchTask", 10)}
+  }
+
 // beep();
 // setInterval(beep, 500);
 
   jsPsych.init({
-    timeline: [pre_trial, node],
+    timeline: [pre_trial, node, post_trial],
     use_webaudio: false,
     show_progress_bar: false,
-    //on_finish: window.location.assign("index_task_lists.html"),
+    on_finish: window.location.assign("index_task_lists.html"),
   });
 
 </script>
