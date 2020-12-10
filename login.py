@@ -4,10 +4,15 @@ import json
 import os
 import socket
 import time
-from pylsl import StreamInfo, StreamOutlet
+from pylsl import StreamInfo, StreamOutlet, resolve_byprop, StreamInlet
 from time import time
+from io.marker import marker_stream
+
+
+outlet_marker = marker_stream()
+
 info = StreamInfo('Markers', 'Markers', 1, 0, 'int32', 'myuidw43536')
-outlet = StreamOutlet(info)
+outlet_trigger = StreamOutlet(info)
 
 
 eel.init('www', ['.js', '.html', '.jpg'])
@@ -18,7 +23,6 @@ subject = ''
 
 def create_db():
     
-
     c.execute(''' CREATE TABLE IF NOT EXISTS users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT,
@@ -63,7 +67,7 @@ def get_data_dsst(results, score, outcomes):
 
 @eel.expose
 def js_trigger(message): 
-    message = message +  "_" + str(time.time())
+    message = message +  "_" + str(time())
     # local host IP '127.0.0.1' 
     host = '172.19.128.22'
     port = 12347
@@ -71,11 +75,9 @@ def js_trigger(message):
     s.connect((host,port)) 
     print(message)
     timestamp = time()
-    outlet.push_sample([1], timestamp)
+    outlet_trigger.push_sample([1], timestamp)
     # Define the port on which you want to connect 
-    
-
-  
+ 
     # message you send to server 
     s.send(message.encode('ascii')) 
     #data = s.recv(1024)
@@ -83,10 +85,28 @@ def js_trigger(message):
     #print('Received from the server :',str(data.decode('ascii'))) 
 
     s.close() 
+    
+@eel.expose
+def get_inlet(name): 
+    marker_streams = resolve_byprop('name', name)
+    if marker_streams:
+        inlet_marker = StreamIntlet(marker_streams[0])
+    else:
+        inlet_marker = False
+        print("Can't find Markers stream.")
+    return inlet_marker
+ 
+     
+@eel.expose
+def send_marker(message, number=""):
+     outlet_marker.push_sample([f"{message}_{number}_{time.time()}"])      
 
-
+    
 create_db()  
-eel.start('register.html', size= (3840, 2160), cmdline_args=['--start-fullscreen', '--kisok'], geometry={'size': (3840, 2160), 'position': (0, 0)})
+# eel.start('register.html', size= (3840, 2160), cmdline_args=['--start-fullscreen', '--kisok'], geometry={'size': (3840, 2160), 'position': (0, 0)})
+eel.start('synch_task.html', size= (3840, 2160), cmdline_args=['--start-fullscreen', '--kisok'], geometry={'size': (3840, 2160), 'position': (0, 0)})
+
+
 print(subject)
 
 
