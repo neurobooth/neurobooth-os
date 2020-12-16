@@ -51,7 +51,7 @@ class ViedoCapture():
         
         self.cap_i = cap_i
         self.writer_i = cv2.VideoWriter(filename, fourcc, fps, (int(width), int(height)))
-        # self.outlet = self.createOutlet(cam['index'], filename, cam['name'])
+        self.outlet = self.createOutlet(cam['index'], filename, cam['name'])
         
         print('width:' + str(width) + ' height:' + str(height) + 'fps:' + str(fps))
         # print('setup Cameras')
@@ -69,7 +69,16 @@ class ViedoCapture():
                 if not ret:
                     print("ret closed")
                     self.recording = False
-                # self.outlet.push_sample([self.frameCounter])
+                self.outlet.push_sample([self.frameCounter])
+                
+                cv2.putText(frame,  
+                f'{self.frameCounter}',  
+                (50, 50),  
+                cv2.FONT_HERSHEY_SIMPLEX , 1,  
+                (0, 255, 255),  
+                2,  
+                cv2.LINE_4) 
+                
                 self.writer_i.write(frame)
                 self.frameCounter += 1
                 cv2.waitKey(1)
@@ -96,13 +105,13 @@ class ViedoCapture():
         return StreamOutlet(info)
 
 def cameras_stream():  # TODO: add args for participant and directory
-    record_dir = r'C:\Users\adona\OneDrive\Desktop\Neurobooth'
+    record_dir = r'C:\Users\adona\Desktop\neurobooth'
     participant = 'test'
     
     vcaps = []
-    for cID in range(4):
+    for cID in range(2):
         cam_dict = {'name': f'cam_{cID}', 'index': cID}
-        print(f'cam_{cID} opening')
+        # print(f'cam_{cID} opening')
         videocapture = ViedoCapture(cam_dict)
         videocapture.init(record_dir, participant) 
         if videocapture.isOpen:
