@@ -32,7 +32,11 @@ def tobii_stream():
     mt = ft[0]
     print( "Found Tobii Tracker at '%s'" % (mt.address))
     
-    sampling_rate = mt.get_gaze_output_frequency() #sampling rate as recorded by the eye tracker
+    global sampling_rate 
+    global channels
+    global gaze_stuff
+    
+    sampling_rate = mt.get_gaze_output_frequency()
     channels = 31 # count of the below channels, incl. those that are 3 or 2 long
     gaze_stuff = [
         ('device_time_stamp', 1),
@@ -72,6 +76,8 @@ def tobii_stream():
                 x.append(d)
         return x
     
+    global last_report
+    global N
     last_report = 0
     N = 0
     
@@ -137,6 +143,7 @@ def tobii_stream():
         mt.unsubscribe_from(tr.EYETRACKER_GAZE_DATA, gaze_data_callback)
         return True
     
+    global halted
     halted = False
     
     # Set up lsl stream
@@ -168,6 +175,7 @@ def tobii_stream():
     
         return outlet
     
+    global outlet
     outlet = setup_lsl()
     
     # Main loop; run until escape is pressed
