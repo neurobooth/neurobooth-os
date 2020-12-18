@@ -22,7 +22,7 @@ def audio_stream(FORMAT=pyaudio.paFloat32,
             frames_per_buffer=CHUNK)
     
     # Setup outlet stream infos
-    stream_info_audio = StreamInfo('Audio', 'Experimental', CHUNK, SAMPLE_RATE,
+    stream_info_audio = StreamInfo('Audio', 'Experimental', CHUNK, RATE/CHUNK,
                                    'float32', 'audioid_1')
     
     # Create outlets

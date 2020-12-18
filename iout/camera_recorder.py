@@ -31,7 +31,7 @@ class ViedoCapture():
         ## creates the settings; creates the stream
         cam = self.cam
         filename = description + '_' + cam['name'] + '.avi'
-        cap_i = cv2.VideoCapture(cam['index'])
+        cap_i = cv2.VideoCapture(cam['index'],  cv2.CAP_DSHOW)
         
         self.isOpen = cap_i.isOpened()
   

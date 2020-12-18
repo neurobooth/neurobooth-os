@@ -33,7 +33,7 @@
    //stimulus: 'beep.wav',
    stimulus: '<div style="max-width:600px;"><p>Gaze at the moving square and clap when the square reaches its destination. \n Click the button to start the task.</p></div>',
    choices: ['Start'],
-   on_finish: function(){eel.send_marker("start-synchTask", 1)}
+   on_finish: function(){eel.send_marker("start_synchTask", 1)}
   }
 
   var node = {
@@ -45,7 +45,7 @@
         prompt: '<div style="display: block; position:relative; top:0px; right:400px; background-color: #001000; '+
           'width: 100px; height: 100px;"></div></div>',
         trial_duration: 800,
-        on_finish: function(){eel.send_marker("event-R-synchTask", 0)}
+        on_finish: function(){eel.send_marker("event-R_synchTask", 0)}
       },
       {
         type: 'html-keyboard-response',
@@ -53,7 +53,7 @@
         stimulus:'<div style="display: block; position:relative; top:0px; right:-400px; background-color: #001000; '+
           'width: 100px; height: 100px;"></div></div>',
         trial_duration: 800,
-        on_finish: function(){eel.send_marker("event-L-synchTask", 0)}
+        on_finish: function(){eel.send_marker("event-L_synchTask", 0)}
       }
     ],
     randomize_order: false,
@@ -66,11 +66,9 @@
    //stimulus: 'beep.wav',
    stimulus: '<div style="max-width:600px;"><p>Well done! Terrific job!. \n Click the button to go back to the tasks list.</p></div>',
    choices: ['Go Back'],
-   on_finish: function(){eel.send_marker("end-synchTask", 10)}
+   on_finish: function(){eel.send_marker("end_synchTask", 10)}
   }
 
-// beep();
-// setInterval(beep, 500);
 
   jsPsych.init({
     timeline: [pre_trial, node, post_trial],

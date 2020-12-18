@@ -10,7 +10,7 @@ def marker_stream():
         "%s_%d_%timestamp" aka code string, number, time'''
     
     # Setup outlet stream infos
-    stream_info_marker = StreamInfo('Marker', 'Experimental', 1, 
+    stream_info_marker = StreamInfo('Marker', 'Markers', 1, 
                                     channel_format='string', source_id ='marker')
     
     # Create outlets

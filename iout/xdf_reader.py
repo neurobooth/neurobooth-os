@@ -2,7 +2,7 @@ import pyxdf
 import matplotlib.pyplot as plt
 import numpy as np
 
-file = r'D:\OneDrive\Documents\CurrentStudy\sub-P001\ses-S001\eeg\sub-P001_ses-S001_task-Default_run-001_eeg.xdf'
+file = r'C:/Users/adona/Documents/CurrentStudy/sub-test/ses-S001/eeg/sub-test_ses-S001_task-Default_run-001_eeg.xdf'
 data, header = pyxdf.load_xdf(file)
 
 
@@ -40,3 +40,4 @@ plt.show()
 
 
 
+ 

@@ -5,20 +5,9 @@ import os
 import socket
 import time
 from pylsl import StreamInfo, StreamOutlet, resolve_byprop, StreamInlet
-from time import time
-from io.marker import marker_stream
-
-
-outlet_marker = marker_stream()
-
-info = StreamInfo('Markers', 'Markers', 1, 0, 'int32', 'myuidw43536')
-outlet_trigger = StreamOutlet(info)
-
-
-eel.init('www', ['.js', '.html', '.jpg'])
-con = sql.connect('users.db')
-c = con.cursor()
-subject = ''
+from  iout.marker import marker_stream
+from iout.lsl_streamer import  start_lsl_threads, close_threads
+import psutil    
 
 
 def create_db():
@@ -57,7 +46,6 @@ def login(username,password):
 @eel.expose
 def get_data_mt(sub_id, file_name, data):
     print(sub_id)
-    subject = sub_id
     with open(os.path.join('data', file_name + '.json'), 'w', encoding='utf-8') as f:
         json.dump(data[1:-1], f, ensure_ascii=False, indent=4)
 
@@ -99,15 +87,46 @@ def get_inlet(name):
      
 @eel.expose
 def send_marker(message, number=""):
-     outlet_marker.push_sample([f"{message}_{number}_{time.time()}"])      
+    """ message str format "{Action name}_{trialInfo}_{task name}" """
+    lsl_recording(message.split("_")[0])
+    outlet_marker.push_sample([f"{message}_{number}_{time.time()}"])      
 
-    
+
+def lsl_recording(action):
+    if action == "start":        
+        s.sendall(b"filename {root:C:\Users\\adona\Documents\CurrentStudy} {template:exp%n\\%p_block_%b.xdf} {run:0} {participant:Test} {task:test_synch}\n")
+        time.sleep(.05)
+        s.sendall(b"start\n")
+        print("starting lsl aquisition")
+    elif  action == "end":   
+        s.sendall(b"stop\n")
+        print("ending lsl aquisition")
+
+
+# Initiate LSL streams and get threads
+streams =  start_lsl_threads()
+outlet_marker = marker_stream()
+info = StreamInfo('Markers', 'Markers', 1, 0, 'int32', 'myuidw43536')
+outlet_trigger = StreamOutlet(info)
+
+# Start LabRecorder
+if not "LabRecorder.exe" in (p.name() for p in psutil.process_iter()):
+    os.startfile(r'C:\Users\adona\Desktop\neurobooth\software\LabRecorder\LabRecorder.exe')
+s = socket.create_connection(("localhost", 22345))
+s.sendall(b"select all\n")
+
+# Initiate website
+eel.init('www', ['.js', '.html', '.jpg'])
+con = sql.connect('users.db')
+c = con.cursor()
+
 create_db()  
 # eel.start('register.html', size= (3840, 2160), cmdline_args=['--start-fullscreen', '--kisok'], geometry={'size': (3840, 2160), 'position': (0, 0)})
 eel.start('synch_task.html', size= (3840, 2160), cmdline_args=['--start-fullscreen', '--kisok'], geometry={'size': (3840, 2160), 'position': (0, 0)})
 
+close_threads(streams)
 
-print(subject)
+
 
 
    
