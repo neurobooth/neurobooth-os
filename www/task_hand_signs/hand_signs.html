@@ -50,15 +50,35 @@
       text-align: right;
       padding: 20px 30px 0 0;
     }
+      
+    #image-container {
+      position: relative;
+      width: 640px;
+      height: 480px;        
+    }
+      
+    #img-canvas {
+      transform: scaleX(-1);
+    }
+      
+      }
   </style>
 </head>
 <body>
-
-  <div id="video-container">
-    <video id="pose-video" class="layer" playsinline></video>
-    <canvas id="pose-canvas" class="layer"></canvas>
-    <div id="pose-result" class="layer"></div>
+<div class="container">
+  <div class="row">
+    <div id="video-container" class="col-md-6">
+      <div id="video-container">
+        <video id="pose-video" class="layer" playsinline></video>
+        <canvas id="pose-canvas" class="layer"></canvas>
+        <div id="pose-result" class="layer"></div>
+      </div>
+    </div>
+    <div id="image-container" class="col-md-6">
+        <canvas id="img-canvas" class="layer"></canvas>
+    </div>
   </div>
+</div>
 
   <script>
 
@@ -67,7 +87,7 @@
     };
 
     const landmarkColors = {
-      thumb: 'red',
+      //thumb: 'red',
       indexFinger: 'blue',
       middleFinger: 'yellow',
       ringFinger: 'green',
@@ -76,27 +96,29 @@
     };
 
     const gestureStrings = {
+      'OK' : '👌',
       'thumbs_up': '👍',
       'victory': '✌🏻',
-      'stop' : '✋',
-      'OK' : '👌'
+      'stop' : '✋'      
     };
 
-    async function main() {
+    async function main() { 
 
       const video = document.querySelector("#pose-video");
       const canvas = document.querySelector("#pose-canvas");
       const ctx = canvas.getContext("2d");
 
       const resultLayer = document.querySelector("#pose-result");
-
+      const canvas_img = document.querySelector("#img-canvas");
+      const ctximg = canvas_img.getContext("2d");
+        
       // configure gesture estimator
       // add gestures
       const knownGestures = [
+        fp.Gestures.OKGesture,
         fp.Gestures.StopGesture,
         fp.Gestures.VictoryGesture,
-        fp.Gestures.ThumbsUpGesture,
-        fp.Gestures.OKGesture
+        fp.Gestures.ThumbsUpGesture        
       ];
       const GE = new fp.GestureEstimator(knownGestures);
 
@@ -137,6 +159,9 @@
             });
 
             resultLayer.innerText = gestureStrings[result.name];
+              
+            // draw Image
+            ctximg.drawImage(video,0, 0, 300, 150);
           }
         }
 
