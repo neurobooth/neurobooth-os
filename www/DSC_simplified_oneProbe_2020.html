@@ -188,7 +188,8 @@
 
         // is the response correct?
         correct = parseInt(tmbUI.response.slice(-1)) === frame.digit ? 1 : 0;
-
+        eel.send_marker("event-resp-" + correct, 0)
+        
         // store the results
         if(frame.type === "practice" ||
            (frame.type === "test" && tmbUI.status !== "timeout"))
@@ -259,17 +260,23 @@
                             source: "images/" + symbol + ".gif"
                         });
             }
-
+            
             nextTrial();
         }
     };
 
     function nextTrial()
     {
+
         // read the frame sequence one frame at a time
         frame = frameSequence.shift();
+        
+  
+        
         if(frame)
         {
+
+            
             // check if it's the startup frame
             if (frame.type === "begin") showAlert(frame.message,
                                                  "Click here for instructions",
@@ -292,6 +299,8 @@
             // deal with practice and test frames
             else
             {
+                // Send event next trial
+                eel.send_marker("event-trial-"+frame.type, 0)  
                 // hide the cursor
                 hideCursor("document.body");
 
@@ -352,8 +361,8 @@
             outcomes.medianRTc = tmp2.length ? tmp2.median().round(2) : 0;
             outcomes.sdRTc = tmp2.length ? tmp2.sd().round(2) : 0;
             outcomes.responseDevice = tmp3;
-            outcomes.testVersion = testVersion;
-            eel.js_trigger('stop_recording')
+            outcomes.testVersion = testVersion;       
+            eel.send_marker("end_DSC", 10)
             eel.get_data_dsst(results,score,outcomes)
             window.location.assign("login.html")
 
@@ -410,8 +419,9 @@
         // corresponding digit
         var frameDigit = [0,0,0,1,3,2,0,1];
 
-        eel.js_trigger('start_recording')
-
+    
+        eel.send_marker("start_DSC", 1)
+        
         // push all components into the frames chain
         for(var i=0; i<frameType.length; i++)
         {//eel.js_trigger(frameType[i] + frameType[i] + frameSymbol[i] + frameDigit[i])
