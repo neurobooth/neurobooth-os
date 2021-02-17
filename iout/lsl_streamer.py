@@ -8,7 +8,7 @@ Created on Tue Nov 24 15:41:42 2020
 import threading
 from iout.mouse_tracker  import mouse_stream
 from iout.microphone import audio_stream
-from iout.camera_recorder import cameras_stream, cameras_start_rec
+from iout.camera_recorder2 import cameras_stream, cameras_start_rec
 from iout.eye_tracker import tobii_stream
 
 
@@ -25,14 +25,13 @@ def start_lsl_threads():
     streams['micro'].start()
     # streams['eye_tracker'].start()
     
-    cameras_start_rec(strm_vids)
+    streams['strm_vids']= strm_vids
+    
     return streams
 
 def close_threads(streams):
     
-    for k in streams.keys():
+    for vid in streams['strm_vids']:
+        vid.recording = False
         
-        if "cam" in k:
-            streams[k][1].recording = False
-            continue
-        streams[k]
+        

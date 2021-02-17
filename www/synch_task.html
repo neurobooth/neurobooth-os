@@ -36,13 +36,23 @@
    on_finish: function(){eel.send_marker("start_synchTask", 1)}
   }
 
+var pre_trial2 = {
+   type: 'html-button-response',
+   //stimulus: 'beep.wav',
+   stimulus: '<div style="max-width:600px;"><p>Gaze at the moving square and clap when the square reaches its destination. \n Click the button to start the task.</p></div>',
+   choices: ['Start'],
+   on_finish: function(){eel.send_marker("event-rec_synchTask", 0)}
+  }
+  
   var node = {
     timeline: [
       {
-        type: 'audio-button-response',
-        stimulus: 'beep.mp3',
+       // type: 'audio-button-response',
+        type: 'html-keyboard-response',
+        //stimulus: 'beep.mp3',
         choices: [],//jsPsych.NO_KEYS,
-        prompt: '<div style="display: block; position:relative; top:0px; right:400px; background-color: #001000; '+
+        // prompt:
+        stimulus: '<div style="display: block; position:relative; top:0px; right:400px; background-color: #001000; '+
           'width: 100px; height: 100px;"></div></div>',
         trial_duration: 800,
         on_finish: function(){eel.send_marker("event-R_synchTask", 0)}
@@ -57,7 +67,7 @@
       }
     ],
     randomize_order: false,
-    repetitions: 20
+    repetitions: 10
   }
 
 
@@ -69,12 +79,16 @@
    on_finish: function(){eel.send_marker("end_synchTask", 10)}
   }
 
+  eel.expose(go_to_link);
+  function go_to_link(link){
+    window.location.assign(link)
+  }
 
   jsPsych.init({
-    timeline: [pre_trial, node, post_trial],
+    timeline: [pre_trial, pre_trial2, node],
     use_webaudio: false,
     show_progress_bar: false,
-    on_finish: function(){window.location.assign("index_task_lists.html")},
+    on_finish: function(){eel.send_marker("end_synchTask", 10), console.log(eel.next_task("sync_test")), eel.next_task("sync_test")},
   });
 
 </script>

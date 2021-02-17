@@ -40,14 +40,14 @@ class ViedoCapture():
             self.winName = 'Camera ' + str(cam['index'])
             cv2.namedWindow(self.winName)
             
-        cap_i.set(cv2.CAP_PROP_FPS, 90)
+        cap_i.set(cv2.CAP_PROP_FPS, 30)
         cap_i.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         cap_i.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         fps = cap_i.get(cv2.CAP_PROP_FPS)
         width = cap_i.get(cv2.CAP_PROP_FRAME_WIDTH)
         height = cap_i.get(cv2.CAP_PROP_FRAME_HEIGHT)
         filename = os.path.join(self.filepath, filename)
-        fourcc = cv2.VideoWriter_fourcc('M','J','P','G')
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
         
         self.cap_i = cap_i
         self.writer_i = cv2.VideoWriter(filename, fourcc, fps, (int(width), int(height)))
@@ -110,7 +110,7 @@ def cameras_stream():  # TODO: add args for participant and directory
     
     vcaps = []
     for cID in range(2):
-        cam_dict = {'name': f'cam_{cID}', 'index': cID}
+        cam_dict = {'name': f'cam_{cID}', 'index':cID}
         # print(f'cam_{cID} opening')
         videocapture = ViedoCapture(cam_dict)
         videocapture.init(record_dir, participant) 
@@ -127,7 +127,11 @@ def cameras_start_rec(vcaps):
     
 
 #if __name__ == "__main__":
+    # vcaps = cameras_stream()
+    # cameras_start_rec(vcaps)
     
+    # for vcap in vcaps:
+    #     vcap[1].recording = False
 #    cam_dict = {'name': 'cam_0', 'index': 1}
 #    record_dir = r'C:\Users\adona\OneDrive\Desktop\Neurobooth'
 

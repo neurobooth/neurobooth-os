@@ -5,8 +5,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
     <title>neurobooth_v4</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/css/bootstrap.min.css">
-    <link rel="stylesheet" href="assets/css/styles.min.css">
+    <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css/Contact-Form-Clean.css">
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <script src="eel.js"></script>
+    <title>Neurobooth</title>
 </head>
 
 <body style="color: var(--orange);">
@@ -18,38 +21,58 @@
     <div class="align-content-start contact-clean" style="text-align: center;">
         <form method="post">
             <h2 class="text-center" style="color: var(--pink);"><br>&nbsp;Session Information<br><br></h2>
-            <div class="form-group"><input class="form-control" type="text" name="id" placeholder="Subject ID"></div>
-            <div class="form-group"><select class="form-control">
-                    <optgroup label="condition">
-                        <option value="12" selected="">Ataxia</option>
-                        <option value="13">ALS</option>
-                        <option value="14">PD</option>
-                        <option value=""></option>
-                    </optgroup>
-                </select></div>
-            <div class="form-group"><select class="form-control">
-                    <optgroup label="sex">
-                        <option value="12" selected="">Male</option>
-                        <option value="13">Female</option>
-                        <option value="14">Non Binary</option>
-                    </optgroup>
-                </select></div>
-            <div class="form-group"><input class="form-control is-invalid" type="text" name="age" placeholder="Age"></div>
-            <div class="form-group"><input class="form-control" type="text" name="rc" placeholder="Research Coordinator"></div>
+            <div class="form-group"><input class="form-control" id="text_subjid" type="text" name="text_subjid" onfocus="this.value=''; this.style.color='#CD5C5C'"
+                    placeholder="Enter HIPAA Compliant Subject ID"></div>
+            <div class="form-group"><input class="form-control" id="text_condition" type="text" name="text_condition" onfocus="this.value=''; this.style.color='#CD5C5C'"
+                    placeholder="Enter Condition (AT, ALS, PD, Control)"></div>
+            <div class="form-group"><input class="form-control" id="text_gender" type="text" name="text_gender" onfocus="this.value=''; this.style.color='#CD5C5C'"
+                    placeholder="Enter Gender (M, F, NB)"></div>
+            <div class="form-group"><input class="form-control" id="text_age" type="text"  name="text_age" onfocus="this.value=''; this.style.color='#CD5C5C'"
+                    placeholder="Enter Age (60)"></div>
+            <div class="form-group"><input class="form-control" id="text_rc" type="text" name="text_rc" onfocus="this.value=''; this.style.color='#CD5C5C'"
+                    placeholder="Enter Research Coordinator Initials (SK)"></div>
             <div class="form-group">
                 <h4 class="text-left" style="color: var(--pink);">Task Selection</h4>
-                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start" type="checkbox" id="formCheck-1" checked=""><label class="form-check-label d-sm-flex justify-content-sm-start" for="formCheck-1" style="text-align: left;">SDMT</label></div>
-                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start" type="checkbox" id="formCheck-2" checked=""><label class="form-check-label d-sm-flex justify-content-sm-start" for="formCheck-2">Finger Nose</label></div>
-                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start" type="checkbox" id="formCheck-3" checked=""><label class="form-check-label d-sm-flex justify-content-sm-start" for="formCheck-3">Pronation Supination</label></div>
-                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start" type="checkbox" id="formCheck-4" checked=""><label class="form-check-label d-sm-flex justify-content-sm-start" for="formCheck-4">Digit Span</label></div>
-                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start" type="checkbox" id="formCheck-5" checked=""><label class="form-check-label d-sm-flex justify-content-sm-start" for="formCheck-5">Attention</label></div>
-            </div><button class="btn btn-primary" type="button">STart</button>
+                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start"
+                        type="checkbox" id="formCheck-st" checked=""><label
+                        class="form-check-label d-sm-flex justify-content-sm-start" for="check_st"
+                        style="text-align: left;">Synchronization Task</label></div>
+                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start"
+                        type="checkbox" id="formCheck-dst" checked=""><label
+                        class="form-check-label d-sm-flex justify-content-sm-start" for="check_dst">Digit Symbol
+                        Coding</label></div>
+                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start"
+                        type="checkbox" id="formCheck-mt" checked=""><label
+                        class="form-check-label d-sm-flex justify-content-sm-start" for="check_mt">Mouse
+                        Tracking</label></div>
+                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start"
+                        type="checkbox" id="formCheck-ft" checked=""><label
+                        class="form-check-label d-sm-flex justify-content-sm-start" for="check_ft">Finger
+                        Tapping</label></div>
+            </div><button class="btn btn-primary" onclick='pass_session_info()' type="button"
+                style="text-align: center;">Start</button>
             <div></div>
         </form>
     </div>
     <div class="align-content-start contact-clean" style="text-align: center;"></div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
+    <script>
+
+
+        function pass_session_info() {
+            eel.get_session_info(document.getElementById("text_subjid").value, document.getElementById("text_condition").value,
+                document.getElementById("text_gender").value, document.getElementById("text_age").value, document.getElementById("text_rc").value,
+                document.getElementById("formCheck-st").checked, document.getElementById("formCheck-dst").checked,
+                document.getElementById("formCheck-mt").checked, document.getElementById("formCheck-ft").checked)
+        }
+
+        eel.expose(go_to_link);
+        function go_to_link(link) {
+            window.location.assign(link)
+        }
+
+    </script>
 </body>
 
 </html>

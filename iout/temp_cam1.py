@@ -54,7 +54,7 @@ class ViedoCapture():
         width = cap_i.get(cv2.CAP_PROP_FRAME_WIDTH)
         height = cap_i.get(cv2.CAP_PROP_FRAME_HEIGHT)
         filename = os.path.join(self.filepath, filename)
-        fourcc = cv2.VideoWriter_fourcc('D', 'I', 'V', 'X')
+        fourcc = cv2.VideoWriter_fourcc('M','J','P','G')
         
         self.cap_i = cap_i
         self.writer_i = cv2.VideoWriter(filename, fourcc, fps, (int(width), int(height)))
