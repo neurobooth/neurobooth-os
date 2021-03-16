@@ -29,21 +29,23 @@ class MicStream():
         self.streaming = False
         
         
-    def start():
+    def start(self):
         # Create outlets
-        outlet_audio = StreamOutlet(stream_info_audio)
+        self.outlet_audio = StreamOutlet(stream_info_audio)
         self.streaming = True
         
         self.stream_thread = threading.Thread(target=self.stream)
         self.stream_thread.start()
     
-    def stream():
+    
+    def stream(self):
         print("Microphone stream opened")
         while self.streaming:
             data = self.stream.read(self.CHUNK)
             decoded = np.fromstring(data, 'Float32')
-            outlet_audio.push_sample(decoded)
+            self.outlet_audio.push_sample(decoded)
         print("Microphone stream closed")
 
-    def stop():
+
+    def stop(self):
         self.streaming = False

@@ -11,7 +11,7 @@ import pyautogui
 import numpy as np
 from pylsl import StreamInfo, StreamOutlet
 import time
-
+import threading
 
 class ScreenMirror():
     def __init__(self, Fps=30, options=None, RGB=False, local_plot=False):
@@ -39,6 +39,8 @@ class ScreenMirror():
         self.RGB = RGB
         self.local_plot = local_plot    
         
+        self.streaming = False
+        
         # Setup outlet stream info
         xy = self.options["width"] * self.options["height"]
         
@@ -55,11 +57,17 @@ class ScreenMirror():
 
     
     def start(self):
+        self.streaming = True
+            
+        self.stream_thread = threading.Thread(target=self.stream)
+        self.stream_thread.start()
+        
+    def stream(self):
         # open video stream with defined parameters
         self.stream = ScreenGear(logging=False, **self.options).start()
         
         # loop over
-        while True:
+        while self.streaming == True:
             # read frames from stream
             frame = self.stream.read()
             # check for frame if Nonetype
@@ -80,7 +88,7 @@ class ScreenMirror():
             points = np.array(points, 'int32')
             cv2.fillPoly(frame, [points], color=[255, 0, 0])
             
-            self.outlet_preview.push_sample(frame.flatten())
+            self.outlet_screen.push_sample(frame.flatten())
             
             if self.local_plot:
                 # Show output window
@@ -95,6 +103,7 @@ class ScreenMirror():
     def stop(self):
         # safely close video stream
         self.stream.stop()
+        self.streaming = False
         
         if self.local_plot:
             cv2.destroyAllWindows()

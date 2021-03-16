@@ -5,9 +5,7 @@ import uuid
 import cv2
 from pylsl import StreamInfo, StreamOutlet
 from dshowcapture import dshowcapture
-import threading
 import time
-import uuid
 import functools
 import warnings
 warnings.filterwarnings('ignore')
@@ -39,7 +37,7 @@ class VideoRecorder():
 
         if doPreview:
             self.preview_fps = 15
-            info_stream = StreamInfo('Webcam', 'Experiment', sizex * sizey * 3,  self.preview_fps, 'int32', 'webcamid_2')
+            info_stream = StreamInfo('Webcam', 'Experiment', sizex * sizey,  self.preview_fps, 'int32', 'webcamid_2')
             self.outlet_preview = StreamOutlet(info_stream)
             self.preview_start()
             self.preview_relFps = round(fps/self.preview_fps)
@@ -57,9 +55,14 @@ class VideoRecorder():
             
             time.sleep(1/self.preview_fps)
         
-        
+    def frame_preview(self, frame):        
+        frame = cv2.resize(frame,(640, 480))
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        return frame
+
     def preview_start(self):
         if self.doPreview:
+            self.previewing = True
             self.preview_thread = threading.Thread(target=self.preview)
             self.preview_thread.start()
 
@@ -83,8 +86,9 @@ class VideoRecorder():
                 self.video_out.write(frame)
             
                 if self.doPreview:
+                    # Push frame every relative Fps
                     if (self.frame_counter % self.preview_relFps) == 0:
-                        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                        frame = self.frame_preview(frame)
                         self.outlet_preview.push_sample(frame.flatten())
 
     @catch_exception
@@ -92,8 +96,8 @@ class VideoRecorder():
         if self.open:
             self.recording = False
             print("total frame = {}".format(self.frame_counter))         
+            self.preview_start()
             
-            self.video_out.release()
 
 
     @catch_exception
@@ -105,6 +109,8 @@ class VideoRecorder():
     @catch_exception        
     def close(self):
         self.previewing = False
+        self.recording = False
+        self.video_out.release()
         self.video_cap.stop_capture()
         self.video_cap.destroy_capture()
         
@@ -112,7 +118,7 @@ class VideoRecorder():
     @catch_exception        
     def createOutlet(self, filename,cam_name):
         streamName = 'VideoFrameIndex' + cam_name
-        info = StreamInfo(name=streamName, type='videostream', channel_format='float32', channel_count=1,
+        info = StreamInfo(name=streamName, type='videostream', channel_format='int32', channel_count=1,
                           source_id=str(uuid.uuid4()))
         
         info.desc().append_child_value("videoFile", filename)
