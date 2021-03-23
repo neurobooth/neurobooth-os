@@ -15,7 +15,7 @@ class MicStream():
         audio = pyaudio.PyAudio()
     
         # Create stream
-        self.stream = audio.open(format=FORMAT,
+        self.stream_in = audio.open(format=FORMAT,
                                  channels=CHANNELS,
                                  rate=RATE,
                                  input=True,
@@ -31,7 +31,7 @@ class MicStream():
         
     def start(self):
         # Create outlets
-        self.outlet_audio = StreamOutlet(stream_info_audio)
+        self.outlet_audio = StreamOutlet(self.stream_info_audio)
         self.streaming = True
         
         self.stream_thread = threading.Thread(target=self.stream)
@@ -41,8 +41,8 @@ class MicStream():
     def stream(self):
         print("Microphone stream opened")
         while self.streaming:
-            data = self.stream.read(self.CHUNK)
-            decoded = np.fromstring(data, 'Float32')
+            data = self.stream_in.read(self.CHUNK)
+            decoded = np.frombuffer(data, 'Float32')
             self.outlet_audio.push_sample(decoded)
         print("Microphone stream closed")
 
