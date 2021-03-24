@@ -11,11 +11,12 @@ from pylsl import StreamInfo, StreamOutlet
 states = []
 
 class State:
-    def __init__(self, device):
+    def __init__(self, device, buzz_time_sec=5):
         self.device = device
         self.callback = cbindings.FnVoid_VoidP_DataP(self.data_handler)
         self.processor = None
-        
+        self.buzz_time = buzz_time_sec *1000
+
         # Setup outlet stream infos
         self.stream_mbient = StreamInfo(name='mbient', type='acc',
                                         channel_count=6, channel_format='float32',
@@ -60,7 +61,13 @@ class State:
     
         libmetawear.mbl_mw_gyro_bmi160_enable_rotation_sampling(self.device.board)
         libmetawear.mbl_mw_acc_enable_acceleration_sampling(self.device.board)
-
+        
+        # Vibrate for 7 secs and then start aqc
+        libmetawear.mbl_mw_haptic_start_motor(self.device.board, 100.0, self.buzz_time)
+        sleep(self.buzz_time/1000)
+        
+        print ("Acquisition started")           
+        
         libmetawear.mbl_mw_gyro_bmi160_start(self.device.board)
         libmetawear.mbl_mw_acc_start(self.device.board)
         
