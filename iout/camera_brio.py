@@ -42,9 +42,9 @@ class VidRec_Brio():
             self.outlet_preview = StreamOutlet(info_stream)
             self.preview_start()
             self.preview_relFps = round(fps/self.preview_fps)
-            
-            
-    
+ 
+
+    @catch_exception
     def preview(self):
         "Streams camera content while not recording to file"
         while self.previewing == True:
@@ -58,19 +58,24 @@ class VidRec_Brio():
                 break
             
             time.sleep(1/self.preview_fps)
-        
+
+
+    @catch_exception    
     def frame_preview(self, frame):        
         frame = cv2.resize(frame,(320, 240))
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         return frame
 
+
+    @catch_exception
     def preview_start(self):
         if self.doPreview:
             self.previewing = True
             self.preview_thread = threading.Thread(target=self.preview)
             self.preview_thread.start()
+            
 
-
+    @catch_exception
     def prepare(self, name="temp_video.avi"):
         self.video_filename = name
         self.video_out = cv2.VideoWriter(self.video_filename, self.fourcc, self.fps, self.frameSize)
@@ -99,9 +104,9 @@ class VidRec_Brio():
     def stop(self):
         if self.open:
             self.recording = False
+            self.video_out.release()
             # print("total frame = {}".format(self.frame_counter))         
-            self.preview_start()
-            
+            self.preview_start()            
 
 
     @catch_exception
@@ -114,7 +119,7 @@ class VidRec_Brio():
     def close(self):
         self.previewing = False
         self.recording = False
-        self.video_out.release()
+        # self.video_out.release()
         self.video_cap.stop_capture()
         self.video_cap.destroy_capture()
         

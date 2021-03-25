@@ -9,25 +9,18 @@ import threading
 from iout.mouse_tracker  import MouseStream
 from iout.microphone import MicStream
 from iout.camera_brio import VidRec_Brio
-from iout.screen_capture import ScreenStream
 
 
-def start_lsl_threads():
+
+def start_lsl_threads(node_name):
     streams = {}
-    streams['mouse'] = MouseStream()
-    streams['micro'] = MicStream()
-    streams['screen'] = ScreenStream()
-    
-    
-    # streams['eye_tracker'] = threading.Thread(target=tobii_stream) 
-    strm_vids = cameras_stream()
-    for ix, cam in enumerate(strm_vids):
-        streams[f'cam_{ix}'] = cam 
-        
-
-    
-    streams['strm_vids']= strm_vids
-    
+    if node_name == "acquisition":
+        streams["hiFeed"] = VidRec_Brio(camindex=1, doPreview=False)
+        streams['micro'] = MicStream()
+       
+    elif node_name == "presentation":       
+        streams['mouse'] = MouseStream()
+                
     return streams
 
 def close_threads(streams):

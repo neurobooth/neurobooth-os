@@ -6,7 +6,7 @@ import threading
 from time import time  
 import sys
 from iout.camera_brio import VidRec_Brio
-
+from iout.lsl_streamer import start_lsl_threads
 
 # sys.path.append('/home/adonay/Desktop/projects/neurobooth/Software_arch/neurobooth-eel/io')
 # from cameras_stream import run_cam1
@@ -92,11 +92,36 @@ def Main():
         # print(f"time diff = {time() - c_time - time_del}")
 
         if "vis_stream" in data:
-            low_vid = VidRec_Brio(camindex=0, doPreview=True)
-            print ("Low feed running")
+            lowFeed = VidRec_Brio(camindex=0, doPreview=True)
+            print ("Running low feed video streaming")
             
         elif "prepare" in data:
+            streams = start_lsl_threads("acquisition")
+            streams['micro'].start()
+            print("Preparing devices")
+            # TODO logger with devices initiated
+        
+        elif "record" in data:  #-> "record:FILENAME"
+            fname = data.split(":")[-1]
+            streams["hiFeed"].prepare(fname) 
+            streams["hiFeed"].record()
+            print("Starting recording")
             
+        elif "stop" in data: 
+            streams["hiFeed"].stop()
+            print("Closing recording")
+            
+        elif data in ["close", "shutdown"]: 
+            streams["hiFeed"].close()
+            lowFeed.close()
+            streams['micro'].stop()
+            print("Closing devices")
+            
+            if "shutdown" in data:    
+                print("Closing Acq server")
+                break
+                
+        
             
         
         # if "start_preparation" in data:
