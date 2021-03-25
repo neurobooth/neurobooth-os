@@ -7,7 +7,7 @@ from time import time
 import sys
 
 sys.path.append('/home/adonay/Desktop/projects/neurobooth/Software_arch/neurobooth-eel/io')
-from cameras_stream import run_cams
+from cameras_stream import run_cam1
 
 
 print_lock = threading.Lock() 
@@ -38,7 +38,7 @@ def threaded(c):
             time_del = time() - c_time
             #c.send(f"Preparation started, t delay is {time_del}".encode('ascii')) 
             print(f"Preparation started, t delay is {time_del}") 
-            run_cams()
+            run_cam1(0)
             print ("Cameras running")
 
         if "start_recording" in data:
@@ -60,7 +60,7 @@ def threaded(c):
   
 def Main(): 
     host = "" 
-  
+    time_del = 0
     # reverse a port on your computer 
     # in our case it is 12345 but it 
     # can be anything 
@@ -73,21 +73,38 @@ def Main():
     # put the socket into listening mode 
     s.listen(5) 
     print("socket is listening") 
-  
+    
     # a forever loop until client wants to exit 
     while True: 
   
         # establish connection with client 
         c, addr = s.accept() 
-  
-        # lock acquired by client 
-        print_lock.acquire() 
-        print('Connected to :', addr[0], ':', addr[1]) 
-  
-        # Start a new thread and return its identifier 
-        start_new_thread(threaded, (c,)) 
+        data = c.recv(1024)
+        if not data: 
+            break
+        print(data)
+        data = str(data)
+        
+        c_time = float(data.split("_")[-1][:-1])
+        print(f"time diff = {time() - c_time - time_del}")
+
+
+        if "start_preparation" in data:
+            time_del = time() - c_time
+            #c.send(f"Preparation started, t delay is {time_del}".encode('ascii')) 
+            print(f"Preparation started, t delay is {time_del}") 
+            run_cam1()
+            print ("Cameras running")
+
+        if "start_recording" in data:
+            #c.send("Starting recording".encode('ascii'))  
+            print("Starting recording")
+
+        if "stop_recording" in data:
+            #c.send("Ending recording".encode('ascii'))  
+            print("Ending recording")
+
     s.close() 
   
   
-if __name__ == '__main__': 
-    Main() 
+Main() 
