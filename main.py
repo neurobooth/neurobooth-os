@@ -141,6 +141,11 @@ def lsl_recording(message):
         print("ending lsl aquisition")
 
 
+def prepare_devices():
+    
+    
+    
+    
 
 # Start LabRecorder
 if not "LabRecorder.exe" in (p.name() for p in psutil.process_iter()):

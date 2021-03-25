@@ -2,9 +2,35 @@
 import socket 
 from time import time  
   
+
+def socket_message(message, node_name):
+    
+    if node_name == "acquisition":
+        host = '192.168.1.6'  
+    elif node_name == "presentation":
+         host = '192.168.1.12'  
+                  
+    # Define the port on which you want to connect 
+    port = 12347
+  
+    t0 = time()
+    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) 
+  
+    # connect to server on local computer 
+    s.connect((host,port)) 
+    print(f"connected {time()- t0}")
+    # t0 = time()
+    s.send(message.encode('ascii'))    
+    print(f"sent {time()- t0}")    
+    # t0 = time()
+    s.close()
+    print(f"closed {time()- t0}")       
+    
+
+
 def Main(): 
     # local host IP '127.0.0.1' 
-    host = ''
+    host = '192.168.1.6'
   
     # Define the port on which you want to connect 
     port = 12347
