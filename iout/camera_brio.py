@@ -4,7 +4,7 @@ import threading
 import uuid
 import cv2
 from pylsl import StreamInfo, StreamOutlet
-from dshowcapture import dshowcapture
+import dshowcapture
 import time
 import functools
 import warnings
@@ -22,7 +22,8 @@ def catch_exception(f):
 
 
 class VidRec_Brio():        
-    def __init__(self,  fourcc=cv2.VideoWriter_fourcc(*'MJPG'), sizex=1280, sizey=720, fps=90, camindex=0, mode=33, doPreview=True):
+    def __init__(self,  fourcc=cv2.VideoWriter_fourcc(*'MJPG'), sizex=1280, sizey=720,
+                 fps=90, camindex=0, mode=33, doPreview=False):
         
         self.open = True
         self.doPreview = doPreview
@@ -36,17 +37,20 @@ class VidRec_Brio():
         self.video_cap.capture_device_by_dcap(self.device_index, mode, self.frameSize[0], self.frameSize[1], self.fps)
 
         if doPreview:
-            self.preview_fps = 15
-            info_stream = StreamInfo('Webcam', 'Experiment', sizex * sizey,  self.preview_fps, 'int32', 'webcamid_2')
+            self.preview_fps = 10
+            info_stream = StreamInfo('Webcam', 'Experiment', 320 * 240,  self.preview_fps, 'int32', 'webcamid_2')
             self.outlet_preview = StreamOutlet(info_stream)
             self.preview_start()
             self.preview_relFps = round(fps/self.preview_fps)
+            
+            
     
     def preview(self):
         "Streams camera content while not recording to file"
         while self.previewing == True:
-            rval, frame = self.video_cap.get_frame(1000)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame = self.video_cap.get_frame(1000)
+            if frame is not None:
+                frame = self.frame_preview(frame)
             self.outlet_preview.push_sample(frame.flatten())
             
             key = cv2.waitKey(20)
@@ -56,7 +60,7 @@ class VidRec_Brio():
             time.sleep(1/self.preview_fps)
         
     def frame_preview(self, frame):        
-        frame = cv2.resize(frame,(640, 480))
+        frame = cv2.resize(frame,(320, 240))
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         return frame
 
@@ -95,7 +99,7 @@ class VidRec_Brio():
     def stop(self):
         if self.open:
             self.recording = False
-            print("total frame = {}".format(self.frame_counter))         
+            # print("total frame = {}".format(self.frame_counter))         
             self.preview_start()
             
 
