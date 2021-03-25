@@ -14,7 +14,7 @@ import time
 import threading
 
 class ScreenMirror():
-    def __init__(self, Fps=30, options=None, RGB=False, local_plot=False):
+    def __init__(self, Fps=1, res=(320, 240), options=None, RGB=False, local_plot=False):
         """
         parameters:
             Fps : Int
@@ -36,6 +36,7 @@ class ScreenMirror():
         self.Xs = [0,8,6,14,12,4,2,0]
         self.Ys = [0,2,4,12,14,6,8,0]
         self.fps = Fps
+        self.res = res
         self.RGB = RGB
         self.local_plot = local_plot    
         
@@ -44,16 +45,21 @@ class ScreenMirror():
         # Setup outlet stream info
         xy = self.options["width"] * self.options["height"]
         
+        xy = res[0]*res[1] + 1
         if RGB is True:
-            xy = xy*3
+            xy = xy*3 
         
         info_stream = StreamInfo(name='Screen', type='Experimental',
-                                       nominal_srate=self.fps, channel_count=xy,
+                                       # nominal_srate=self.fps, 
+                                       channel_count=xy,
                                        channel_format='float32', source_id='Screen'
                                        )  
         
         self.outlet_screen = StreamOutlet(info_stream)
-                 
+        
+        self.screen= ScreenGear(logging=False, **self.options)
+        
+              
 
     
     def start(self):
@@ -64,12 +70,12 @@ class ScreenMirror():
         
     def stream(self):
         # open video stream with defined parameters
-        self.stream = ScreenGear(logging=False, **self.options).start()
-        
+        self.screen.start()
+        self.inx = 0   
         # loop over
         while self.streaming == True:
             # read frames from stream
-            frame = self.stream.read()
+            frame = self.screen.read()
             # check for frame if Nonetype
             if frame is None:
                 break
@@ -78,31 +84,41 @@ class ScreenMirror():
             # mouseX *= 2
             # mouseY *= 2
             
-            if self.RGB is not True:
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-                
-            # Synthesize mouse pointer
-            Xthis = [4 * x + mouseX for x in self.Xs]
-            Ythis = [4 * y + mouseY for y in self.Ys]
-            points = list(zip(Xthis, Ythis))
-            points = np.array(points, 'int32')
-            cv2.fillPoly(frame, [points], color=[255, 0, 0])
             
-            self.outlet_screen.push_sample(frame.flatten())
+            if self.RGB is not True:
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)            
+             
+            # # Synthesize mouse pointer
+            # Xthis = [4 * x + mouseX for x in self.Xs]
+            # Ythis = [4 * y + mouseY for y in self.Ys]
+            # points = list(zip(Xthis, Ythis))
+            # points = np.array(points, 'int32')
+            # cv2.fillPoly(frame, [points], color=[255, 0, 0])
+            
+            
+                
+            frame = cv2.resize(frame,self.res)
+            
+            print(f"Capture n:{self.inx%250}, {frame.shape}")
+            self.inx += 1
+            
+            # f = np.insert(frame.flatten(), 0, self.inx)            
+            # self.outlet_screen.push_sample(f)
             
             if self.local_plot:
                 # Show output window
                 cv2.imshow("Output Frame", frame)
                 # check for 'q' key if pressed
-                key = cv2.waitKey(1) & 0xFF
+                key = cv2.waitKey(int(1/self.fps)*100) & 0xFF
                 if key == ord("q"):
                     break
                 
-            time.sleep(1/self.preview_fps)
+
+            # time.sleep(1/self.fps)
  
     def stop(self):
         # safely close video stream
-        self.stream.stop()
+        self.screen.stop()
         self.streaming = False
         
         if self.local_plot:
