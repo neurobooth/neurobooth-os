@@ -1,7 +1,16 @@
 <!DOCTYPE HTML>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.8/css/all.css">
+    <script src="/eel.js"></script>
+
+    <title>Neurobooth Tasks</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 p {
   text-align: center;
@@ -14,8 +23,30 @@ p {
 
 <p id="timer"></p>
 
+<p id="timer"></p>
+
+<div>
+  <div class="col justify-content-center align-items-center order-2" id="timer">
+  <div>
+      <div class="col align-self-center order-2"><a class="btn btn-primary btn-block text-center" role="button"  onclick='finish_to_link("../index.html")' >Finish Task</a></div>
+  </div>
+</div>
+
+
 <script>
- 
+
+ function send_event_time(s){
+    eel.send_marker("event-count" + s, 0)
+}
+
+function finish_to_link(link){
+    eel.send_marker("end_FingerTapping", 10)
+    window.location.assign(link)
+    }
+
+var seconds = 0
+document.getElementById("timer").innerHTML = seconds + "s ";
+
 // Set the date we're counting down to
 var countDownDate = new Date().getTime();
 
@@ -28,11 +59,15 @@ var x = setInterval(function() {
   // Find the distance between now and the count down date
   var distance = now - countDownDate;
 
-  // Time calculations for days, hours, minutes and seconds  
+  // Time calculations for days, hours, minutes and seconds
   var seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
   // Display the result in the element with id="demo"
   document.getElementById("timer").innerHTML = seconds + "s ";
+
+ if (seconds == 0 || seconds == 10) {
+    send_event_time(seconds)
+  }
 
   // If the count down is finished, write some text
   if (seconds > 10) {

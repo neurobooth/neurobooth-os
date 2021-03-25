@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>neurobooth_v4</title>
+    <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css/Contact-Form-Clean.css">
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <script src="eel.js"></script>
+    <title>Neurobooth</title>
+</head>
+
+<body style="color: var(--orange);">
+    <h1 class="text-center" style="font-size: 80;"><strong>Neurobooth</strong></h1>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div class="align-content-start contact-clean" style="text-align: center;">
+        <form method="post">
+            <h2 class="text-center" style="color: var(--pink);"><br>&nbsp;Session Information<br><br></h2>
+            <div class="form-group"><input class="form-control" id="text_subjid" type="text" name="text_subjid" onfocus="this.value=''; this.style.color='#CD5C5C'"
+                    placeholder="Enter HIPAA Compliant Subject ID"></div>
+            <div class="form-group"><input class="form-control" id="text_condition" type="text" name="text_condition" onfocus="this.value=''; this.style.color='#CD5C5C'"
+                    placeholder="Enter Condition (AT, ALS, PD, Control)"></div>
+            <div class="form-group"><input class="form-control" id="text_gender" type="text" name="text_gender" onfocus="this.value=''; this.style.color='#CD5C5C'"
+                    placeholder="Enter Gender (M, F, NB)"></div>
+            <div class="form-group"><input class="form-control" id="text_age" type="text"  name="text_age" onfocus="this.value=''; this.style.color='#CD5C5C'"
+                    placeholder="Enter Age (60)"></div>
+            <div class="form-group"><input class="form-control" id="text_rc" type="text" name="text_rc" onfocus="this.value=''; this.style.color='#CD5C5C'"
+                    placeholder="Enter Research Coordinator Initials (SK)"></div>
+            <div class="form-group">
+                <h4 class="text-left" style="color: var(--pink);">Task Selection</h4>
+                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start"
+                        type="checkbox" id="formCheck-st" checked=""><label
+                        class="form-check-label d-sm-flex justify-content-sm-start" for="check_st"
+                        style="text-align: left;">Synchronization Task</label></div>
+                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start"
+                        type="checkbox" id="formCheck-dst" checked=""><label
+                        class="form-check-label d-sm-flex justify-content-sm-start" for="check_dst">Digit Symbol
+                        Coding</label></div>
+                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start"
+                        type="checkbox" id="formCheck-mt" checked=""><label
+                        class="form-check-label d-sm-flex justify-content-sm-start" for="check_mt">Mouse
+                        Tracking</label></div>
+                <div class="form-check"><input class="form-check-input d-sm-flex justify-content-sm-start"
+                        type="checkbox" id="formCheck-ft" checked=""><label
+                        class="form-check-label d-sm-flex justify-content-sm-start" for="check_ft">Finger
+                        Tapping</label></div>
+            </div><button class="btn btn-primary" onclick='pass_session_info()' type="button"
+                style="text-align: center;">Start</button>
+            <div></div>
+        </form>
+    </div>
+    <div class="align-content-start contact-clean" style="text-align: center;"></div>
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
+    <script>
+
+
+        function pass_session_info() {
+            eel.get_session_info(document.getElementById("text_subjid").value, document.getElementById("text_condition").value,
+                document.getElementById("text_gender").value, document.getElementById("text_age").value, document.getElementById("text_rc").value,
+                document.getElementById("formCheck-st").checked, document.getElementById("formCheck-dst").checked,
+                document.getElementById("formCheck-mt").checked, document.getElementById("formCheck-ft").checked)
+        }
+
+        eel.expose(go_to_link);
+        function go_to_link(link) {
+            window.location.assign(link)
+        }
+
+    </script>
+</body>
+
+</html>

@@ -121,8 +121,8 @@ con = sql.connect('users.db')
 c = con.cursor()
 
 create_db()  
-# eel.start('register.html', size= (3840, 2160), cmdline_args=['--start-fullscreen', '--kisok'], geometry={'size': (3840, 2160), 'position': (0, 0)})
-eel.start('synch_task.html', size= (3840, 2160), cmdline_args=['--start-fullscreen', '--kisok'], geometry={'size': (3840, 2160), 'position': (0, 0)})
+eel.start('index_task_lists.html', size= (3840, 2160), cmdline_args=['--start-fullscreen', '--kisok'], geometry={'size': (3840, 2160), 'position': (0, 0)})
+# eel.start('synch_task.html', size= (3840, 2160), cmdline_args=['--start-fullscreen', '--kisok'], geometry={'size': (3840, 2160), 'position': (0, 0)})
 
 close_threads(streams)
 

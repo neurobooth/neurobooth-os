@@ -21,7 +21,7 @@ def catch_exception(f):
     return func
 
 
-class VideoRecorder():        
+class VidRec_Brio():        
     def __init__(self,  fourcc=cv2.VideoWriter_fourcc(*'MJPG'), sizex=1280, sizey=720, fps=90, camindex=0, mode=33, doPreview=True):
         
         self.open = True
