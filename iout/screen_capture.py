@@ -102,8 +102,8 @@ class ScreenMirror():
             print(f"Capture n:{self.inx%250}, {frame.shape}")
             self.inx += 1
             
-            # f = np.insert(frame.flatten(), 0, self.inx)            
-            # self.outlet_screen.push_sample(f)
+            f = np.insert(frame.flatten(), 0, self.inx)            
+            self.outlet_screen.push_sample(f)
             
             if self.local_plot:
                 # Show output window
@@ -114,7 +114,7 @@ class ScreenMirror():
                     break
                 
 
-            # time.sleep(1/self.fps)
+            time.sleep(1/self.fps)
  
     def stop(self):
         # safely close video stream
