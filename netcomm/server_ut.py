@@ -6,8 +6,8 @@ import threading
 from time import time  
 import sys
 
-sys.path.append('/home/adonay/Desktop/projects/neurobooth/Software_arch/neurobooth-eel/io')
-from cameras_stream import run_cam1
+# sys.path.append('/home/adonay/Desktop/projects/neurobooth/Software_arch/neurobooth-eel/io')
+# from cameras_stream import run_cam1
 
 
 print_lock = threading.Lock() 
@@ -82,27 +82,31 @@ def Main():
         data = c.recv(1024)
         if not data: 
             break
+
+        data = data.decode("utf-8")
         print(data)
-        data = str(data)
         
-        c_time = float(data.split("_")[-1][:-1])
-        print(f"time diff = {time() - c_time - time_del}")
+        # c_time = float(data.split("_")[-1][:-1])
+        # print(f"time diff = {time() - c_time - time_del}")
 
+        if "vis_stream" in data:
+            low_vid = VidRec_Brio(camindex=0, doPreview=True)
+            low_vid.preview()
+            
+        # if "start_preparation" in data:
+        #     time_del = time() - c_time
+        #     c.send(f"Preparation started, t delay is {time_del}".encode('ascii')) 
+        #     print(f"Preparation started, t delay is {time_del}") 
+        #     # run_cam1()
+        #     print ("Cameras running")
 
-        if "start_preparation" in data:
-            time_del = time() - c_time
-            #c.send(f"Preparation started, t delay is {time_del}".encode('ascii')) 
-            print(f"Preparation started, t delay is {time_del}") 
-            run_cam1()
-            print ("Cameras running")
+        # if "start_recording" in data:
+        #     c.send("Starting recording".encode('ascii'))  
+        #     print("Starting recording")
 
-        if "start_recording" in data:
-            #c.send("Starting recording".encode('ascii'))  
-            print("Starting recording")
-
-        if "stop_recording" in data:
-            #c.send("Ending recording".encode('ascii'))  
-            print("Ending recording")
+        # if "stop_recording" in data:
+        #     c.send("Ending recording".encode('ascii'))  
+        #     print("Ending recording")
 
     s.close() 
   
