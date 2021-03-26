@@ -1,64 +1,9 @@
 import socket 
-
-# import thread module 
-from _thread import *
-import threading 
 from time import time  
-import sys
 from iout.camera_brio import VidRec_Brio
 from iout.lsl_streamer import start_lsl_threads
 
-# sys.path.append('/home/adonay/Desktop/projects/neurobooth/Software_arch/neurobooth-eel/io')
-# from cameras_stream import run_cam1
-
-
-print_lock = threading.Lock() 
-  
-# thread function 
-def threaded(c): 
-    time_del = 0
-    while True: 
-  
-        # data received from client 
-        data = c.recv(1024) 
-        if not data: 
-            #print('Bye') 
-              
-            # lock released on exit 
-            print_lock.release() 
-            break
-
-        # reverse the given string from client 
-        print(data)
-        data = str(data)
-        
-        c_time = float(data.split("_")[-1][:-1])
-        print(f"time diff = {time() - c_time - time_del}")
-
-
-        if "start_preparation" in data:
-            time_del = time() - c_time
-            #c.send(f"Preparation started, t delay is {time_del}".encode('ascii')) 
-            print(f"Preparation started, t delay is {time_del}") 
-            run_cam1(0)
-            print ("Cameras running")
-
-        if "start_recording" in data:
-            #c.send("Starting recording".encode('ascii'))  
-            print("Starting recording")
-
-        if "stop_recording" in data:
-            #c.send("Ending recording".encode('ascii'))  
-            print("Ending recording")
-
-
-        # send back reversed string to client 
-       # c.send(data) 
-
-  
-    # connection closed 
-    c.close() 
-  
+ 
   
 def Main(): 
     host = "" 
@@ -121,7 +66,8 @@ def Main():
                 print("Closing Acq server")
                 break
                 
-        
+        elif "time_test" in data:
+            c.send("ping_{time()}")
             
         
         # if "start_preparation" in data:
