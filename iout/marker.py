@@ -1,6 +1,4 @@
 from pylsl import StreamInfo, StreamOutlet
-import pyaudio
-import numpy as np
 import time
 
 
