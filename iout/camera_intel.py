@@ -6,6 +6,7 @@ Created on Mon Mar 29 10:46:13 2021
 """
 
 import pyrealsense2 as rs
+from time import sleep as tsleep
 from time import time
 import threading
 import uuid
@@ -19,10 +20,10 @@ warnings.filterwarnings('ignore')
 def catch_exception(f):
     @functools.wraps(f)
     def func(*args, **kwargs):
-        try:
+        # try:
             return f(*args, **kwargs)
-        except Exception as e:
-            print('Caught an exception in function "{}" of type {}'.format(f.__name__, e))
+        # except Exception as e:
+            # print('Caught an exception in function "{}" of type {}'.format(f.__name__, e))
     return func
 
 
@@ -37,7 +38,7 @@ class VidRec_Intel():
         self.frameSize = (size_rgb, size_depth) 
         
         self.config = rs.config()
-        self.piepline =  rs.pipeline()
+        self.pipeline =  rs.pipeline()
         self.config.enable_stream(rs.stream.depth, self.frameSize[0][0], 
                                   self.frameSize[0][1], rs.format.z16, self.fps[0])
         self.config.enable_stream(rs.stream.color, self.frameSize[1][0], 
@@ -48,7 +49,7 @@ class VidRec_Intel():
     def prepare(self, name="temp_video"):
         self.video_filename = "{}.bag".format(name)     
         self.config.enable_record_to_file(self.video_filename)       
-        self.outlet = self.createOutlet(self.name)
+        self.outlet = self.createOutlet(name)
 
     
     @catch_exception
@@ -60,7 +61,7 @@ class VidRec_Intel():
         while self.recording:
              frame = self.pipeline.wait_for_frames()
              self.n = frame.get_frame_number() 
-             self.outlet.push_sample([self.frame_counter, self.n], ts=time()) 
+             self.outlet.push_sample([self.frame_counter, self.n], timestamp=time()) 
              self.frame_counter += 1
               
 
@@ -93,4 +94,8 @@ class VidRec_Intel():
         info.desc().append_child_value("videoFile", filename)
         return StreamOutlet(info)
     
-    
+
+
+
+
+
