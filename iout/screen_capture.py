@@ -57,9 +57,8 @@ class ScreenMirror():
         
         self.outlet_screen = StreamOutlet(info_stream)
         
-        self.screen= ScreenGear(logging=False, **self.options)
-        
-              
+
+                    
 
     
     def start(self):
@@ -69,9 +68,15 @@ class ScreenMirror():
         self.stream_thread.start()
         
     def stream(self):
-        # open video stream with defined parameters
+        # open video stream with defined parameters        
+        self.screen= ScreenGear(logging=False, **self.options)
         self.screen.start()
         self.inx = 0   
+        
+        if self.local_plot:
+             cv2.namedWindow('Screen', cv2.WINDOW_AUTOSIZE)
+             
+        tic = time.time()
         # loop over
         while self.streaming == True:
             # read frames from stream
@@ -87,13 +92,15 @@ class ScreenMirror():
             
             if self.RGB is not True:
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)            
+            else:
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)        
              
-            # # Synthesize mouse pointer
-            # Xthis = [4 * x + mouseX for x in self.Xs]
-            # Ythis = [4 * y + mouseY for y in self.Ys]
-            # points = list(zip(Xthis, Ythis))
-            # points = np.array(points, 'int32')
-            # cv2.fillPoly(frame, [points], color=[255, 0, 0])
+            # Synthesize mouse pointer
+            Xthis = [4 * x + mouseX for x in self.Xs]
+            Ythis = [4 * y + mouseY for y in self.Ys]
+            points = list(zip(Xthis, Ythis))
+            points = np.array(points, 'int32')
+            cv2.fillPoly(frame, [points], color=[255, 0, 0])
             
             
                 
@@ -107,14 +114,14 @@ class ScreenMirror():
             
             if self.local_plot:
                 # Show output window
-                cv2.imshow("Output Frame", frame)
+                cv2.imshow("Screen", frame)
                 # check for 'q' key if pressed
-                key = cv2.waitKey(int(1/self.fps)*100) & 0xFF
+                key = cv2.waitKey(1) & 0xFF# int(1/self.fps)*100) & 0xFF
                 if key == ord("q"):
                     break
                 
 
-            time.sleep(1/self.fps)
+            # time.sleep(1/self.fps)s
  
     def stop(self):
         # safely close video stream
