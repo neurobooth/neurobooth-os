@@ -13,6 +13,7 @@ import threading
 import time
 
 
+
 class stream_plotter():
     
     def __init__(self, plt_img=True, plt_ts=True):
@@ -29,11 +30,14 @@ class stream_plotter():
         
         self.scann()
         
-        self.thread_img = threading.Thread(target=self.update_imgs)               
-        self.thread_img.start()
-        
-        self.thread_ts = threading.Thread(target=self.update_ts)        
-        self.thread_ts.start()
+        if self.plt_img is True:
+            # self.update_imgs()
+            self.thread_img = threading.Thread(target=self.update_imgs)               
+            self.thread_img.start()
+
+        if self.plt_ts is True:   
+            self.thread_ts = threading.Thread(target=self.update_ts)        
+            self.thread_ts.start()
         
         
         
@@ -78,36 +82,54 @@ class stream_plotter():
     def update_imgs(self):   
             
         frame_screen, frame_cam = np.ones((240, 320), dtype=np.uint8), np.ones((240, 320), dtype=np.uint8)
-        cv2.namedWindow("Output Frame", cv2.WINDOW_NORMAL)  
+        
+        nqueue  = 10
+        frame_queue_scr, frame_queue_cam =  [], []
+        for n in range(nqueue):
+            frame_queue_scr.append(frame_screen)
+            frame_queue_cam.append(frame_cam)
+            
+        # cv2.namedWindow("Output Frame")  
         
         while self.pltotting_img:     
             for nm, inlet in self.inlets.items():
-                
+
                 if nm in ['Marker', 'Markers']:
                     continue
                     
                 elif nm == "Screen":
-                    
                     tv, ts = inlet.pull_sample(timeout=0.0)                 
                     if ts == [] or ts is None:
                         continue
            
                     tv = tv[1:]  # First element is frame number
                     frame_screen = np.array(tv, dtype=np.uint8).reshape(240, 320)
-        
-                elif nm == "Webcam":
                     
+                    frame_queue_scr.pop(0)
+                    frame_queue_scr.append(frame_screen)
+                                        
+                elif nm == "Webcam":
                     tv, ts = inlet.pull_sample(timeout=0.0)                
                     if ts == [] or ts is None:
                         continue
 
                     frame_cam = np.array(tv, dtype=np.uint8).reshape(240, 320)
-              
-                            
-            final_frame = cv2.vconcat([frame_screen, frame_cam] )
-            cv2.imshow("Output Frame", final_frame)
+                    
+                    frame_queue_cam.pop(0)
+                    frame_queue_cam.append(frame_cam)
+
+            # final_frame = cv2.vconcat([frame_screen, frame_cam] )
+            # cv2.imshow("Output Frame", final_frame)
             
-    
+            # key = cv2.waitKey(1) & 0xFF
+            # if key == ord:
+            #     break
+            
+            frames = cv2.hconcat(frame_queue_cam), cv2.hconcat(frame_queue_scr)
+            frames = cv2.vconcat(frames)
+
+            cv2.imshow("Output Frame", frames)
+
             key = cv2.waitKey(1) & 0xFF
             if key == ord:
                 break
@@ -122,21 +144,32 @@ class stream_plotter():
         sampling = .1
         buff_size = 1024
         while self.pltotting_ts:
-    
+            
+            frame_ts = []
             for nm, inlet in self.inlets.items():
                 if nm in ['Marker', 'Markers']:
                     continue
                 
+                elif nm == "Screen":
+                                        
+                    tv, ts = inlet.pull_sample(timeout=0.0)                 
+                    if ts == [] or ts is None:
+                        continue
+           
+                    frame_ts = ts
+                    
+                    
                 elif nm in ['Mouse',"mbient", "Audio"]:                    
                     tv, ts = inlet.pull_chunk(timeout=0.0)
         
                     if ts == []:
-                        continue
-                    
+                        continue                    
                         
+                    clicks =[]
                     if nm == "Mouse":
                         ax_ith = 0
-                        
+                        clicks = [[tt,t[-1]] for t, tt in zip(tv, ts)if t[-1]!=0]
+                        tv = [t[:-1] for t in tv]
                     elif nm == "mbient":
                         ax_ith = 1
                         tv = [[np.mean(t[:3]), np.mean(t[3:])] for t in tv]
@@ -162,12 +195,20 @@ class stream_plotter():
                     
                     for i, chn in enumerate(inlet.ydata.T):
                         inlet.line[i].set_data(inlet.xdata, chn)
-                        
+                    
+                    if clicks != []:
+                        for clk in clicks:
+                            clr = "g" if clk[1]==1 else "r" if clk[1]==-1 else "k"
+                            axs[ax_ith].axvline(x=clk[0], color=clr)
+                            
                     axs[ax_ith].set_xlim([ max(ts) - (sampling*50) , max(ts)])
                     ylim = inlet.ydata.flatten()
                     axs[ax_ith].set_ylim([ min(ylim) , max(ylim)])
-                    
-            # print("yello")        
+            
+            if frame_ts != []:
+                for ax in axs:
+                    ax.axvline(frame_ts, color="b", alpha=.3, linestyle='--')
+       
             fig.canvas.draw()                
             fig.show()
             plt.pause(sampling) 
@@ -183,4 +224,4 @@ if 1:
     
     if 0: 
         ppt.stop()
-# ppt.update_ts()a
+# ppt.update_ts()
