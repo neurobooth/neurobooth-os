@@ -67,7 +67,8 @@ def Main():
         
         
         elif "time_test" in data:
-            c.send("ping_{time()}")                     
+            msg = f"ping_{time()}"
+            c.send(msg.encode("ascii"))                     
 
     s.close() 
   
