@@ -4,7 +4,7 @@ import threading
 import uuid
 import cv2
 from pylsl import StreamInfo, StreamOutlet
-import iout.dshowcapture
+from iout import dshowcapture
 import time
 import functools
 import warnings

@@ -11,9 +11,9 @@ from pylsl import StreamInfo, StreamOutlet
 states = []
 
 class State:
-    def __init__(self, device, buzz_time_sec=5):
+    def __init__(self, device, buzz_time_sec=2):
         self.device = device
-        self.callback = cbindings.FnVoid_VoidP_DataP(self.data_handler)
+        
         self.processor = None
         self.buzz_time = buzz_time_sec *1000
 
@@ -44,7 +44,12 @@ class State:
             self.processor = pointer
             e.set()
         fn_wrapper = cbindings.FnVoid_VoidP_VoidP(processor_created)
-        
+
+        self.outlet = StreamOutlet(self.stream_mbient)
+             
+        self.callback = cbindings.FnVoid_VoidP_DataP(self.data_handler)
+
+
         acc = libmetawear.mbl_mw_acc_get_acceleration_data_signal(self.device.board)
         gyro = libmetawear.mbl_mw_gyro_bmi160_get_rotation_data_signal(self.device.board)
 
@@ -55,8 +60,6 @@ class State:
 
         libmetawear.mbl_mw_datasignal_subscribe(self.processor, None, self.callback)
         
-        self.outlet = StreamOutlet(self.stream_mbient)
-
     def start(self):
     
         libmetawear.mbl_mw_gyro_bmi160_enable_rotation_sampling(self.device.board)

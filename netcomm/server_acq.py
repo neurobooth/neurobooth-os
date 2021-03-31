@@ -37,7 +37,7 @@ def Main():
         # print(f"time diff = {time() - c_time - time_del}")
 
         if "vis_stream" in data:
-            lowFeed = VidRec_Brio(camindex=0, doPreview=True)
+            lowFeed = VidRec_Brio(camindex=0, doPreview=True)    
             print ("Running low feed video streaming")
             
         elif "prepare" in data:
@@ -67,23 +67,10 @@ def Main():
                 break
                 
         elif "time_test" in data:
-            c.send("ping_{time()}")
+            msg = f"ping_{time()}"
+            c.send(msg.encode("ascii"))
             
-        
-        # if "start_preparation" in data:
-        #     time_del = time() - c_time
-        #     c.send(f"Preparation started, t delay is {time_del}".encode('ascii')) 
-        #     print(f"Preparation started, t delay is {time_del}") 
-        #     # run_cam1()
-        #     print ("Cameras running")
 
-        # if "start_recording" in data:
-        #     c.send("Starting recording".encode('ascii'))  
-        #     print("Starting recording")
-
-        # if "stop_recording" in data:
-        #     c.send("Ending recording".encode('ascii'))  
-        #     print("Ending recording")
 
     s.close() 
   
