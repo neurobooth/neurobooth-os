@@ -46,13 +46,13 @@ def Main():
             print("Preparing devices")
             # TODO logger with devices initiated
         
-        elif "record" in data:  #-> "record:FILENAME"
+        elif "record_start" in data:  #-> "record:FILENAME"
             fname = data.split(":")[-1]
             streams["hiFeed"].prepare(fname) 
             streams["hiFeed"].record()
             print("Starting recording")
             
-        elif "stop" in data: 
+        elif "record_stop" in data: 
             streams["hiFeed"].stop()
             print("Closing recording")
             

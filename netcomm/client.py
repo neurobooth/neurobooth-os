@@ -3,12 +3,14 @@ import socket
 from time import time  
   
 
-def socket_message(message, node_name):
+def socket_message(message, node_name, wait_data=0):
     
     if node_name == "acquisition":
         host = '192.168.1.6'  
     elif node_name == "presentation":
-         host = '192.168.1.12'  
+         host = '192.168.1.12' 
+    elif node_name == "control":
+         host = '192.168.1.13'          
                   
     # Define the port on which you want to connect 
     port = 12347
@@ -23,8 +25,15 @@ def socket_message(message, node_name):
     s.send(message.encode('ascii'))    
     print(f"sent {time()- t0}")    
     # t0 = time()
+    data = None
+    if wait_data:
+        # messaga received from server 
+        data = s.recv(1024) 
+        data.decode("utf-8")
+   
     s.close()
-    print(f"closed {time()- t0}")       
+    print(f"closed {time()- t0}")   
+    return data    
     
 
 
@@ -34,7 +43,9 @@ def socket_time(node_name, print_flag=1):
         host = '192.168.1.6'  
     elif node_name == "presentation":
          host = '192.168.1.12'  
-                  
+    elif node_name == "control":
+         host = '192.168.1.13'  
+              
     # Define the port on which you want to connect 
     port = 12347
     
