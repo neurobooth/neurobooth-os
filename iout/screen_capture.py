@@ -106,7 +106,7 @@ class ScreenMirror():
                 
             frame = cv2.resize(frame,self.res)
             
-            print(f"Capture n:{self.inx%250}, {frame.shape}")
+            # print(f"Capture n:{self.inx%250}, {frame.shape}")
             self.inx += 1
             
             f = np.insert(frame.flatten(), 0, self.inx)            

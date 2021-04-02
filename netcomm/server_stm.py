@@ -1,31 +1,31 @@
 import socket 
 
-from time import time  
+from time import time, sleep  
 from iout.screen_capture import ScreenMirror
 from iout.lsl_streamer import start_lsl_threads
 import config
-from netcomm.client import socket_message, socket_time
+from netcomm.client import socket_message
 
   
 def fake_task(s, cmd, subj_id, task_name):
-    time.sleep(1)
+    sleep(1)
     input("Press a key to start the task")
-    time.sleep(1)
+    sleep(1)
     
     print("Starting the Task")
     s.sendall(cmd.encode('utf-8') )
-    time.sleep(.01)
-    socket_message("record_start", "acquistion")
+    sleep(.01)
+    socket_message(f"record_start:{subj_id}_{task_name}", "acquisition")
     
     print("Do what you were told to, properly")
-    time.sleep(3)
+    sleep(3)
     
     print("Fairly well done, task is finished")
     s.sendall(b"stop\n")
-    socket_message("record_stop", "acquistion")
-    time.sleep(1)
+    socket_message("record_stop", "acquisition")
+    sleep(1)
     print("All closed, bye now")
-    time.sleep(1)
+    sleep(1)
     
     
 # def tasks_presentation(task_name):
@@ -81,18 +81,18 @@ def Main():
             subj_id = data.split(":")[2] 
             
             # Connection to LabRecorder in ctr pc
-            s = socket.create_connection(('192.168.1.13', 22345))
-            print("initiating {task}") 
+            s2 = socket.create_connection(('192.168.1.13', 22345))
+            print(f"initiating {task}") 
             
             cmd = "filename {root:" + config.paths['data_out'] + "} {template:%p_%b.xdf} {participant:" + subj_id + "_} {task:" + task + "}\n"
             
             if task == "fakest_task":
-                fake_task(s, cmd, subj_id, task)   
+                fake_task(s2, cmd, subj_id, task)   
                 msg = f"Done with {task}"
                 c.send(msg.encode("ascii")) 
                 
             else:
-                print("Task not {task} implemented")
+                print(f"Task not {task} implemented")
            
             
         elif data in ["close", "shutdown"]: 
