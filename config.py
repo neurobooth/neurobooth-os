@@ -8,7 +8,7 @@ Created on Thu Jan 14 08:21:16 2021
 
 paths = {}
 paths["data_out"] = "../neurobooth_data/"
-paths["LabRecorder"] = r'C:\Users\adona\Desktop\neurobooth\LabRecorder\LabRecorder.exe'
+paths["LabRecorder"] = r'C:\Users\neurobooth\Desktop\neurobooth\software\LabRecorder\LabRecorder.exe'
 
 
 

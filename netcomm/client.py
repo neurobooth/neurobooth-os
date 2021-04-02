@@ -8,7 +8,7 @@ def socket_message(message, node_name, wait_data=0):
     if node_name == "acquisition":
         host = '192.168.1.6'  
     elif node_name == "presentation":
-         host = '192.168.1.12' 
+         host = '192.168.1.14' 
     elif node_name == "control":
          host = '192.168.1.13'          
                   
@@ -42,7 +42,7 @@ def socket_time(node_name, print_flag=1):
     if node_name == "acquisition":
         host = '192.168.1.6'  
     elif node_name == "presentation":
-         host = '192.168.1.12'  
+         host = '192.168.1.14'  
     elif node_name == "control":
          host = '192.168.1.13'  
               
