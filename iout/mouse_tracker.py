@@ -29,7 +29,8 @@ class MouseStream():
         def on_click(x, y, button, pressed):
             state = 1 if pressed else -1
             mysample = [x,y,state]           
-            self.outlet.push_sample(mysample)#, , timestamp=time.time())   
+            self.outlet.push_sample(mysample)#, timestamp=time.time())   
+
     
         self.listener = mouse.Listener(on_move=on_move, on_click=on_click)
         
