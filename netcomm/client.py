@@ -1,7 +1,8 @@
 # Import socket module 
 import socket 
 from time import time  
-  
+import select
+
 
 def socket_message(message, node_name, wait_data=0):
     
@@ -27,9 +28,7 @@ def socket_message(message, node_name, wait_data=0):
     # t0 = time()
     data = None
     if wait_data:
-        # messaga received from server 
-        data = s.recv(1024) 
-        data.decode("utf-8")
+       data = wait_socket_data(s)
    
     s.close()
     print(f"closed {time()- t0}")   
@@ -60,12 +59,12 @@ def socket_time(node_name, print_flag=1):
     s.send(message.encode('ascii'))    
     
     # messaga received from server 
-    data = s.recv(1024) 
+    data = wait_socket_data(s, 2)
     
     s.close()
     
     t1 = time()
-    time_send = float( data.decode("utf-8").split("_")[-1])
+    time_send = float( data.split("_")[-1])
     time_1way = time_send - t0
     time_2way = t1 - t0
     
@@ -74,6 +73,21 @@ def socket_time(node_name, print_flag=1):
     
     return  time_2way, time_1way
     
+    
+def wait_socket_data(s, wait_time=None):
+    
+    tic = time()
+    while True:
+        r, _, _ = select.select([s], [], [s], 1)        
+        if r: 
+            data = s.recv(1024) 
+            return data.decode("utf-8")
+                     
+        if wait_time is not None:
+            if time() - tic > wait_time:
+                print("Socket timed out")
+                return "TIMED-OUT_-999"          
+  
     
 
 def Main(): 

@@ -48,7 +48,7 @@ def Main():
         
         elif "record_start" in data:  #-> "record:FILENAME"
             fname = data.split(":")[-1]
-            streams["hiFeed"].prepare(fname) 
+            streams["hiFeed"].prepare(fname+".avi") 
             streams["hiFeed"].record()
             print("Starting recording")
             

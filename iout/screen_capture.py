@@ -14,7 +14,7 @@ import time
 import threading
 
 class ScreenMirror():
-    def __init__(self, Fps=1, res=(320, 240), options=None, RGB=False, local_plot=False):
+    def __init__(self, Fps=1, res=(640, 480), options=None, RGB=True, local_plot=False):
         """
         parameters:
             Fps : Int
@@ -44,10 +44,11 @@ class ScreenMirror():
         
         # Setup outlet stream info
         xy = self.options["width"] * self.options["height"]
-        
-        xy = res[0]*res[1] + 1
+        xy = res[0]*res[1] 
         if RGB is True:
             xy = xy*3 
+        xy += 1
+        
         
         info_stream = StreamInfo(name='Screen', type='Experimental',
                                        # nominal_srate=self.fps, 

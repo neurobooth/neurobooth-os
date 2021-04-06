@@ -40,6 +40,10 @@ def task_loop(task_names, subj_id):
 def close_all():
     socket_message("close", "acquisition")    
     socket_message("close", "presentation") 
+   
+def shut_all():
+    socket_message("shutdown", "acquisition")    
+    socket_message("shutdown", "presentation") 
     
 def test_lan_delay(n=100):
     
