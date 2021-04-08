@@ -47,6 +47,7 @@ class VidRec_Intel():
             
     @catch_exception
     def prepare(self, name="temp_video"):
+        self.name = name
         self.video_filename = "{}.bag".format(name)     
         self.config.enable_record_to_file(self.video_filename)       
         self.outlet = self.createOutlet(name)
@@ -61,7 +62,13 @@ class VidRec_Intel():
         while self.recording:
              frame = self.pipeline.wait_for_frames()
              self.n = frame.get_frame_number() 
-             self.outlet.push_sample([self.frame_counter, self.n], timestamp=time()) 
+             try:
+                 self.outlet.push_sample([self.frame_counter, self.n]) 
+             except:  # "OSError" from C++
+                print("Reopening intel stream already closed")
+                self.outlet = self.createOutlet(self.name)
+                self.outlet.push_sample([self.frame_counter, self.n]) 
+                
              self.frame_counter += 1
               
 
@@ -71,7 +78,8 @@ class VidRec_Intel():
             self.recording = False
             self.pipeline.stop()
             print("total frames captured {}, indexes {}".format(self.n, self.frame_counter))         
-         
+            self.outlet.__del__()
+
 
     @catch_exception
     def start(self):
@@ -81,8 +89,8 @@ class VidRec_Intel():
 
     @catch_exception        
     def close(self):
-        self.previewing = False
-        self.recording = False
+        self.previewing = False  
+        self.stop()        
         
 
     @catch_exception        
