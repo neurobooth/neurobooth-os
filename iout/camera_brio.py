@@ -87,25 +87,28 @@ class VidRec_Brio():
     def record(self):
         self.previewing = False
         self.recording = True
+        print("Recording")
         while self.recording:
             if self.video_cap.capturing():
                 self.frame_counter += 1
                 frame = self.video_cap.get_frame(1000)
                 self.outlet.push_sample([self.frame_counter])                
                 self.video_out.write(frame)
-            
+                # print(self.frame_counter )
                 if self.doPreview:
                     # Push frame every relative Fps
                     if (self.frame_counter % self.preview_relFps) == 0:
                         frame = self.frame_preview(frame)
                         self.outlet_preview.push_sample(frame.flatten())
+        print("Recording ended" )
+
 
     @catch_exception
     def stop(self):
         if self.open:
             self.recording = False
             self.video_out.release()
-            # print("total frame = {}".format(self.frame_counter))         
+            print("total frame = {}".format(self.frame_counter))         
             self.preview_start()            
 
 
@@ -125,8 +128,8 @@ class VidRec_Brio():
         
 
     @catch_exception        
-    def createOutlet(self, filename,cam_name):
-        streamName = 'VideoFrameIndex' + cam_name
+    def createOutlet(self, filename):
+        streamName = f'VideoFrameIndex_{self.device_index}'
         info = StreamInfo(name=streamName, type='videostream', channel_format='int32', channel_count=1,
                           source_id=str(uuid.uuid4()))
         

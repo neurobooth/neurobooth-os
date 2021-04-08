@@ -9,7 +9,7 @@ from iout.mouse_tracker  import MouseStream
 from iout.microphone import MicStream
 from iout.camera_brio import VidRec_Brio
 from iout.marker import marker_stream
-
+from iout.camera_intel import VidRec_Intel
 
 def start_lsl_threads(node_name):
     
@@ -18,6 +18,7 @@ def start_lsl_threads(node_name):
     if node_name == "acquisition":
         streams["hiFeed"] = VidRec_Brio(camindex=1, doPreview=False)
         streams['micro'] = MicStream()
+        streams["intel"] = VidRec_Intel()
        
     elif node_name == "presentation":       
         streams['mouse'] = MouseStream()
