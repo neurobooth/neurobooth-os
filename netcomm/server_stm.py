@@ -9,22 +9,23 @@ from netcomm.client import socket_message
   
 def fake_task(s, cmd, subj_id, task_name):
     sleep(1)
-    input("Press a key to start the task")
+    input("Press a key to start the fakest task")
     sleep(1)
     
     print("Starting the Task")
     s.sendall(cmd.encode('utf-8') )
     sleep(.01)
+    s.sendall(b"start\n")
     socket_message(f"record_start:{subj_id}_{task_name}", "acquisition")
+    print("started")
+    input("Do what you were told to, properly, ok?")
+    sleep(4)
     
-    print("Do what you were told to, properly")
-    sleep(3)
-    
-    print("Fairly well done, task is finished")
+    input("Fairly well done, task is finished. Took 4 sec! Was it good?")
     s.sendall(b"stop\n")
     socket_message("record_stop", "acquisition")
     sleep(1)
-    print("All closed, bye now")
+    input("All closed, bye now. Press enter")
     sleep(1)
     
     
@@ -93,13 +94,19 @@ def Main():
                 
             else:
                 print(f"Task not {task} implemented")
+                c.send("not a task implemented".encode("ascii"))
+                
            
             
         elif data in ["close", "shutdown"]: 
-            streams['mouse'].stop()
+            if 'streams' in globals():
+                for k in streams.keys():
+                    streams.stop()            
             print("Closing devices")
              
             if "shutdown" in data:    
+                if 'screen_feed' in globals():
+                    screen_feed.stop()
                 print("Closing Stim server")
                 break
         
