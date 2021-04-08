@@ -108,6 +108,7 @@ class ScreenMirror():
             except:  # "OSError" from C++
                 print("Reopening stream already closed")
                 self.outlet_screen = StreamOutlet(self.info_stream)
+                self.outlet_screen.push_sample(f)
                 
             if self.local_plot:
                 # Show output window
