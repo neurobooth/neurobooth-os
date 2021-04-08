@@ -1,7 +1,11 @@
 # Import socket module 
 import socket 
-from time import time  
 import select
+from time import time, sleep
+import wmi
+import re
+import os
+import secrets
 
 
 def socket_message(message, node_name, wait_data=0):
@@ -33,26 +37,19 @@ def socket_message(message, node_name, wait_data=0):
     s.close()
     print(f"closed {time()- t0}")   
     return data    
-    
 
 
-def socket_time(node_name, print_flag=1):
+def socket_time(node_name, print_flag=1, time_out=5):
     
-    if node_name == "acquisition":
-        host = '192.168.1.6'  
-    elif node_name == "presentation":
-         host = '192.168.1.14'  
-    elif node_name == "control":
-         host = '192.168.1.13'  
+ 
+    host, port = node_info(node_name) 
               
-    # Define the port on which you want to connect 
-    port = 12347
-    
     message = "time_test"
     
     t0 = time()
     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) 
-  
+    s.settimeout(time_out)
+           
     # connect to server on local computer 
     s.connect((host,port)) 
     
@@ -73,6 +70,22 @@ def socket_time(node_name, print_flag=1):
     
     return  time_2way, time_1way
     
+
+def node_info(node_name):
+    
+    port = 12347
+    if node_name == "acquisition":
+        host = '192.168.1.6'  
+    elif node_name == "presentation":
+         host = '192.168.1.14'  
+    elif node_name == "acquisition_mbient":
+         host = '192.168.1.14'           
+         port = 12347
+    elif node_name == "control":        
+         host = '192.168.1.13' 
+    return host, port
+         
+         
     
 def wait_socket_data(s, wait_time=None):
     
@@ -89,41 +102,57 @@ def wait_socket_data(s, wait_time=None):
                 return "TIMED-OUT_-999"          
   
     
+def start_server(node_name):
+    """ Makes a network call to run python scripts serv_{node}.py
+        :param node_name: node name pc to connect. 
+        :type: str 
+        :return: list of pids from created pythons
+            
+    """
+    
+    if node_name == "acquisition":
+        name = secrets.acquisition['name']
+        user = secrets.acquisition['user']
+        pswd = secrets.acquisition['pass']
+        pth_bat = secrets.acquisition['bat']
+    else:
+        pass
+    
+    tic = time()
+    c = wmi.WMI(name, user=f"{name}\{user}", password=pswd)
+    print(f" 1 - {time() - tic}")
+    
+    tic = time()    
+    out = os.popen(f"tasklist.exe /S {name} /U {user} /P {pswd}").read()
+    pids_old = get_python_pids(out)
+    print(f"2 - {time() - tic}")
+     
+    tic = time()
+    pid_c =  c.Win32_Process.Create(CommandLine=pth_bat)
+    print(pid_c)
+    print(f"3 - {time() - tic}")
+     
+    sleep(.5)
+    tic = time()
+    out = os.popen(f"tasklist.exe /S {name} /U {user} /P {pswd}").read()
+    pids_new = get_python_pids(out)
+    print(f"4 - {time() - tic}")
+    
+    pid =  [p for p in pids_new if p not in pids_old ]
+    
+    return pid
 
-def Main(): 
-    # local host IP '127.0.0.1' 
-    host = '192.168.1.6'
-  
-    # Define the port on which you want to connect 
-    port = 12347
-  
-    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) 
-  
-    # connect to server on local computer 
-    s.connect((host,port)) 
-  
-    # message you send to server 
-    message = f"shaurya says geeksforgeeks_{time()}"
-    while True: 
-  
-        # message sent to server 
-        s.send(message.encode('ascii')) 
-  
-        # messaga received from server 
-        data = s.recv(1024) 
-  
-        # print the received message 
-        # here it would be a reverse of sent message 
-        print('Received from the server :',str(data.decode('ascii'))) 
-  
-        # ask the client whether he wants to continue 
-        ans = input('\nDo you want to continue(y/n) :') 
-        if ans == 'y': 
-            continue
-        else: 
-            break
-    # close the connection 
-    s.close() 
-  
-if __name__ == '__main__': 
-    Main() 
+
+def get_python_pids(output_tasklist):
+    # From popen tasklist output
+    
+    procs = output_tasklist.split("\n")
+    re_pyth = re.compile("python.exe[\s]*([0-9]*)")
+    
+    pyth_pids = []
+    for prc in procs:
+        srch = re_pyth.search(prc)    
+        if srch is not None:
+            pyth_pids.append(srch.groups()[0])
+    return pyth_pids
+
