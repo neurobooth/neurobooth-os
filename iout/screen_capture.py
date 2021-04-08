@@ -14,7 +14,7 @@ import time
 import threading
 
 class ScreenMirror():
-    def __init__(self, Fps=1, res=(640, 480), options=None, RGB=True, local_plot=False):
+    def __init__(self, Fps=1, res=(320, 240), options=None, RGB=False, local_plot=False):
         """
         parameters:
             Fps : Int
@@ -55,13 +55,11 @@ class ScreenMirror():
                                        channel_count=xy,
                                        channel_format='float32', source_id='Screen'
                                        )  
-        
+        self.info_stream = info_stream
         self.outlet_screen = StreamOutlet(info_stream)
         
 
-                    
-
-    
+                        
     def start(self):
         self.streaming = True
             
@@ -87,9 +85,6 @@ class ScreenMirror():
                 break
             
             mouseX, mouseY = pyautogui.position()
-            # mouseX *= 2
-            # mouseY *= 2
-            
             
             if self.RGB is not True:
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)            
@@ -102,17 +97,18 @@ class ScreenMirror():
             points = list(zip(Xthis, Ythis))
             points = np.array(points, 'int32')
             cv2.fillPoly(frame, [points], color=[255, 0, 0])
-            
-            
-                
+                                        
             frame = cv2.resize(frame,self.res)
             
-            # print(f"Capture n:{self.inx%250}, {frame.shape}")
-            self.inx += 1
+            self.inx += 1            
+            f = np.insert(frame.flatten(), 0, self.inx)     
             
-            f = np.insert(frame.flatten(), 0, self.inx)            
-            self.outlet_screen.push_sample(f)
-            
+            try:
+                self.outlet_screen.push_sample(f)
+            except:  # "OSError" from C++
+                print("Reopening stream already closed")
+                self.outlet_screen = StreamOutlet(self.info_stream)
+                
             if self.local_plot:
                 # Show output window
                 cv2.imshow("Screen", frame)
@@ -121,13 +117,16 @@ class ScreenMirror():
                 if key == ord("q"):
                     break
                 
-
             # time.sleep(1/self.fps)s
  
     def stop(self):
         # safely close video stream
-        self.screen.stop()
+        try:
+            self.screen.stop()
+        except AttributeError:
+            print("Never started to capture screen")
+                  
         self.streaming = False
-        
+        self.outlet_screen.__del__()
         if self.local_plot:
             cv2.destroyAllWindows()
