@@ -43,9 +43,16 @@ class MicStream():
         while self.streaming:
             data = self.stream_in.read(self.CHUNK)
             decoded = np.frombuffer(data, 'Float32')
-            self.outlet_audio.push_sample(decoded)
+            try:
+                self.outlet_audio.push_sample(decoded)
+            except:  # "OSError" from C++
+                print("Reopening mic stream already closed")
+                self.outlet_audio = StreamOutlet(self.stream_info_audio)
+                self.outlet_audio.push_sample(decoded)
+                
         print("Microphone stream closed")
 
 
     def stop(self):
         self.streaming = False
+        self.outlet_audio.__del__()

@@ -2,7 +2,7 @@ import socket
 from time import time  
 from iout.camera_brio import VidRec_Brio
 from iout.lsl_streamer import start_lsl_threads
-
+import config
  
   
 def Main(): 
@@ -47,19 +47,27 @@ def Main():
             # TODO logger with devices initiated
         
         elif "record_start" in data:  #-> "record:FILENAME"
-            fname = data.split(":")[-1]
+            fname = config.paths['data_out'] + data.split(":")[-1]            
             streams["hiFeed"].prepare(fname+".avi") 
-            streams["hiFeed"].record()
+            streams["intel"].prepare(fname )
+            streams["hiFeed"].start()
+            streams["intel"].start()
+            c.send('recording'.encode("ascii"))
             print("Starting recording")
             
         elif "record_stop" in data: 
             streams["hiFeed"].stop()
+            streams["intel"].stop()
             print("Closing recording")
             
         elif data in ["close", "shutdown"]: 
-            streams["hiFeed"].close()
-            lowFeed.close()
-            streams['micro'].stop()
+            if 'streams' in globals():
+                for k in streams.key():
+                    streams.stop()
+            
+            if 'lowFeed' in globals():
+                lowFeed.close()
+            
             print("Closing devices")
             
             if "shutdown" in data:    
@@ -70,7 +78,6 @@ def Main():
             msg = f"ping_{time()}"
             c.send(msg.encode("ascii"))
             
-
 
     s.close() 
   

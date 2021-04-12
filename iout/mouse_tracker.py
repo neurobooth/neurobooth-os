@@ -1,15 +1,16 @@
 from pynput import mouse
 from pylsl import StreamInfo, StreamOutlet
-import time
+
 
 
 class MouseStream():
     def __init__(self):
         
-        info = StreamInfo(name='Mouse', type='mouse', channel_count=3, 
+        info_stream = StreamInfo(name='Mouse', type='mouse', channel_count=3, 
                           channel_format='int32',source_id='myuid34234')
         
-        self.outlet = StreamOutlet(info)
+        self.info_stream = info_stream
+        self.outlet = StreamOutlet(info_stream)
     
         self.streaming = False
         
@@ -19,7 +20,13 @@ class MouseStream():
         self.stream()
         self.listener.start()
         
-        
+        try:
+            self.outlet.push_sample([0,0,0])
+        except:  # "OSError" from C++
+            print("Reopening stream already closed")
+            self.outlet = StreamOutlet(self.info_stream)
+                
+                
     def stream(self):
         
         def on_move(x, y):
@@ -31,11 +38,14 @@ class MouseStream():
             mysample = [x,y,state]           
             self.outlet.push_sample(mysample)#, timestamp=time.time())   
 
-    
         self.listener = mouse.Listener(on_move=on_move, on_click=on_click)
         
                        
     def stop(self):
-        self.streaming = False        
-        self.listener.stop()
-    
+        self.streaming = False     
+        try:
+            self.listener.stop()
+        except AttributeError:
+            print("Never started to capture mouse")
+                  
+        self.outlet.__del__()
