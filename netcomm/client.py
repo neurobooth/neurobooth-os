@@ -5,7 +5,7 @@ from time import time, sleep
 import wmi
 import re
 import os
-import secrets_info
+from secrets_info import secrets
 
 
 def socket_message(message, node_name, wait_data=0):
@@ -85,7 +85,6 @@ def node_info(node_name):
          host = '192.168.1.13' 
     return host, port
          
-         
     
 def wait_socket_data(s, wait_time=None):
     
@@ -110,31 +109,30 @@ def start_server(node_name):
             
     """
     
-    if node_name == "acquisition":
-        name = secrets_info.acquisition['name']
-        user = secrets_info.acquisition['user']
-        pswd = secrets_info.acquisition['pass']
-        pth_bat = secrets_info.acquisition['bat']
+    if node_name in [ "acquisition", "presentation"]:
+        s = secrets[node_name]
     else:
-        pass
+        print("Not a known node name")
+        return None
     
     tic = time()
-    c = wmi.WMI(name, user=f"{name}\{user}", password=pswd)
+    c = wmi.WMI(s['name'], user=f"{s['name']}\{s['user']}", password=s['pass'])
     print(f" 1 - {time() - tic}")
     
+    task_cmd = f"tasklist.exe /S {s['name']} /U {s['user']} /P {s['pass']}"
     tic = time()    
-    out = os.popen(f"tasklist.exe /S {name} /U {user} /P {pswd}").read()
+    out = os.popen(task_cmd).read()
     pids_old = get_python_pids(out)
     print(f"2 - {time() - tic}")
      
     tic = time()
-    pid_c =  c.Win32_Process.Create(CommandLine=pth_bat)
+    pid_c =  c.Win32_Process.Create(CommandLine=s['bat'])
     print(pid_c)
     print(f"3 - {time() - tic}")
      
     sleep(.5)
     tic = time()
-    out = os.popen(f"tasklist.exe /S {name} /U {user} /P {pswd}").read()
+    out = os.popen(task_cmd).read()
     pids_new = get_python_pids(out)
     print(f"4 - {time() - tic}")
     
@@ -156,3 +154,20 @@ def get_python_pids(output_tasklist):
             pyth_pids.append(srch.groups()[0])
     return pyth_pids
 
+
+def kill_remote_pid(pids, node_name):
+    
+    if node_name in [ "acquisition", "presentation"]:
+        s = secrets[node_name]
+    else:
+        print("Not a known node name")
+        return None
+    
+    if isinstance(pids, str): pids = [pids]
+    
+    cmd = f"taskkill /S {s['name']} /U {s['user']} /P {s['pass']} /PID %s"
+    for pid in pids:
+        out = os.popen(cmd %pid)
+        print(out.read())
+    return
+    

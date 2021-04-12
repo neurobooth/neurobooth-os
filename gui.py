@@ -152,11 +152,11 @@ imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
    
 sg.theme('Dark Grey 9')
 sg.set_options(element_padding=(0, 0))
-layout = [[sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Input(key='subj_id', size=(44, 1), background_color='white', text_color='black')],
+layout_col1 = [[sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Input(key='subj_id', size=(44, 1), background_color='white', text_color='black')],
           [space()],
           [sg.Text('RC ID:', pad=((0, 0), 0), justification='left'), sg.Input(key='rc_id', size=(44, 1), background_color='white', text_color='black')],
           [space()],
-          [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(54, 25)), space(), sg.Canvas(key='-CANVAS-')],
+          [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(54, 15)), space(), sg.Canvas(key='-CANVAS-')],
           [space()],          
           [space()],
           [space(), sg.Checkbox('Symbol Digit Matching Task', key='fakest_task', size=(44, 1))],
@@ -165,31 +165,41 @@ layout = [[sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Inp
           [space(), sg.ReadFormButton('Save', button_color=('white', 'black'))],         
           [space()],
           [space()],
-          [sg.Text('Console Output:', pad=((0, 0), 0), justification='left'), sg.Output(key='-OUTPUT-', size=(54, 15)), sg.Image(data=imgbytes, key='-screen-', size=frame_sz), space(), sg.Image(data=imgbytes, key='-webcam-', size=frame_sz)],
+          [sg.Text('Console Output:', pad=((0, 0), 0), justification='left'), sg.Output(key='-OUTPUT-', size=(54, 15))],
           [space()],
-          [space()],
-          [space(5), lay_butt('Test Comm', 'Test_network'),space(5), lay_butt('Display', 'RTD'), 
+          # [space()],
+          [space(1), lay_butt('Test Comm', 'Test_network'),space(5), lay_butt('Display', 'RTD'), 
            space(5), lay_butt('Prepare Devices', 'Devices'), space(5)],
           [space()],
           [space(5), sg.ReadFormButton('Start', button_color=('white', 'black')), space(5), lay_butt('Stop'),
            space(), sg.ReadFormButton('Shut Down', button_color=('white', 'black'))],
           ]
 
+
+layout_col2 = [#[space()], [space()], [space()], [space()],
+               [sg.Image(data=imgbytes, key='-screen-', size=frame_sz)], 
+                [space()], [space()], [space()], [space()],
+               [sg.Image(data=imgbytes, key='-webcam-', size=frame_sz)]
+               ]
+
+# layout = [[sg.Column(left_col, element_justification='c'), sg.VSeperator(),sg.Column(images_col, element_justification='c')]]
+
+layout = [[sg.Column(layout_col1,  pad=(0,0)), sg.Column(layout_col2, pad=(0,0))] ]
+
 window = sg.Window("Neurobooth",
                    layout,
-                   default_element_size=(12, 1),
+                   default_element_size=(10, 1),
                    text_justification='l',
                    auto_size_text=False,
                    auto_size_buttons=False,
                    no_titlebar=False,
-                   grab_anywhere=False,
+                   grab_anywhere=True,
                    default_button_element_size=(12, 1))
 
 
 inlets = {}
 plot_elem = []
 def plot_image(key_screen='-screen-', key_webcam='-webcam-'):   
-    global window
     global inlets
     global plot_elem
     # print("In the thread")
@@ -197,7 +207,7 @@ def plot_image(key_screen='-screen-', key_webcam='-webcam-'):
         # print("len is 0 inlets")
     plot_elem = []
     for nm, inlet in inlets.items():
-        # print(f"[nm]")
+
         tv, ts = inlet.pull_sample(timeout=0.0) 
         if ts == [] or ts is None:
              continue
@@ -205,25 +215,27 @@ def plot_image(key_screen='-screen-', key_webcam='-webcam-'):
         if nm == "Screen":    
             key = key_screen
             tv = tv[1:]  
-            # print("Screen")
+            print("Screen")
         elif nm == "Webcam":
              key = key_webcam
+             print("Webcam")
         else:
              continue
          
         frame = np.array(tv, dtype=np.uint8).reshape(frame_sz[1], frame_sz[0])
         imgbytes = cv2.imencode('.png', frame)[1].tobytes()
         
-        plot_elem.append([window[key],imgbytes ])
+        plot_elem.append([key, imgbytes])
         # window[key].update(data=imgbytes)   
         # window.write_event_value("Thread", True)
    
-# thread_run = True
-# def img_loop():
-#     global thread_run
-#     print("In the thread loop" )
-#     while thread_run:
-#         plot_image( '-screen-', '-webcam-') 
+thread_run = True
+def img_loop():
+    global thread_run
+    print("In the thread loop" )
+    while thread_run:
+        plot_image( '-screen-', '-webcam-') 
+    print("Closing image feed thread")
         
         
 # def thread_img(prev_thread=None):
@@ -284,7 +296,7 @@ def ts_thread():
 #     print("plot thread1")
 #     window.write_event_value("Thread", True)
 
-threading.Thread(target=plot_image, daemon=True)
+
         
 fig, axs = plt.subplots(3,1, sharex=True)
 while True:             # Event Loop
@@ -292,15 +304,11 @@ while True:             # Event Loop
     if event == sg.WIN_CLOSED:
         break
     elif event == 'RTD':
-        # ctr_rec.prepare_feedback()
+        ctr_rec.prepare_feedback()
         print('RTD')
         update_streams()
-        # img_thread = thread_img(img_thread)
-        # thread_run = False
-        # time.sleep(.5)
-        # thread_run = True
-        # img_thread = threading.Thread(target=img_loop)   
-        # img_thread.start()
+        t = threading.Thread(target=img_loop)
+        t.start()
         
     elif event == 'Devices':
         ctr_rec.prepare_devices()
@@ -332,35 +340,18 @@ while True:             # Event Loop
         print("Stopping devices")
         
     elif event ==  'Shut Down':
-        ctr_rec.shut_all()              
-        # break
+        ctr_rec.shut_all()   
+        thread_run = False
 
-    if len(inlets) == 0:    
-        update_streams()
-        
-    if  event == "Thread":
-        print("Thread is alive")
-        t = threading.Thread(target=ts_thread, daemon=True).start()  
-    
-    if fig_canvas_agg is None:
-        print("plot draw")
-        fig_canvas_agg = draw_figure(window['-CANVAS-'].TKCanvas, fig)  
-        
-    # t = threading.Thread(target=ts_thread, args=(fig_canvas_agg, fig, axs,), daemon=True)#.start()
-        t =  threading.Thread(target=ts_thread, daemon=True)
-        t.start()    
-        fig_canvas_agg.draw()
-    else:
-        fig_canvas_agg.draw()
-        
-    # t.isAlive()
-    # plot_image('-screen-', '-webcam-')
-   
+    # if len(inlets) == 0:    
+    #     update_streams()
+           
     
     if plot_elem:
         print("Active image thread")
         for el in plot_elem:
-            el[0].update(data=el[1])   
+            window[el[0]].update(data=el[1])  
+          
     # else:
     #     print("starting image thread")
     #     threading.Thread(target=plot_image, daemon=True)
