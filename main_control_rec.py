@@ -13,7 +13,7 @@ import psutil
 import numpy as np
 import config 
 # from realtime.lsl_plotter import stream_plotter
-from netcomm.client import socket_message, socket_time
+from netcomm.client import socket_message, socket_time, start_server
 
 
 def prepare_feedback():    
@@ -75,6 +75,7 @@ def initiate_labRec():
     
     
 if 0:
+    pid = start_server('acquisition')
     t2w, t1w = test_lan_delay(10)
     
     

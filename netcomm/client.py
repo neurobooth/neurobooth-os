@@ -5,7 +5,7 @@ from time import time, sleep
 import wmi
 import re
 import os
-import secrets
+import secrets_info
 
 
 def socket_message(message, node_name, wait_data=0):
@@ -41,7 +41,7 @@ def socket_message(message, node_name, wait_data=0):
 
 def socket_time(node_name, print_flag=1, time_out=5):
     
- 
+
     host, port = node_info(node_name) 
               
     message = "time_test"
@@ -111,10 +111,10 @@ def start_server(node_name):
     """
     
     if node_name == "acquisition":
-        name = secrets.acquisition['name']
-        user = secrets.acquisition['user']
-        pswd = secrets.acquisition['pass']
-        pth_bat = secrets.acquisition['bat']
+        name = secrets_info.acquisition['name']
+        user = secrets_info.acquisition['user']
+        pswd = secrets_info.acquisition['pass']
+        pth_bat = secrets_info.acquisition['bat']
     else:
         pass
     
