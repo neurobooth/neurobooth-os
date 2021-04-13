@@ -43,13 +43,14 @@ def get_tasks(values):
     
 def update_streams():
     streams = pylsl.resolve_streams() 
+    inlets= {}
     for info in streams:            
         name = info.name()     
         inx=1
         # while True:
         #     if name in inlets.keys():
         #         name = name.split("_")[0] + f"_{inx}"
-        #     else:
+        #     else:  
         #         break
                 
         if info.type() == 'Markers':
@@ -64,6 +65,7 @@ def update_streams():
     
         else:
             print('Don\'t know what to do with stream ' + info.name())
+    return inlets
 
 
                     
@@ -228,7 +230,36 @@ def plot_image(key_screen='-screen-', key_webcam='-webcam-'):
         plot_elem.append([key, imgbytes])
         # window[key].update(data=imgbytes)   
         # window.write_event_value("Thread", True)
-   
+
+
+def plot_image2(inlets, window, key_screen='-screen-', key_webcam='-webcam-'):   
+    # print("In the thread")
+    # if len(inlets) == 0:
+        # print("len is 0 inlets")
+    for nm, inlet in inlets.items():
+
+        tv, ts = inlet.pull_sample(timeout=0.0)
+        if ts == [] or ts is None:
+             continue
+                                      
+        if nm == "Screen":    
+            key = key_screen
+            tv = tv[1:]  
+            # print("Screen")
+        elif nm == "Webcam":
+             key = key_webcam
+             print("Webcam")
+        else:
+             continue
+         
+        frame = np.array(tv, dtype=np.uint8).reshape(frame_sz[1], frame_sz[0])
+        imgbytes = cv2.imencode('.png', frame)[1].tobytes()
+        
+        # plot_elem.append([key, imgbytes])
+        window[key].update(data=imgbytes)   
+        # window.write_event_value("Thread", True)
+        
+        
 thread_run = True
 def img_loop():
     global thread_run
@@ -300,21 +331,21 @@ def ts_thread():
         
 fig, axs = plt.subplots(3,1, sharex=True)
 while True:             # Event Loop
-    event, values = window.read(0)
+    event, values = window.read(1)
     if event == sg.WIN_CLOSED:
         break
     elif event == 'RTD':
         ctr_rec.prepare_feedback()
         print('RTD')
-        update_streams()
-        t = threading.Thread(target=img_loop)
-        t.start()
+        inlets = update_streams()
+        # t = threading.Thread(target=img_loop)
+        # t.start()
         
     elif event == 'Devices':
         ctr_rec.prepare_devices()
         ctr_rec.initiate_labRec()
         print('Devices')
-        update_streams()
+        inlets = update_streams()
         
     elif event == 'Save':
         session_info = values        
@@ -330,7 +361,7 @@ while True:             # Event Loop
             session_info, tasks =  get_session_info(values)
             print(values)
         
-        update_streams()
+        inlets = update_streams()
         ctr_rec.task_loop(tasks, session_info['subj_id']) 
         
         # session
@@ -340,17 +371,19 @@ while True:             # Event Loop
         print("Stopping devices")
         
     elif event ==  'Shut Down':
-        ctr_rec.shut_all()   
+        ctr_rec.shut_all()    
         thread_run = False
 
     # if len(inlets) == 0:    
     #     update_streams()
            
     
-    if plot_elem:
-        print("Active image thread")
-        for el in plot_elem:
-            window[el[0]].update(data=el[1])  
+    # frame = cv2.cvtColor(final_frame, cv2.COLOR_GRAY2RGB)  
+    # imgbytes = cv2.imencode('.png', frame)[1].tobytes()
+    # window['-image-'].update(data=imgbytes)
+    
+    if  len(inlets):
+         plot_image2(inlets, window) 
           
     # else:
     #     print("starting image thread")
