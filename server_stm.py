@@ -82,7 +82,7 @@ def Main():
             subj_id = data.split(":")[2] 
             
             # Connection to LabRecorder in ctr pc
-            s2 = socket.create_connection(('192.168.1.13', 22345))
+            s2 = socket.create_connection(('192.168.1.2', 22345))
             print(f"initiating {task}") 
             
             cmd = "filename {root:" + config.paths['data_out'] + "} {template:%p_%b.xdf} {participant:" + subj_id + "_} {task:" + task + "}\n"
@@ -99,14 +99,15 @@ def Main():
            
             
         elif data in ["close", "shutdown"]: 
-            if 'streams' in globals():
+            if 'streams' in locals().keys():
                 for k in streams.keys():
-                    streams.stop()            
-            print("Closing devices")
+                    streams[k].stop()            
+                print("Closing devices")
              
             if "shutdown" in data:    
-                if 'screen_feed' in globals():
+                if 'screen_feed' in locals().keys():
                     screen_feed.stop()
+                    print("Closing screen mirroring")
                 print("Closing Stim server")
                 break
         
