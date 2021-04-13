@@ -32,7 +32,7 @@ class VidRec_Intel():
                  fps_rgb=90, fps_depth=90, camindex=0):
         
         self.open = True
-
+        self.recording = False
         self.device_index = camindex
         self.fps = (fps_rgb, fps_depth)                
         self.frameSize = (size_rgb, size_depth) 
