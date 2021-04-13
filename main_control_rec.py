@@ -13,9 +13,16 @@ import psutil
 import numpy as np
 import config 
 # from realtime.lsl_plotter import stream_plotter
-from netcomm.client import socket_message, socket_time
+from netcomm.client import socket_message, socket_time, start_server,  kill_pid_txt
 
 
+def start_servers(nodes=["acquisition", "presentation"]):
+    kill_pid_txt()
+    if isinstance(nodes, str): nodes = [nodes]
+    for node in nodes:
+        pid = start_server(node)
+        print(f"{pid} on server {node} created")
+    
 def prepare_feedback():    
     socket_message("vis_stream", "acquisition")    
     socket_message("scr_stream", "presentation")
@@ -44,7 +51,10 @@ def close_all():
 def shut_all():
     socket_message("shutdown", "acquisition")    
     socket_message("shutdown", "presentation") 
+    kill_pid_txt()
     
+
+
 def test_lan_delay(n=100):
     
     nodes = ["acquisition", "presentation"]
@@ -75,6 +85,7 @@ def initiate_labRec():
     
     
 if 0:
+    pid = start_server('acquisition')
     t2w, t1w = test_lan_delay(10)
     
     
