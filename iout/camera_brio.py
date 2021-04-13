@@ -145,7 +145,8 @@ class VidRec_Brio():
             self.previewing = False     
             
         self.stop()
-        self.video_cap.stop_capture()
+        if self.video_cap.cap:
+            self.video_cap.stop_capture()
         self.video_cap.destroy_capture()
         if self.doPreview:
             self.outlet_preview.__del__()
