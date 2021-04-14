@@ -29,12 +29,7 @@ def socket_message(message, node_name, wait_data=0):
         print(f"closed {time()- t0}")   
         return data
     
-    if node_name == "acquisition":
-        host = '192.168.1.6'  
-    elif node_name == "presentation":
-         host = '192.168.1.14' 
-    elif node_name == "control":
-         host = '192.168.1.2'          
+       
                   
     host, port = node_info(node_name)
     
@@ -62,9 +57,11 @@ def socket_time(node_name, print_flag=1, time_out=5):
         # connect to server on local computer 
         s.connect((host,port)) 
     except:
-        print("Socket connexion timed out, trying to restart server")
+        print("{node_name} socket connexion timed out, trying to restart server")
         start_server(node_name)
         t0 = time()
+        s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) 
+        s.settimeout(time_out)
         s.connect((host,port))
     
     s.send(message.encode('ascii'))        
@@ -125,6 +122,8 @@ def start_server(node_name, save_pid_txt=True):
     else:
         print("Not a known node name")
         return None
+    # Kill any previous server
+    kill_pid_txt(node_name=node_name)
     
     tic = time()
     c = wmi.WMI(s['name'], user=f"{s['name']}\{s['user']}", password=s['pass'])
@@ -186,7 +185,7 @@ def kill_remote_pid(pids, node_name):
     return
 
 
-def kill_pid_txt(txt_name="server_pids.txt"):
+def kill_pid_txt(txt_name="server_pids.txt", node_name=None):
     
      with open("server_pids.txt","r+") as f:
          Lines = f.readlines()
@@ -194,11 +193,19 @@ def kill_pid_txt(txt_name="server_pids.txt"):
          if len(Lines):
              print(f"Closing {len(Lines)} remote processes")
              
+         new_lines = []
          for line in Lines:
             pid, node, tsmp = line.split(",")
+            if node_name is not None and node_name != node: 
+                new_lines.append(line)
+                continue
             kill_remote_pid(eval(pid), node)
+            
          f.seek(0)
-         f.write("")
+         if len(new_lines):
+             f.writelines(new_lines)
+         else:
+             f.write("")
          f.truncate()
     
     
