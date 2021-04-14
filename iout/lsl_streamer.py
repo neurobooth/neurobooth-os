@@ -16,7 +16,7 @@ def start_lsl_threads(node_name):
     streams = {}
     
     if node_name == "acquisition":
-        streams["hiFeed"] = VidRec_Brio(camindex=1, doPreview=False)
+        streams["hiFeed"] = VidRec_Brio(camindex=2 , doPreview=False)
         streams['micro'] = MicStream()
         streams["intel"] = VidRec_Intel()
        

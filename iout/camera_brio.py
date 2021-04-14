@@ -132,7 +132,6 @@ class VidRec_Brio():
             self.outlet.__del__()
             
 
-
     @catch_exception
     def start(self):
         self.video_thread = threading.Thread(target=self.record)

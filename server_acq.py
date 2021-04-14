@@ -1,5 +1,5 @@
 import socket 
-from time import time  
+from time import time, sleep
 from iout.camera_brio import VidRec_Brio
 from iout.lsl_streamer import start_lsl_threads
 import config
@@ -54,9 +54,11 @@ def Main():
         elif "record_start" in data:  #-> "record:FILENAME"
             fname = config.paths['data_out'] + data.split(":")[-1]            
             streams["hiFeed"].prepare(fname+".avi") 
-            streams["intel"].prepare(fname )
+            streams["intel"].prepare(fname)
+            
             streams["hiFeed"].start()
             streams["intel"].start()
+            
             c.send('recording'.encode("ascii"))
             print("Starting recording")
             
@@ -71,13 +73,12 @@ def Main():
                 if k in ["hiFeed", "intel"]:
                     streams[k].close()
                         
-            if lowFeed_running:
-                lowFeed.close()
-                lowFeed_running = False
             
             print("Closing devices")
             
             if "shutdown" in data:    
+                if lowFeed_running:
+                    lowFeed.close()                
                 print("Closing Acq server")
                 break
                 
@@ -85,8 +86,15 @@ def Main():
             msg = f"ping_{time()}"
             c.send(msg.encode("ascii"))
             
-
-    s.close() 
-  
+    sleep(.5)
+    try:
+        s.shutdown(socket.SHUT_RDWR)
+    except:
+            print("socket error shut down")
+    
+    try:
+        s.close() 
+    except:
+            print("socket error close")
   
 Main() 

@@ -41,6 +41,7 @@ def get_tasks(values):
             tasks.append(key)
     return tasks            
     
+
 def update_streams():
     streams = pylsl.resolve_streams() 
     inlets= {}
@@ -60,84 +61,14 @@ def update_streams():
         elif info.name()  in ["Screen", "Webcam", "Mouse", "Audio", "mbient"]:
             print('Adding data inlet: ' + name)
             
-            inlet = pylsl.StreamInlet(info, processing_flags=pylsl.proc_clocksync | pylsl.proc_dejitter)
+            inlet = pylsl.StreamInlet(info, recover=False)
             inlets[name] = inlet
     
         else:
             print('Don\'t know what to do with stream ' + info.name())
     return inlets
 
-
-                    
-def plot_ts(fig=None, axs=None):
-    if fig is None:    
-        fig, axs = plt.subplots(3,1, sharex=True)
-
-    sampling = .1
-    buff_size = 1024
-      
-    for nm, inlet in inlets.items():
-        if nm in ['Marker', 'Markers']:
-            continue
-                    
-        elif nm in ['Mouse', "mbient", "Audio"]:                    
-            tv, ts = inlet.pull_chunk(timeout=0.0)
-
-            if ts == []:
-                continue                    
-                
-            clicks =[]
-            if nm == "Mouse":
-                ax_ith = 0
-                clicks = [[tt,t[-1]] for t, tt in zip(tv, ts)if t[-1]!=0]
-                tv = [t[:-1] for t in tv]
-                
-            elif nm == "mbient":
-                ax_ith = 1
-                tv = [[np.mean(t[:3]), np.mean(t[3:])] for t in tv]
-                
-            elif nm == "Audio":
-                ax_ith = 2
-                tv = [[np.mean(t) ]for t in tv]
-                
-            tv = np.array(tv)
-            ts = np.array(ts)            
-            sz = ts.shape[0] 
-            
-            if not hasattr( inlet, "line"):
-                inlet.xdata = np.array(range(buff_size))
-                inlet.ydata = np.zeros((buff_size, tv.shape[1]))
-    
-                inlet.line = axs[ax_ith].plot(inlet.xdata, inlet.ydata)
-                         
-            inlet.ydata = np.vstack((inlet.ydata[sz - buff_size:-1, :], tv))                
-            inlet.xdata = np.hstack((inlet.xdata[sz - buff_size:-1], ts))
-            
-            for i, chn in enumerate(inlet.ydata.T):
-                inlet.line[i].set_data(inlet.xdata, chn)
-            
-            if clicks != []:
-                for clk in clicks:
-                    clr = "g" if clk[1]==1 else "r" if clk[1]==-1 else "k"
-                    axs[ax_ith].axvline(x=clk[0], color=clr)
-                    
-            axs[ax_ith].set_xlim([ max(ts) - (sampling*50) , max(ts)])
-            ylim = inlet.ydata.flatten()
-            axs[ax_ith].set_ylim([ min(ylim) , max(ylim)])
-    
-        inlets[nm] = inlet
-        
-    return fig, axs
-
-            
-
-def draw_figure(canvas, figure):
-    figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
-    figure_canvas_agg.draw()
-    figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
-    return figure_canvas_agg
-
-
+     
             
 def lay_butt(name, key=None):
     if key is None:
@@ -201,26 +132,21 @@ window = sg.Window("Neurobooth",
 
 inlets = {}
 plot_elem = []
-def plot_image(key_screen='-screen-', key_webcam='-webcam-'):   
-    global inlets
-    global plot_elem
-    # print("In the thread")
-    # if len(inlets) == 0:
-        # print("len is 0 inlets")
-    plot_elem = []
-    for nm, inlet in inlets.items():
+def plot_image2(inlets, window, key_screen='-screen-', key_webcam='-webcam-'):   
 
-        tv, ts = inlet.pull_sample(timeout=0.0) 
+    plot_elem = []
+    for nm, inlet in inlets.items():        
+        tv, ts = inlet.pull_sample(timeout=0.0)
         if ts == [] or ts is None:
              continue
                                       
         if nm == "Screen":    
             key = key_screen
             tv = tv[1:]  
-            print("Screen")
+           
         elif nm == "Webcam":
-             key = key_webcam
-             print("Webcam")
+            key = key_webcam
+            
         else:
              continue
          
@@ -230,106 +156,19 @@ def plot_image(key_screen='-screen-', key_webcam='-webcam-'):
         plot_elem.append([key, imgbytes])
         # window[key].update(data=imgbytes)   
         # window.write_event_value("Thread", True)
-
-
-def plot_image2(inlets, window, key_screen='-screen-', key_webcam='-webcam-'):   
-    # print("In the thread")
-    # if len(inlets) == 0:
-        # print("len is 0 inlets")
-    for nm, inlet in inlets.items():
-
-        tv, ts = inlet.pull_sample(timeout=0.0)
-        if ts == [] or ts is None:
-             continue
-                                      
-        if nm == "Screen":    
-            key = key_screen
-            tv = tv[1:]  
-            # print("Screen")
-        elif nm == "Webcam":
-             key = key_webcam
-             print("Webcam")
-        else:
-             continue
-         
-        frame = np.array(tv, dtype=np.uint8).reshape(frame_sz[1], frame_sz[0])
-        imgbytes = cv2.imencode('.png', frame)[1].tobytes()
-        
-        # plot_elem.append([key, imgbytes])
-        window[key].update(data=imgbytes)   
-        # window.write_event_value("Thread", True)
-        
+    return  plot_elem
         
 thread_run = True
 def img_loop():
     global thread_run
     print("In the thread loop" )
     while thread_run:
-        plot_image( '-screen-', '-webcam-') 
+        plot_image2( '-screen-', '-webcam-') 
     print("Closing image feed thread")
         
         
-# def thread_img(prev_thread=None):
-#     if prev_thread is not None:
-#         print("Stopping thread")
-#         prev_thread._stop()
-    
-#     print("starting thread")
-#     img_thread = threading.Thread(target=img_loop, args=('-screen-', '-webcam-'))   
-#     img_thread.start()
-    
-#     print(f"is alive: {img_thread.is_alive()}")
-#     return img_thread
-   
-# img_thread = threading.Thread(target=img_loop)   
-# img_thread.start()
-    
-# img_thread = thread_img()
-plotting = False
-
-fig, axs= None, None
-fig_canvas_agg = None
-
-def ts_plotting():
-    global plotting, fig_canvas_agg
-    global fig
-    global axs
-    global window
-    print("plot func")
-    plotting = True
-    fig, axs = plot_ts(fig, axs)    
-    if fig_canvas_agg is None:
-        print("plot draw")
-        fig_canvas_agg = draw_figure(window['-CANVAS-'].TKCanvas, fig)   
-        plt.close()
-    
-    print("plot thread")
-    threading.Thread(target=fig_canvas_agg.draw, daemon=True).start()
-    plotting = False
-
-session_saved = False
-
-def ts_thread():
-    global window
-    global fig_canvas_agg
-    global fig
-    global axs
-    print("plot thread")
-    plot_ts(fig, axs)  
-    print("plot thread1")
-    
-    window.write_event_value("Thread", True)
-    
-
-# def ts_thread():
-#     global window
-#     print("plot thread")   
-#     print("plot thread1")
-#     window.write_event_value("Thread", True)
 
 
-        
-fig, axs = plt.subplots(3,1, sharex=True)
 while True:             # Event Loop
     event, values = window.read(1)
     if event == sg.WIN_CLOSED:
@@ -337,9 +176,9 @@ while True:             # Event Loop
     elif event == 'RTD':
         ctr_rec.prepare_feedback()
         print('RTD')
+        time.sleep(.5)
         inlets = update_streams()
-        # t = threading.Thread(target=img_loop)
-        # t.start()
+
         
     elif event == 'Devices':
         ctr_rec.prepare_devices()
@@ -366,32 +205,26 @@ while True:             # Event Loop
         
         # session
     elif event == 'Stop':
+        for k in inlets.keys():
+            if k not in ["Webcam", "Screen"]:
+                inlets[k].close_stream()                
         ctr_rec.close_all()
         session_saved = False
         print("Stopping devices")
         
     elif event ==  'Shut Down':
+        for k in inlets.keys():
+            if k in ["Webcam", "Screen"]:
+                inlets[k].close_stream()
         ctr_rec.shut_all()    
-        thread_run = False
+        inlets = {}
 
-    # if len(inlets) == 0:    
-    #     update_streams()
-           
     
-    # frame = cv2.cvtColor(final_frame, cv2.COLOR_GRAY2RGB)  
-    # imgbytes = cv2.imencode('.png', frame)[1].tobytes()
-    # window['-image-'].update(data=imgbytes)
-    
-    if  len(inlets):
-         plot_image2(inlets, window) 
-          
-    # else:
-    #     print("starting image thread")
-    #     threading.Thread(target=plot_image, daemon=True)
-    # target=fig_canvas_agg.draw() 
-    # if not plotting:
-    #     ts_plotting()
-    
-    
+    if len(inlets):
+        plot_elem =  plot_image2(inlets, window) 
+        for el in plot_elem:
+            window[el[0]].update(data=el[1])
+
+        
         
 window.close()
