@@ -11,7 +11,8 @@ Created on Wed Apr  7 14:41:23 2021
 acquisition = {'name':  '192.168.1.7',
                'user': 'ACQ',
                'pass': "5519",
-               "bat" : r'C:\neurobooth\neurobooth-eel\serv_acq.bat'                         
+               "bat" : r'C:\neurobooth\neurobooth-eel\serv_acq.bat'   
+                      
                }
 
 presentation = {'name':  '192.168.1.5',
