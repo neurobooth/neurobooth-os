@@ -47,7 +47,8 @@ def Main():
     # put the socket into listening mode 
     s.listen(5) 
     print("socket is listening") 
-    
+    streams = {}
+    screen_running = False
     # a forever loop until client wants to exit 
     while True: 
   
@@ -66,10 +67,13 @@ def Main():
 
 
         if "scr_stream" in data:
-            screen_feed = ScreenMirror()
-            screen_feed.start()
-            print ("Stim screen feed running")
-            
+            if not screen_running:
+                screen_feed = ScreenMirror()
+                screen_feed.start()
+                print ("Stim screen feed running")
+                screen_running = True
+            else:
+                print ("Already running screen feed")
             
         elif "prepare" in data:
             streams = start_lsl_threads("presentation")
@@ -99,15 +103,16 @@ def Main():
            
             
         elif data in ["close", "shutdown"]: 
-            if 'streams' in locals().keys():
-                for k in streams.keys():
-                    streams[k].stop()            
-                print("Closing devices")
+            
+            for k in streams.keys():
+                streams[k].stop()            
+            print("Closing devices")
              
             if "shutdown" in data:    
-                if 'screen_feed' in locals().keys():
+                if screen_running:
                     screen_feed.stop()
                     print("Closing screen mirroring")
+                    screen_running = False
                 print("Closing Stim server")
                 break
         
@@ -115,8 +120,9 @@ def Main():
         elif "time_test" in data:
             msg = f"ping_{time()}"
             c.send(msg.encode("ascii"))                     
-
-    s.close() 
+    
+    # sleep(.5)
+    # s.close()
   
   
 Main() 
