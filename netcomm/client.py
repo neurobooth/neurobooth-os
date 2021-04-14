@@ -27,15 +27,13 @@ def socket_message(message, node_name, wait_data=0):
        
         s.close()
         print(f"closed {time()- t0}")   
-        return data
-    
-       
+        return data    
                   
     host, port = node_info(node_name)
     
     try:
         data = connect()
-    except TimeoutError:
+    except:# TimeoutError:
         print("Socket connexion timed out, trying to restart server")
         pid = start_server(node_name)
         print(f"{pid} on server {node_name} created")
@@ -83,16 +81,13 @@ def socket_time(node_name, print_flag=1, time_out=5):
 def node_info(node_name):    
     port = 12347
     if node_name == "acquisition":
-        host = '192.168.1.6'  
+        host = '192.168.1.7'  
     elif node_name == "presentation":
-         host = '192.168.1.5'  
-    elif node_name == "acquisition_mbient":
-         host = '192.168.1.6'           
-         port = 12347
+         host = '192.168.1.5'
     elif node_name == "control":        
          host = '192.168.1.2' 
     return host, port
-         
+
     
 def wait_socket_data(s, wait_time=None):
     
