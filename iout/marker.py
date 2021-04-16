@@ -16,4 +16,6 @@ def marker_stream():
     
     outlet_marker.push_sample([f"Streaming_0_{time.time()}"])
     
+    outlet_marker.stop = outlet_marker.__del__
+    
     return outlet_marker 

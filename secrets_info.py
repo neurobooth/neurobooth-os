@@ -8,10 +8,11 @@ Created on Wed Apr  7 14:41:23 2021
 
         
         
-acquisition = {'name': 'DESKTOP-P38QR47',
-               'user': 'adona',
-               'pass': "Cleo1234!",
-               "bat" : r'C:\Users\adona\Desktop\neurobooth\neurobooth-eel\serv_acq.bat'
+acquisition = {'name':  '192.168.1.7',
+               'user': 'ACQ',
+               'pass': "5519",
+               "bat" : r'C:\neurobooth\neurobooth-eel\serv_acq.bat'   
+                      
                }
 
 presentation = {'name':  '192.168.1.5',

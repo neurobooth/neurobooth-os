@@ -36,8 +36,10 @@ def setup_part_info():
     return session
 
 def task_presentation(task_name, filename):
-    resp = socket_message(f"present:{task_name}:{filename}", "presentation", 1)
-    print(resp)
+    socket_message(f"present:{task_name}:{filename}", "presentation")
+    
+
+# def make_task_filename(inlets):
     
 def task_loop(task_names, subj_id):
     for task in  task_names:
