@@ -16,17 +16,17 @@ def socket_message(message, node_name, wait_data=0):
       
         # connect to server on local computer 
         s.connect((host,port)) 
-        print(f"connected {time()- t0}")
+        print(f"* connected {time()- t0}")
         # t0 = time()
         s.send(message.encode('ascii'))    
-        print(f"sent {time()- t0}")    
+        # print(f"sent {time()- t0}")    
         # t0 = time()
         data = None
         if wait_data:
            data = wait_socket_data(s)
        
         s.close()
-        print(f"closed {time()- t0}")   
+        # print(f"closed {time()- t0}")   
         return data    
                   
     host, port = node_info(node_name)
@@ -34,7 +34,7 @@ def socket_message(message, node_name, wait_data=0):
     try:
         data = connect()
     except:# TimeoutError:
-        print("Socket connexion timed out, trying to restart server")
+        print(f"{node_name} socket connexion timed out, trying to restart server")
         pid = start_server(node_name)
         print(f"{pid} on server {node_name} created")
         data = connect()
@@ -55,7 +55,7 @@ def socket_time(node_name, print_flag=1, time_out=5):
         # connect to server on local computer 
         s.connect((host,port)) 
     except:
-        print("{node_name} socket connexion timed out, trying to restart server")
+        print(f"{node_name} socket connexion timed out, trying to restart server")
         start_server(node_name)
         t0 = time()
         s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) 
@@ -73,7 +73,7 @@ def socket_time(node_name, print_flag=1, time_out=5):
     time_2way = t1 - t0
     
     if print_flag:
-        print(f"Reurn took {time_2way}, sent {time_1way}")       
+        print(f"Return took {time_2way}, sent {time_1way}")       
     
     return  time_2way, time_1way
     
