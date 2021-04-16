@@ -49,7 +49,7 @@ def Main():
         elif "prepare" in data:
             if len(streams):
                 print("Closing devices before re-preparing")
-                close_streams(streams)
+                streams = close_streams(streams)
             streams = start_lsl_threads("acquisition")
             streams['micro'].start()
             print("Preparing devices")
@@ -72,7 +72,7 @@ def Main():
             
         elif data in ["close", "shutdown"]: 
             print("Closing devices")
-            close_streams(streams)                       
+            streams = close_streams(streams)                       
             
             if "shutdown" in data:    
                 if lowFeed_running:
