@@ -12,17 +12,18 @@ import pylsl
 import time
 import threading
 import matplotlib
+import queue
 import main_control_rec as ctr_rec
+from realtime.lsl_plotter import update_streams, get_lsl_images
+from netcomm.server_ctr import server_com
 
-
-# Turn off padding in order to get a really tight looking layout.
-def callback_RTD(values):    
-    ctr_rec.prepare_feedback() # rint resp
+from netcomm.server_ctr import test as server_com
     
 def get_session_info(values):
      session_info = values        
      tasks = get_tasks(values)
      return session_info, tasks
+    
     
 def get_tasks(values): 
     tasks= []
@@ -30,63 +31,22 @@ def get_tasks(values):
         if "task" in key and val is True:
             tasks.append(key)
     return tasks            
-    
-def update_streams():
-    streams = pylsl.resolve_streams() 
-    inlets= {}
-    for info in streams:            
-        name = info.name()     
-        inx=1
-        while True:
-            if name in inlets.keys():
-                name = name.split("_")[0] + f"_{inx}"
-            else:  
-                break
-                
-        if info.type() == 'Markers':
-            print('(NOT YET) Adding marker inlet: ' + name)
-            # inlets.append(MarkerInlet(info))
-            
-        elif info.name()  in ["Screen", "Webcam", "Mouse", "Audio", "mbient"]:
-            print('Adding data inlet: ' + name)
-            
-            inlet = pylsl.StreamInlet(info)#, recover=False)
-            inlets[name] = inlet
-    
-        else:
-            print('Don\'t know what to do with stream ' + info.name())
-    return inlets
 
 
-def plot_image(inlets, window, key_screen='-screen-', key_webcam='-webcam-'):   
-
-    plot_elem = []
-    for nm, inlet in inlets.items():        
-        tv, ts = inlet.pull_sample(timeout=0.0)
-        if ts == [] or ts is None:
-             continue
-                                      
-        if nm == "Screen":    
-            key = key_screen
-            tv = tv[1:]  
-           
-        elif nm == "Webcam":
-            key = key_webcam
-            
-        else:
-             continue
-         
-        frame = np.array(tv, dtype=np.uint8).reshape(frame_sz[1], frame_sz[0])
-        imgbytes = cv2.imencode('.png', frame)[1].tobytes()
-        
-        plot_elem.append([key, imgbytes])
-    return  plot_elem        
+serv_event = queue.Queue(maxsize = 10)
+def feedback_com():
+    global serv_event    
+    def callback(inp):
+        serv_event.put(inp)
+               
+    server_com(callback)
 
 
 def lay_butt(name, key=None):
     if key is None:
         key = name
     return sg.Button(name, button_color=('white', 'black'), key=key)
+
 
 def space(n=10):
     return sg.Text(' ' * n)
@@ -98,34 +58,34 @@ imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
     
 sg.theme('Dark Grey 9')
 sg.set_options(element_padding=(0, 0))
-layout_col1 = [[sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Input(key='subj_id', size=(44, 1), background_color='white', text_color='black')],
-          [space()],
-          [sg.Text('RC ID:', pad=((0, 0), 0), justification='left'),  sg.Input(key='rc_id', size=(44, 1), background_color='white', text_color='black')],
-          [space()],
-          [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(64, 10)), space()],
-          [space()],          
-          [space()],
-          [space(), sg.Checkbox('Symbol Digit Matching Task', key='fakest_task', size=(44, 1))],
-          [space(), sg.Checkbox('Mouse Task', key='extra_fakest_task', size=(44, 1))],
-          [space()],          
-          [space(), sg.ReadFormButton('Save', button_color=('white', 'black'))],         
-          [space()],
-          [space()],
-          [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left', auto_size_text=True), sg.Output(key='-OUTPUT-', size=(64, 15))],
-          [space()],
-          # [space()],
-          [space(1), lay_butt('Test Comm', 'Test_network'),space(5), lay_butt('Display', 'RTD'), 
-           space(5), lay_butt('Prepare Devices', 'Devices'), space(5)],
-          [space()],
-          [space(5), sg.ReadFormButton('Start', button_color=('white', 'black')), space(5), lay_butt('Stop'),
-           space(), sg.ReadFormButton('Shut Down', button_color=('white', 'black'))],
-          ]
-
+layout_col1 = [
+    [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Input(key='subj_id', size=(44, 1), background_color='white', text_color='black')],
+    [space()],
+    [sg.Text('RC ID:', pad=((0, 0), 0), justification='left'),  sg.Input(key='rc_id', size=(44, 1), background_color='white', text_color='black')],
+    [space()],
+    [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(64, 10)), space()],
+    [space()],          
+    [space()],
+    [space(), sg.Checkbox('Symbol Digit Matching Task', key='fakest_task', size=(44, 1))],
+    [space(), sg.Checkbox('Mouse Task', key='extra_fakest_task', size=(44, 1))],
+    [space()],          
+    [space(), sg.ReadFormButton('Save', button_color=('white', 'black'))],         
+    [space()],
+    [space()],
+    [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left', auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))],
+    [space()],
+    # [space()],
+    [space(1), lay_butt('Test Comm', 'Test_network'),space(5), lay_butt('Display', 'RTD'), 
+     space(5), lay_butt('Prepare Devices', 'Devices'), space(5)],
+    [space()],
+    [space(5), sg.ReadFormButton('Start', button_color=('white', 'black')), space(5), lay_butt('Stop'),
+     space(), sg.ReadFormButton('Shut Down', button_color=('white', 'black'))],
+    ]
 
 layout_col2 = [#[space()], [space()], [space()], [space()],
-               [sg.Image(data=imgbytes, key='-screen-', size=frame_sz)], 
+               [sg.Image(data=imgbytes, key='Screen', size=frame_sz)], 
                 [space()], [space()], [space()], [space()],
-               [sg.Image(data=imgbytes, key='-webcam-', size=frame_sz)]
+               [sg.Image(data=imgbytes, key='Webcam', size=frame_sz)]
                ]
 
 layout = [[sg.Column(layout_col1,  pad=(0,0)), sg.Column(layout_col2, pad=(0,0), element_justification='c')] ]
@@ -137,36 +97,28 @@ window = sg.Window("Neurobooth",
                    auto_size_text=False,
                    auto_size_buttons=False,
                    no_titlebar=False,
-                   grab_anywhere=True,
+                   grab_anywhere=False,
                    default_button_element_size=(12, 1))
-
-
-
-
+        
 
         
-thread_run = True
-def img_loop():
-    global thread_run
-    print("In the thread loop" )
-    while thread_run:
-        plot_image( '-screen-', '-webcam-') 
-    print("Closing image feed thread")
-        
+thr = threading.Thread(target=feedback_com, daemon=True)
+thr.start()
         
 inlets = {}
 plot_elem = []
-
-while True:             # Event Loop
+running_task, start_tasks = None, False
+done_tasks = []
+while True:
     event, values = window.read(1)
     if event == sg.WIN_CLOSED:
         break
+    
     elif event == 'RTD':
         ctr_rec.prepare_feedback()
         print('RTD')
         time.sleep(.5)
         inlets = update_streams()
-
         
     elif event == 'Devices':
         ctr_rec.prepare_devices()
@@ -175,23 +127,28 @@ while True:             # Event Loop
         inlets = update_streams()
         
     elif event == 'Save':
-        session_info = values        
-        tasks = get_tasks(values)
+        session_info, tasks = get_session_info(values)
         session_saved = True
         print(values)
         
     elif event == 'Test_network':
-        ctr_rec.test_lan_delay(50)
+        ctr_rec.test_lan_delay(100)
         
     elif event == 'Start':
         if not session_saved:
-            session_info, tasks =  get_session_info(values)
+            session_info, tasks = get_session_info(values)
             print(values)
         
         inlets = update_streams()
-        ctr_rec.task_loop(tasks, session_info['subj_id']) 
+        time.sleep(.5)
         
-        # session
+        if len(tasks):
+            start_tasks= True
+            running_task = tasks.pop(0)
+            ctr_rec.task_presentation(running_task, session_info['subj_id'])
+        else:
+            print("Start button pressed but no task selected")      
+        
     elif event == 'Stop':
         for k in inlets.keys():
             if k not in ["Webcam", "Screen"]:
@@ -207,11 +164,19 @@ while True:             # Event Loop
         ctr_rec.shut_all()    
         inlets = {}
 
-    
     if len(inlets):
-        plot_elem =  plot_image(inlets, window) 
+        plot_elem = get_lsl_images(inlets, window) 
         for el in plot_elem:
             window[el[0]].update(data=el[1])
+           
+        
+    try:
+        event_feedb = serv_event.get(False)
+        print(f"Got this msg: {event_feedb}")
+        
+    except queue.Empty:
+        event_feedb = []
+    
 
         
         

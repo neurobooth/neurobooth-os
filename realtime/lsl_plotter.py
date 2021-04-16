@@ -13,6 +13,52 @@ import threading
 import time
 
 
+def update_streams():
+    streams = pylsl.resolve_streams() 
+    inlets= {}
+    for info in streams:            
+        name = info.name()     
+        inx=1
+        while True:
+            if name in inlets.keys():
+                name = name.split("_")[0] + f"_{inx}"
+            else:  
+                break
+                
+        if info.type() == 'Markers':
+            print('(NOT YET) Adding marker inlet: ' + name)
+            # inlets.append(MarkerInlet(info))
+            
+        elif info.name()  in ["Screen", "Webcam", "Mouse", "Audio", "mbient"]:
+            print('Adding data inlet: ' + name)
+            
+            inlet = pylsl.StreamInlet(info)#, recover=False)
+            inlets[name] = inlet
+    
+        else:
+            print('Don\'t know what to do with stream ' + info.name())
+    return inlets
+
+
+
+def get_lsl_images(inlets, frame_sz=(320, 240)):   
+    plot_elem = []
+    for nm, inlet in inlets.items():        
+        tv, ts = inlet.pull_sample(timeout=0.0)
+        if ts == [] or ts is None:
+             continue
+         
+        if nm not in ["Screen", "Webcam"]:
+            continue
+                      
+        if nm == "Screen":               
+            tv = tv[1:]  
+          
+        frame = np.array(tv, dtype=np.uint8).reshape(frame_sz[1], frame_sz[0])
+        imgbytes = cv2.imencode('.png', frame)[1].tobytes()        
+        plot_elem.append([nm, imgbytes])
+        
+    return  plot_elem        
 
 class stream_plotter():
     
@@ -218,7 +264,7 @@ class stream_plotter():
         plt.close(fig)
 
 
-if 1:
+if 0:
     ppt = stream_plotter(plt_img=True, plt_ts=True)
     ppt.start()
     
