@@ -31,12 +31,18 @@ class MouseStream():
         
         def on_move(x, y):
             mysample = [x,y,0]
-            self.outlet.push_sample(mysample)#, timestamp=time.time())   
+            try:
+                self.outlet.push_sample(mysample)#, timestamp=time.time())   
+            except:#  OSError:
+                print("Mouse listner caugh error pushing oulet, mouse move")
             
         def on_click(x, y, button, pressed):
             state = 1 if pressed else -1
-            mysample = [x,y,state]           
-            self.outlet.push_sample(mysample)#, timestamp=time.time())   
+            mysample = [x,y,state]   
+            try:
+                self.outlet.push_sample(mysample)#, timestamp=time.time())  
+            except:# OSError:
+                print("Mouse listner caugh error pushing oulet, click")
 
         self.listener = mouse.Listener(on_move=on_move, on_click=on_click)
         

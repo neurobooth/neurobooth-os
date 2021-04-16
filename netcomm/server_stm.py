@@ -32,8 +32,6 @@ def fake_task(s, cmd, subj_id, task_name, send_stdout):
     sleep(1)
     
   
-    
-  
 def Main(): 
     host = "" 
     # time_del = 0
@@ -53,13 +51,15 @@ def Main():
     # Capture prints for sending to serv ctr
     old_stdout = sys.stdout
     sys.stdout = mystdout = io.StringIO()
-    
+        
     def send_stdout():
         try:
             msg = mystdout.getvalue()         
             socket_message(msg, "control")
         except Exception as e: 
             print(e)
+            
+    streams, screen_running = {}, False
             
     # a forever loop until client wants to exit 
     while True:   

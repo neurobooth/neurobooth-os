@@ -2,7 +2,7 @@ from pylsl import StreamInfo, StreamOutlet
 import pyaudio
 import numpy as np
 import threading
-
+import time
 
 
 class MicStream():
@@ -33,7 +33,7 @@ class MicStream():
         # Create outlets
         self.outlet_audio = StreamOutlet(self.stream_info_audio)
         self.streaming = True
-        
+        self.stream_on = True
         self.stream_thread = threading.Thread(target=self.stream)
         self.stream_thread.start()
     
@@ -49,10 +49,18 @@ class MicStream():
                 print("Reopening mic stream already closed")
                 self.outlet_audio = StreamOutlet(self.stream_info_audio)
                 self.outlet_audio.push_sample(decoded)
-                
+            self.tic =  time.time()
+        self.stream_on = False
         print("Microphone stream closed")
 
 
     def stop(self):
         self.streaming = False
+        inx = 0
+        tic = time.time()
+        while self.stream_on:
+            inx +=1
+        toc = time.time()
+        print(f"While looped {inx} times, for {toc - tic} secs")
+        print(f"Real thread delay {toc - self.tic} secs")
         self.outlet_audio.__del__()
