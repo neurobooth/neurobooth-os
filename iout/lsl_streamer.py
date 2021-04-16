@@ -26,7 +26,7 @@ def start_lsl_threads(node_name):
 
 def close_streams(streams):
     for k in list(streams):
-        print("Closing {k} stream")
+        print(f"Closing {k} stream")
         streams[k].stop()
         if k in ["hiFeed", "intel"]:
             streams[k].close()
