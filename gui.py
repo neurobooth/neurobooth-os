@@ -17,7 +17,7 @@ import main_control_rec as ctr_rec
 from realtime.lsl_plotter import update_streams, get_lsl_images
 from netcomm.server_ctr import server_com
 
-from netcomm.server_ctr import test as server_com
+# from netcomm.server_ctr import test as server_com
     
 def get_session_info(values):
      session_info = values        
@@ -42,6 +42,9 @@ def feedback_com():
     server_com(callback)
 
 
+thr = threading.Thread(target=feedback_com, daemon=True)
+thr.start()
+        
 def lay_butt(name, key=None):
     if key is None:
         key = name
@@ -102,9 +105,6 @@ window = sg.Window("Neurobooth",
         
 
         
-thr = threading.Thread(target=feedback_com, daemon=True)
-thr.start()
-        
 inlets = {}
 plot_elem = []
 running_task, start_tasks = None, False
@@ -132,7 +132,7 @@ while True:
         print(values)
         
     elif event == 'Test_network':
-        ctr_rec.test_lan_delay(100)
+        _ = ctr_rec.test_lan_delay(100)
         
     elif event == 'Start':
         if not session_saved:
@@ -165,7 +165,7 @@ while True:
         inlets = {}
 
     if len(inlets):
-        plot_elem = get_lsl_images(inlets, window) 
+        plot_elem = get_lsl_images(inlets) 
         for el in plot_elem:
             window[el[0]].update(data=el[1])
            
@@ -175,7 +175,8 @@ while True:
         print(f"Got this msg: {event_feedb}")
         
     except queue.Empty:
-        event_feedb = []
+       # event_feedb = []
+       pass
     
 
         
