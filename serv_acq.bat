@@ -1,2 +1,2 @@
-call C:\Users\adona\anaconda3\Scripts\activate.bat C:\Users\adona\anaconda3 
-call start python C:\Users\adona\Desktop\neurobooth\neurobooth-eel\server_acq.py
+call C:\Users\ACQ\anaconda3\Scripts\activate.bat C:\Users\ACQ\anaconda3\envs\neurobooth
+call start python C:\neurobooth\neurobooth-eel\server_acq.py

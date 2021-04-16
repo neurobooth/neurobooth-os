@@ -11,10 +11,8 @@ from iout.camera_brio import VidRec_Brio
 from iout.marker import marker_stream
 from iout.camera_intel import VidRec_Intel
 
-def start_lsl_threads(node_name):
-    
-    streams = {}
-    
+def start_lsl_threads(node_name):    
+    streams = {}    
     if node_name == "acquisition":
         streams["hiFeed"] = VidRec_Brio(camindex=2 , doPreview=False)
         streams['micro'] = MicStream()
@@ -26,9 +24,12 @@ def start_lsl_threads(node_name):
         
     return streams
 
-def close_threads(streams):
-    
-    for vid in streams['strm_vids']:
-        vid.recording = False
-        
+def close_streams(streams):
+    for k in streams.keys():
+        print("Closing {k} stream")
+        streams[k].stop()
+        if k in ["hiFeed", "intel"]:
+            streams[k].close()
+        del streams[k]
+    return streams
         

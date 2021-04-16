@@ -1,10 +1,11 @@
 import socket 
 from time import time, sleep
 from iout.camera_brio import VidRec_Brio
-from iout.lsl_streamer import start_lsl_threads
+from iout.lsl_streamer import start_lsl_threads, close_streams
 import config
  
-  
+
+
 def Main(): 
     host = "" 
     time_del = 0
@@ -39,21 +40,23 @@ def Main():
 
         if "vis_stream" in data:
             if not lowFeed_running:
-                lowFeed = VidRec_Brio(camindex=0, doPreview=True)    
+                lowFeed = VidRec_Brio(camindex=3, doPreview=True)    
                 print ("Running low feed video streaming")
                 lowFeed_running = True
             else:
                 print ("Already running low feed video streaming")
             
         elif "prepare" in data:
+            if len(streams):
+                print("Closing devices before re-preparing")
+                close_streams(streams)
             streams = start_lsl_threads("acquisition")
             streams['micro'].start()
             print("Preparing devices")
-            # TODO logger with devices initiated
-        
+    
         elif "record_start" in data:  #-> "record:FILENAME"
             fname = config.paths['data_out'] + data.split(":")[-1]            
-            streams["hiFeed"].prepare(fname+".avi") 
+            streams["hiFeed"].prepare(fname +".avi") 
             streams["intel"].prepare(fname)
             
             streams["hiFeed"].start()
@@ -67,20 +70,15 @@ def Main():
             streams["intel"].stop()
             print("Closing recording")
             
-        elif data in ["close", "shutdown"]:             
-            for k in streams.keys():
-                streams[k].stop()
-                if k in ["hiFeed", "intel"]:
-                    streams[k].close()
-                        
-            
+        elif data in ["close", "shutdown"]: 
             print("Closing devices")
+            close_streams(streams)                       
             
             if "shutdown" in data:    
                 if lowFeed_running:
                     lowFeed.close()                
                 print("Closing Acq server")
-                break
+#                break
                 
         elif "time_test" in data:
             msg = f"ping_{time()}"
