@@ -33,7 +33,7 @@ def get_tasks(values):
     return tasks            
 
 
-serv_event = queue.Queue(maxsize = 10)
+serv_event = queue.Queue(maxsize=10)
 def feedback_com():
     global serv_event    
     def callback(inp):
