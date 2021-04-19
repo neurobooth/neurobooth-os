@@ -22,6 +22,7 @@ def update_streams():
         while True:
             if name in inlets.keys():
                 name = name.split("_")[0] + f"_{inx}"
+                inx +=1
             else:  
                 break
                 
