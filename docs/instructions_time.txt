@@ -1,0 +1,17 @@
+Time synch
+
+# Time server
+
+go to : Control Panel\Clock and Region click date and time -> internet time -> "Change settings":
+server: 
+www.partners.org
+
+# Frequency synch
+
+Change this settings by making edits to REGISTRY using regedit.
+
+The key to change the auto time sync - time interval settings is located at:
+
+Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\NtpClient
+
+The key type is DWORD and default value is 604800 (decimal) and 0x00093a80 (hexadecimal) - key name is SpecialPollInterval, change the value to 86400 to auto time sync every day.

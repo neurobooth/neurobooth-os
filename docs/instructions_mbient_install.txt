@@ -1,0 +1,44 @@
+Download visual studio 2017:
+https://my.visualstudio.com/Downloads?q=visual%20studio%202017&wt.mc_id=o~msft~vscom~older-downloads
+
+Follow instructions from https://mbientlab.com/tutorials/PyLinux.html:
+
+## install VS2017 components: 
+C# and Visual Basic Roslyn compilers
+MSBuild
+Static analysis tools
+.NET Framework 4.6.1 SDK
+.NET Framework 4.6.1 targeting pack
+.NET Framework 4.7.1 SDK
+Visual Studio C++ core features
+VC++ 2017 version 15.8 v14.15 latest v141 tools
+Windows 10 SDK (10.0.17134.0)
+C++/CLI support
+Windows 10 SDK (10.0.16299.0) for UWP: C#, VB, JS
+Windows 10 SDK (10.0.16299.0) for UWP: C++
+Windows 10 SDK (10.0.16299.0) for Desktop C++ [x86 and x64]
+Visual C++ compilers and libraries for ARM
+Visual C++ runtime for UWP
+Python3 (see section below)
+Visual C++ compilers and libraries for ARM64
+
+
+
+## add MSBUILD to path:
+
+1 - Right clicking on Computer
+2 - Click Properties
+3 - Then click Advanced system settings on the left navigation bar, click environment variables
+4- in system> path  add:
+C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin
+
+
+## install anaconda
+
+## Create env with neurobooth.yml
+
+conda create -n neurobooth  python=3.6 spyder ipython git opencv pywin32 pip
+
+conda activate neurobooth
+
+pip install  metawear==0.7.0 pillow==8.2.0 pyaudio==0.2.11 pylsl==1.14.0 pynput==1.7.3 pyrealsense2==2.44.0.3073 warble==1.2.0
