@@ -83,9 +83,9 @@ def node_info(node_name):
     if node_name == "acquisition":
         host = '192.168.1.7'  
     elif node_name == "presentation":
-         host = '192.168.1.5'
+         host = '192.168.1.8'
     elif node_name == "control":        
-         host = '192.168.1.2' 
+         host = '192.168.1.13' 
     return host, port
 
     
