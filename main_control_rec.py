@@ -88,7 +88,7 @@ def initiate_labRec():
     
 if 0:
     pid = start_server('acquisition')
-    t2w, t1w = test_lan_delay(10)
+    t2w, t1w = test_lan_delay(100)
     
     
     prepare_feedback()
