@@ -6,7 +6,7 @@ from iout.screen_capture import ScreenMirror
 from iout.lsl_streamer import start_lsl_threads
 import config
 from netcomm.client import socket_message
-
+from task.DSC import DSC
   
 def fake_task(s, cmd, subj_id, task_name, send_stdout):
     sleep(1)
@@ -106,6 +106,11 @@ def Main():
                 fake_task(s2, cmd, subj_id, task, send_stdout)   
                 msg = f"Done with {task}"
                 c.send(msg.encode("ascii")) 
+                
+            elif task == "DSC_task":
+                    
+                DSC(streams['marker'])
+                
                 
             else:
                 print(f"Task not {task} implemented")

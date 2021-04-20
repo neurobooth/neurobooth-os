@@ -23,7 +23,7 @@ def present_msg(elems, win, key_resp="return"):
 
 class DSC():
     
-    def __init__(self):
+    def __init__(self, marker_outlet=None):
         self.testVersion = 'DSC_simplified_oneProbe_2019' 
         self.chosenInput = 'keys'    # input type (taps or keys)
         self.frameSequence = []
@@ -36,9 +36,19 @@ class DSC():
         self.demo = False                   #      # URL parameter: run in demo mode
         self.filename = "fname.csv"           #        # filename for data     
         
+        if marker_outlet is not None:
+            self.with_lsl = True
+            self.marker = marker_outlet
+            # outlet_marker.push_sample([f"Streaming_0_{time.time()}"])
         self.setup()
         self.nextTrial()             
 
+    def send_marker(self, msg=None):
+        # msg format str {word}_{value}
+        if self.with_lsl:
+            self.marker.push_sample([f"{msg}_{time.time()}"])
+        
+        
     def setup(self):
  
         self.tmbUI["UIevents"] = ['keys'];
@@ -172,7 +182,7 @@ class DSC():
                 for s in stim:
                     s.draw()
                 self.win.flip()
-    
+                self.send_marker("Trial-start_0")
                 trialClock = core.Clock()
                 countDown = core.CountdownTimer().add(self.tmbUI["timeout"])
         
@@ -186,17 +196,19 @@ class DSC():
                     if key:
                         # TODO highlight red
                         print(key)
+                        self.send_marker("Trial-res_0")
                         self.tmbUI["rt"] = trialClock.getTime()
                         self.tmbUI["response"] = ["key", key[0][0]]
                         self.tmbUI["downTimestamp"] = key[0][1]
                         self.tmbUI["status"] = "Ontime"
                         timed_out = False
+                        self.send_marker("Trial-res_1")
                         break
                     
                 if timed_out:
                     self.tmbUI["status"] != "timeout"
                     self.tmbUI["response"] = ["key", ""]
-                    
+                self.send_marker("Trial-end_1")
                 self.onreadyUI(frame)
     
         # elif the sequence is empty, we are done!
