@@ -7,7 +7,8 @@ Created on Mon Mar 15 11:40:01 2021
 
 from vidgear.gears import ScreenGear
 import cv2
-import pyautogui
+# import pyautogui
+import win32gui
 import numpy as np
 from pylsl import StreamInfo, StreamOutlet
 import time
@@ -84,7 +85,9 @@ class ScreenMirror():
             if frame is None:
                 break
             
-            mouseX, mouseY = pyautogui.position()
+            # mouseX, mouseY = pyautogui.position()
+            mouseX, mouseY = win32gui.GetCursorPos()
+            
             
             if self.RGB is not True:
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)            

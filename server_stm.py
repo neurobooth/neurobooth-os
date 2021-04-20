@@ -15,23 +15,23 @@ def fake_task(s, cmd, subj_id, task_name, send_stdout):
     input("Press a key to start the fakest task")
     sleep(1)
     
-    print("Starting the Task")
-    send_stdout()
-    s.sendall(cmd.encode('utf-8') )
-    sleep(.01)
-    s.sendall(b"start\n")
-    socket_message(f"record_start:{subj_id}_{task_name}", "acquisition")
-    print("started")
-    send_stdout()
-    input("Do what you were told to, properly, ok?")
-    sleep(4)
+    # print("Starting the Task")
+    # send_stdout()
+    # s.sendall(cmd.encode('utf-8') )
+    # sleep(.01)
+    # s.sendall(b"start\n")
+    # socket_message(f"record_start:{subj_id}_{task_name}", "acquisition")
+    # print("started")
+    # send_stdout()
+    # input("Do what you were told to, properly, ok?")
+    # sleep(4)
     
-    input("Fairly well done, task is finished. Took 4 sec! Was it good?")
-    s.sendall(b"stop\n")
-    socket_message("record_stop", "acquisition")
-    sleep(1)
-    input("All closed, bye now. Press enter")
-    sleep(1)
+    # input("Fairly well done, task is finished. Took 4 sec! Was it good?")
+    # s.sendall(b"stop\n")
+    # socket_message("record_stop", "acquisition")
+    # sleep(1)
+    # input("All closed, bye now. Press enter")
+    # sleep(1)
     
   
 def Main(): 
@@ -68,15 +68,18 @@ def Main():
     # a forever loop until client wants to exit 
     while True:   
         # establish connection with client 
-        c, addr = s.accept() 
-        data = c.recv(1024)
+        try:
+            c, addr = s.accept() 
+            data = c.recv(1024)
+        except:
+            continue
         if not data: 
             sys.stdout = old_stdout
             print("Connection fault, closing Stim server")
             break
 
         data = data.decode("utf-8")
-        # print("STIM:" + data)
+        print("STIM:" + data)
         # send_stdout()
         # c_time = float(data.split("_")[-1][:-1])
         # print(f"time diff = {time() - c_time - time_del}")
@@ -122,14 +125,14 @@ def Main():
             elif task == "DSC_task":    
                 print("Starting DSC Task")
                 send_stdout()
-                s.sendall(cmd.encode('utf-8') )
+                s2.sendall(cmd.encode('utf-8') )
                 sleep(.01)
-                s.sendall(b"start\n")
+                s2.sendall(b"start\n")
                 socket_message(f"record_start:{subj_id}_{task}", "acquisition")
                 
                 res = DSC(streams['marker'])
                                 
-                s.sendall(b"stop\n")
+                s2.sendall(b"stop\n")
                 socket_message("record_stop", "acquisition")
     
             else:
