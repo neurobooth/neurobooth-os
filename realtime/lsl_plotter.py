@@ -58,6 +58,7 @@ def get_lsl_images(inlets, frame_sz=(320, 240)):
         frame = np.array(tv, dtype=np.uint8).reshape(frame_sz[1], frame_sz[0])
         imgbytes = cv2.imencode('.png', frame)[1].tobytes()        
         plot_elem.append([nm, imgbytes])
+        inlet.flush()
         
     return  plot_elem        
 
