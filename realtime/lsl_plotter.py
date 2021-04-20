@@ -186,7 +186,11 @@ class stream_plotter():
     
     def update_ts(self):
         
-        fig, axs = plt.subplots(3,1, sharex=True)
+        fig, axs = plt.subplots(3,1, sharex=True, figsize=(9.16,  9.93))
+        axs[-1].set_xticks([])
+        mngr = plt.get_current_fig_manager()
+        mngr.window.setGeometry(1015,30,905, 1005)
+        fig.tight_layout()
         
         sampling = .1
         buff_size = 1024
