@@ -14,7 +14,7 @@ import threading
 import matplotlib
 import queue
 import main_control_rec as ctr_rec
-from realtime.lsl_plotter import update_streams, get_lsl_images
+from realtime.lsl_plotter import update_streams, get_lsl_images, stream_plotter
 from netcomm.server_ctr import server_com
 
 # from netcomm.server_ctr import test as server_com
@@ -55,46 +55,51 @@ def space(n=10):
     return sg.Text(' ' * n)
 
 
-frame_sz= (320, 240)    
-frame_cam = np.ones(frame_sz)
-imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
+ 
+
+def make_layout(frame_sz=(320, 240)):
+    frame_cam = np.ones(frame_sz)
+    imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
+        
+    sg.theme('Dark Grey 9')
+    sg.set_options(element_padding=(0, 0))
+    layout_col1 = [
+        [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Input(key='subj_id', size=(44, 1), background_color='white', text_color='black')],
+        [space()],
+        [sg.Text('RC ID:', pad=((0, 0), 0), justification='left'),  sg.Input(key='rc_id', size=(44, 1), background_color='white', text_color='black')],
+        [space()],
+        [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(64, 10)), space()],
+        [space()],          
+        [space()],
+        [space(), sg.Checkbox('Symbol Digit Matching Task', key='DSC_task', size=(44, 1))],
+        [space(), sg.Checkbox('Mouse Task', key='mouse_task', size=(44, 1))],
+        [space()],          
+        [space(), sg.ReadFormButton('Save', button_color=('white', 'black'))],         
+        [space()],
+        [space()],
+        [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left', auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))],
+        [space()],
+        # [space()],
+        [space(1), lay_butt('Test Comm', 'Test_network'),space(5), lay_butt('Display', 'RTD'), 
+         space(5), lay_butt('Prepare Devices', 'Devices'), space(5)],
+        [space()],
+        [space(5), sg.ReadFormButton('Start', button_color=('white', 'black')), space(5), lay_butt('Stop'),
+         space(), sg.ReadFormButton('Shut Down', button_color=('white', 'black'))],
+        ]
     
-sg.theme('Dark Grey 9')
-sg.set_options(element_padding=(0, 0))
-layout_col1 = [
-    [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Input(key='subj_id', size=(44, 1), background_color='white', text_color='black')],
-    [space()],
-    [sg.Text('RC ID:', pad=((0, 0), 0), justification='left'),  sg.Input(key='rc_id', size=(44, 1), background_color='white', text_color='black')],
-    [space()],
-    [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(64, 10)), space()],
-    [space()],          
-    [space()],
-    [space(), sg.Checkbox('Symbol Digit Matching Task', key='DSC_task', size=(44, 1))],
-    [space(), sg.Checkbox('Mouse Task', key='mouse_task', size=(44, 1))],
-    [space()],          
-    [space(), sg.ReadFormButton('Save', button_color=('white', 'black'))],         
-    [space()],
-    [space()],
-    [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left', auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))],
-    [space()],
-    # [space()],
-    [space(1), lay_butt('Test Comm', 'Test_network'),space(5), lay_butt('Display', 'RTD'), 
-     space(5), lay_butt('Prepare Devices', 'Devices'), space(5)],
-    [space()],
-    [space(5), sg.ReadFormButton('Start', button_color=('white', 'black')), space(5), lay_butt('Stop'),
-     space(), sg.ReadFormButton('Shut Down', button_color=('white', 'black'))],
-    ]
-
-layout_col2 = [#[space()], [space()], [space()], [space()],
-               [sg.Image(data=imgbytes, key='Screen', size=frame_sz)], 
-                [space()], [space()], [space()], [space()],
-               [sg.Image(data=imgbytes, key='Webcam', size=frame_sz)]
-               ]
-
-layout = [[sg.Column(layout_col1,  pad=(0,0)), sg.Column(layout_col2, pad=(0,0), element_justification='c')] ]
+    layout_col2 = [#[space()], [space()], [space()], [space()],
+                   [sg.Image(data=imgbytes, key='Screen', size=frame_sz)], 
+                    [space()], [space()], [space()], [space()],
+                   [sg.Image(data=imgbytes, key='Webcam', size=frame_sz)]
+                   ]
+    
+    layout = [[sg.Column(layout_col1,  pad=(0,0)), sg.Column(layout_col2, pad=(0,0), element_justification='c')] ]
+    return layout
 
 window = sg.Window("Neurobooth",
-                   layout,
+                   make_layout(), 
+                   # keep_on_top=True,
+                    location =(0,0),
                    default_element_size=(10, 1),
                    text_justification='l',
                    auto_size_text=False,
@@ -104,7 +109,9 @@ window = sg.Window("Neurobooth",
                    default_button_element_size=(12, 1))
         
 
-        
+plttr = stream_plotter()
+
+
 inlets = {}
 plot_elem = []
 running_task, start_tasks = None, False
@@ -125,6 +132,7 @@ while True:
         ctr_rec.initiate_labRec()
         print('Devices')
         inlets = update_streams()
+        plttr.start()
         
     elif event == 'Save':
         session_info, tasks = get_session_info(values)
