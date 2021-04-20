@@ -40,6 +40,9 @@ class DSC():
             self.with_lsl = True
             self.marker = marker_outlet
             # outlet_marker.push_sample([f"Streaming_0_{time.time()}"])
+        else:
+            self.with_lsl = False
+            
         self.setup()
         self.nextTrial()             
 
