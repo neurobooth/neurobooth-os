@@ -14,9 +14,9 @@ from iout.camera_intel import VidRec_Intel
 def start_lsl_threads(node_name):    
     streams = {}    
     if node_name == "acquisition":
-#        streams["hiFeed"] = VidRec_Brio(camindex=2 , doPreview=False)
+        streams["hiFeed"] = VidRec_Brio(camindex=3 , doPreview=False)
         streams['micro'] = MicStream()
-#        streams["intel"] = VidRec_Intel()
+        streams["intel"] = VidRec_Intel(camindex=2)
        
     elif node_name == "presentation":       
         streams['mouse'] = MouseStream()

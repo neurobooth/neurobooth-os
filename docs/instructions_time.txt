@@ -14,4 +14,4 @@ The key to change the auto time sync - time interval settings is located at:
 
 Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\NtpClient
 
-The key type is DWORD and default value is 604800 (decimal) and 0x00093a80 (hexadecimal) - key name is SpecialPollInterval, change the value to 86400 to auto time sync every day.
+The key type is DWORD and default value is 604800 (decimal) and 0x00093a80 (hexadecimal) - key name is SpecialPollInterval, change the value to 1 to auto time sync every sec.
