@@ -5,7 +5,7 @@ from time import time, sleep
 from iout.screen_capture import ScreenMirror
 from iout.lsl_streamer import start_lsl_threads, close_streams
 import config
-from netcomm.client import socket_message
+from netcomm.client import socket_message, node_info
 
   
 def fake_task(s, cmd, subj_id, task_name, send_stdout):
@@ -105,7 +105,8 @@ def Main():
             subj_id = data.split(":")[2] 
             
             # Connection to LabRecorder in ctr pc
-            s2 = socket.create_connection(('192.168.1.2', 22345))
+            host, _ = node_info("control")
+            s2 = socket.create_connection((host, 22345))
             print(f"initiating {task}") 
             send_stdout()
             
