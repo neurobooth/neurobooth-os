@@ -1,2 +1,2 @@
-call C:\ProgramData\Anaconda3\Scripts\activate.bat C:\Users\adona\.conda\envs\py36 
-call start python C:\Users\adona\OneDrive\Desktop\neurobooth\neurobooth-eel\server_stm.py
+call C:\Users\STM\anaconda3\Scripts\activate.bat C:\Users\STM\anaconda3\envs\neurobooth
+call start python C:\neurobooth\neurobooth-eel\server_stm.py

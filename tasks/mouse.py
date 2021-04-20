@@ -9,7 +9,7 @@ from numpy.random import shuffle
 import os
 
 from psychopy.hardware import keyboard
-
+import psychopy 
 
 
 # Ensure that relative paths start from the same directory as this script
@@ -17,7 +17,7 @@ _thisDir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(_thisDir)
 
 # Store info about the experiment session
-psychopyVersion = '2020.2.3'
+psychopyVersion = '2020.2.3' # psychopy.__version__
 expName = 'mouse'  # from the Builder filename that created this script
 expInfo = {'participant': '', 'session': '001'}
 expInfo['date'] = data.getDateStr()  # add a simple timestamp

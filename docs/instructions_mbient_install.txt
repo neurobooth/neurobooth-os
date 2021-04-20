@@ -43,3 +43,5 @@ conda create -n neurobooth  python=3.6 spyder ipython git opencv pywin32 pip
 conda activate neurobooth
 
 pip install  metawear==0.7.0 pillow==8.2.0 pyaudio==0.2.11 pylsl==1.14.0 pynput==1.7.3 pyrealsense2==2.44.0.3073 warble==1.2.0 vidgear pyautogui wmi
+
+conda install -c conda-forge/label/cf202003 psychopy
