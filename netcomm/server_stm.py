@@ -6,8 +6,10 @@ from iout.screen_capture import ScreenMirror
 from iout.lsl_streamer import start_lsl_threads
 import config
 from netcomm.client import socket_message
-from task.DSC import DSC
-  
+from tasks.DSC import DSC
+
+
+
 def fake_task(s, cmd, subj_id, task_name, send_stdout):
     sleep(1)
     input("Press a key to start the fakest task")
@@ -107,11 +109,23 @@ def Main():
                 msg = f"Done with {task}"
                 c.send(msg.encode("ascii")) 
                 
-            elif task == "DSC_task":
-                    
-                DSC(streams['marker'])
+            elif task == "DSC_task":    
+                print("Starting DSC Task")
+                send_stdout()
+                s.sendall(cmd.encode('utf-8') )
+                sleep(.01)
+                s.sendall(b"start\n")
+                socket_message(f"record_start:{subj_id}_{task}", "acquisition")
                 
-                
+                res = DSC(streams['marker'])
+                                
+                s.sendall(b"stop\n")
+                socket_message("record_stop", "acquisition")
+    
+    
+            elif task == "mouse_task":
+                pass            
+                                
             else:
                 print(f"Task not {task} implemented")
                 c.send("not a task implemented".encode("ascii"))
