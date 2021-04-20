@@ -3,18 +3,16 @@
 
 from __future__ import absolute_import, division
 
-from psychopy import gui, visual, core, data, event, logging, clock
+from psychopy import visual, core, data, event, logging
 from psychopy.constants import NOT_STARTED, STARTED, FINISHED
 from numpy.random import shuffle
 import os
 
 from psychopy.hardware import keyboard
-import psychopy 
 
 
-# Ensure that relative paths start from the same directory as this script
-_thisDir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(_thisDir)
+
+
 
 # Store info about the experiment session
 psychopyVersion = '2020.2.3' # psychopy.__version__
@@ -25,12 +23,12 @@ expInfo['expName'] = expName
 expInfo['psychopyVersion'] = psychopyVersion
 
 # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
-filename = _thisDir + os.sep + u'data/%s_%s_%s' % (expInfo['participant'], expName, expInfo['date'])
+filename = "C:\\neurobooth\\neurobooth-eel"+ os.sep + u'data/%s_%s_%s' % (expInfo['participant'], expName, expInfo['date'])
 
 # An ExperimentHandler isn't essential but helps with data saving
 thisExp = data.ExperimentHandler(name=expName, version='',
     extraInfo=expInfo, runtimeInfo=None,
-    originPath='C:\\tasks\\mouse\\mouse_lastrun.py',
+    originPath='C:\neurobooth\neurobooth-eel\tasks\mouse.py',
     savePickle=True, saveWideText=True,
     dataFileName=filename)
 # save a log file for detail verbose info
@@ -45,7 +43,7 @@ frameTolerance = 0.001  # how close to onset before 'same' frame
 
 # Setup the Window
 win = visual.Window(
-    size=[1920, 1080], fullscr=False, screen=0, 
+    size=[1920, 1080], fullscr=True, screen=0, 
     winType='pyglet', allowGUI=True, allowStencil=False,
     monitor='testMonitor', color=[0,0,0], colorSpace='rgb',
     blendMode='avg', useFBO=True, 
@@ -79,7 +77,7 @@ text.setAutoDraw(False)
 trialClock = core.Clock()
 polygon = visual.Polygon(
     win=win, name='polygon',
-    edges=9999, size=(0.1, 0.1),
+    edges=9999, size=(0.05, 0.05),
     ori=0, pos=(0, 0),
     lineWidth=1, lineColor='red', lineColorSpace='rgb',
     fillColor='red', fillColorSpace='rgb',

@@ -81,11 +81,11 @@ def socket_time(node_name, print_flag=1, time_out=5):
 def node_info(node_name):    
     port = 12347
     if node_name == "acquisition":
-        host = '192.168.1.7'  
+        host = 'acq'  
     elif node_name == "presentation":
-         host = '192.168.1.8'
+         host = 'stm'
     elif node_name == "control":        
-         host = '192.168.1.13' 
+         host = 'ctr' 
     return host, port
 
     
