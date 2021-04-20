@@ -33,14 +33,15 @@ def Main():
             break
 
         data = data.decode("utf-8")
-        print(data)
+        if data != "time_test":
+            print(data)
         
         # c_time = float(data.split("_")[-1][:-1])
         # print(f"time diff = {time() - c_time - time_del}")
 
         if "vis_stream" in data:
             if not lowFeed_running:
-                lowFeed = VidRec_Brio(camindex=3, doPreview=True)    
+                lowFeed = VidRec_Brio(camindex=1, doPreview=True)    
                 print ("Running low feed video streaming")
                 lowFeed_running = True
             else:
