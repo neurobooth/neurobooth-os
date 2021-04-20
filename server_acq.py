@@ -72,7 +72,7 @@ def Main():
             
         elif data in ["close", "shutdown"]: 
             print("Closing devices")
-            streams = close_streams(streams)                       
+            streams = close_streams(streams)
             
             if "shutdown" in data:    
                 if lowFeed_running:
