@@ -40,6 +40,9 @@ class DSC():
             self.with_lsl = True
             self.marker = marker_outlet
             # outlet_marker.push_sample([f"Streaming_0_{time.time()}"])
+        else:
+            self.with_lsl = False
+            
         self.setup()
         self.nextTrial()             
 
@@ -97,7 +100,7 @@ class DSC():
                         
                 message = [
                 visual.ImageStim(self.win, image=frame["source"], pos=(0, 6), units='deg'),
-                visual.ImageStim(self.win, image='./images/key.png', pos=(0, 0), units='deg'),
+                visual.ImageStim(self.win, image='C:\\neurobooth\\neurobooth-eel\\tasks\\DSC\\images\\key.png', pos=(0, 0), units='deg'),
                 visual.TextStim(self.win, pos=(0, -7), bold=True, height=1.2, depth=2,                                    
                                         text=f"You should press <b>{frame['digit']}</b> on the <b>keyboard</b> " +\
                                             "when you see this symbol",
@@ -131,7 +134,7 @@ class DSC():
                         "message": "",
                         "symbol": symbol,
                         "digit": digit,
-                        "source": f"images/{symbol}.gif"
+                        "source": f"C:\\neurobooth\\neurobooth-eel\\tasks\\DSC\\images\\{symbol}.gif"
                         })
     
             self.nextTrial()
@@ -156,7 +159,7 @@ class DSC():
     
                 stim = [
                     visual.ImageStim(self.win, image=frame["source"], pos=(0, 6), units='deg'),
-                    visual.ImageStim(self.win, image='./images/key.png', pos=(0, 0), units='deg'),
+                    visual.ImageStim(self.win, image='C:\\neurobooth\\neurobooth-eel\\tasks\\DSC\\images\\key.png', pos=(0, 0), units='deg'),
                     ]
     
                 # set response timeout:
@@ -243,6 +246,7 @@ class DSC():
                 
                 present_msg(mes, self.win, key_resp="return")
                 
+                
             # TODO:     SAVE RESULTS AS YOU LIKE THE MOST
             #                
             #                
@@ -268,7 +272,7 @@ class DSC():
                 visual.TextStim(self.win, pos=(0, -6), color='black', units='deg',
                                         text='Press [enter] for instructions'),
 
-                visual.ImageStim(self.win, image='./images/key.png', pos=(0, 0), units='deg')
+                visual.ImageStim(self.win, image='C:\\neurobooth\\neurobooth-eel\\tasks\\DSC\\images\\key.png', pos=(0, 0), units='deg')
                 ],
 
             "practice": [
@@ -284,13 +288,13 @@ class DSC():
                     visual.TextStim(self.win, pos=(0, -7), color='black', units='deg',
                                             text='Press [enter] to continue'),
 
-                    visual.ImageStim(self.win, image='./images/key.png', pos=(0, 0), units='deg')
+                    visual.ImageStim(self.win, image='C:\\neurobooth\\neurobooth-eel\\tasks\\DSC\\images\\key.png', pos=(0, 0), units='deg')
                 ],
 
                 [
-                    visual.ImageStim(self.win, image='./images/1.gif', pos=(0, 6), units='deg'),
+                    visual.ImageStim(self.win, image='C:\\neurobooth\\neurobooth-eel\\tasks\\DSC\\images\\1.gif', pos=(0, 6), units='deg'),
 
-                    visual.ImageStim(self.win, image='./images/key.png', pos=(0, 0), units='deg'),
+                    visual.ImageStim(self.win, image='C:\\neurobooth\\neurobooth-eel\\tasks\\DSC\\images\\key.png', pos=(0, 0), units='deg'),
 
                     visual.TextStim(self.win, pos=(0, -6), color='black', units='deg',
                                             text="When a symbol appears at the top, " +
@@ -301,9 +305,9 @@ class DSC():
                                             text='Press [enter] to continue'),
                     ],
                 [
-                    visual.ImageStim(self.win, image='./images/2.gif', pos=(0, 6), units='deg'),
+                    visual.ImageStim(self.win, image='C:\\neurobooth\\neurobooth-eel\\tasks\\DSC\\images\\2.gif', pos=(0, 6), units='deg'),
 
-                    visual.ImageStim(self.win, image='./images/keySmall.png', pos=(0, 0), units='deg'),
+                    visual.ImageStim(self.win, image='C:\\neurobooth\\neurobooth-eel\\tasks\\DSC\\images\\keySmall.png', pos=(0, 0), units='deg'),
 
                     visual.TextStim(self.win, pos=(0, -6), color='black', units='deg',
                                             text="Let's practice a few symbols.")
@@ -356,7 +360,7 @@ class DSC():
                     "message": frameMessage[i],
                     "symbol": frameSymbol[i],
                     "digit": frameDigit[i],
-                    "source": f"images/{frameSymbol[i]}.gif"
+                    "source": f"C:\\neurobooth\\neurobooth-eel\\tasks\\DSC\\images\\{frameSymbol[i]}.gif"
                     })
         
 

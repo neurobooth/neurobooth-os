@@ -109,7 +109,7 @@ window = sg.Window("Neurobooth",
                    default_button_element_size=(12, 1))
         
 
-plttr = stream_plotter()
+#plttr = stream_plotter()
 
 
 inlets = {}
@@ -132,7 +132,7 @@ while True:
         ctr_rec.initiate_labRec()
         print('Devices')
         inlets = update_streams()
-        plttr.start()
+        #plttr.start()
         
     elif event == 'Save':
         session_info, tasks = get_session_info(values)
