@@ -1,7 +1,7 @@
 import socket 
 from time import time, sleep
 from iout.camera_brio import VidRec_Brio
-from iout.lsl_streamer import start_lsl_threads, close_streams
+from iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
 import config
  
 
@@ -27,8 +27,12 @@ def Main():
     while True: 
   
         # establish connection with client 
-        c, addr = s.accept() 
-        data = c.recv(1024)
+        try:
+            c, addr = s.accept() 
+            data = c.recv(1024)
+        except: 
+            continue
+            
         if not data: 
             break
 
@@ -49,21 +53,23 @@ def Main():
             
         elif "prepare" in data:
             if len(streams):
-                print("Closing devices before re-preparing")
-                streams = close_streams(streams)
-            streams = start_lsl_threads("acquisition")
-            streams['micro'].start()
-            print("Preparing devices")
+                print("Checking prepared devices")
+                streams = reconnect_streams(streams)
+            else:
+                streams = start_lsl_threads("acquisition")            
+                streams['micro'].start()
+#               streams["mbient"].start()
+            print("\n Deices prepared ")
     
         elif "record_start" in data:  #-> "record:FILENAME"
-            fname = config.paths['data_out'] + data.split(":")[-1]            
-            streams["hiFeed"].prepare(fname +".avi") 
+            fname = config.paths['data_out'] + data.split(":")[-1] 
+                        
             streams["intel"].prepare(fname)
             
-            streams["hiFeed"].start()
+            streams["hiFeed"].start(fname)
             streams["intel"].start()
             
-            c.send('recording'.encode("ascii"))
+#            c.send('recording'.encode("ascii"))
             print("Starting recording")
             
         elif "record_stop" in data: 
@@ -77,8 +83,9 @@ def Main():
             
             if "shutdown" in data:    
                 if lowFeed_running:
-                    lowFeed.close()                
-                print("Closing Acq server")
+                    lowFeed.close() 
+                    lowFeed_running = False
+                print("Closing RTD cam")
 #                break
                 
         elif "time_test" in data:
@@ -89,11 +96,10 @@ def Main():
     try:
         s.shutdown(socket.SHUT_RDWR)
     except:
-            print("socket error shut down")
-    
+            print("EXCEPTION: socket error shut down")
     try:
         s.close() 
     except:
-            print("socket error close")
+            print("EXCEPTION: socket error close")
   
 Main() 

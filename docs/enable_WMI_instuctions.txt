@@ -32,3 +32,22 @@ Add the WMI user and give that account the “Remote Activation” permission:
 Click OK twice and close the “Component Services” window.
 
 Exit your command prompt, and the system is configured for remote WMI access for the WMI user, which is a Domain User account.
+
+## disable UAC
+
+To disable UAC remote restrictions
+Click Start, type regedit in the Search programs and files box, and then press ENTER.
+
+Locate and then click the following registry subkey: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System.
+
+If the LocalAccountTokenFilterPolicy registry entry does not exist, follow these steps:
+
+On the Edit menu, point to New, and then click DWORD Value.
+
+Type LocalAccountTokenFilterPolicy, and then press ENTER.
+
+Right-click LocalAccountTokenFilterPolicy, and then click Modify.
+
+In the Value data box, type 1, and then click OK.
+
+Exit Registry Editor.
