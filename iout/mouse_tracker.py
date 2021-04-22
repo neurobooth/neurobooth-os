@@ -23,7 +23,7 @@ class MouseStream():
         try:
             self.outlet.push_sample([0,0,0])
         except:  # "OSError" from C++
-            print("Reopening stream already closed")
+            print("Mouse stream already closed, reopening")
             self.outlet = StreamOutlet(self.info_stream)
                 
                 
@@ -52,6 +52,6 @@ class MouseStream():
         try:
             self.listener.stop()
         except AttributeError:
-            print("Never started to capture mouse")
+            print("Mouse capture never started")
                   
-        self.outlet.__del__()
+#        self.outlet.__del__()

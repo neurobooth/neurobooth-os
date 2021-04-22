@@ -57,16 +57,12 @@ class MicStream():
 
     def stop(self):
         self.streaming = False
-        inx = 0
-        tic = time.time()
-        while self.stream_on:
-            inx +=1
-        toc = time.time()
-        print(f"While looped {inx} times, for {toc - tic} secs")
-        print(f"Real thread delay {toc - self.tic} secs")
-        try:
-            self.outlet_audio.__del__()
-        except:# AttributeError:
-            print("AttributeError mic outlet")
+
+
+
+        #try:
+       #     self.outlet_audio.__del__()
+        #except:# AttributeError:
+         #   print("AttributeError mic outlet")
             
                 
