@@ -7,7 +7,7 @@ from iout.lsl_streamer import start_lsl_threads, close_streams
 import config
 from netcomm.client import socket_message, node_info
 from tasks.DSC import DSC
-
+from tasks.mouse import mouse_task
 
   
 def fake_task(s, cmd, subj_id, task_name, send_stdout):
@@ -73,6 +73,7 @@ def Main():
             data = c.recv(1024)
         except:
             continue
+        
         if not data: 
             sys.stdout = old_stdout
             print("Connection fault, closing Stim server")
@@ -122,15 +123,15 @@ def Main():
                 msg = f"Done with {task}"
                 # c.send(msg.encode("ascii")) 
 
-            elif task == "DSC_task":    
-                print("Starting DSC Task")
+            elif task == "mouse_task":    
+                print("Starting mouse Task")
                 send_stdout()
                 s2.sendall(cmd.encode('utf-8') )
                 sleep(.01)
                 s2.sendall(b"start\n")
                 socket_message(f"record_start:{subj_id}_{task}", "acquisition")
                 
-                res = DSC(streams['marker'])
+                res = mouse_task()
                                 
                 s2.sendall(b"stop\n")
                 socket_message("record_stop", "acquisition")
