@@ -6,6 +6,7 @@ from time import sleep
 from threading import Event
 from sys import argv
 from pylsl import StreamInfo, StreamOutlet
+import uuid
 
 
 states = []
@@ -23,7 +24,7 @@ class Sensor:
         # Setup outlet stream infos
         self.stream_mbient = StreamInfo(name='mbient', type='acc',
                                         channel_count=6, channel_format='float32',
-                                        source_id='mbient_01')      
+                                        source_id=str(uuid.uuid4()))      
         self.streaming = False        
         self.setup()
        
@@ -37,7 +38,6 @@ class Sensor:
         vals = [values[0].x, values[0].y, values[0].z, values[1].x, values[1].y, values[1].z]
         
         self.outlet.push_sample(vals)
-        # print("Pussing lsl")
         # print("acc: (%.4f,%.4f,%.4f), gyro; (%.4f,%.4f,%.4f)" % (values[0].x, values[0].y, values[0].z, values[1].x, values[1].y, values[1].z))
 
 
@@ -82,7 +82,6 @@ class Sensor:
         libmetawear.mbl_mw_gyro_bmi160_start(self.device.board)
         libmetawear.mbl_mw_acc_start(self.device.board)
         
-        
     def stop(self):
         e = Event()
     
@@ -91,7 +90,6 @@ class Sensor:
         print("Stopping ", self.device.board)
         self.streaming = False
         
-
 
 
 if 0:

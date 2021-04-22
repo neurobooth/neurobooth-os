@@ -5,8 +5,6 @@ Created on Tue Nov 24 15:41:42 2020
 @author: adona
 """
 
-
-
 def start_lsl_threads(node_name):    
     streams = {}    
     if node_name == "acquisition":
@@ -34,9 +32,10 @@ def start_lsl_threads(node_name):
 def close_streams(streams, cams=False):
     for k in list(streams):
         print(f"Closing {k} stream")
-        streams[k].stop()
         if cams and k in ["hiFeed", "intel"]:
             streams[k].close()
+        else:
+            streams[k].stop()
         del streams[k]
     return streams
 

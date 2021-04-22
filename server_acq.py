@@ -62,20 +62,16 @@ def Main():
             print("\n Deices prepared ")
     
         elif "record_start" in data:  #-> "record:FILENAME"
-            fname = config.paths['data_out'] + data.split(":")[-1] 
-                        
-            streams["intel"].prepare(fname)
-            
-            streams["hiFeed"].start(fname)
-            streams["intel"].start()
-            
-#            c.send('recording'.encode("ascii"))
             print("Starting recording")
             
+            fname = config.paths['data_out'] + data.split(":")[-1] 
+            streams["hiFeed"].start(fname)
+            streams["intel"].start(fname)
+            
         elif "record_stop" in data: 
-            streams["hiFeed"].stop()
-            streams["intel"].stop()
             print("Closing recording")
+            streams["hiFeed"].stop()
+            streams["intel"].stop()            
             
         elif data in ["close", "shutdown"]: 
             print("Closing devices")

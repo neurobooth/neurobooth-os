@@ -14,7 +14,7 @@ def marker_stream():
     # Create outlets
     outlet_marker = StreamOutlet(stream_info_marker)
     
-    outlet_marker.push_sample([f"Streaming_0_{time.time()}"])
+    outlet_marker.push_sample([f"Stream-created_0_{time.time()}"])
     
     outlet_marker.stop = outlet_marker.__del__
     
