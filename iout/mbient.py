@@ -10,9 +10,12 @@ from pylsl import StreamInfo, StreamOutlet
 
 states = []
 
-class State:
-    def __init__(self, device, buzz_time_sec=2):
-        self.device = device
+class Sensor:
+    def __init__(self, mac_address, buzz_time_sec=2):
+        
+        self.mac = mac_address
+        self.connector = MetaWear
+        self.connect()
         
         self.processor = None
         self.buzz_time = buzz_time_sec *1000
@@ -20,10 +23,14 @@ class State:
         # Setup outlet stream infos
         self.stream_mbient = StreamInfo(name='mbient', type='acc',
                                         channel_count=6, channel_format='float32',
-                                        source_id='mbient_01')
+                                        source_id='mbient_01')      
+        self.streaming = False        
+        self.setup()
        
-        self.streaming = False
-       
+    def connect(self):        
+        self.device = self.connector(self.mac)
+        self.device.connect()       
+        print(f"Mbient {self.mac} connected")
         
     def data_handler(self, ctx, data):
         values = parse_value(data, n_elem = 2)
@@ -46,9 +53,8 @@ class State:
         fn_wrapper = cbindings.FnVoid_VoidP_VoidP(processor_created)
 
         self.outlet = StreamOutlet(self.stream_mbient)
-             
+            
         self.callback = cbindings.FnVoid_VoidP_DataP(self.data_handler)
-
 
         acc = libmetawear.mbl_mw_acc_get_acceleration_data_signal(self.device.board)
         gyro = libmetawear.mbl_mw_gyro_bmi160_get_rotation_data_signal(self.device.board)
@@ -60,8 +66,10 @@ class State:
 
         libmetawear.mbl_mw_datasignal_subscribe(self.processor, None, self.callback)
         
+        print(f"Mbient {self.mac} setup")
+        
     def start(self):
-    
+        print(f"Started mbient {self.mac}")
         libmetawear.mbl_mw_gyro_bmi160_enable_rotation_sampling(self.device.board)
         libmetawear.mbl_mw_acc_enable_acceleration_sampling(self.device.board)
         
@@ -70,7 +78,7 @@ class State:
         sleep(self.buzz_time/1000)
         
         print ("Acquisition started")           
-        
+        self.streaming = True
         libmetawear.mbl_mw_gyro_bmi160_start(self.device.board)
         libmetawear.mbl_mw_acc_start(self.device.board)
         
@@ -81,19 +89,24 @@ class State:
         self.device.on_disconnect = lambda s: e.set()
         libmetawear.mbl_mw_debug_reset(self.device.board)
         print("Stopping ", self.device.board)
+        self.streaming = False
         
-for i in range(len(argv) - 1):
-    d = MetaWear(argv[i + 1])
-    d.connect()
-    print("Connected to " + d.address)
-    states.append(State(d))
 
-for s in states:
-    print("Configuring %s" % (s.device.address))
-    s.setup()
 
-for s in states:
-    s.start()
+
+if 0:
+    
+    mac = "CE:F3:BD:BD:04:8F"
+    mbt = Sensor(mac)
+    mbt.start()
+    
+#        
+#    for s in states:
+#        print("Configuring %s" % (s.device.address))
+#        s.setup()
+#    
+#    for s in states:
+#        s.start()
 
 
 
