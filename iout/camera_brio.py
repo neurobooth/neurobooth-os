@@ -54,10 +54,11 @@ class VidRec_Brio():
     @catch_exception        
     def createOutlet(self, filename):
         streamName = f'VideoFrameIndex_{self.device_index}'
+        self.oulet_id = str(uuid.uuid4())
         info = StreamInfo(name=streamName, type='videostream', channel_format='int32', channel_count=1,
-                          source_id=str(uuid.uuid4()))
-        
+                          source_id=self.oulet_id)
         info.desc().append_child_value("videoFile", filename)
+        print(f"-OUTLETID-:{streamName}:{self.oulet_id}")
         return StreamOutlet(info)
        
     @catch_exception

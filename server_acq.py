@@ -1,14 +1,15 @@
 import socket 
+import io
+import sys
 from time import time, sleep
 from iout.camera_brio import VidRec_Brio
 from iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
 import config
- 
+from netcomm.client import socket_message, node_info
 
 
 def Main(): 
     host = "" 
-    time_del = 0
     lowFeed_running = False
     # reverse a port on your computer 
     # in our case it is 12345 but it 
@@ -22,6 +23,24 @@ def Main():
     # put the socket into listening mode 
     s.listen(5) 
     print("socket is listening") 
+    
+    # Capture prints for sending to serv ctr
+    old_stdout = sys.stdout
+    sys.stdout = mystdout = io.StringIO()
+        
+    def send_stdout():
+        try:
+            msg = mystdout.getvalue()         
+            socket_message("ACQ: " + msg, "control")
+            mystdout.truncate(0)
+            mystdout.seek(0)
+        except Exception as e: 
+            print(e)
+            
+    def fprint(str_print):
+        print(str_print)
+        send_stdout()
+        
     streams = {}
     # a forever loop until client wants to exit 
     while True: 
@@ -34,11 +53,14 @@ def Main():
             continue
             
         if not data: 
+            sys.stdout = old_stdout
+            print("Connection fault, closing Stim server")
             break
 
         data = data.decode("utf-8")
         if data != "time_test":
-            print(data)
+            fprint("ACQ" + data)
+           
         
         # c_time = float(data.split("_")[-1][:-1])
         # print(f"time diff = {time() - c_time - time_del}")
@@ -46,41 +68,45 @@ def Main():
         if "vis_stream" in data:
             if not lowFeed_running:
                 lowFeed = VidRec_Brio(camindex=1, doPreview=True)    
+                print ("LowFeed running")
                 lowFeed_running = True
             else:
                 print ("Already running low feed video streaming")
             
         elif "prepare" in data:
             if len(streams):
-                print("Checking prepared devices")
+                fprint("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
                 streams = start_lsl_threads("acquisition")            
                 streams['micro'].start()
 #               streams["mbient"].start()
-            print("\n Deices prepared ")
+            fprint("\n Deices prepared ")
+            
     
         elif "record_start" in data:  #-> "record:FILENAME"
-            print("Starting recording")
-            
+            fprint("Starting recording")            
             fname = config.paths['data_out'] + data.split(":")[-1] 
             streams["hiFeed"].start(fname)
             streams["intel"].start(fname)
+            send_stdout()
             
         elif "record_stop" in data: 
-            print("Closing recording")
+            fprint("Closing recording")
             streams["hiFeed"].stop()
             streams["intel"].stop()            
+            send_stdout()
             
         elif data in ["close", "shutdown"]: 
-            print("Closing devices")
+            fprint("Closing devices")
             streams = close_streams(streams)
+            send_stdout()
             
             if "shutdown" in data:    
                 if lowFeed_running:
                     lowFeed.close() 
                     lowFeed_running = False
-                print("Closing RTD cam")
+                fprint("Closing RTD cam")
                 break
                 
         elif "time_test" in data:

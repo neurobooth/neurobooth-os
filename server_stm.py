@@ -57,14 +57,17 @@ def Main():
     def send_stdout():
         try:
             msg = mystdout.getvalue()         
-            socket_message("STIM: " + msg, "control")
+            socket_message("STM: " + msg, "control")
             mystdout.truncate(0)
             mystdout.seek(0)
         except Exception as e: 
             print(e)
-            
-    streams, screen_running = {}, False
-            
+
+    def fprint(str_print):
+        print(str_print)
+        send_stdout()
+           
+    streams, screen_running = {}, False            
     # a forever loop until client wants to exit 
     while True:   
         # establish connection with client 
@@ -80,7 +83,9 @@ def Main():
             break
 
         data = data.decode("utf-8")
-        print("STIM:" + data)
+        if data != "time_test":
+            fprint("STM:" + data)
+            
         # send_stdout()
         # c_time = float(data.split("_")[-1][:-1])
         # print(f"time diff = {time() - c_time - time_del}")
@@ -90,7 +95,7 @@ def Main():
             if not screen_running:
                 screen_feed = ScreenMirror()
                 screen_feed.start()
-                print ("Stim screen feed running")
+                fprint ("Stim screen feed running")
                 screen_running = True
             else:
                 print ("Already running screen feed")
@@ -98,14 +103,13 @@ def Main():
             
         elif "prepare" in data:
             if len(streams):
-                print("Closing devices before re-preparing")
+                fprint("Checking prepared devices")
                 streams = reconnect_streams(streams)
             streams = start_lsl_threads("presentation")
             send_stdout()
             streams['mouse'].start()
-            print("Preparing devices")
-            send_stdout()
-                                   
+            fprint("Preparing devices")
+                                               
         elif "present" in data:   #-> "present:TASKNAME:subj_id"
             task = data.split(":")[1]  
             subj_id = data.split(":")[2] 
@@ -113,7 +117,7 @@ def Main():
             # Connection to LabRecorder in ctr pc
             host_ctr, _ = node_info("control")
             s2 = socket.create_connection((host_ctr, 22345))
-            print(f"initiating {task}") 
+            fprint(f"initiating {task}") 
             send_stdout()
             
             cmd = "filename {root:" + config.paths['data_out'] + "} {template:%p_%b.xdf} {participant:" + subj_id + "_} {task:" + task + "}\n"
@@ -124,14 +128,12 @@ def Main():
                 # c.send(msg.encode("ascii")) 
 
             elif task == "mouse_task":    
-                print("Starting mouse Task")
-                send_stdout()
+                fprint("Starting mouse Task")
                 socket_message(f"record_start:{subj_id}_{task}", "acquisition")
                 s2.sendall(cmd.encode('utf-8') )
                 s2.sendall(b"select all\n")
                 sleep(.01)
                 s2.sendall(b"start\n")
-
                 
                 res = mouse_task()
                                 
@@ -139,25 +141,21 @@ def Main():
                 socket_message("record_stop", "acquisition")
     
             else:
-                print(f"Task not {task} implemented")
-                send_stdout()
-                # c.send("not a task implemented".encode("ascii"))
+                fprint(f"Task not {task} implemented")
             
         elif data in ["close", "shutdown"]: 
             
             streams = close_streams(streams)          
-            print("Closing devices")
+            fprint("Closing devices")
             send_stdout()
              
             if "shutdown" in data:    
                 if screen_running:
                     screen_feed.stop()
-                    print("Closing screen mirroring")
-                    send_stdout()
+                    fprint("Closing screen mirroring")                    
                     screen_running = False
-                print("Closing Stim server")
-                send_stdout()
-                # break
+                fprint("Closing Stim server")          
+#                 break
         
         
         elif "time_test" in data:

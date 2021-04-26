@@ -60,10 +60,12 @@ class VidRec_Intel():
     @catch_exception        
     def createOutlet(self, filename):
         streamName = f'IndelFrameIndex_cam{self.device_index}'
+        self.outlet_id = str(uuid.uuid4())
         info = StreamInfo(name=streamName, type='videostream', channel_format='int32',
-                          channel_count=2, source_id=str(uuid.uuid4()))
+                          channel_count=2, source_id=self.outlet_id)
         info.desc().append_child_value("videoFile", filename)
-        info.desc().append_child_value("size_rgb_depth", str(self.frameSize))         
+        info.desc().append_child_value("size_rgb_depth", str(self.frameSize))   
+        print(f"-OUTLETID-:{streamName}:{self.oulet_id}")
         return StreamOutlet(info)
     
     @catch_exception

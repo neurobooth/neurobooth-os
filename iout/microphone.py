@@ -3,6 +3,7 @@ import pyaudio
 import numpy as np
 import threading
 import time
+import uuid
 
 
 class MicStream():
@@ -23,8 +24,10 @@ class MicStream():
                                  frames_per_buffer=CHUNK)
     
         # Setup outlet stream infos
+        self.oulet_id =  str(uuid.uuid4())
         self.stream_info_audio = StreamInfo('Audio', 'Experimental', CHUNK, RATE/CHUNK,
-                                       'float32', 'audioid_1')
+                                       'float32', self.oulet_id)
+        print(f"-OUTLETID-:Audio:{self.oulet_id}")
         
         self.streaming = False
         self.stream_on = False
