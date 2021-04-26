@@ -46,7 +46,6 @@ def Main():
         if "vis_stream" in data:
             if not lowFeed_running:
                 lowFeed = VidRec_Brio(camindex=1, doPreview=True)    
-                print ("Running low feed video streaming")
                 lowFeed_running = True
             else:
                 print ("Already running low feed video streaming")
@@ -82,7 +81,7 @@ def Main():
                     lowFeed.close() 
                     lowFeed_running = False
                 print("Closing RTD cam")
-#                break
+                break
                 
         elif "time_test" in data:
             msg = f"ping_{time()}"

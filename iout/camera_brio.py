@@ -80,6 +80,7 @@ class VidRec_Brio():
                 break
             
             time.sleep(1/self.preview_fps)
+        self.outlet.__del__()
 
     @catch_exception    
     def frame_preview(self, frame):        
@@ -90,6 +91,8 @@ class VidRec_Brio():
     @catch_exception
     def preview_start(self):
         if self.doPreview:
+            if self.video_cap.capturing() is False:
+                self.capture_cap()
             self.previewing = True
             self.preview_thread = threading.Thread(target=self.preview)
             self.preview_thread.start()
@@ -123,7 +126,7 @@ class VidRec_Brio():
                     self.outlet.push_sample([self.frame_counter])
                 except:  # "OSError" from C++
                     print(f"Reopening brio {self.device_index} stream already closed")
-                    self.outlet = self.createOutlet(self.name + ".avi")
+                    self.outlet = self.createOutlet(self.video_filename)
                     self.outlet.push_sample([self.frame_counter])
                     
                 self.video_out.write(frame)
@@ -138,10 +141,10 @@ class VidRec_Brio():
                             print(f"Reopening brio {self.device_index} preview stream already closed")                           
                             self.outlet_preview = StreamOutlet(self.info_stream)
                             self.outlet_preview.push_sample(frame.flatten())
-                                
+
         print(f"Brio {self.device_index} recording ended with {self.frame_counter} frames")
-        
         self.video_out.release()        
+#        self.outlet.__del__()
 
     @catch_exception
     def stop(self):
@@ -163,7 +166,7 @@ class VidRec_Brio():
             self.video_cap.stop_capture()
         self.video_cap.destroy_capture()
         self.open = False
-        print(f"Brio cam {self.device_index} closed")
+        print(f"Brio cam {self.device_index} capture closed")
 #        if self.doPreview:
 #            self.outlet_preview.__del__()
 
