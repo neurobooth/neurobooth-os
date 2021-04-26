@@ -13,6 +13,7 @@ import numpy as np
 from pylsl import StreamInfo, StreamOutlet
 import time
 import threading
+import uuid
 
 class ScreenMirror():
     def __init__(self, Fps=1, res=(320, 240), options=None, RGB=False, local_plot=False):
@@ -50,11 +51,11 @@ class ScreenMirror():
             xy = xy*3 
         xy += 1
         
-        
+        self.oulet_id =  str(uuid.uuid4())
         info_stream = StreamInfo(name='Screen', type='Experimental',
                                        # nominal_srate=self.fps, 
                                        channel_count=xy,
-                                       channel_format='float32', source_id='Screen'
+                                       channel_format='float32', source_id=self.oulet_id
                                        )  
         self.info_stream = info_stream
         self.outlet_screen = StreamOutlet(info_stream)

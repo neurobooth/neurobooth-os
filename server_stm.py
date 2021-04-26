@@ -3,7 +3,7 @@ import io
 import sys
 from time import time, sleep  
 from iout.screen_capture import ScreenMirror
-from iout.lsl_streamer import start_lsl_threads, close_streams
+from iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
 import config
 from netcomm.client import socket_message, node_info
 from tasks.DSC import DSC
@@ -99,7 +99,7 @@ def Main():
         elif "prepare" in data:
             if len(streams):
                 print("Closing devices before re-preparing")
-                streams = close_streams(streams)
+                streams = reconnect_streams(streams)
             streams = start_lsl_threads("presentation")
             send_stdout()
             streams['mouse'].start()
@@ -111,8 +111,8 @@ def Main():
             subj_id = data.split(":")[2] 
             
             # Connection to LabRecorder in ctr pc
-            host, _ = node_info("control")
-            s2 = socket.create_connection((host, 22345))
+            host_ctr, _ = node_info("control")
+            s2 = socket.create_connection((host_ctr, 22345))
             print(f"initiating {task}") 
             send_stdout()
             
@@ -126,10 +126,12 @@ def Main():
             elif task == "mouse_task":    
                 print("Starting mouse Task")
                 send_stdout()
+                socket_message(f"record_start:{subj_id}_{task}", "acquisition")
                 s2.sendall(cmd.encode('utf-8') )
+                s2.sendall(b"select all\n")
                 sleep(.01)
                 s2.sendall(b"start\n")
-                socket_message(f"record_start:{subj_id}_{task}", "acquisition")
+
                 
                 res = mouse_task()
                                 

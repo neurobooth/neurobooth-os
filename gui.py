@@ -114,7 +114,7 @@ window = sg.Window("Neurobooth",
 
 inlets = {}
 plot_elem = []
-running_task, start_tasks = None, False
+running_task, start_tasks, session_saved = None, False, False
 done_tasks = []
 while True:
     event, values = window.read(1)
