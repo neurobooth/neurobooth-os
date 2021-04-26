@@ -38,7 +38,7 @@ def server_com(callback=None):
             
         elif "record_stop" in data:                        
             print("Closing recording")
-            break
+            
         
         elif "time_test" in data:
             msg = f"ping_{time()}"

@@ -14,7 +14,7 @@ import threading
 import matplotlib
 import queue
 import main_control_rec as ctr_rec
-from realtime.lsl_plotter import update_streams, get_lsl_images, stream_plotter
+from realtime.lsl_plotter import update_streams_fromID, get_lsl_images, stream_plotter
 from netcomm.server_ctr import server_com
 
 # from netcomm.server_ctr import test as server_com
@@ -32,7 +32,12 @@ def get_tasks(values):
             tasks.append(key)
     return tasks            
 
-
+def get_outlet_ids(str_prt, dic_ids):
+    # Get outlet ids from ctr server, string format = -OUTLETID-:name:uuid "
+    if str_prt.split(":")[0] == "-OUTLETID-":
+        dic_ids[str_prt.split(":")[1]]:str_prt.split(":")[2]
+    return dic_ids
+    
 serv_event = queue.Queue(maxsize=10)
 def feedback_com():
     global serv_event    
@@ -53,8 +58,6 @@ def lay_butt(name, key=None):
 
 def space(n=10):
     return sg.Text(' ' * n)
-
-
  
 
 def make_layout(frame_sz=(320, 240)):
@@ -109,12 +112,13 @@ window = sg.Window("Neurobooth",
                    default_button_element_size=(12, 1))
         
 
-#plttr = stream_plotter()
+plttr = stream_plotter()
 
 
-inlets = {}
+inlets, stream_ids = {}, {}
 plot_elem = []
 running_task, start_tasks, session_saved = None, False, False
+dev_prepared = False
 done_tasks = []
 while True:
     event, values = window.read(1)
@@ -125,14 +129,15 @@ while True:
         ctr_rec.prepare_feedback()
         print('RTD')
         time.sleep(.5)
-        inlets = update_streams()
+        inlets = update_streams_fromID(stream_ids)
         
     elif event == 'Devices':
         ctr_rec.prepare_devices()
         ctr_rec.initiate_labRec()
         print('Devices')
-        inlets = update_streams()
-        #plttr.start()
+        inlets = update_streams_fromID(stream_ids)
+        dev_prepared = True
+        plttr.start(stream_ids)
         
     elif event == 'Save':
         session_info, tasks = get_session_info(values)
@@ -147,7 +152,7 @@ while True:
             session_info, tasks = get_session_info(values)
             print(values)
         
-        inlets = update_streams()
+        inlets = update_streams_fromID(stream_ids)
         time.sleep(.5)
         
         if len(tasks):
@@ -164,6 +169,7 @@ while True:
         ctr_rec.close_all()
         session_saved = False
         print("Stopping devices")
+        # plttr.stop()
         
     elif event ==  'Shut Down':
         for k in inlets.keys():
@@ -177,10 +183,12 @@ while True:
         for el in plot_elem:
             window[el[0]].update(data=el[1])
            
-        
+    # CTR server received data    
     try:
         event_feedb = serv_event.get(False)
-        print(f"Got this msg: {event_feedb}")
+        print(event_feedb)
+        for prt in event_feedb.split("\n"):
+            stream_ids = get_outlet_ids(prt, stream_ids)
         
     except queue.Empty:
        # event_feedb = []

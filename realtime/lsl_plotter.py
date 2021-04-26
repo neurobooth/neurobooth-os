@@ -8,24 +8,51 @@ Created on Fri Mar 19 17:43:09 2021
 import numpy as np
 import pylsl
 import matplotlib.pyplot as plt
+import matplotlib
 import cv2
 import threading
 import time
 
 
 def update_streams():
-    streams = pylsl.resolve_streams() 
+    streams = pylsl.resolve_streams(.6) 
     inlets= {}
     for info in streams:            
         name = info.name()     
-        inx=1
-        while True:
-            if name in inlets.keys():
-                name = name.split("_")[0] + f"_{inx}"
-                inx +=1
-            else:  
-                break
+        # inx=1
+        # while True:
+        #     if name in inlets.keys():
+        #         name = name.split("_")[0] + f"_{inx}"
+        #         inx +=1
+        #     else:  
+        #         break
                 
+        if info.type() == 'Markers':
+            print('(NOT YET) Adding marker inlet: ' + name)
+            # inlets.append(MarkerInlet(info))
+            
+        elif info.name()  in ["Screen", "Webcam", "Mouse", "Audio", "mbient"]:
+            print('Adding data inlet: ' + name)
+            
+            inlet = pylsl.StreamInlet(info)#, recover=False)
+            inlets[name] = inlet
+    
+        else:
+            print('Don\'t know what to do with stream ' + info.name())
+    return inlets
+
+
+def update_streams_fromID(stream_ids):
+    # stream_ids = dict with streams uuids
+    
+    streams = []
+    for id_stream in  stream_ids.values():
+        streams.append(pylsl.resolve_byprop("source_id", id_stream))
+    
+    inlets= {}
+    for info in streams:            
+        name = info.name()     
+
         if info.type() == 'Markers':
             print('(NOT YET) Adding marker inlet: ' + name)
             # inlets.append(MarkerInlet(info))
@@ -62,6 +89,7 @@ def get_lsl_images(inlets, frame_sz=(320, 240)):
         
     return  plot_elem        
 
+
 class stream_plotter():
     
     def __init__(self, plt_img=False, plt_ts=True):
@@ -69,17 +97,19 @@ class stream_plotter():
         self.inlets = {}
         self.plt_img= plt_img
         self.plt_ts = plt_ts
-        
+        self.pltotting_img = False
+        self.pltotting_ts =  False
     
-    def start(self):
-
+    def start(self, stream_ids):
+        if any([self.pltotting_img, self.pltotting_ts]):
+            self.stop()
+            
         self.pltotting_img =  self.plt_img
         self.pltotting_ts =  self.plt_ts
         
-        self.scann()
+        self.inlets = update_streams_fromID(stream_ids)
         
         if self.plt_img is True:
-            # self.update_imgs()
             self.thread_img = threading.Thread(target=self.update_imgs)               
             self.thread_img.start()
 
@@ -92,123 +122,37 @@ class stream_plotter():
     def stop(self):    
         self.pltotting_img = False
         self.pltotting_ts =  False
+        self.inlets = {}
         print("Closeing plotting windows")
         
-        
-    def scann(self):
-        print("looking for streams")
-        streams = pylsl.resolve_streams() 
-        
-        self.inlets = {}
-        for info in streams:    
-            
-            name = info.name() 
-    
-            inx=1
-            while True:
-                if name in self.inlets.keys():
-                    name = name.split("_")[0] + f"_{inx}"
-                else:
-                    break
-                    
-            if info.type() == 'Markers':
-                print('(NOT YET) Adding marker inlet: ' + name)
-                # inlets.append(MarkerInlet(info))
-                
-            elif info.name()  in ["Screen", "Webcam", "Mouse", "Audio", "mbient"]:
-                print('Adding data inlet: ' + name)
-                
-                inlet = pylsl.StreamInlet(info, processing_flags=pylsl.proc_clocksync | pylsl.proc_dejitter)
-                self.inlets[name] = inlet
-        
-            else:
-                print('Don\'t know what to do with stream ' + info.name())
-    
-      
-    
-    
-    def update_imgs(self):   
-            
-        frame_screen, frame_cam = np.ones((240, 320), dtype=np.uint8), np.ones((240, 320), dtype=np.uint8)
-        
-        nqueue  = 10
-        frame_queue_scr, frame_queue_cam =  [], []
-        for n in range(nqueue):
-            frame_queue_scr.append(frame_screen)
-            frame_queue_cam.append(frame_cam)
-            
-        # cv2.namedWindow("Output Frame")  
-        
-        while self.pltotting_img:     
-            for nm, inlet in self.inlets.items():
 
-                if nm in ['Marker', 'Markers']:
-                    continue
-                    
-                elif nm == "Screen":
-                    tv, ts = inlet.pull_sample(timeout=0.0)                 
-                    if ts == [] or ts is None:
-                        continue
-           
-                    tv = tv[1:]  # First element is frame number
-                    frame_screen = np.array(tv, dtype=np.uint8).reshape(240, 320)
-                    
-                    frame_queue_scr.pop(0)
-                    frame_queue_scr.append(frame_screen)
-                                        
-                elif nm == "Webcam":
-                    tv, ts = inlet.pull_sample(timeout=0.0)                
-                    if ts == [] or ts is None:
-                        continue
-
-                    frame_cam = np.array(tv, dtype=np.uint8).reshape(240, 320)
-                    
-                    frame_queue_cam.pop(0)
-                    frame_queue_cam.append(frame_cam)
-
-            # final_frame = cv2.vconcat([frame_screen, frame_cam] )
-            # cv2.imshow("Output Frame", final_frame)
-            
-            # key = cv2.waitKey(1) & 0xFF
-            # if key == ord:
-            #     break
-            
-            frames = cv2.hconcat(frame_queue_cam), cv2.hconcat(frame_queue_scr)
-            frames = cv2.vconcat(frames)
-
-            cv2.imshow("Output Frame", frames)
-
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord:
-                break
-                
-        # cv2.DestroyWindow("Output Frame")
-    
-    
     def update_ts(self):
-        
-        fig, axs = plt.subplots(3,1, sharex=True, figsize=(9.16,  9.93))
+        plt.ion()
+        fig, axs = plt.subplots(3,1, sharex=False, figsize=(9.16,  9.93))
         axs[-1].set_xticks([])
         mngr = plt.get_current_fig_manager()
         mngr.window.setGeometry(1015,30,905, 1005)
         fig.tight_layout()
+        fig.canvas.draw()                
+        fig.show()
+        plt.show(block=False)
         
         sampling = .1
         buff_size = 1024
         while self.pltotting_ts:
             
-            frame_ts = []
+            # frame_ts = []
             for nm, inlet in self.inlets.items():
                 if nm in ['Marker', 'Markers']:
                     continue
                 
-                elif nm == "Screen":
+                # elif nm == "Screen":
                                         
-                    tv, ts = inlet.pull_sample(timeout=0.0)                 
-                    if ts == [] or ts is None:
-                        continue
+                #     tv, ts = inlet.pull_sample(timeout=0.0)                 
+                #     if ts == [] or ts is None:
+                #         continue
            
-                    frame_ts = ts
+                #     frame_ts = ts
                     
                     
                 elif nm in ['Mouse',"mbient", "Audio"]:                    
@@ -257,18 +201,81 @@ class stream_plotter():
                     ylim = inlet.ydata.flatten()
                     axs[ax_ith].set_ylim([ min(ylim) , max(ylim)])
             
-            if frame_ts != []:
-                for ax in axs:
-                    ax.axvline(frame_ts, color="b", alpha=.3, linestyle='--')
+            # if frame_ts != []:
+            #     for ax in axs:
+            #         ax.axvline(frame_ts, color="b", alpha=.3, linestyle='--')
        
-            fig.canvas.draw()                
-            fig.show()
-            plt.pause(sampling) 
-            # time.sleep(.1)
-                
-                
-        plt.close(fig)
 
+            # plt.pause(sampling) 
+            mypause(sampling)
+            # time.sleep(.1)
+                                
+        plt.close(fig)  
+    
+    
+    def update_imgs(self):   
+            
+        frame_screen, frame_cam = np.ones((240, 320), dtype=np.uint8), np.ones((240, 320), dtype=np.uint8)
+        
+        nqueue  = 10
+        frame_queue_scr, frame_queue_cam =  [], []
+        for n in range(nqueue):
+            frame_queue_scr.append(frame_screen)
+            frame_queue_cam.append(frame_cam)
+            
+        # cv2.namedWindow("Output Frame")  
+        
+        while self.pltotting_img:     
+            for nm, inlet in self.inlets.items():
+
+                if nm in ['Marker', 'Markers']:
+                    continue
+                    
+                elif nm == "Screen":
+                    tv, ts = inlet.pull_sample(timeout=0.0)                 
+                    if ts == [] or ts is None:
+                        continue
+           
+                    tv = tv[1:]  # First element is frame number
+                    frame_screen = np.array(tv, dtype=np.uint8).reshape(240, 320)
+                    
+                    frame_queue_scr.pop(0)
+                    frame_queue_scr.append(frame_screen)
+                                        
+                elif nm == "Webcam":
+                    tv, ts = inlet.pull_sample(timeout=0.0)                
+                    if ts == [] or ts is None:
+                        continue
+
+                    frame_cam = np.array(tv, dtype=np.uint8).reshape(240, 320)
+                    
+                    frame_queue_cam.pop(0)
+                    frame_queue_cam.append(frame_cam)
+
+            
+            frames = cv2.hconcat(frame_queue_cam), cv2.hconcat(frame_queue_scr)
+            frames = cv2.vconcat(frames)
+
+            cv2.imshow("Output Frame", frames)
+
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord:
+                break
+                
+        cv2.DestroyWindow("Output Frame")
+    
+    
+
+def mypause(interval):
+    backend = plt.rcParams['backend']
+    if backend in matplotlib.rcsetup.interactive_bk:
+        figManager = matplotlib._pylab_helpers.Gcf.get_active()
+        if figManager is not None:
+            canvas = figManager.canvas
+            if canvas.figure.stale:
+                canvas.draw()
+            canvas.start_event_loop(interval)
+            # return
 
 if 0:
     ppt = stream_plotter(plt_img=True, plt_ts=True)
