@@ -16,7 +16,7 @@ def marker_stream():
     outlet_marker = StreamOutlet(stream_info_marker)
     outlet_marker.oulet_id = oulet_id
     outlet_marker.push_sample([f"Stream-created_0_{time.time()}"])
-    
+    print(f"-OUTLETID-:Marker:{oulet_id}")
     outlet_marker.stop = outlet_marker.__del__
     outlet_marker.streaming = True
     

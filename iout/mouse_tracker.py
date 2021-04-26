@@ -12,7 +12,7 @@ class MouseStream():
         
         self.info_stream = info_stream
         self.outlet = StreamOutlet(info_stream)
-    
+        print(f"-OUTLETID-:Mouse:{self.oulet_id}")
         self.streaming = False
         
         

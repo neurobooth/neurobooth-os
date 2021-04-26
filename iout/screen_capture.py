@@ -59,7 +59,7 @@ class ScreenMirror():
                                        )  
         self.info_stream = info_stream
         self.outlet_screen = StreamOutlet(info_stream)
-        
+        print(f"-OUTLETID-:Screen:{self.oulet_id}")
 
                         
     def start(self):
