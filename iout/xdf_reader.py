@@ -2,7 +2,7 @@ import pyxdf
 import matplotlib.pyplot as plt
 import numpy as np
 
-file = r'C:/Users/adona/Documents/CurrentStudy/sub-test/ses-S001/eeg/sub-test_ses-S001_task-Default_run-001_eeg.xdf'
+file = r'C:\Users\neurobooth\Desktop\neurobooth\software\neurobooth_data\test__mouse_task.xdf'
 data, header = pyxdf.load_xdf(file)
 
 
@@ -40,4 +40,17 @@ plt.show()
 
 
 
- 
+for i, d in enumerate(data):
+    name = d['info']['name']
+    ts1, = d['footer']['info']['last_timestamp']
+    ts0, = d['footer']['info']['first_timestamp']
+    tsn, = d['footer']['info']['sample_count']
+    duration = float(ts1)-float(ts0)
+    fps = 0 if int(tsn)==0 else int(tsn)/duration
+    
+    print(f"{name} samples:{tsn}, duration: {duration}, fps:{fps}")
+
+    tmst = d['time_stamps']
+    plt.plot(tmst, [i]*len(tmst), ".", label=name)
+
+plt.legend()

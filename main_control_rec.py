@@ -28,7 +28,7 @@ def prepare_feedback():
     socket_message("scr_stream", "presentation")
     
 def prepare_devices():
-    socket_message("prepare", "acquisition")    
+    socket_message("prepare", "acquisition") 
     socket_message("prepare", "presentation") 
 
 def setup_part_info():
@@ -47,7 +47,7 @@ def task_loop(task_names, subj_id):
         task_presentation(task, filename)
 
 def close_all():
-    socket_message("close", "acquisition")    
+    socket_message("close", "acquisition")     
     socket_message("close", "presentation") 
    
 def shut_all():
