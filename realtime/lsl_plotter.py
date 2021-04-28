@@ -47,7 +47,7 @@ def update_streams_fromID(stream_ids):
     
     streams = []
     for id_stream in  stream_ids.values():
-        streams.append(pylsl.resolve_byprop("source_id", id_stream))
+        streams += pylsl.resolve_byprop("source_id", id_stream)
     
     inlets= {}
     for info in streams:            
@@ -100,21 +100,21 @@ class stream_plotter():
         self.pltotting_img = False
         self.pltotting_ts =  False
     
-    def start(self, stream_ids):
+    def start(self, inlets):
         if any([self.pltotting_img, self.pltotting_ts]):
             self.stop()
             
         self.pltotting_img =  self.plt_img
         self.pltotting_ts =  self.plt_ts
         
-        self.inlets = update_streams_fromID(stream_ids)
+        self.inlets = inlets
         
-        if self.plt_img is True:
-            self.thread_img = threading.Thread(target=self.update_imgs)               
+        if self.plt_img is True and any([k for k in ['Mouse',"mbient", "Audio"] if k in inlets.key()]):
+            self.thread_img = threading.Thread(target=self.update_imgs, daemon=True)               
             self.thread_img.start()
 
-        if self.plt_ts is True:   
-            self.thread_ts = threading.Thread(target=self.update_ts)        
+        if self.plt_ts is True and len(inlets):  
+            self.thread_ts = threading.Thread(target=self.update_ts, daemon=True)        
             self.thread_ts.start()
         
         
@@ -139,21 +139,14 @@ class stream_plotter():
         
         sampling = .1
         buff_size = 1024
+        mypause(sampling)
+        
         while self.pltotting_ts:
             
             # frame_ts = []
             for nm, inlet in self.inlets.items():
                 if nm in ['Marker', 'Markers']:
                     continue
-                
-                # elif nm == "Screen":
-                                        
-                #     tv, ts = inlet.pull_sample(timeout=0.0)                 
-                #     if ts == [] or ts is None:
-                #         continue
-           
-                #     frame_ts = ts
-                    
                     
                 elif nm in ['Mouse',"mbient", "Audio"]:                    
                     tv, ts = inlet.pull_chunk(timeout=0.0)
@@ -208,8 +201,11 @@ class stream_plotter():
 
             # plt.pause(sampling) 
             mypause(sampling)
+            if len( self.inlets)== 0:
+                break
             # time.sleep(.1)
-                                
+            
+        self.pltotting_ts = False
         plt.close(fig)  
     
     

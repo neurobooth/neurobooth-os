@@ -2,7 +2,7 @@ import pyxdf
 import matplotlib.pyplot as plt
 import numpy as np
 
-file = r'C:\Users\neurobooth\Desktop\neurobooth\software\neurobooth_data\mw__mouse_task.xdf'
+file = r'C:\Users\neurobooth\Desktop\neurobooth\software\neurobooth_data\tt__mouse_task.xdf'
 data, header = pyxdf.load_xdf(file)
 
 
