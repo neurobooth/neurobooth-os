@@ -33,9 +33,9 @@ def get_tasks(values):
     return tasks            
 
 def get_outlet_ids(str_prt, dic_ids):
-    # Get outlet ids from ctr server, string format = -OUTLETID-:name:uuid "
+    # Get outlet ids from ctr server, string format = Srv:-OUTLETID-:name:uuid "
     if str_prt.split(":")[0] == "-OUTLETID-":
-        dic_ids[str_prt.split(":")[1]]:str_prt.split(":")[2]
+        dic_ids[str_prt.split(":")[1]] = str_prt.split(":")[2]
     return dic_ids
     
 serv_event = queue.Queue(maxsize=10)
@@ -84,7 +84,7 @@ def make_layout(frame_sz=(320, 240)):
         [space()],
         # [space()],
         [space(1), lay_butt('Test Comm', 'Test_network'),space(5), lay_butt('Display', 'RTD'), 
-         space(5), lay_butt('Prepare Devices', 'Devices'), space(5)],
+         space(5), lay_butt('Plot Devices', 'Devices'), space(5)],
         [space()],
         [space(5), sg.ReadFormButton('Start', button_color=('white', 'black')), space(5), lay_butt('Stop'),
          space(), sg.ReadFormButton('Shut Down', button_color=('white', 'black'))],
@@ -120,24 +120,55 @@ plot_elem = []
 running_task, start_tasks, session_saved = None, False, False
 dev_prepared = False
 done_tasks = []
+
+
+def serv_data_received():
+    # CTR server received data    
+    global stream_ids, inlets
+    
+    while True:  # while items in queue
+        
+        try:
+            event_feedb = serv_event.get(False)
+            print(event_feedb)
+            stream_ids_old = stream_ids.copy()
+            # remove server name
+            event_feedb = event_feedb.split(": ")[1]
+            for prt in event_feedb.split("\n"):
+                stream_ids = get_outlet_ids(prt, stream_ids)
+                
+            if stream_ids_old != stream_ids or (len(stream_ids) and len(inlets)==0):
+                inlets = update_streams_fromID(stream_ids)
+            
+        except queue.Empty:
+           break
+
+
 while True:
-    event, values = window.read(1)
+    event, values = window.read(.5)
+    serv_data_received()
+    
     if event == sg.WIN_CLOSED:
         break
     
     elif event == 'RTD':
         ctr_rec.prepare_feedback()
         print('RTD')
-        time.sleep(.5)
-        inlets = update_streams_fromID(stream_ids)
-        
+        time.sleep(1)
+        serv_data_received()
+                
     elif event == 'Devices':
-        ctr_rec.prepare_devices()
+        ctr_rec.prepare_devices() 
         ctr_rec.initiate_labRec()
         print('Devices')
+        serv_data_received()
         inlets = update_streams_fromID(stream_ids)
         dev_prepared = True
-        plttr.start(stream_ids)
+        
+        if plttr.pltotting_ts is True:
+            plttr.inlets = inlets
+        else:
+            plttr.start(inlets)
         
     elif event == 'Save':
         session_info, tasks = get_session_info(values)
@@ -145,7 +176,7 @@ while True:
         print(values)
         
     elif event == 'Test_network':
-        _ = ctr_rec.test_lan_delay(100)
+        _ = ctr_rec.test_lan_delay(50)
         
     elif event == 'Start':
         if not session_saved:
@@ -154,6 +185,7 @@ while True:
         
         inlets = update_streams_fromID(stream_ids)
         time.sleep(.5)
+        serv_data_received()
         
         if len(tasks):
             start_tasks= True
@@ -165,7 +197,9 @@ while True:
     elif event == 'Stop':
         for k in inlets.keys():
             if k not in ["Webcam", "Screen"]:
-                inlets[k].close_stream()                
+                inlets[k].close_stream()
+                inlets.pop(k, None)  
+           
         ctr_rec.close_all()
         session_saved = False
         print("Stopping devices")
@@ -173,8 +207,9 @@ while True:
         
     elif event ==  'Shut Down':
         for k in inlets.keys():
-            if k in ["Webcam", "Screen"]:
+            if k in inlets.keys():
                 inlets[k].close_stream()
+                inlets.pop(k, None)
         ctr_rec.shut_all()    
         inlets = {}
 
@@ -182,19 +217,6 @@ while True:
         plot_elem = get_lsl_images(inlets) 
         for el in plot_elem:
             window[el[0]].update(data=el[1])
-           
-    # CTR server received data    
-    try:
-        event_feedb = serv_event.get(False)
-        print(event_feedb)
-        for prt in event_feedb.split("\n"):
-            stream_ids = get_outlet_ids(prt, stream_ids)
-        
-    except queue.Empty:
-       # event_feedb = []
-       pass
     
-
-        
         
 window.close()
