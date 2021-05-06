@@ -41,8 +41,10 @@ class VidRec_Brio():
         
         if doPreview:
             self.preview_fps = 10
-            self.info_stream = StreamInfo('Webcam', 'Experiment', 320 * 240,  self.preview_fps, 'int32', 'webcamid_2')
+            self.preview_outlet_id =  str(uuid.uuid4())
+            self.info_stream = StreamInfo('Webcam', 'Experiment', 320 * 240,  self.preview_fps, 'int32', self.preview_outlet_id)
             self.outlet_preview = StreamOutlet(self.info_stream)
+            print(f"-OUTLETID-:Webcam:{self.preview_outlet_id}")
             self.preview_start()
             self.preview_relFps = round(fps/self.preview_fps)
  
@@ -81,7 +83,7 @@ class VidRec_Brio():
                 break
             
             time.sleep(1/self.preview_fps)
-        self.outlet.__del__()
+#        self.outlet.__del__()
 
     @catch_exception    
     def frame_preview(self, frame):        

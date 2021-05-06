@@ -58,20 +58,18 @@ def Main():
             break
 
         data = data.decode("utf-8")
-        if data != "time_test":
-            fprint("ACQ" + data)
-           
-        
+                    
         # c_time = float(data.split("_")[-1][:-1])
         # print(f"time diff = {time() - c_time - time_del}")
 
         if "vis_stream" in data:
             if not lowFeed_running:
                 lowFeed = VidRec_Brio(camindex=1, doPreview=True)    
-                print ("LowFeed running")
+                fprint ("LowFeed running")
                 lowFeed_running = True
-            else:
-                print ("Already running low feed video streaming")
+            else:                
+                fprint(f"-OUTLETID-:Webcam:{lowFeed.preview_outlet_id}")
+                fprint ("Already running low feed video streaming")
             
         elif "prepare" in data:
             if len(streams):
@@ -112,6 +110,9 @@ def Main():
         elif "time_test" in data:
             msg = f"ping_{time()}"
             c.send(msg.encode("ascii"))
+            
+        else:
+            fprint("ACQ" + data)
             
     sleep(.5)
     try:

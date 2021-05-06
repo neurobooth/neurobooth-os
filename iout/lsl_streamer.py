@@ -48,6 +48,7 @@ def reconnect_streams(streams, cams=False):
         
         if not streams[k].streaming:
             print(f"Re-streaming {k} stream")
-            streams[k].start()       
+            streams[k].start()
+        print(f"-OUTLETID-:{k}:{streams[k].oulet_id}")
         
     return streams

@@ -82,9 +82,7 @@ def Main():
             print("Connection fault, closing Stim server")
             break
 
-        data = data.decode("utf-8")
-        if data != "time_test":
-            fprint("STM:" + data)
+        data = data.decode("utf-8")           
             
         # send_stdout()
         # c_time = float(data.split("_")[-1][:-1])
@@ -98,7 +96,8 @@ def Main():
                 fprint ("Stim screen feed running")
                 screen_running = True
             else:
-                print ("Already running screen feed")
+                fprint(f"-OUTLETID-:Screen:{screen_feed.oulet_id}")
+                fprint ("Already running screen feed")
             send_stdout()
             
         elif "prepare" in data:
@@ -155,12 +154,15 @@ def Main():
                     fprint("Closing screen mirroring")                    
                     screen_running = False
                 fprint("Closing Stim server")          
-#                 break
-        
+                break
         
         elif "time_test" in data:
             msg = f"ping_{time()}"
-            c.send(msg.encode("ascii"))                     
+            c.send(msg.encode("ascii"))
+
+        else: 
+            fprint(data)
+                             
     
     s.close() 
     sys.stdout = old_stdout
