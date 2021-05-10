@@ -10,13 +10,13 @@ Created on Wed Apr  7 14:41:23 2021
 acquisition = {'name': 'acq',
                'user': 'ACQ',
                'pass': "5519",
-               "bat" : r'C:\neurobooth\neurobooth-eel\serv_acq.bat'                      
+               "bat" : r'C:\neurobooth-eel\serv_acq.bat'                      
                }
 
 presentation = {'name': 'stm',
                'user': 'STM',
-               'pass': "551955",
-               "bat" : r'C:\neurobooth\neurobooth-eel\server_stm.bat'                       
+               'pass': "5519",
+               "bat" : r'C:\neurobooth-eel\server_stm.bat'                       
                }
     
 secrets = {'acquisition' : acquisition, 
