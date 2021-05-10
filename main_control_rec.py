@@ -5,7 +5,7 @@ Created on Thu Mar 25 12:46:08 2021
 @author: neurobooth
 """
 
-from registration import get_session_info
+# from registration import get_session_info
 import os
 import socket
 import time
@@ -31,9 +31,9 @@ def prepare_devices():
     socket_message("prepare", "acquisition") 
     socket_message("prepare", "presentation") 
 
-def setup_part_info():
-    session = get_session_info()
-    return session
+# def setup_part_info():
+#     session = get_session_info()
+#     return session
 
 def task_presentation(task_name, filename):
     socket_message(f"present:{task_name}:{filename}", "presentation")
