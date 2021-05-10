@@ -42,7 +42,7 @@ def socket_message(message, node_name, wait_data=0):
     return data    
 
 
-def socket_time(node_name, print_flag=1, time_out=5):
+def socket_time(node_name, print_flag=1, time_out=1):
     
     host, port = node_info(node_name) 
               
@@ -59,7 +59,7 @@ def socket_time(node_name, print_flag=1, time_out=5):
         start_server(node_name)
         t0 = time()
         s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) 
-        s.settimeout(time_out)
+        s.settimeout(time_out*2)
         s.connect((host,port))
     
     s.send(message.encode('ascii'))        
@@ -120,28 +120,26 @@ def start_server(node_name, save_pid_txt=True):
     # Kill any previous server
     kill_pid_txt(node_name=node_name)
     
-    tic = time()
-    c = wmi.WMI(s['name'], user=f"{s['name']}\{s['user']}", password=s['pass'])
-    print(f" 1 - {time() - tic}")
-    
-    task_cmd = f"tasklist.exe /S {s['name']} /U {s['user']} /P {s['pass']}"
-    tic = time()    
+    # tic = time()    
+    task_cmd = f"tasklist.exe /S {s['name']} /U {s['user']} /P {s['pass']}"   
     out = os.popen(task_cmd).read()
     pids_old = get_python_pids(out)
-    print(f"2 - {time() - tic}")
+    # print(f"2 - {time() - tic}")
      
-    tic = time()
-    pid_c =  c.Win32_Process.Create(CommandLine=s['bat'])
-    print(pid_c)
-    print(f"3 - {time() - tic}")
+    cmd_str = f"SCHTASKS /S {s['name']} /U {s['name']}\{s['user']} /P {s['pass']}"
+    cmd_1 = cmd_str +  f" /Create /TN TaskOnEvent /TR {s['bat']} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
+    cmd_2 = cmd_str + ' /Run /TN "TaskOnEvent"'
+    out = os.popen(cmd_1).read()
+    out = os.popen(cmd_2).read()
      
-    sleep(.5)
-    tic = time()
+    sleep(.3)
+    # tic = time()
     out = os.popen(task_cmd).read()
     pids_new = get_python_pids(out)
-    print(f"4 - {time() - tic}")
+    # print(f"4 - {time() - tic}")
     
     pid =  [p for p in pids_new if p not in pids_old ]
+    print(f"{node_name.upper()} server initiated with pid {pid}")
     
     if save_pid_txt:
         with open("server_pids.txt","a") as f:
