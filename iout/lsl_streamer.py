@@ -14,9 +14,9 @@ def start_lsl_threads(node_name):
         from iout.camera_intel import VidRec_Intel
 
         
-        streams["hiFeed"] = VidRec_Brio(camindex=3 , doPreview=False)
+        streams["hiFeed"] = VidRec_Brio(camindex=0 , doPreview=False)
         streams['micro'] = MicStream()
-        streams["intel"] = VidRec_Intel(camindex=2)
+        streams["intel"] = VidRec_Intel(camindex=3)
         
         mbient_name = 'RH'
         streams["mbient"] = connect_mbient(mbient_name)

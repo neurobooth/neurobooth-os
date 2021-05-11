@@ -46,7 +46,7 @@ class MicStream():
         print("Microphone stream opened")
         while self.streaming:
             data = self.stream_in.read(self.CHUNK)
-            decoded = np.frombuffer(data, 'Float32')
+            decoded = np.frombuffer(data, 'float32')
             try:
                 self.outlet_audio.push_sample(decoded)
             except:  # "OSError" from C++
