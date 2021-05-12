@@ -180,7 +180,10 @@ def kill_remote_pid(pids, node_name):
 
 def kill_pid_txt(txt_name="server_pids.txt", node_name=None):
     
-     with open("server_pids.txt","r+") as f:
+     if not os.path.exists(txt_name):
+        return
+    
+     with open(txt_name,"r+") as f:
          Lines = f.readlines()
          
          if len(Lines):
