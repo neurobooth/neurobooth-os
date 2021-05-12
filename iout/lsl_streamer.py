@@ -16,10 +16,12 @@ def start_lsl_threads(node_name):
         
         streams["hiFeed"] = VidRec_Brio(camindex=0 , doPreview=False)
         streams['micro'] = MicStream()
-        streams["intel"] = VidRec_Intel(camindex=2)
+        streams["intel"] = VidRec_Intel(camindex=1)
         
         mbient_name = 'RH'
         streams["mbient"] = connect_mbient(mbient_name)
+        if streams["mbient"] is None:
+            del streams["mbient"]
        
     elif node_name == "presentation":     
         from iout.marker import marker_stream       
