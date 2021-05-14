@@ -4,6 +4,7 @@ Created on Tue Nov 24 15:41:42 2020
 
 @author: adona
 """
+import config
 
 def start_lsl_threads(node_name):    
     streams = {}    
@@ -11,14 +12,16 @@ def start_lsl_threads(node_name):
         from iout.microphone import MicStream
         from iout.camera_brio import VidRec_Brio
         from iout.camera_intel import VidRec_Intel
-        from iout.mbient import Sensor
+
         
-        streams["hiFeed"] = VidRec_Brio(camindex=3 , doPreview=False)
+        streams["hiFeed"] = VidRec_Brio(camindex=0 , doPreview=False)
         streams['micro'] = MicStream()
-        streams["intel"] = VidRec_Intel(camindex=2)
+        streams["intel"] = VidRec_Intel(camindex=1)
         
-        mac = "CE:F3:BD:BD:04:8F"
-#        streams["mbient"] = Sensor(mac)
+        mbient_name = 'RH'
+        streams["mbient"] = connect_mbient(mbient_name)
+        if streams["mbient"] is None:
+            del streams["mbient"]
        
     elif node_name == "presentation":     
         from iout.marker import marker_stream       
@@ -28,6 +31,26 @@ def start_lsl_threads(node_name):
         streams['marker'] =  marker_stream()
         
     return streams
+
+
+def connect_mbient(dev_name="RH", try_nmax=5):
+    from iout.mbient import Sensor
+    
+    mac = config.mbient_macs[dev_name]
+    
+    tinx = 0
+    while True:
+        try:
+            print(f"Trying to connect mbient {dev_name}")
+            sens = Sensor(mac)
+            return sens 
+        except:        
+            print(f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries")
+            tinx += 1
+            if tinx >= try_nmax:
+                print(f"Failed to connect mbient {dev_name}")
+                break    
+
 
 def close_streams(streams, cams=False):
     for k in list(streams):
@@ -52,3 +75,4 @@ def reconnect_streams(streams, cams=False):
         print(f"-OUTLETID-:{k}:{streams[k].oulet_id}")
         
     return streams
+

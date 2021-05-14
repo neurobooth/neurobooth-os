@@ -68,6 +68,23 @@ class Sensor:
         
         print(f"Mbient {self.mac} setup")
         
+    def info(self):
+        
+        dev_info = self.device.info
+        
+        def battery_handler(self, ctx, data):
+            value = parse_value(data, n_elem=1)
+            print("Voltage: {0}, Charge: {1}".format(
+                value.voltage, value.charge))
+    
+        signal = libmetawear.mbl_mw_settings_get_battery_state_data_signal(self.device.board)
+         
+        
+        voltage = libmetawear.mbl_mw_datasignal_get_component(signal, cbindings.Const.SETTINGS_BATTERY_VOLTAGE_INDEX)
+        charge = libmetawear.mbl_mw_datasignal_get_component(signal, cbindings.Const.SETTINGS_BATTERY_CHARGE_INDEX)
+        
+        libmetawear.mbl_mw_datasignal_subscribe(charge, None, battery_handler)
+    
     def start(self):
         print(f"Started mbient {self.mac}")
         libmetawear.mbl_mw_gyro_bmi160_enable_rotation_sampling(self.device.board)
@@ -89,6 +106,10 @@ class Sensor:
         libmetawear.mbl_mw_debug_reset(self.device.board)
         print("Stopping ", self.device.board)
         self.streaming = False
+    
+    def close(self):
+       self.device.on_disconnect = lambda status: print ("Mbient disconnected!")
+       self.device.disconnect()
         
 
 

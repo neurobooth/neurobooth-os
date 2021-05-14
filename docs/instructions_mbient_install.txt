@@ -42,6 +42,6 @@ conda create -n neurobooth  python=3.8 spyder ipython git opencv pywin32 pip psy
 
 conda activate neurobooth
 
-pip install  metawear==0.7.0 pillow==8.2.0 pywinauto pylsl==1.14.0 pynput==1.7.3 pyrealsense2==2.44.0.3073 warble==1.2.0 vidgear pyautogui wmi pyaudio
+pip install  metawear==0.7.0 pillow pywinauto pylsl pynput pyrealsense2 warble==1.2.0 vidgear pyautogui wmi pyaudio
 
 

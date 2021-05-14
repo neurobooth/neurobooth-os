@@ -29,7 +29,7 @@ def catch_exception(f):
 
 class VidRec_Intel():        
     def __init__(self, size_rgb=(640, 480), size_depth=(640, 360),
-                 fps_rgb=90, fps_depth=90, camindex=3):
+                 fps_rgb=30, fps_depth=30, camindex=3):
         
         self.open = True
         self.recording = False

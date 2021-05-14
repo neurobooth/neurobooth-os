@@ -64,7 +64,7 @@ def Main():
 
         if "vis_stream" in data:
             if not lowFeed_running:
-                lowFeed = VidRec_Brio(camindex=1, doPreview=True)    
+                lowFeed = VidRec_Brio(camindex=5, doPreview=True)    
                 fprint ("LowFeed running")
                 lowFeed_running = True
             else:                
