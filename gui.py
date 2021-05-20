@@ -195,7 +195,7 @@ while True:
             print("Start button pressed but no task selected")      
         
     elif event == 'Stop':
-        for k in inlets.keys():
+        for k in list(inlets.keys()):
             if k not in ["Webcam", "Screen"]:
                 inlets[k].close_stream()
                 inlets.pop(k, None)  
@@ -203,7 +203,7 @@ while True:
         ctr_rec.close_all()
         session_saved = False
         print("Stopping devices")
-        # plttr.stop()
+        plttr.stop()
         
     elif event ==  'Shut Down':
         for k in inlets.keys():

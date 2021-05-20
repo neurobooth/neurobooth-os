@@ -20,11 +20,12 @@ def server_com(callback=None):
     print("socket is listening") 
     
     while True: 
-        c, addr = s.accept() 
-        data = c.recv(1024)
-        if not data: 
+        try:
+            c, addr = s.accept() 
+            data = c.recv(1024)
+        except:        
             print("Connection fault, closing ctr server")
-            break
+            continue
 
         data = data.decode("utf-8")
         print(data)
