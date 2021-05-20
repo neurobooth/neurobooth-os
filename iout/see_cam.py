@@ -8,6 +8,8 @@ Created on Mon May 10 13:01:13 2021
 from iout import dshowcapture
 import numpy as np
 import cv2
+import pyrealsense2 as rs
+
 
 video_cap = dshowcapture.DShowCapture()
 ndevs = video_cap.get_devices()
@@ -16,7 +18,12 @@ print(f"There are {ndevs} devices")
 inf = video_cap.get_info()
 for f in inf:
     print(f['index'], f['name'])
-
+    
+ctx = rs.context()
+devices = ctx.query_devices()
+for dev in devices:
+    print (dev)
+    
 dinx = 0
 cap = cv2.VideoCapture(dinx, cv2.CAP_DSHOW)
 

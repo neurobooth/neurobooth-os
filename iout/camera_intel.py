@@ -29,15 +29,17 @@ def catch_exception(f):
 
 class VidRec_Intel():        
     def __init__(self, size_rgb=(640, 480), size_depth=(640, 360),
-                 fps_rgb=30, fps_depth=30, camindex=3):
+                 fps_rgb=30, fps_depth=30, camindex=[3, "SerialNumber"]):
         
         self.open = True
         self.recording = False
-        self.device_index = camindex
+        self.device_index = camindex[0]
+        self.serial_num = camindex[1]
         self.fps = (fps_rgb, fps_depth)                
         self.frameSize = (size_rgb, size_depth) 
         
         self.config = rs.config()
+        self.config.enable_device(self.serial_num)
         self.pipeline =  rs.pipeline()
         self.config.enable_stream(rs.stream.depth, self.frameSize[0][0], 
                                   self.frameSize[0][1], rs.format.z16, self.fps[0])
@@ -53,7 +55,7 @@ class VidRec_Intel():
     @catch_exception
     def prepare(self, name):
         self.name = name 
-        self.video_filename = "{}_{}.bag".format(name, time())     
+        self.video_filename = "{}_intel{}_{}.bag".format(name, self.device_index, time())     
         self.config.enable_record_to_file(self.video_filename)       
         self.outlet = self.createOutlet(name)
 
@@ -64,7 +66,8 @@ class VidRec_Intel():
         info = StreamInfo(name=streamName, type='videostream', channel_format='int32',
                           channel_count=2, source_id=self.outlet_id)
         info.desc().append_child_value("videoFile", filename)
-        info.desc().append_child_value("size_rgb_depth", str(self.frameSize))   
+        info.desc().append_child_value("size_rgb_depth", str(self.frameSize))  
+        info.desc().append_child_value("serial_number", self.serial_num)  
         print(f"-OUTLETID-:{streamName}:{self.outlet_id}")
         return StreamOutlet(info)
     
