@@ -102,7 +102,7 @@ def mouse_task():
     routineTimer = core.CountdownTimer()  # to track time remaining of each (non-slip) routine 
     
     # set up handler to look after randomisation of conditions etc
-    trials = data.TrialHandler(nReps=5, method='random', 
+    trials = data.TrialHandler(nReps=50, method='random', 
         extraInfo=expInfo, originPath=-1,
         trialList=[None],
         seed=None, name='trials')

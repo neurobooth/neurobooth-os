@@ -83,17 +83,25 @@ def make_layout(frame_sz=(320, 240)):
         [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left', auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))],
         [space()],
         # [space()],
-        [space(1), lay_butt('Test Comm', 'Test_network'),space(5), lay_butt('Display', 'RTD'), 
-         space(5), lay_butt('Plot Devices', 'Devices'), space(5)],
+        [space(1), lay_butt('Initiate servers', 'init_servs'),         
+         space(5), lay_butt('Display', 'RTD'), 
+         space(5), lay_butt('Connect Devices', 'Connect'),
+         space(5), lay_butt('Plot Devices', 'plot'),
+          ],
         [space()],
-        [space(5), sg.ReadFormButton('Start', button_color=('white', 'black')), space(5), lay_butt('Stop'),
-         space(), sg.ReadFormButton('Shut Down', button_color=('white', 'black'))],
-        ]
+        [space(5), lay_butt('Terminate servers','Shut Down'),
+         space(5), sg.ReadFormButton('Start', button_color=('white', 'black')),
+         space(5), lay_butt('Stop'),
+         space(5), lay_butt('Test Comm', 'Test_network')         
+        ]]
     
-    layout_col2 = [#[space()], [space()], [space()], [space()],
-                   [sg.Image(data=imgbytes, key='Screen', size=frame_sz)], 
-                    [space()], [space()], [space()], [space()],
-                   [sg.Image(data=imgbytes, key='Webcam', size=frame_sz)]
+    layout_col2 = [[sg.Image(data=imgbytes, key='Screen', size=frame_sz)], 
+                   [space()], [space()], [space()], [space()],
+                   [sg.Image(data=imgbytes, key='Webcam', size=frame_sz)],
+                   [space()], [space()], [space()], [space()],
+                   [space()], [space()], [space()], [space()],
+                   [sg.Text('Inlet streams')],
+                   [sg.Multiline( size=(35, 6),  key='inlet_State', do_not_clear=False, no_scrollbar=True)]
                    ]
     
     layout = [[sg.Column(layout_col1,  pad=(0,0)), sg.Column(layout_col2, pad=(0,0), element_justification='c')] ]
@@ -157,14 +165,15 @@ while True:
         time.sleep(1)
         serv_data_received()
                 
-    elif event == 'Devices':
+    elif event == 'Connect':
         ctr_rec.prepare_devices() 
         ctr_rec.initiate_labRec()
-        print('Devices')
+        print('Connecting devices')
         serv_data_received()
         inlets = update_streams_fromID(stream_ids)
         dev_prepared = True
-        
+    
+    elif event == 'plot':
         if plttr.pltotting_ts is True:
             plttr.inlets = inlets
         else:
@@ -176,6 +185,10 @@ while True:
         print(values)
         
     elif event == 'Test_network':
+        _ = ctr_rec.test_lan_delay(50)
+        
+    elif event == "init_servs":
+        ctr_rec.start_servers()
         _ = ctr_rec.test_lan_delay(50)
         
     elif event == 'Start':
@@ -206,17 +219,19 @@ while True:
         plttr.stop()
         
     elif event ==  'Shut Down':
-        for k in inlets.keys():
+        for k in list(inlets.keys()):
             if k in inlets.keys():
                 inlets[k].close_stream()
-                inlets.pop(k, None)
-        ctr_rec.shut_all()    
-        inlets = {}
-
-    if len(inlets):
+                inlets.pop(k, None)        
+        ctr_rec.shut_all()
+        serv_data_received()
+        break
+    
+    if any(k for k in inlets.keys() if k in ["Webcam", "Screen"]):
         plot_elem = get_lsl_images(inlets) 
         for el in plot_elem:
             window[el[0]].update(data=el[1])
     
-        
+    serv_data_received()
+
 window.close()
