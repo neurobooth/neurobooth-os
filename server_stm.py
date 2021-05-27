@@ -8,8 +8,9 @@ import config
 from netcomm.client import socket_message, node_info
 from tasks.DSC import DSC
 from tasks.mouse import mouse_task
+from psychopy import core, visual, event
+from psychopy.visual.textbox2 import TextBox2
 
-  
 def fake_task(s, cmd, subj_id, task_name, send_stdout):
     sleep(1)
     input("Press a key to start the fakest task")
@@ -32,8 +33,17 @@ def fake_task(s, cmd, subj_id, task_name, send_stdout):
     # sleep(1)
     # input("All closed, bye now. Press enter")
     # sleep(1)
-    
   
+  def welcome_screen():
+    win = visual.Window((1800, 1800), monitor='testMonitor', allowGUI=True, color='white')  
+    text = "Welcome to the <b>Neurobooth</b>. \n Get ready to do some neuromuscular and cognitive assessments. \nRemember, the sky is the limit."
+    tbx = TextBox2(win, pos=(0,0), color='black', units='deg',lineSpacing=.7,
+                       letterHeight=1.2, text=text, font="Arial", #size=(20, None),
+                       borderColor=None, fillColor=None, editable=False, alignment='center')
+    tbx.draw()
+    win.flip()
+
+
 def Main(): 
     host = "" 
     # time_del = 0
@@ -66,7 +76,8 @@ def Main():
     def fprint(str_print):
         print(str_print)
         send_stdout()
-           
+    
+    win = welcome_screen()
     streams, screen_running = {}, False            
     # a forever loop until client wants to exit 
     while True:   
@@ -168,6 +179,7 @@ def Main():
     
     s.close() 
     sys.stdout = old_stdout
+    win.close()
   
   
 Main() 
