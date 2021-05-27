@@ -10,6 +10,7 @@ import numpy as np
 import cv2
 import pylsl
 import time
+import sys
 import threading
 import matplotlib
 import queue
@@ -175,6 +176,7 @@ while True:
     
     elif event == 'plot':
         if plttr.pltotting_ts is True:
+            inlets = update_streams_fromID(stream_ids)
             plttr.inlets = inlets
         else:
             plttr.start(inlets)
@@ -225,6 +227,7 @@ while True:
                 inlets.pop(k, None)        
         ctr_rec.shut_all()
         serv_data_received()
+        plttr.stop()
         break
     
     if any(k for k in inlets.keys() if k in ["Webcam", "Screen"]):
@@ -235,3 +238,4 @@ while True:
     serv_data_received()
 
 window.close()
+window['-OUTPUT-'].__del__()

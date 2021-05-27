@@ -20,8 +20,8 @@ def start_servers(nodes=["acquisition", "presentation"]):
     kill_pid_txt()
     if isinstance(nodes, str): nodes = [nodes]
     for node in nodes:
-        pid = start_server(node)
-        print(f"{pid} on server {node} created")
+        start_server(node)
+        
     
 def prepare_feedback():    
     socket_message("vis_stream", "acquisition")    

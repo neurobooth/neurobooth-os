@@ -2,7 +2,7 @@ import pyxdf
 import matplotlib.pyplot as plt
 import numpy as np
 
-file = r'C:\Users\neurobooth\Desktop\neurobooth\software\neurobooth_data\tt__mouse_task.xdf'
+file = r'C:/neurobooth/neurobooth_data/thursday3__DSC_task.xdf'
 data, header = pyxdf.load_xdf(file)
 
 
@@ -21,11 +21,16 @@ for ix, stream in enumerate(data):
         print("\tDuration: {:.2f} s".format(stream['time_stamps'][-1] - stream['time_stamps'][0]))
 
 
-
+plt.figure()
 for i, d in enumerate(data):
     name = d['info']['name']
+    if d['time_stamps'].size == 0 :
+        print(f"{name} samples:0")
+        continue
     ts1, = d['footer']['info']['last_timestamp']
     ts0, = d['footer']['info']['first_timestamp']
+    # ts0 = d['time_stamps'][2]
+    # ts1 = d['time_stamps'][-1]
     tsn, = d['footer']['info']['sample_count']
     duration = float(ts1)-float(ts0)
     fps = 0 if int(tsn)==0 else int(tsn)/duration
