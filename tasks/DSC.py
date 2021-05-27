@@ -7,6 +7,7 @@ Created on Tue Mar  9 14:55:50 2021
 """
 import random
 import time
+import os.path as op
 import numpy as np
 from psychopy import core, visual, event
 from psychopy.visual.textbox2 import TextBox2
@@ -38,19 +39,23 @@ class DSC():
         self.testStart = 0       #        # start timestamp of the test
         self.demo = False                   #      # URL parameter: run in demo mode
         self.filename = "fname.csv"           #        # filename for data
-
+        self.fpath = op.dirname(op.abspath(__file__)).replace("\\", "/")
+        self.tot_time = 30
+        
+        
         try:
             self.io = launchHubServer()
         except RuntimeError:
             io = iohub.client.ioHubConnection.ACTIVE_CONNECTION
             io.quit()
             self.io = launchHubServer()
+        
         self.keyboard = self.io.devices.keyboard
 
         if marker_outlet is not None:
             self.with_lsl = True
             self.marker = marker_outlet
-            # outlet_marker.push_sample([f"Streaming_0_{time.time()}"])
+            # self.marker.push_sample([f"Streaming_0_{time.time()}"])
         else:
             self.with_lsl = False
 
@@ -83,9 +88,11 @@ class DSC():
 
         # create psychopy window
         if win is None:
-            self.win = visual.Window((1800, 1800), monitor='testMonitor', allowGUI=True, color='white')
+            self.win = visual.Window((1800, 1070), monitor='testMonitor', allowGUI=True, color='white')
+            self.win_temp = True
         else:
             self.win = win
+            self.win_temp = False
 
         # create the trials chain
         self.setFrameSequence()
@@ -104,7 +111,7 @@ class DSC():
                      "type": frame["type"], # one of practice or test
                      "symbol": frame["symbol"], # symbol index
                      "digit": frame["digit"], # symbol digit
-                     "response": self.tmbUI["response"][0], # the key or element chosen
+                     "response": self.tmbUI["response"][1], # the key or element chosen
                      'correct': correct, # boolean correct
                      "rt": self.tmbUI["rt"], # response time
                      "timestamp": self.tmbUI["downTimestamp"], # response timestamp
@@ -124,7 +131,7 @@ class DSC():
 
                 message = [
                 visual.ImageStim(self.win, image=frame["source"], pos=(0, 6), units='deg'),
-                visual.ImageStim(self.win, image='DSC/images/key.png', pos=(0, 0), units='deg'),
+                visual.ImageStim(self.win, image=self.fpath+'/DSC/images/key.png', pos=(0, 0), units='deg'),
                 self.my_textbox2(f"You should press <b>{frame['digit']}</b> on the <b>keyboard</b> " +\
                                             "when you see this symbol", (0, -7)),
                 self.my_textbox2('Press [enter] to continue', (0, -10)),
@@ -151,7 +158,7 @@ class DSC():
                         "message": "",
                         "symbol": symbol,
                         "digit": digit,
-                        "source": f"DSC/images/{symbol}.gif"
+                        "source": self.fpath + f'/DSC/images/{symbol}.gif'
                         })
 
 
@@ -173,7 +180,7 @@ class DSC():
 
                 stim = [
                     visual.ImageStim(self.win, image=frame["source"], pos=(0, 6), units='deg'),
-                    visual.ImageStim(self.win, image='DSC/images/key.png', pos=(0, 0), units='deg'),
+                    visual.ImageStim(self.win, image=self.fpath + '/DSC/images/key.png', pos=(0, 0), units='deg'),
                     ]
 
                 # set response timeout:
@@ -191,7 +198,7 @@ class DSC():
                         self.tmbUI["timeout"] = 100 - (time.time() - self.testStart);
 
                     else:
-                        self.tmbUI["timeout"] = 30 - (time.time() - self.testStart);
+                        self.tmbUI["timeout"] = self.tot_time - (time.time() - self.testStart);
 
                     if self.tmbUI["timeout"] < .150:
                         self.tmbUI["timeout"] = .150
@@ -213,8 +220,7 @@ class DSC():
                 timed_out = True
                 while countDown.getTime() > 0:
                     key = event.getKeys(keyList=['1', '2', '3'], timeStamped=True)
-                    if key:
-                        # TODO highlight red
+                    if key:                        
                         kvl = key[0][0]
                         self.send_marker("Trial-res_0")
                         self.tmbUI["rt"] = trialClock.getTime()
@@ -271,8 +277,10 @@ class DSC():
             ]
 
             present_msg(mes, self.win, key_resp="return")
-
-        self.win.close()
+            
+        # Close win if just created for the task
+        if self.win_temp:
+            self.win.close()
 
         # TODO:     SAVE RESULTS AS YOU LIKE THE MOST
         #
@@ -288,7 +296,7 @@ class DSC():
 
 
     def setFrameSequence(self):
-        psychopyInfo = u"<b>PsychoPy</b> is an <i>open-source</i> \n Python <b>application</b>"
+        
         # messages
         testMessage ={
             "begin": [
@@ -296,7 +304,7 @@ class DSC():
 
                 self.my_textbox2('Press <b>[enter]</b> for instructions', (0, -6)),
 
-                visual.ImageStim(self.win, image='DSC/images/key.png', pos=(0, 0), units='deg')
+                visual.ImageStim(self.win, image=self.fpath + '/DSC/images/key.png', pos=(0, 0), units='deg')
                 ],
 
             "practice": [
@@ -307,13 +315,13 @@ class DSC():
 
                     self.my_textbox2('Press [enter] to continue',(0, -7)),
 
-                    visual.ImageStim(self.win, image='DSC/images/key.png', pos=(0, 0), units='deg')
+                    visual.ImageStim(self.win, image=self.fpath+'/DSC/images/key.png', pos=(0, 0), units='deg')
                 ],
 
                 [
-                    visual.ImageStim(self.win, image='DSC/images/1.gif', pos=(0, 6), units='deg'),
+                    visual.ImageStim(self.win, image=self.fpath+'/DSC/images/1.gif', pos=(0, 6), units='deg'),
 
-                    visual.ImageStim(self.win, image='DSC/images/key.png', pos=(0, 0), units='deg'),
+                    visual.ImageStim(self.win, image=self.fpath+'/DSC/images/key.png', pos=(0, 0), units='deg'),
 
                     self.my_textbox2("When a symbol appears at the top, " +
                            "press its number on the <b>keyboard</b> \n" +
@@ -322,9 +330,9 @@ class DSC():
                     self.my_textbox2( 'Press <b>[enter]</b> to continue',(0, -10)),
                     ],
                 [
-                    visual.ImageStim(self.win, image='DSC/images/2.gif', pos=(0, 6), units='deg'),
+                    visual.ImageStim(self.win, image=self.fpath+'/DSC/images/2.gif', pos=(0, 6), units='deg'),
 
-                    visual.ImageStim(self.win, image='DSC/images/keySmall.png', pos=(0, 0), units='deg'),
+                    visual.ImageStim(self.win, image=self.fpath+'/DSC/images/keySmall.png', pos=(0, 0), units='deg'),
 
                     self.my_textbox2("Let's practice a few symbols.", (0, -6))
                     ]
@@ -373,7 +381,7 @@ class DSC():
                     "message": frameMessage[i],
                     "symbol": frameSymbol[i],
                     "digit": frameDigit[i],
-                    "source": f"DSC/images/{frameSymbol[i]}.gif"
+                    "source":self.fpath + f'/DSC/images/{frameSymbol[i]}.gif'
                     })
 
 
