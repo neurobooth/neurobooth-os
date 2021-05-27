@@ -57,3 +57,8 @@ while(True):
 cap.release()
 cv2.destroyAllWindows()
 
+
+video_cap = dshowcapture.DShowCapture()
+dev_info = video_cap.get_info()
+
+video_cap.capture_device_by_dcap(0, 33, 1280,720, 90)

@@ -46,7 +46,7 @@ def connect_mbient(dev_name="RH", try_nmax=5):
     while True:
         try:
             print(f"Trying to connect mbient {dev_name}")
-            sens = Sensor(mac)
+            sens = Sensor(mac, dev_name)
             return sens 
         except:        
             print(f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries")

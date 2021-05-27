@@ -12,9 +12,10 @@ import uuid
 states = []
 
 class Sensor:
-    def __init__(self, mac_address, buzz_time_sec=2):
+    def __init__(self, mac_address, dev_name="mbient", buzz_time_sec=2):
         
         self.mac = mac_address
+        self.dev_name = dev_name
         self.connector = MetaWear
         self.connect()
         
@@ -31,7 +32,7 @@ class Sensor:
     def connect(self):        
         self.device = self.connector(self.mac)
         self.device.connect()       
-        print(f"Mbient {self.mac} connected")
+        print(f"Mbient {self.dev_name} connected")
         
     def data_handler(self, ctx, data):
         values = parse_value(data, n_elem = 2)
@@ -66,7 +67,7 @@ class Sensor:
 
         libmetawear.mbl_mw_datasignal_subscribe(self.processor, None, self.callback)
         
-        print(f"Mbient {self.mac} setup")
+        print(f"Mbient {self.dev_name} setup")
         
     def info(self):
         
@@ -104,11 +105,11 @@ class Sensor:
     
         self.device.on_disconnect = lambda s: e.set()
         libmetawear.mbl_mw_debug_reset(self.device.board)
-        print("Stopping ", self.device.board)
+        print("Stopping ", self.dev_name)
         self.streaming = False
     
     def close(self):
-       self.device.on_disconnect = lambda status: print ("Mbient disconnected!")
+       self.device.on_disconnect = lambda status: print (f"Mbient {self.dev_name} disconnected!")
        self.device.disconnect()
         
 
