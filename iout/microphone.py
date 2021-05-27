@@ -62,10 +62,5 @@ class MicStream():
         self.streaming = False
 
 
-
-        #try:
-       #     self.outlet_audio.__del__()
-        #except:# AttributeError:
-         #   print("AttributeError mic outlet")
             
                 
