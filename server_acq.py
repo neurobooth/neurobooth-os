@@ -64,7 +64,8 @@ def Main():
 
         if "vis_stream" in data:
             if not lowFeed_running:
-                lowFeed = VidRec_Brio(camindex=5, doPreview=True)    
+                lowFeed = VidRec_Brio(camindex=config.cam_inx["lowFeed"],
+                                      doPreview=True)    
                 fprint ("LowFeed running")
                 lowFeed_running = True
             else:                
@@ -84,15 +85,19 @@ def Main():
     
         elif "record_start" in data:  #-> "record:FILENAME"
             fprint("Starting recording")            
-            fname = config.paths['data_out'] + data.split(":")[-1] 
-            streams["hiFeed"].start(fname)
-            streams["intel"].start(fname)
+            fname = config.paths['data_out'] + data.split(":")[-1]
+            for k in streams.keys():
+                if k[:-1] in ["hiFeed", "intel"]:
+                    streams[k].start(fname)
+            
             send_stdout()
             
         elif "record_stop" in data: 
-            fprint("Closing recording")
-            streams["hiFeed"].stop()
-            streams["intel"].stop()            
+            fprint("Closing recording")    
+            for k in streams.keys():
+                if k[:-1] in ["hiFeed", "intel"]:
+                    streams[k].stop()
+
             send_stdout()
             
         elif data in ["close", "shutdown"]: 

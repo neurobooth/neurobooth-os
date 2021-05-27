@@ -22,7 +22,7 @@ def catch_exception(f):
 
 
 class VidRec_Brio():        
-    def __init__(self,  fourcc=cv2.VideoWriter_fourcc(*'MJPG'), sizex=640, sizey=480,
+    def __init__(self,  fourcc=cv2.VideoWriter_fourcc(*'MJPG'), sizex=1280, sizey=720,
                  fps=90, camindex=0, mode=33, doPreview=False):
         
         self.open = True
@@ -111,7 +111,7 @@ class VidRec_Brio():
             
     @catch_exception
     def prepare(self, name="temp_video"):
-        self.video_filename = name + ".avi"
+        self.video_filename ="{}_brio{}_{}.avi".format(name, self.device_index, time.time())    
         self.video_out = cv2.VideoWriter(self.video_filename, self.fourcc, self.fps, self.frameSize)
         self.outlet = self.createOutlet(self.video_filename)
         self.streaming = True

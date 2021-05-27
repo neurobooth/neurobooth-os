@@ -4,7 +4,7 @@ https://my.visualstudio.com/Downloads?q=visual%20studio%202017&wt.mc_id=o~msft~v
 Follow instructions from https://mbientlab.com/tutorials/PyWindows.html:
 
 ## install VS2017 components: 
-C# and Visual Basic Roslyn compilers
+ 
 MSBuild
 Static analysis tools
 .NET Framework 4.6.1 SDK

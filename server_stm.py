@@ -101,13 +101,15 @@ def Main():
             send_stdout()
             
         elif "prepare" in data:
+            
             if len(streams):
                 fprint("Checking prepared devices")
                 streams = reconnect_streams(streams)
-            streams = start_lsl_threads("presentation")
-            send_stdout()
-            streams['mouse'].start()
-            fprint("Preparing devices")
+            else:    
+                streams = start_lsl_threads("presentation")
+                send_stdout()
+                streams['mouse'].start()
+                fprint("Preparing devices")
                                                
         elif "present" in data:   #-> "present:TASKNAME:subj_id"
             task = data.split(":")[1]  
