@@ -8,8 +8,9 @@ import config
 from netcomm.client import socket_message, node_info
 from tasks.DSC import DSC
 from tasks.mouse import mouse_task
+from psychopy import core, visual, event
+from psychopy.visual.textbox2 import TextBox2
 
-  
 def fake_task(s, cmd, subj_id, task_name, send_stdout):
     sleep(1)
     input("Press a key to start the fakest task")
@@ -32,8 +33,42 @@ def fake_task(s, cmd, subj_id, task_name, send_stdout):
     # sleep(1)
     # input("All closed, bye now. Press enter")
     # sleep(1)
+
+
+def run_task(task_funct, s2, cmd, subj_id, task, send_stdout, task_karg={}):    
+    resp = socket_message(f"record_start:{subj_id}_{task}", "acquisition", wait_data=1)
+    print(resp.decode("utf-8"))
+    s2.sendall(cmd.encode('utf-8') )
+    s2.sendall(b"select all\n")
+    sleep(.01)
+    s2.sendall(b"start\n")
+    res = task_funct(**task_karg)
+    s2.sendall(b"stop\n")
+    socket_message("record_stop", "acquisition")
+    return res
+                
+                
+def my_textbox2(win, text, pos=(0,0), size=(None, None)):
+
+    tbx = TextBox2(win, pos=pos, color='black', units='deg',lineSpacing=1,
+                   letterHeight=1.2, text=text, font="Arial", size=size,
+                   borderColor=None, fillColor=None, editable=False, alignment='center')
+    return tbx
     
-  
+def welcome_screen():
+    win = visual.Window((1800, 1000), monitor='testMonitor', color='white')  
+    text = "Welcome to the <b>Neurobooth</b>"
+    tbx = [ my_textbox2(win, text, pos=(0,6))]
+    
+    text = "Get ready to do some neuromuscular and cognitive assessments. \nRemember, the sky is the limit."    
+    tbx.append( my_textbox2(win, text, pos=(0,-3), size=(20, None)))
+    
+    for t in tbx:
+        t.draw()
+    win.flip()
+    win.winHandle.activate()
+    return win
+
 def Main(): 
     host = "" 
     # time_del = 0
@@ -66,7 +101,8 @@ def Main():
     def fprint(str_print):
         print(str_print)
         send_stdout()
-           
+    
+    win = welcome_screen()
     streams, screen_running = {}, False            
     # a forever loop until client wants to exit 
     while True:   
@@ -129,17 +165,15 @@ def Main():
                 # c.send(msg.encode("ascii")) 
 
             elif task == "mouse_task":    
-                fprint("Starting mouse Task")
-                socket_message(f"record_start:{subj_id}_{task}", "acquisition")
-                s2.sendall(cmd.encode('utf-8') )
-                s2.sendall(b"select all\n")
-                sleep(.01)
-                s2.sendall(b"start\n")
+                fprint("Starting {task}")
+                task_karg ={"win": win}
+                res = run_task(mouse_task, s2, cmd, subj_id, task, send_stdout, task_karg)
                 
-                res = mouse_task()
-                                
-                s2.sendall(b"stop\n")
-                socket_message("record_stop", "acquisition")
+            elif task == "DSC_task": 
+                fprint("Starting {task}")
+                task_karg ={"win": win}
+                dsc = run_task(DSC, s2, cmd, subj_id, task, send_stdout, task_karg)
+
     
             else:
                 fprint(f"Task not {task} implemented")
@@ -168,6 +202,7 @@ def Main():
     
     s.close() 
     sys.stdout = old_stdout
+    win.close()
   
   
 Main() 

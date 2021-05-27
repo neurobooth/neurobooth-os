@@ -14,14 +14,24 @@ class MicStream():
         
         # Create audio object
         audio = pyaudio.PyAudio()
-    
+        
+        # Get Blue Yeti mic device ID
+        info = audio.get_host_api_info_by_index(0)        
+        for i in range(info.get('deviceCount')):
+                if (audio.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+                    dev_name = audio.get_device_info_by_host_api_device_index(0, i).get('name')
+                    if "BLUE USB" in dev_name:
+                        dev_inx = i
+                        break
+
         # Create stream
         self.stream_in = audio.open(format=FORMAT,
                                  channels=CHANNELS,
                                  rate=RATE,
                                  input=True,
                                  output=True,
-                                 frames_per_buffer=CHUNK)
+                                 frames_per_buffer=CHUNK,
+                                 input_device_index=dev_inx)
     
         # Setup outlet stream infos
         self.oulet_id =  str(uuid.uuid4())
