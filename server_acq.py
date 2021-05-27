@@ -79,8 +79,11 @@ def Main():
             else:
                 streams = start_lsl_threads("acquisition")            
                 streams['micro'].start()
-#               streams["mbient"].start()
-            fprint("\n Deices prepared ")
+                if streams.get("mbient") is not None:
+                   streams["mbient"].start()
+            devs = list(streams.keys())
+            fprint(f"ACQ devices prepared: {devs}")
+            send_stdout()
             
     
         elif "record_start" in data:  #-> "record:FILENAME"
@@ -89,7 +92,9 @@ def Main():
             for k in streams.keys():
                 if k[:-1] in ["hiFeed", "intel"]:
                     streams[k].start(fname)
-            
+            msg = "ACQ_ready"
+            c.send(msg.encode("ascii"))
+            fprint("ready to record")
             send_stdout()
             
         elif "record_stop" in data: 
