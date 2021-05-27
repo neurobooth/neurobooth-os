@@ -109,13 +109,16 @@ class stream_plotter():
         
         self.inlets = inlets
         
-        if self.plt_img is True and any([k for k in ['Mouse',"mbient", "Audio"] if k in inlets.key()]):
+        if self.plt_img is True and any([k for k in ['Mouse',"mbient", "Audio"] if k in inlets.keys()]):
             self.thread_img = threading.Thread(target=self.update_imgs, daemon=True)               
             self.thread_img.start()
 
-        if self.plt_ts is True and len(inlets):  
+        if self.plt_ts is True and any([k for k in ['Mouse',"mbient", "Audio"] if k in inlets.keys()]):  
             self.thread_ts = threading.Thread(target=self.update_ts, daemon=True)        
             self.thread_ts.start()
+        else:
+            self.pltotting_ts =  False
+            
         
         
         
@@ -123,7 +126,7 @@ class stream_plotter():
         self.pltotting_img = False
         self.pltotting_ts =  False
         self.inlets = {}
-        print("Closeing plotting windows")
+        print("Closed plotting windows")
         
 
     def update_ts(self):
@@ -194,14 +197,10 @@ class stream_plotter():
                     ylim = inlet.ydata.flatten()
                     axs[ax_ith].set_ylim([ min(ylim) , max(ylim)])
             
-            # if frame_ts != []:
-            #     for ax in axs:
-            #         ax.axvline(frame_ts, color="b", alpha=.3, linestyle='--')
-       
-
-            # plt.pause(sampling) 
+ 
             mypause(sampling)
-            if len( self.inlets)== 0:
+            if len(self.inlets)== 0:
+                self.pltotting_ts = False
                 break
             # time.sleep(.1)
             

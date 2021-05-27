@@ -2,7 +2,7 @@
 import socket 
 import select
 from time import time, sleep
-import wmi
+# import wmi
 import re
 import os
 from secrets_info import secrets
@@ -11,12 +11,12 @@ from secrets_info import secrets
 def socket_message(message, node_name, wait_data=0):
     
     def connect():        
-        t0 = time()
+        # t0 = time()
         s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) 
       
         # connect to server on local computer 
         s.connect((host,port)) 
-        print(f"* connected {time()- t0}")
+        # print(f"* connected {time()- t0}")
         # t0 = time()
         s.send(message.encode('ascii'))    
         # print(f"sent {time()- t0}")    
@@ -36,13 +36,13 @@ def socket_message(message, node_name, wait_data=0):
     except:# TimeoutError:
         print(f"{node_name} socket connexion timed out, trying to restart server")
         pid = start_server(node_name)
-        print(f"{pid} on server {node_name} created")
+        # print(f"{pid} on server {node_name} created")
         data = connect()
     
     return data    
 
 
-def socket_time(node_name, print_flag=1, time_out=1):
+def socket_time(node_name, print_flag=1, time_out=3):
     
     host, port = node_info(node_name) 
               
