@@ -43,9 +43,9 @@ def connect_mbient(dev_name="RH", try_nmax=5):
     mac = config.mbient_macs[dev_name]
     
     tinx = 0
-    while True:
-        try:
-            print(f"Trying to connect mbient {dev_name}")
+    print(f"Trying to connect mbient {dev_name}, mac {mac}")
+    while True:        
+        try:            
             sens = Sensor(mac, dev_name)
             return sens 
         except:        
@@ -59,7 +59,7 @@ def connect_mbient(dev_name="RH", try_nmax=5):
 def close_streams(streams, cams=False):
     for k in list(streams):
         print(f"Closing {k} stream")
-        if cams and k[:-1] in ["hiFeed", "intel"]:
+        if cams and k[:-1] in ["hiFeed", "intel", "mbient"]:
             streams[k].close()
         else:
             streams[k].stop()
