@@ -152,6 +152,8 @@ def serv_data_received():
         except queue.Empty:
            break
 
+event, values = window.read(.5) 
+window['-OUTPUT-'].__del__()
 
 while True:
     event, values = window.read(.5)
@@ -175,6 +177,7 @@ while True:
         dev_prepared = True
     
     elif event == 'plot':
+        event = "None"
         if plttr.pltotting_ts is True:
             inlets = update_streams_fromID(stream_ids)
             plttr.inlets = inlets
