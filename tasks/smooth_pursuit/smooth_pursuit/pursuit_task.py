@@ -10,7 +10,7 @@ from psychopy import visual, core, event, monitors
 from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 from math import sin, pi
 
-dummy_mode = True
+dummy_mode = False
 # Monitor resolution
 SCN_W, SCN_H = (1920, 1080)
 
@@ -18,7 +18,7 @@ SCN_W, SCN_H = (1920, 1080)
 if dummy_mode:
     tk = pylink.EyeLink(None)
 else:
-    tk = pylink.EyeLink('192.168.0.15')
+    tk = pylink.EyeLink('192.168.100.15')
 
 # Step 2: Open an EDF data file on the Host
 tk.openDataFile('pursuit.edf')
@@ -46,7 +46,7 @@ tk.sendCommand("calibration_type = HV9")
 # Step 4: # open a window for graphics and calibration
 #
 # Create a monitor object to store monitor information
-customMon = monitors.Monitor('demoMon', width=35, distance=65)
+customMon = monitors.Monitor('demoMon', width=55, distance=55)
 
 # Open a PsychoPy window
 win = visual.Window((SCN_W, SCN_H), fullscr=False,
