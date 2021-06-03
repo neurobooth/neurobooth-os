@@ -40,7 +40,7 @@ class DSC():
         self.demo = False                   #      # URL parameter: run in demo mode
         self.filename = "fname.csv"           #        # filename for data
         self.fpath = op.dirname(op.abspath(__file__)).replace("\\", "/")
-        self.tot_time = 30
+        self.tot_time = 10
         
         
         try:
@@ -88,6 +88,7 @@ class DSC():
 
         # create psychopy window
         if win is None:
+            print("*No win provided")
             self.win = visual.Window((1800, 1070), monitor='testMonitor', allowGUI=True, color='white')
             self.win_temp = True
         else:
@@ -281,6 +282,8 @@ class DSC():
         # Close win if just created for the task
         if self.win_temp:
             self.win.close()
+        else:
+            self.win.flip()
 
         # TODO:     SAVE RESULTS AS YOU LIKE THE MOST
         #

@@ -1,15 +1,18 @@
 import socket 
 import io
+import pandas as pd
 import sys
 from time import time, sleep  
 from iout.screen_capture import ScreenMirror
-from iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
+from iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
 import config
 from netcomm.client import socket_message, node_info
 from tasks.DSC import DSC
 from tasks.mouse import mouse_task
 from psychopy import core, visual, event
 from psychopy.visual.textbox2 import TextBox2
+from tasks.test_timing.audio_video_test import Timing_Test
+
 
 def fake_task(s, cmd, subj_id, task_name, send_stdout):
     sleep(1)
@@ -37,7 +40,7 @@ def fake_task(s, cmd, subj_id, task_name, send_stdout):
 
 def run_task(task_funct, s2, cmd, subj_id, task, send_stdout, task_karg={}):    
     resp = socket_message(f"record_start:{subj_id}_{task}", "acquisition", wait_data=1)
-    print(resp.decode("utf-8"))
+    print(resp)
     s2.sendall(cmd.encode('utf-8') )
     s2.sendall(b"select all\n")
     sleep(.01)
@@ -56,9 +59,9 @@ def my_textbox2(win, text, pos=(0,0), size=(None, None)):
     return tbx
     
 def welcome_screen():
-    win = visual.Window((1800, 1000), monitor='testMonitor', color='white')  
+    win = visual.Window((1800, 1000), monitor='testMonitor', color='white', allowGUI=False, fullscr=True)  
     text = "Welcome to the <b>Neurobooth</b>"
-    tbx = [ my_textbox2(win, text, pos=(0,6))]
+    tbx = [my_textbox2(win, text, pos=(0,6))]
     
     text = "Get ready to do some neuromuscular and cognitive assessments. \nRemember, the sky is the limit."    
     tbx.append( my_textbox2(win, text, pos=(0,-3), size=(20, None)))
@@ -166,14 +169,29 @@ def Main():
 
             elif task == "mouse_task":    
                 fprint("Starting {task}")
-                task_karg ={"win": win}
+                task_karg ={"win": win,
+                            "path": config.paths['data_out'],
+                            "subj_id": subj_id,
+                            "marker_outlet": streams['marker']}
+                
                 res = run_task(mouse_task, s2, cmd, subj_id, task, send_stdout, task_karg)
                 
             elif task == "DSC_task": 
                 fprint("Starting {task}")
-                task_karg ={"win": win}
+                task_karg ={"win": win,
+                            "marker_outlet": streams['marker']}
                 dsc = run_task(DSC, s2, cmd, subj_id, task, send_stdout, task_karg)
-
+                
+                df_res = pd.DataFrame(dsc.results) 
+                df_out = pd.DataFrame.from_dict(dsc.outcomes, orient='index', columns=['vals'])                
+                task_n = task.replace("_task", "")
+                df_res.to_csv(config.paths['data_out'] + f'{subj_id}_{task_n}_results.csv')
+                df_out.to_csv(config.paths['data_out'] + f'{subj_id}_{task_n}_outcomes.csv')
+                
+            elif task == 'timing_task':
+            	fprint("Starting {task}")
+            	task_karg ={"win": win, "event_marker": streams['marker']}            	
+            	run_task(Timing_Test, s2, cmd, subj_id, task, send_stdout, task_karg)
     
             else:
                 fprint(f"Task not {task} implemented")
@@ -195,6 +213,9 @@ def Main():
         elif "time_test" in data:
             msg = f"ping_{time()}"
             c.send(msg.encode("ascii"))
+        elif "connect_mbient" in data:
+            
+            mbient = connect_mbient()
 
         else: 
             fprint(data)

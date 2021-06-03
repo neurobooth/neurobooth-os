@@ -1,12 +1,14 @@
-import socket 
+import socket, os
 import io
 import sys
 from time import time, sleep
 from iout.camera_brio import VidRec_Brio
-from iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
+from iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
 import config
+import shutil
 from netcomm.client import socket_message, node_info
 
+os.chdir(r'C:\neurobooth-eel\\')
 
 def Main(): 
     host = "" 
@@ -35,7 +37,7 @@ def Main():
             mystdout.truncate(0)
             mystdout.seek(0)
         except Exception as e: 
-            print(e)
+             print(e)
             
     def fprint(str_print):
         print(str_print)
@@ -118,9 +120,11 @@ def Main():
                 break
                 
         elif "time_test" in data:
-            msg = f"ping_{time()}"
+            msg = f"ping_{time()}"            
             c.send(msg.encode("ascii"))
             
+        elif "connect_mbient" in data:
+            mbient = connect_mbient()            
         else:
             fprint("ACQ" + data)
             
@@ -135,3 +139,4 @@ def Main():
             print("EXCEPTION: socket error close")
   
 Main() 
+shutil.copytree(config.paths["data_out"], config.paths['nas'], dirs_exist_ok=True)
