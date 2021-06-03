@@ -143,7 +143,7 @@ def start_server(node_name, save_pid_txt=True):
     
     if save_pid_txt:
         with open("server_pids.txt","a") as f:
-            f.write( f"{pid},{node_name},{time()}\n")
+            f.write( f"{pid}|{node_name}|{time()}\n")
     return pid
 
 
@@ -191,7 +191,7 @@ def kill_pid_txt(txt_name="server_pids.txt", node_name=None):
              
          new_lines = []
          for line in Lines:
-            pid, node, tsmp = line.split(",")
+            pid, node, tsmp = line.split("|")
             if node_name is not None and node_name != node: 
                 new_lines.append(line)
                 continue
