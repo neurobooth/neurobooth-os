@@ -5,6 +5,7 @@ from time import time, sleep
 from iout.camera_brio import VidRec_Brio
 from iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
 import config
+import shutil
 from netcomm.client import socket_message, node_info
 
 os.chdir(r'C:\neurobooth-eel\\')
@@ -138,3 +139,4 @@ def Main():
             print("EXCEPTION: socket error close")
   
 Main() 
+shutil.copytree(config.paths["data_out"], config.paths['nas'], dirs_exist_ok=True)
