@@ -11,7 +11,7 @@ class MicStream():
                  FORMAT=pyaudio.paFloat32):
        
         self.CHUNK = CHUNK
-        
+        self.fps = RATE
         # Create audio object
         audio = pyaudio.PyAudio()
         
@@ -22,6 +22,7 @@ class MicStream():
                     dev_name = audio.get_device_info_by_host_api_device_index(0, i).get('name')
                     if "BLUE USB" in dev_name:
                         dev_inx = i
+                        self.device_name = dev_name
                         break
 
         # Create stream
@@ -37,6 +38,8 @@ class MicStream():
         self.oulet_id =  str(uuid.uuid4())
         self.stream_info_audio = StreamInfo('Audio', 'Experimental', CHUNK, RATE/CHUNK,
                                        'float32', self.oulet_id)
+        info.desc().append_child_value("fps", self.fps)
+        info.desc().append_child_value("device_name", self.device_name)
         print(f"-OUTLETID-:Audio:{self.oulet_id}")
         
         self.streaming = False

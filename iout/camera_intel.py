@@ -29,7 +29,7 @@ def catch_exception(f):
 
 class VidRec_Intel():        
     def __init__(self, size_rgb=(640, 480), size_depth=(640, 360),
-                 fps_rgb=30, fps_depth=30, camindex=[3, "SerialNumber"]):
+                 fps_rgb=60, fps_depth=60, camindex=[3, "SerialNumber"]):
         
         self.open = True
         self.recording = False
@@ -66,8 +66,11 @@ class VidRec_Intel():
         info = StreamInfo(name=streamName, type='videostream', channel_format='int32',
                           channel_count=2, source_id=self.outlet_id)
         info.desc().append_child_value("videoFile", filename)
-        info.desc().append_child_value("size_rgb_depth", str(self.frameSize))  
-        info.desc().append_child_value("serial_number", self.serial_num)  
+        info.desc().append_child_value("size_rgb", str(self.frameSize[0])) 
+        info.desc().append_child_value("size_depth", str(self.frameSize[1]))
+        info.desc().append_child_value("serial_number", self.serial_num) 
+        info.desc().append_child_value("fps_rgb", self.fps[0])
+        info.desc().append_child_value("fps_depth", self.fps[1])
         print(f"-OUTLETID-:{streamName}:{self.outlet_id}")
         return StreamOutlet(info)
     

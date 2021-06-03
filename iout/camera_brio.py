@@ -36,7 +36,7 @@ class VidRec_Brio():
         self.frameSize = (sizex, sizey) # video formats and sizes also depend and vary according to the camera used
         self.video_cap = dshowcapture.DShowCapture()
         self.mode = mode
-
+        self.device_name = self.video_cap.get_info()[self.device_index]['name']
         self.capture_cap()
         
         if doPreview:
@@ -55,11 +55,16 @@ class VidRec_Brio():
  
     @catch_exception        
     def createOutlet(self, filename):
-        streamName = f'VideoFrameIndex_{self.device_index}'
+        streamName = f'BrioFrameIndex_{self.device_index}'
         self.oulet_id = str(uuid.uuid4())
         info = StreamInfo(name=streamName, type='videostream', channel_format='int32', channel_count=1,
                           source_id=self.oulet_id)
         info.desc().append_child_value("videoFile", filename)
+ 
+        info.desc().append_child_value("size_rgb", str(self.frameSize)) 
+        # info.desc().append_child_value("serial_number", self.serial_num) 
+        info.desc().append_child_value("fps_rgb", self.fps)
+        info.desc().append_child_value("device_name", self.device_name)
         print(f"-OUTLETID-:{streamName}:{self.oulet_id}")
         return StreamOutlet(info)
        

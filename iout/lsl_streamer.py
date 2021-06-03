@@ -37,7 +37,7 @@ def start_lsl_threads(node_name):
     return streams
 
 
-def connect_mbient(dev_name="RH", try_nmax=5):
+def connect_mbient(dev_name="LF", try_nmax=5):
     from iout.mbient import Sensor
     
     mac = config.mbient_macs[dev_name]
@@ -48,8 +48,8 @@ def connect_mbient(dev_name="RH", try_nmax=5):
         try:            
             sens = Sensor(mac, dev_name)
             return sens 
-        except:        
-            print(f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries")
+        except Exception as e:        
+            print(f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries {e}")
             tinx += 1
             if tinx >= try_nmax:
                 print(f"Failed to connect mbient {dev_name}")
