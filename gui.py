@@ -77,6 +77,7 @@ def make_layout(frame_sz=(320, 240)):
         [space()],
         [space(), sg.Checkbox('Symbol Digit Matching Task', key='DSC_task', size=(44, 1))],
         [space(), sg.Checkbox('Mouse Task', key='mouse_task', size=(44, 1))],
+        [space(), sg.Checkbox('Time testing', key='timing_task', size=(44, 1))],
         [space()],          
         [space(), sg.ReadFormButton('Save', button_color=('white', 'black'))],         
         [space()],
@@ -153,8 +154,9 @@ def serv_data_received():
            break
 
 event, values = window.read(.5) 
-window['-OUTPUT-'].__del__()
+# window['-OUTPUT-'].__del__()
 
+inlet_keys = []
 while True:
     event, values = window.read(.5)
     serv_data_received()
@@ -178,6 +180,11 @@ while True:
     
     elif event == 'plot':
         event = "None"
+        if len(inlets) == 0:
+            ctr_rec.prepare_devices() 
+            serv_data_received()
+            inlets = update_streams_fromID(stream_ids)
+                       
         if plttr.pltotting_ts is True:
             inlets = update_streams_fromID(stream_ids)
             plttr.inlets = inlets
@@ -239,6 +246,11 @@ while True:
             window[el[0]].update(data=el[1])
     
     serv_data_received()
+    
+    for k in stream_ids.keys():
+        if k not in inlet_keys:
+            inlet_keys.append(k)            
+            window['inlet_State'].update(inlet_keys)
 
 window.close()
 window['-OUTPUT-'].__del__()
