@@ -59,7 +59,7 @@ def my_textbox2(win, text, pos=(0,0), size=(None, None)):
     return tbx
     
 def welcome_screen():
-    win = visual.Window((1800, 1000), monitor='testMonitor', color='white', allowGUI=False, fullscr=True)  
+    win = visual.Window((1800, 1000), monitor='testMonitor', color='white', allowGUI=False, fullscr=False)  
     text = "Welcome to the <b>Neurobooth</b>"
     tbx = [my_textbox2(win, text, pos=(0,6))]
     
