@@ -14,7 +14,7 @@ from psychopy.hardware import keyboard
 
 
 def mouse_task():
-    def __init__(self, marker_outlet=None, win=None, path="", subj_id="test"):
+    def init(self, marker_outlet=None, win=None, path="", subj_id="test"):
         # Store info about the experiment session
         psychopyVersion = '2020.2.3' # psychopy.__version__
         expName = 'mouse'  # from the Builder filename that created this script
@@ -277,4 +277,5 @@ def mouse_task():
         if self.win_tem:
             win.close()
         # core.quit()
-    # mouse_task()
+    
+    mouse_task()

@@ -40,7 +40,7 @@ class DSC():
         self.demo = False                   #      # URL parameter: run in demo mode
         self.filename = "fname.csv"           #        # filename for data
         self.fpath = op.dirname(op.abspath(__file__)).replace("\\", "/")
-        self.tot_time = 10
+        self.tot_time = 30
         
         
         try:
