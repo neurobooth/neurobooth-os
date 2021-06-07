@@ -69,8 +69,8 @@ class VidRec_Intel():
         info.desc().append_child_value("size_rgb", str(self.frameSize[0])) 
         info.desc().append_child_value("size_depth", str(self.frameSize[1]))
         info.desc().append_child_value("serial_number", self.serial_num) 
-        info.desc().append_child_value("fps_rgb", self.fps[0])
-        info.desc().append_child_value("fps_depth", self.fps[1])
+        info.desc().append_child_value("fps_rgb", str(self.fps[0]))
+        info.desc().append_child_value("fps_depth", str( self.fps[1]))
         print(f"-OUTLETID-:{streamName}:{self.outlet_id}")
         return StreamOutlet(info)
     

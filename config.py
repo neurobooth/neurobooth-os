@@ -55,8 +55,8 @@ mbient_macs = {
 
 cam_inx = {
     "lowFeed": 0,
-    "brio1": 1,
-    "brio2": 2,
+    "brio1": 4,
+    "brio2": 7,
     "intel1": [1, '037522250727'],
     "intel2": [2, '036322250240'],
     "intel3": [3, '037322251461']    

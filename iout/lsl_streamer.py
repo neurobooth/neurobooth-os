@@ -23,9 +23,9 @@ def start_lsl_threads(node_name):
         
         
         mbient_name = 'RH'
-        streams["mbient"] = connect_mbient(mbient_name)
-        if streams["mbient"] is None:
-            del streams["mbient"]
+#        streams["mbient"] = connect_mbient(mbient_name)
+#        if streams["mbient"] is None:
+#            del streams["mbient"]
        
     elif node_name == "presentation":     
         from iout.marker import marker_stream       

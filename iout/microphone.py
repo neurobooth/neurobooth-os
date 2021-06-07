@@ -38,8 +38,9 @@ class MicStream():
         self.oulet_id =  str(uuid.uuid4())
         self.stream_info_audio = StreamInfo('Audio', 'Experimental', CHUNK, RATE/CHUNK,
                                        'float32', self.oulet_id)
-        info.desc().append_child_value("fps", self.fps)
-        info.desc().append_child_value("device_name", self.device_name)
+        
+        self.stream_info_audio.desc().append_child_value("fps", str(self.fps))
+        self.stream_info_audio.desc().append_child_value("device_name", self.device_name)
         print(f"-OUTLETID-:Audio:{self.oulet_id}")
         
         self.streaming = False
