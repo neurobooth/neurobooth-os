@@ -9,7 +9,7 @@ Created on Thu Jan 14 08:21:16 2021
 paths = {}
 paths["data_out"] = r"C:\neurobooth\neurobooth_data\\"
 paths["LabRecorder"] = r'C:\neurobooth\LabRecorder\LabRecorder.exe'
-paths['nas'] =  r'Z:\session_data'
+paths['nas'] =  r'Z:\session_data\\'
 
 
 task_config = {}
@@ -55,8 +55,8 @@ mbient_macs = {
 
 cam_inx = {
     "lowFeed": 0,
-    "brio1": 1,
-    "brio2": 2,
+    "brio1": 4,
+    "brio2": 7,
     "intel1": [1, '037522250727'],
     "intel2": [2, '036322250240'],
     "intel3": [3, '037322251461']    

@@ -148,4 +148,82 @@ for i, d in enumerate(data):
 plt.legend()
 
 
-np.linspace(
+
+
+plt.figure()
+for i, d in enumerate(data):
+    name = d['info']['name']
+    
+    fig, ax = plt.subplots(1,1)
+    tdiff = np.diff(d['time_stamps'])
+    ax.plot(tdiff)
+    ax.set_title(name)
+   
+
+    if d['time_stamps'].size == 0 :
+        print(f"{name} samples:0")
+        continue
+    ts1, = d['footer']['info']['last_timestamp']
+    ts0, = d['footer']['info']['first_timestamp']
+    # ts0 = d['time_stamps'][2]
+    # ts1 = d['time_stamps'][-1]
+    tsn, = d['footer']['info']['sample_count']
+    duration = float(ts1)-float(ts0)
+    fps = 0 if int(tsn)==0 else int(tsn)/duration
+    
+    print(f"{name} samples:{tsn}, duration: {duration}, fps:{fps}")
+
+    tmst = d['time_stamps']
+    # plt.plot(tmst, [i]*len(tmst), ".", label=name)
+
+plt.legend()
+
+n = 2
+plt.figure()
+plt.hist(1/np.diff(data[n]['time_stamps']), 25)
+
+
+# plot audio + markers
+plt.legend()
+d = data[0]
+name = d['info']['name']
+
+tt = d['time_stamps']
+ts = d['time_series']
+ts = [0]*10
+plt.plot(tt,ts, "*", label=name)
+ts = [0.5]*10
+plt.plot(tt,ts, "*", label=name)
+plt.plot(tt,ts, "-", label=name)
+plt.axvline(tt,ts)
+plt.axvline(tt)
+tt
+plt.vlines([tt])
+
+plt.vlines(tt,0, 1, "red")
+
+plt.figure()
+n=0
+d = data[n]
+tt = d['time_stamps']
+name = d['info']['name']
+plt.vlines(tt,0, 1)
+
+for i, d in enumerate(data):
+    name = d['info']['name']
+    print(name)
+    if name != ['Audio']:
+        continue
+    if d['time_stamps'].size == 0 :
+        print(f"{name} samples:0")
+        continue
+    
+    tt = d['time_stamps']
+    ts = d['time_series']
+    
+    if isinstance(ts, list):
+        ts = np.array(ts)
+    
+    ts = ts.max(1)
+    # ts_f = ts.flatten("C")
+    plt.plot(tt,ts, color="r", label=name)

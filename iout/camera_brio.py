@@ -23,11 +23,11 @@ def catch_exception(f):
 
 class VidRec_Brio():        
     def __init__(self,  fourcc=cv2.VideoWriter_fourcc(*'MJPG'), sizex=1280, sizey=720,
-                 fps=90, camindex=0, mode=33, doPreview=False):
+                 fps=60, camindex=0, mode=33, doPreview=False):
         
         self.open = True
         self.doPreview = doPreview
-        self.previewing = True
+        self.previewing = False
         self.recording = False
         self.streaming = False
         self.device_index = camindex
@@ -63,7 +63,7 @@ class VidRec_Brio():
  
         info.desc().append_child_value("size_rgb", str(self.frameSize)) 
         # info.desc().append_child_value("serial_number", self.serial_num) 
-        info.desc().append_child_value("fps_rgb", self.fps)
+        info.desc().append_child_value("fps_rgb", str(self.fps))
         info.desc().append_child_value("device_name", self.device_name)
         print(f"-OUTLETID-:{streamName}:{self.oulet_id}")
         return StreamOutlet(info)
