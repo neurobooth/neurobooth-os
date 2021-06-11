@@ -17,7 +17,9 @@ print(f"There are {ndevs} devices")
 
 inf = video_cap.get_info()
 for f in inf:
-    print(f['index'], f['name'])
+    #print(f['index'], f['name'])
+    for cap in f['caps']:
+        print(cap['id'], int(10000000 / cap['minInterval']))
     
 ctx = rs.context()
 devices = ctx.query_devices()

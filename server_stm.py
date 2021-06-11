@@ -14,11 +14,10 @@ from psychopy.visual.textbox2 import TextBox2
 from tasks.test_timing.audio_video_test import Timing_Test
 
 
-def fake_task(s, cmd, subj_id, task_name, send_stdout):
-    sleep(1)
-    input("Press a key to start the fakest task")
-    sleep(1)
+def fake_task(**kwarg):
+    sleep(10)
     
+
     # print("Starting the Task")
     # send_stdout()
     # s.sendall(cmd.encode('utf-8') )
