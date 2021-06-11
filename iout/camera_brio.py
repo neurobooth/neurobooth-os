@@ -22,8 +22,8 @@ def catch_exception(f):
 
 
 class VidRec_Brio():        
-    def __init__(self,  fourcc=cv2.VideoWriter_fourcc(*'MJPG'), sizex=1280, sizey=720,
-                 fps=60, camindex=0, mode=33, doPreview=False):
+    def __init__(self,  fourcc=cv2.VideoWriter_fourcc(*'MJPG'), sizex=640, sizey=480,
+                 fps=120, camindex=0, mode=19, doPreview=False):
         
         self.open = True
         self.doPreview = doPreview
