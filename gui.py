@@ -74,7 +74,7 @@ def make_layout(frame_sz=(320, 240)):
         [space()],
         [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(64, 10)), space()],
         [space()],          
-        [space()],
+        # [space()],
         [space(), sg.Checkbox('Symbol Digit Matching Task', key='DSC_task', size=(44, 1))],
         [space(), sg.Checkbox('Mouse Task', key='mouse_task', size=(44, 1))],
         [space(), sg.Checkbox('Time testing', key='timing_task', size=(44, 1))],
@@ -237,6 +237,7 @@ while True:
                 inlets.pop(k, None)        
         ctr_rec.shut_all()
         serv_data_received()
+        session_saved = False
         plttr.stop()
         break
     

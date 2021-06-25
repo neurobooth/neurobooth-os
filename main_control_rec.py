@@ -88,12 +88,15 @@ def initiate_labRec():
     
 if 0:
     pid = start_server('acquisition')
+    
+    socket_message("connect_mbient", "acquisition")
+    socket_message("shutdown", "acquisition")    
+    
     t2w, t1w = test_lan_delay(100)
     
     
     prepare_feedback()
     
-    session = setup_part_info()
     prepare_devices()
     
     
