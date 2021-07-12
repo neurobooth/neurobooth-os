@@ -45,7 +45,7 @@ conda activate neurobooth
 pip install  metawear==0.7.0 pillow pywinauto pylsl pynput pyrealsense2 warble==1.2.0 vidgear pyautogui wmi pyaudio
 
 # STM
-conda create -n neuro36  python==3.6 spyder==4 ipython pip  git  psychopy   -c conda-forge/label/cf202003
+conda create -n neuro36  python==3.6 spyder==4 ipython pip  git  psychopy snappy pytables   -c conda-forge/label/cf202003   
 pip install  pylsl pynput  vidgear 
 
 ssh an512@door.nmr.mgh.harvard.edu

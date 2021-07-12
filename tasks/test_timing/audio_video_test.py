@@ -31,7 +31,7 @@ class Timing_Test():
             core.wait(1)
             win.flip()
             mySound.play()
-            event_marker.push_sample(['1'])
+            # event_marker.push_sample(['1'])
             core.wait(1)
             win.color = (0, 0, 0)
             win.flip()
