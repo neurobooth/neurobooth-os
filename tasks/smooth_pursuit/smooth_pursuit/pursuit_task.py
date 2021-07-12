@@ -76,7 +76,7 @@ win.flip()
 # Calibrate the tracker
 tk.doTrackerSetup()
 
-
+print()
 # Step 7: Run through a couple of trials
 # define a function to group the code that will executed on each trial
 def run_trial(trial_duration, movement_pars):
@@ -110,7 +110,7 @@ def run_trial(trial_duration, movement_pars):
     tk.doDriftCorrect(int(tar_x + SCN_W/2.0), int(SCN_H/2.0 - tar_y), 0, 1)
 
     # Put the tracker in idle mode before we start recording
-    tk.setOfflineMode()
+    # tk.setOfflineMode()
     
     # Start recording
     # params: file_sample, file_event, link_sampe, link_event (1-yes, 0-no)
