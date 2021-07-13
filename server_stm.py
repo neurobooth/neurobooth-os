@@ -12,7 +12,7 @@ from tasks.mouse import mouse_task
 from psychopy import core, visual, event
 from psychopy.visual.textbox2 import TextBox2
 from tasks.test_timing.audio_video_test import Timing_Test
-
+from tasks.sit_to_stand.experiment import Sit_to_Stand
 
 def fake_task(**kwarg):
     sleep(10)
@@ -189,9 +189,16 @@ def Main():
                 
             elif task == 'timing_task':
             	fprint(f"Starting {task}")
-            	task_karg ={"win": win, "event_marker": streams['marker']}            	
+            	task_karg ={"win": win, 
+                            "event_marker": streams['marker']}            	
             	run_task(Timing_Test, s2, cmd, subj_id, task, send_stdout, task_karg)
-    
+
+            elif task =="sit_to_stand":
+                fprint(f"Starting {task}")
+                task_karg ={"win": win,
+                            "marker_outlet": streams['marker']}             
+                run_task(Sit_to_Stand, s2, cmd, subj_id, task, send_stdout, task_karg)
+
             else:
                 fprint(f"Task not {task} implemented")
             
