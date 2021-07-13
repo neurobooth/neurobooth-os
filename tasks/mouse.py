@@ -13,18 +13,24 @@ from psychopy.hardware import keyboard
 
 
 
-def mouse_task():
-    def init(self, marker_outlet=None, win=None, path="", subj_id="test"):
+class mouse_task():
+    
+    def __init__(self, marker_outlet=None, win=None, path="", subj_id="test"):
+        self.subj_id = subj_id
+        self.marker_outlet = marker_outlet
+        self.win = win
+        self.path = path
+
         # Store info about the experiment session
         psychopyVersion = '2020.2.3' # psychopy.__version__
         expName = 'mouse'  # from the Builder filename that created this script
-        expInfo = {'participant': subj_id, 'session': '001'}
+        expInfo = {'participant': self.subj_id, 'session': '001'}
         expInfo['date'] = data.getDateStr()  # add a simple timestamp
         expInfo['expName'] = expName
         expInfo['psychopyVersion'] = psychopyVersion
-        
+        print(expInfo)
         # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
-        filename = "path"+ os.sep + u'data/%s_%s_%s' % (expInfo['participant'], expName, expInfo['date'])
+        filename = self.path + os.sep + u'data/%s_%s_%s' % (expInfo['participant'], expName, expInfo['date'])
         
         # An ExperimentHandler isn't essential but helps with data saving
         thisExp = data.ExperimentHandler(name=expName, version='',
@@ -42,7 +48,7 @@ def mouse_task():
         
         # Start Code - component code to be run before the window creation
         
-        
+        win  = self.win
         # create psychopy window
         if win is None:
             print("*No win provided")
@@ -114,7 +120,7 @@ def mouse_task():
         routineTimer = core.CountdownTimer()  # to track time remaining of each (non-slip) routine 
         
         # set up handler to look after randomisation of conditions etc
-        trials = data.TrialHandler(nReps=50, method='random', 
+        trials = data.TrialHandler(nReps=10, method='random', 
             extraInfo=expInfo, originPath=-1,
             trialList=[None],
             seed=None, name='trials')
@@ -278,4 +284,4 @@ def mouse_task():
             win.close()
         # core.quit()
     
-    mouse_task()
+ 

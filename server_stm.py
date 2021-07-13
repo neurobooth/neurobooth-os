@@ -167,7 +167,7 @@ def Main():
                 # c.send(msg.encode("ascii")) 
 
             elif task == "mouse_task":    
-                fprint("Starting {task}")
+                fprint(f"Starting {task}")
                 task_karg ={"win": win,
                             "path": config.paths['data_out'],
                             "subj_id": subj_id,
@@ -176,7 +176,7 @@ def Main():
                 res = run_task(mouse_task, s2, cmd, subj_id, task, send_stdout, task_karg)
                 
             elif task == "DSC_task": 
-                fprint("Starting {task}")
+                fprint(f"Starting {task}")
                 task_karg ={"win": win,
                             "marker_outlet": streams['marker']}
                 dsc = run_task(DSC, s2, cmd, subj_id, task, send_stdout, task_karg)
@@ -188,7 +188,7 @@ def Main():
                 df_out.to_csv(config.paths['data_out'] + f'{subj_id}_{task_n}_outcomes.csv')
                 
             elif task == 'timing_task':
-            	fprint("Starting {task}")
+            	fprint(f"Starting {task}")
             	task_karg ={"win": win, "event_marker": streams['marker']}            	
             	run_task(Timing_Test, s2, cmd, subj_id, task, send_stdout, task_karg)
     

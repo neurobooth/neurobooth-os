@@ -2,7 +2,7 @@ import pyxdf
 import matplotlib.pyplot as plt
 import numpy as np
 
-file = r'C:/neurobooth/neurobooth_data/tt__timing_task.xdf'
+file = '/home/adonay/Desktop/projects/neurobooth/data/time_testall2__timing_task.xdf'
 data, header = pyxdf.load_xdf(file)
 
 
@@ -21,6 +21,20 @@ for ix, stream in enumerate(data):
         print("\tDuration: {:.2f} s".format(stream['time_stamps'][-1] - stream['time_stamps'][0]))
 
 
+
+for ix, stream in enumerate(data):
+    print("\t",stream['info']['name'][0])
+
+    desc, = stream['info']['desc']
+    if desc is None:
+        continue
+    for k, v in desc.items():
+        print(k, v)
+    # print(desc[0])
+
+    # add real fps
+    #to json
+
 plt.figure()
 for i, d in enumerate(data):
     name = d['info']['name']
@@ -34,7 +48,7 @@ for i, d in enumerate(data):
     tsn, = d['footer']['info']['sample_count']
     duration = float(ts1)-float(ts0)
     fps = 0 if int(tsn)==0 else int(tsn)/duration
-    
+
     print(f"{name} samples:{tsn}, duration: {duration}, fps:{fps}")
 
     tmst = d['time_stamps']
@@ -86,18 +100,18 @@ ts = np.diff(ts)
 tt = np.diff(data[n]['time_stamps'])
 plt.figure()
 tdf = ts - tt
-plt.plot(tdf)          
-             
+plt.plot(tdf)
+
 plt.figure()
 tdf = ts - tt
-plt.plot(ts)         
-plt.plot(tt)   
-             
+plt.plot(ts)
+plt.plot(tt)
+
 
 plt.figure()
 for i, d in enumerate(data):
     name = d['info']['name']
-    
+
     fig, ax = plt.subplots(1,2)
     tdiff = np.diff(d['time_stamps'])
     ax[0].plot(tdiff)
@@ -114,7 +128,7 @@ for i, d in enumerate(data):
     tsn, = d['footer']['info']['sample_count']
     duration = float(ts1)-float(ts0)
     fps = 0 if int(tsn)==0 else int(tsn)/duration
-    
+
     print(f"{name} samples:{tsn}, duration: {duration}, fps:{fps}")
 
     tmst = d['time_stamps']
@@ -138,10 +152,10 @@ for i, d in enumerate(data):
 
     tt = d['time_stamps']
     ts = d['time_series']
-    
+
     if isinstance(ts, list):
         ts = np.array(ts)
-    
+
     ts_f = ts.flatten("C")
     plt.plot(ts_f, label=name)
 
@@ -153,12 +167,12 @@ plt.legend()
 plt.figure()
 for i, d in enumerate(data):
     name = d['info']['name']
-    
+
     fig, ax = plt.subplots(1,1)
     tdiff = np.diff(d['time_stamps'])
     ax.plot(tdiff)
     ax.set_title(name)
-   
+
 
     if d['time_stamps'].size == 0 :
         print(f"{name} samples:0")
@@ -170,7 +184,7 @@ for i, d in enumerate(data):
     tsn, = d['footer']['info']['sample_count']
     duration = float(ts1)-float(ts0)
     fps = 0 if int(tsn)==0 else int(tsn)/duration
-    
+
     print(f"{name} samples:{tsn}, duration: {duration}, fps:{fps}")
 
     tmst = d['time_stamps']
@@ -217,13 +231,13 @@ for i, d in enumerate(data):
     if d['time_stamps'].size == 0 :
         print(f"{name} samples:0")
         continue
-    
+
     tt = d['time_stamps']
     ts = d['time_series']
-    
+
     if isinstance(ts, list):
         ts = np.array(ts)
-    
+
     ts = ts.max(1)
     # ts_f = ts.flatten("C")
     plt.plot(tt,ts, color="r", label=name)

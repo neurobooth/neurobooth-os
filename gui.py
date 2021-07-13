@@ -61,7 +61,7 @@ def space(n=10):
     return sg.Text(' ' * n)
  
 
-def make_layout(frame_sz=(320, 240)):
+def main_layout(frame_sz=(320, 240)):
     frame_cam = np.ones(frame_sz)
     imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
         
@@ -74,7 +74,7 @@ def make_layout(frame_sz=(320, 240)):
         [space()],
         [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(64, 10)), space()],
         [space()],          
-        [space()],
+        # [space()],
         [space(), sg.Checkbox('Symbol Digit Matching Task', key='DSC_task', size=(44, 1))],
         [space(), sg.Checkbox('Mouse Task', key='mouse_task', size=(44, 1))],
         [space(), sg.Checkbox('Time testing', key='timing_task', size=(44, 1))],
@@ -109,8 +109,9 @@ def make_layout(frame_sz=(320, 240)):
     layout = [[sg.Column(layout_col1,  pad=(0,0)), sg.Column(layout_col2, pad=(0,0), element_justification='c')] ]
     return layout
 
+lsl_version = pylsl.__version__
 window = sg.Window("Neurobooth",
-                   make_layout(), 
+                   main_layout(), 
                    # keep_on_top=True,
                     location =(0,0),
                    default_element_size=(10, 1),
@@ -137,7 +138,6 @@ def serv_data_received():
     global stream_ids, inlets
     
     while True:  # while items in queue
-        
         try:
             event_feedb = serv_event.get(False)
             print(event_feedb)
@@ -146,12 +146,10 @@ def serv_data_received():
             event_feedb = event_feedb.split(": ")[1]
             for prt in event_feedb.split("\n"):
                 stream_ids = get_outlet_ids(prt, stream_ids)
-                
-            if stream_ids_old != stream_ids or (len(stream_ids) and len(inlets)==0):
+            if stream_ids_old != stream_ids or ( len(stream_ids) and len(inlets)==0 ):
                 inlets = update_streams_fromID(stream_ids)
-            
         except queue.Empty:
-           break
+            break
 
 event, values = window.read(.5) 
 # window['-OUTPUT-'].__del__()
@@ -177,6 +175,7 @@ while True:
         serv_data_received()
         inlets = update_streams_fromID(stream_ids)
         dev_prepared = True
+        print("prepared")
     
     elif event == 'plot':
         event = "None"
@@ -236,7 +235,7 @@ while True:
                 inlets[k].close_stream()
                 inlets.pop(k, None)        
         ctr_rec.shut_all()
-        serv_data_received()
+        session_saved = False
         plttr.stop()
         break
     
@@ -251,6 +250,9 @@ while True:
         if k not in inlet_keys:
             inlet_keys.append(k)            
             window['inlet_State'].update(inlet_keys)
+            
 
 window.close()
 window['-OUTPUT-'].__del__()
+serv_data_received()
+print("Session terminated")
