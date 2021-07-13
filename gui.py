@@ -78,6 +78,7 @@ def main_layout(frame_sz=(320, 240)):
         [space(), sg.Checkbox('Symbol Digit Matching Task', key='DSC_task', size=(44, 1))],
         [space(), sg.Checkbox('Mouse Task', key='mouse_task', size=(44, 1))],
         [space(), sg.Checkbox('Time testing', key='timing_task', size=(44, 1))],
+        [space(), sg.Checkbox('Sit to Stand', key='sit_to_stand', size=(44, 1))],
         [space()],          
         [space(), sg.ReadFormButton('Save', button_color=('white', 'black'))],         
         [space()],
