@@ -32,7 +32,9 @@ def Main():
         
     def send_stdout():
         try:
-            msg = mystdout.getvalue()         
+            msg = mystdout.getvalue() 
+            if msg == "":
+                return        
             socket_message("ACQ: " + msg, "control")
             mystdout.truncate(0)
             mystdout.seek(0)
@@ -81,8 +83,10 @@ def Main():
             else:
                 streams = start_lsl_threads("acquisition")            
                 streams['micro'].start()
-                if streams.get("mbient") is not None:
-                   streams["mbient"].start()
+                for k in streams.keys():
+                    if k[:-3] in ["mbient"] and streams.get(k) is not None:                
+                        streams[k].start()
+                        
             devs = list(streams.keys())
             fprint(f"ACQ devices prepared: {devs}")
             send_stdout()
@@ -92,7 +96,7 @@ def Main():
             fprint("Starting recording")            
             fname = config.paths['data_out'] + data.split(":")[-1]
             for k in streams.keys():
-                if k[:-1] in ["hiFeed", "intel"]:
+                if k[:-1] in ["hiFeed", "intel", "ximea"]:
                     streams[k].start(fname)
             msg = "ACQ_ready"
             c.send(msg.encode("ascii"))
@@ -102,9 +106,8 @@ def Main():
         elif "record_stop" in data: 
             fprint("Closing recording")    
             for k in streams.keys():
-                if k[:-1] in ["hiFeed", "intel"]:
+                if k[:-1] in ["hiFeed", "intel", "ximea"]:
                     streams[k].stop()
-
             send_stdout()
             
         elif data in ["close", "shutdown"]: 
@@ -126,7 +129,7 @@ def Main():
         elif "connect_mbient" in data:
             mbient = connect_mbient()            
         else:
-            fprint("ACQ" + data)
+            fprint("ACQ " + data)
             
     sleep(.5)
     try:
@@ -139,4 +142,4 @@ def Main():
             print("EXCEPTION: socket error close")
   
 Main() 
-shutil.copytree(config.paths["data_out"], config.paths['nas'], dirs_exist_ok=True)
+

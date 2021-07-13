@@ -23,16 +23,21 @@ class Sensor:
         self.buzz_time = buzz_time_sec *1000
 
         # Setup outlet stream infos
-        self.stream_mbient = StreamInfo(name='mbient', type='acc',
+        self.oulet_id =  str(uuid.uuid4())
+        self.stream_mbient = StreamInfo(name=f'mbient_{self.dev_name}', type='acc',
                                         channel_count=6, channel_format='float32',
-                                        source_id=str(uuid.uuid4()))      
+                                        source_id=self.oulet_id)    
+        
+        
         self.streaming = False        
         self.setup()
+        print(f"-OUTLETID-:mbient_{self.dev_name}:{self.oulet_id}")
        
     def connect(self):        
         self.device = self.connector(self.mac)
         self.device.connect()       
         print(f"Mbient {self.dev_name} connected")
+        
         
     def data_handler(self, ctx, data):
         values = parse_value(data, n_elem = 2)
@@ -87,7 +92,7 @@ class Sensor:
         libmetawear.mbl_mw_datasignal_subscribe(charge, None, battery_handler)
     
     def start(self):
-        print(f"Started mbient {self.mac}")
+        print(f"Started mbient{self.dev_name}")
         libmetawear.mbl_mw_gyro_bmi160_enable_rotation_sampling(self.device.board)
         libmetawear.mbl_mw_acc_enable_acceleration_sampling(self.device.board)
         
@@ -95,7 +100,7 @@ class Sensor:
         libmetawear.mbl_mw_haptic_start_motor(self.device.board, 100.0, self.buzz_time)
         sleep(self.buzz_time/1000)
         
-        print ("Acquisition started")           
+        # print ("Acquisition started")           
         self.streaming = True
         libmetawear.mbl_mw_gyro_bmi160_start(self.device.board)
         libmetawear.mbl_mw_acc_start(self.device.board)

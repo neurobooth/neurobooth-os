@@ -22,8 +22,8 @@ def catch_exception(f):
 
 
 class VidRec_Brio():        
-    def __init__(self,  fourcc=cv2.VideoWriter_fourcc(*'MJPG'), sizex=640, sizey=480,
-                 fps=120, camindex=0, mode=19, doPreview=False):
+    def __init__(self,  fourcc=cv2.VideoWriter_fourcc(*'MJPG'),  sizex=1280, sizey=720, fps=90, camindex=0, mode=33, doPreview=False):
+      # sizex=640, sizey=480, fps=120, camindex=0, mode=19, doPreview=False):
         
         self.open = True
         self.doPreview = doPreview
@@ -33,7 +33,10 @@ class VidRec_Brio():
         self.device_index = camindex
         self.fps = fps                  # fps should be the minimum constant rate at which the camera can
         self.fourcc = fourcc            # capture images (with no decrease in speed over time; testing is required)
-        self.frameSize = (sizex, sizey) # video formats and sizes also depend and vary according to the camera used
+        # scale_percent = 50
+        # self.frameSize = (int(sizex * scale_percent / 100), int(sizey * scale_percent / 100)) # video formats and sizes also depend and vary according to the camera used
+        self.frameSize = (sizex, sizey)
+        print(f"Frame size : {self.frameSize}")
         self.video_cap = dshowcapture.DShowCapture()
         self.mode = mode
         self.device_name = self.video_cap.get_info()[self.device_index]['name']
@@ -136,7 +139,7 @@ class VidRec_Brio():
                     print(f"Reopening brio {self.device_index} stream already closed")
                     self.outlet = self.createOutlet(self.video_filename)
                     self.outlet.push_sample([self.frame_counter])
-                    
+                # frame = cv2.resize(frame, self.frameSize)
                 self.video_out.write(frame)
                 
                 if self.doPreview:
