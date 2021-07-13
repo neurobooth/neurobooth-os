@@ -2,7 +2,7 @@ import pyxdf
 import matplotlib.pyplot as plt
 import numpy as np
 
-file = '/home/adonay/Desktop/projects/neurobooth/data/time_testall2__timing_task.xdf'
+file = r'C:\neurobooth\neurobooth_data\t__timing_task.xdf'
 data, header = pyxdf.load_xdf(file)
 
 
