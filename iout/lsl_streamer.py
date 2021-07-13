@@ -12,20 +12,23 @@ def start_lsl_threads(node_name):
         from iout.microphone import MicStream
         from iout.camera_brio import VidRec_Brio
         from iout.camera_intel import VidRec_Intel
+        from iout.ximea_cam import VidRec_Ximea
 
         
-        streams["hiFeed1"] = VidRec_Brio(camindex=config.cam_inx["brio1"] , doPreview=False)
-        streams["hiFeed2"] = VidRec_Brio(camindex=config.cam_inx["brio2"] , doPreview=False)
+        # streams["hiFeed1"] = VidRec_Brio(camindex=config.cam_inx["brio1"] , doPreview=False)
+        # streams["hiFeed2"] = VidRec_Brio(camindex=config.cam_inx["brio2"] , doPreview=False)
         streams["intel1"] = VidRec_Intel(camindex=config.cam_inx["intel1"])
         streams["intel2"] = VidRec_Intel(camindex=config.cam_inx["intel2"])
         streams["intel3"] = VidRec_Intel(camindex=config.cam_inx["intel3"])
         streams['micro'] = MicStream()
+        # streams["ximea1"] = VidRec_Ximea()
         
-        
+        mbients = ["RH", "LH", "LF"]
         mbient_name = 'RH'
-#        streams["mbient"] = connect_mbient(mbient_name)
-#        if streams["mbient"] is None:
-#            del streams["mbient"]
+        for mbient_name in mbients:
+            streams[f"mbient_{mbient_name}"] = connect_mbient(mbient_name)
+            if streams[f"mbient_{mbient_name}"] is None:
+                del streams[f"mbient_{mbient_name}"]
        
     elif node_name == "presentation":     
         from iout.marker import marker_stream       
@@ -69,7 +72,7 @@ def close_streams(streams, cams=False):
 
 def reconnect_streams(streams, cams=False):
     for k in list(streams): 
-        if k[:-1] in ["hiFeed", "intel"]:
+        if k[:-1] in ["hiFeed", "intel", "ximea"]:
             continue
         
         if not streams[k].streaming:
