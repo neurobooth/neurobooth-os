@@ -14,6 +14,7 @@ from psychopy.visual.textbox2 import TextBox2
 from tasks.test_timing.audio_video_test import Timing_Test
 from tasks.sit_to_stand.experiment import Sit_to_Stand
 
+
 def fake_task(**kwarg):
     sleep(10)
     
@@ -59,14 +60,17 @@ def my_textbox2(win, text, pos=(0,0), size=(None, None)):
     
 def welcome_screen():
     win = visual.Window((1800, 1000), monitor='testMonitor', color='white', allowGUI=False, fullscr=False)  
-    text = "Welcome to the <b>Neurobooth</b>"
-    tbx = [my_textbox2(win, text, pos=(0,6))]
+    welcome = visual.ImageStim(win, image='./tasks/NB1.jpg', units='pix')
     
-    text = "Get ready to do some neuromuscular and cognitive assessments. \nRemember, the sky is the limit."    
-    tbx.append( my_textbox2(win, text, pos=(0,-3), size=(20, None)))
+    # text = "Welcome to the <b>Neurobooth</b>"
+    # tbx = [my_textbox2(win, text, pos=(0,6))]
     
-    for t in tbx:
-        t.draw()
+    # text = "Get ready to do some neuromuscular and cognitive assessments. \nRemember, the sky is the limit."    
+    # tbx.append( my_textbox2(win, text, pos=(0,-3), size=(20, None)))
+    
+    # for t in tbx:
+    #     t.draw()
+    welcome.draw()
     win.flip()
     win.winHandle.activate()
     return win
@@ -193,7 +197,7 @@ def Main():
                             "event_marker": streams['marker']}            	
             	run_task(Timing_Test, s2, cmd, subj_id, task, send_stdout, task_karg)
 
-            elif task =="sit_to_stand":
+            elif task =="sit_to_stand_task":
                 fprint(f"Starting {task}")
                 task_karg ={"win": win,
                             "marker_outlet": streams['marker']}             
