@@ -34,7 +34,9 @@ def welcome_screen():
 
 def finish_screen(win):
     
-    finish = utl.create_text_screen(win,"Thanks for your participation\nAll task finished!")
+    
+    finish = visual.ImageStim(win, './tasks/NB2.jpg', units='pix')
+    
     utl.present(win, finish, None, 10)
     win.close()
     return win
