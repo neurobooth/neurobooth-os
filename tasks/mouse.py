@@ -9,7 +9,7 @@ from numpy.random import shuffle
 import os
 
 from psychopy.hardware import keyboard
-
+from tasks.utils import make_win
 
 
 
@@ -67,7 +67,7 @@ class mouse_task():
             win = win
             self.win_temp = False
             
-        win.color = "white"
+        win.color = [0,0,0]
         win.flip()
 
         
@@ -101,7 +101,7 @@ class mouse_task():
         polygon = visual.Polygon(
             win=win, name='polygon',
             edges=9999, size=(0.05, 0.05),
-            ori=0, pos=(0, 0),
+            ori=0, pos=(0, 0),  units='norm',
             lineWidth=1, lineColor='red', lineColorSpace='rgb',
             fillColor='red', fillColorSpace='rgb',
             opacity=1, depth=0.0, interpolate=True)

@@ -13,6 +13,8 @@ from psychopy import core, visual, event
 from psychopy.visual.textbox2 import TextBox2
 from psychopy import iohub
 from psychopy.iohub import launchHubServer
+from tasks.utils import make_win
+
 
 def present_msg(elems, win, key_resp="return"):
     for e in elems:
@@ -89,7 +91,7 @@ class DSC():
         # create psychopy window
         if win is None:
             print("*No win provided")
-            self.win = visual.Window((1800, 1070), monitor='testMonitor', allowGUI=True, color='white')
+            self.win = make_win()
             self.win_temp = True
         else:
             self.win = win
