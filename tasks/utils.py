@@ -10,7 +10,7 @@ import os.path as op
 from psychopy import visual
 from psychopy import prefs
 prefs.hardware['audioLib']=['pyo']
-from psychopy import sound, core, event
+from psychopy import sound, core, event, monitors, visual
 import time
 
 def create_text_screen(win, text):
@@ -47,3 +47,19 @@ def play_video(win, mov):
         win.flip()
         if event.getKeys():
             break
+
+def make_win(monitor_width=55, monitor_distance=50):    
+    mon = monitors.getAllMonitors()[0]
+    customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
+    mon_size = monitors.Monitor(mon).getSizePix()
+    win = visual.Window(mon_size, fullscr=False, monitor=customMon, units='pix', color='white')
+    return win
+
+# win = visual.Window(
+#     size=(SCN_W, SCN_H), fullscr=full_screen, screen=0,
+#     winType='pyglet', allowGUI=True, allowStencil=False,
+#     monitor='testMonitor', color=[0,0,0], colorSpace='rgb',
+#     blendMode='avg', useFBO=True, 
+#     units='height')
+
+    

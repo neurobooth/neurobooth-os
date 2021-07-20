@@ -10,7 +10,8 @@ prefs.hardware['audioLib']=['pyo']
 from psychopy.visual.textbox2 import TextBox2
 from psychopy import sound, visual
 import tasks.utils as utl
-  
+
+
 def my_textbox2(win, text, pos=(0,0), size=(None, None)):
 
     tbx = TextBox2(win, pos=pos, color='black', units='deg',lineSpacing=1,
@@ -19,7 +20,7 @@ def my_textbox2(win, text, pos=(0,0), size=(None, None)):
     return tbx
     
 def welcome_screen():
-    win = visual.Window((1800, 1000), monitor='testMonitor', color='white', allowGUI=False, fullscr=False)  
+    win = utl.make_win()
     
     welcome = visual.ImageStim(win, image= './tasks/NB1.jpg', units='pix')
     welcome_audio = sound.Sound('./tasks/welcome.wav', secs=-1, stereo=True, hamming=True,

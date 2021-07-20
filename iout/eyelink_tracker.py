@@ -8,7 +8,7 @@ import uuid
 from pylsl import StreamInfo, StreamOutlet
 import threading
 import config
-from tasks.smooth_pursuit.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
+from tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 class EyeTracker():
 
@@ -77,6 +77,12 @@ class EyeTracker():
         # Calibrate the tracker
         self.tk.doTrackerSetup()
         self.calibrated = True
+        
+        prompt = 'Calibration finished'
+        prompt_msg = visual.TextStim(self.win, text=prompt, color='Black', units='pix')
+        prompt_msg.draw()
+        self.win.flip()      
+        
 
     def start(self, filename="TEST.EDF"):
         self.filename = filename
