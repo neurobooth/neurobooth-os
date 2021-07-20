@@ -25,7 +25,7 @@ class EyeLinkCoreGraphicsPsychoPy(pylink.EyeLinkCustomDisplay):
 
         tracker: an EyeLink instance (connection)
         win: the PsychoPy window we use for calibration'''
-
+        self.fpath = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")
         pylink.EyeLinkCustomDisplay.__init__(self)
 
         # background and target color
@@ -75,9 +75,9 @@ class EyeLinkCoreGraphicsPsychoPy(pylink.EyeLinkCustomDisplay):
                                   lineWidth=self._targetSize/2)
 
         # calibration sounds (beeps)
-        self._target_beep = Sound('type.wav', stereo=True)
-        self._error_beep = Sound('error.wav', stereo=True)
-        self._done_beep = Sound('qbeep.wav', stereo=True)
+        self._target_beep = Sound( self.fpath + '/type.wav', stereo=True)
+        self._error_beep = Sound(self.fpath + '/error.wav', stereo=True)
+        self._done_beep = Sound(self.fpath + '/qbeep.wav', stereo=True)
 
         # a reference to the tracker connection
         self._tracker = tracker

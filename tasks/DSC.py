@@ -27,7 +27,7 @@ def present_msg(elems, win, key_resp="return"):
 
 class DSC():
 
-    def __init__(self, marker_outlet=None, win=None):
+    def __init__(self, marker_outlet=None, win=None, **kwarg):
         self.testVersion = 'DSC_simplified_oneProbe_2019'
         self.chosenInput = 'keys'    # input type (taps or keys)
         self.frameSequence = []
@@ -40,7 +40,7 @@ class DSC():
         self.demo = False                   #      # URL parameter: run in demo mode
         self.filename = "fname.csv"           #        # filename for data
         self.fpath = op.dirname(op.abspath(__file__)).replace("\\", "/")
-        self.tot_time = 30
+        self.tot_time = 10
         
         
         try:
@@ -94,6 +94,9 @@ class DSC():
         else:
             self.win = win
             self.win_temp = False
+            
+        self.win.color = "white"
+        self.win.flip()
 
         # create the trials chain
         self.setFrameSequence()

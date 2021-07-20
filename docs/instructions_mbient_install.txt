@@ -48,6 +48,9 @@ pip install  metawear==0.7.0 pillow pywinauto pylsl pynput pyrealsense2 warble==
 conda create -n neuro36  python==3.6 spyder==4 ipython pip  git  psychopy snappy pytables   -c conda-forge/label/cf202003   
 pip install  pylsl pynput  vidgear 
 
+go to https://www.lfd.uci.edu/~gohlke/pythonlibs/#h5py and download a .whl file for h5py. For python 3.6 on a 64bit windows OS this is the file h5py‑2.10.0‑cp36‑cp36m‑win_amd64.whl
+with your conda environment activated, install that wheel file using python -m pip install --user --force-reinstall h5py‑2.10.0‑cp36‑cp36m‑win_amd64.whl (change the file name to the one you downloaded).
+
 ssh an512@door.nmr.mgh.harvard.edu
 ssh an512@neurodoor.nmr.mgh.harvard.edu
 ls /space/neurobooth/1/users/data
