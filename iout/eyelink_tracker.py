@@ -8,7 +8,7 @@ import uuid
 from pylsl import StreamInfo, StreamOutlet
 import threading
 import config
-
+from tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 class EyeTracker():
 
@@ -23,7 +23,7 @@ class EyeTracker():
         self.mon_size = monitors.Monitor(mon).getSizePix()
         self.calibration_type = calibration_type
 
-        if win is not None:
+        if win is None:
             customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
             self.win = visual.Window(self.mon_size, fullscr=False, monitor=customMon, units='pix')
             self.win_temp = True
@@ -44,7 +44,7 @@ class EyeTracker():
 
 
     def connect_tracker(self):
-        self.tk = pylink.EyeLink(self.ip)
+        self.tk = pylink.EyeLink(self.IP)
         # # Open an EDF data file on the Host PC
         # self.tk.openDataFile('ev_test.edf')
 
@@ -70,10 +70,19 @@ class EyeTracker():
         calib_msg = visual.TextStim(self.win, text=calib_prompt, color='white', units='pix')
         calib_msg.draw()
         self.win.flip()
-        self.calibrated = True
+        
+        graphics = EyeLinkCoreGraphicsPsychoPy(self.tk, self.win)
+        pylink.openGraphicsEx(graphics)
 
         # Calibrate the tracker
         self.tk.doTrackerSetup()
+        self.calibrated = True
+        
+        prompt = 'Calibration finished'
+        prompt_msg = visual.TextStim(self.win, text=prompt, color='Black', units='pix')
+        prompt_msg.draw()
+        self.win.flip()      
+        
 
     def start(self, filename="TEST.EDF"):
         self.filename = filename
@@ -119,7 +128,7 @@ class EyeTracker():
     def stop(self):
         self.recording = False
 
-   def close(self):
+    def close(self):
        if self.recording == True:
            self.recording == False
        self.tk.close()

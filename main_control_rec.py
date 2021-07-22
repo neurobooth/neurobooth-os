@@ -31,9 +31,6 @@ def prepare_devices():
     socket_message("prepare", "acquisition") 
     socket_message("prepare", "presentation") 
 
-# def setup_part_info():
-#     session = get_session_info()
-#     return session
 
 def task_presentation(task_name, filename):
     socket_message(f"present:{task_name}:{filename}", "presentation")

@@ -9,32 +9,14 @@ import config
 from netcomm.client import socket_message, node_info
 from tasks.DSC import DSC
 from tasks.mouse import mouse_task
-from psychopy import core, visual, event
-from psychopy.visual.textbox2 import TextBox2
+
 from tasks.test_timing.audio_video_test import Timing_Test
 from tasks.sit_to_stand.experiment import Sit_to_Stand
+from tasks.wellcome_finish_screens import welcome_screen, finish_screen
 
 def fake_task(**kwarg):
     sleep(10)
     
-
-    # print("Starting the Task")
-    # send_stdout()
-    # s.sendall(cmd.encode('utf-8') )
-    # sleep(.01)
-    # s.sendall(b"start\n")
-    # socket_message(f"record_start:{subj_id}_{task_name}", "acquisition")
-    # print("started")
-    # send_stdout()
-    # input("Do what you were told to, properly, ok?")
-    # sleep(4)
-    
-    # input("Fairly well done, task is finished. Took 4 sec! Was it good?")
-    # s.sendall(b"stop\n")
-    # socket_message("record_stop", "acquisition")
-    # sleep(1)
-    # input("All closed, bye now. Press enter")
-    # sleep(1)
 
 
 def run_task(task_funct, s2, cmd, subj_id, task, send_stdout, task_karg={}):    
@@ -49,28 +31,7 @@ def run_task(task_funct, s2, cmd, subj_id, task, send_stdout, task_karg={}):
     socket_message("record_stop", "acquisition")
     return res
                 
-                
-def my_textbox2(win, text, pos=(0,0), size=(None, None)):
-
-    tbx = TextBox2(win, pos=pos, color='black', units='deg',lineSpacing=1,
-                   letterHeight=1.2, text=text, font="Arial", size=size,
-                   borderColor=None, fillColor=None, editable=False, alignment='center')
-    return tbx
-    
-def welcome_screen():
-    win = visual.Window((1800, 1000), monitor='testMonitor', color='white', allowGUI=False, fullscr=False)  
-    text = "Welcome to the <b>Neurobooth</b>"
-    tbx = [my_textbox2(win, text, pos=(0,6))]
-    
-    text = "Get ready to do some neuromuscular and cognitive assessments. \nRemember, the sky is the limit."    
-    tbx.append( my_textbox2(win, text, pos=(0,-3), size=(20, None)))
-    
-    for t in tbx:
-        t.draw()
-    win.flip()
-    win.winHandle.activate()
-    return win
-
+              
 def Main(): 
     host = "" 
     # time_del = 0
@@ -150,57 +111,60 @@ def Main():
                 fprint("Preparing devices")
                                                
         elif "present" in data:   #-> "present:TASKNAME:subj_id"
-            task = data.split(":")[1]  
+            # task_name can be list of task1-task2-task3  
+            tasks = data.split(":")[1].split("-")
             subj_id = data.split(":")[2] 
             
             # Connection to LabRecorder in ctr pc
             host_ctr, _ = node_info("control")
             s2 = socket.create_connection((host_ctr, 22345))
-            fprint(f"initiating {task}") 
-            send_stdout()
             
-            cmd = "filename {root:" + config.paths['data_out'] + "} {template:%p_%b.xdf} {participant:" + subj_id + "_} {task:" + task + "}\n"
-            
-            if task == "fakest_task":
-                fake_task(s2, cmd, subj_id, task, send_stdout)   
-                msg = f"Done with {task}"
-                # c.send(msg.encode("ascii")) 
-
-            elif task == "mouse_task":    
-                fprint(f"Starting {task}")
-                task_karg ={"win": win,
-                            "path": config.paths['data_out'],
-                            "subj_id": subj_id,
-                            "marker_outlet": streams['marker']}
+            for task in tasks:
+                fprint(f"initiating {task}") 
+                send_stdout()
                 
-                res = run_task(mouse_task, s2, cmd, subj_id, task, send_stdout, task_karg)
+                cmd = "filename {root:" + config.paths['data_out'] + "} {template:%p_%b.xdf} {participant:" + subj_id + "_} {task:" + task + "}\n"
                 
-            elif task == "DSC_task": 
-                fprint(f"Starting {task}")
-                task_karg ={"win": win,
-                            "marker_outlet": streams['marker']}
-                dsc = run_task(DSC, s2, cmd, subj_id, task, send_stdout, task_karg)
-                
-                df_res = pd.DataFrame(dsc.results) 
-                df_out = pd.DataFrame.from_dict(dsc.outcomes, orient='index', columns=['vals'])                
-                task_n = task.replace("_task", "")
-                df_res.to_csv(config.paths['data_out'] + f'{subj_id}_{task_n}_results.csv')
-                df_out.to_csv(config.paths['data_out'] + f'{subj_id}_{task_n}_outcomes.csv')
-                
-            elif task == 'timing_task':
-            	fprint(f"Starting {task}")
-            	task_karg ={"win": win, 
-                            "event_marker": streams['marker']}            	
-            	run_task(Timing_Test, s2, cmd, subj_id, task, send_stdout, task_karg)
-
-            elif task =="sit_to_stand":
-                fprint(f"Starting {task}")
-                task_karg ={"win": win,
-                            "marker_outlet": streams['marker']}             
-                run_task(Sit_to_Stand, s2, cmd, subj_id, task, send_stdout, task_karg)
-
-            else:
-                fprint(f"Task not {task} implemented")
+                if task == "fakest_task":
+                    fake_task(s2, cmd, subj_id, task, send_stdout)   
+                    msg = f"Done with {task}"
+                    # c.send(msg.encode("ascii")) 
+    
+                elif task == "mouse_task":    
+                    fprint(f"Starting {task}")
+                    task_karg ={"win": win,
+                                "path": config.paths['data_out'],
+                                "subj_id": subj_id,
+                                "marker_outlet": streams['marker']}
+                    
+                    res = run_task(mouse_task, s2, cmd, subj_id, task, send_stdout, task_karg)
+                    
+                elif task == "DSC_task": 
+                    fprint(f"Starting {task}")
+                    task_karg ={"win": win,
+                                "marker_outlet": streams['marker']}
+                    dsc = run_task(DSC, s2, cmd, subj_id, task, send_stdout, task_karg)
+                    
+                    df_res = pd.DataFrame(dsc.results) 
+                    df_out = pd.DataFrame.from_dict(dsc.outcomes, orient='index', columns=['vals'])                
+                    task_n = task.replace("_task", "")
+                    df_res.to_csv(config.paths['data_out'] + f'{subj_id}_{task_n}_results.csv')
+                    df_out.to_csv(config.paths['data_out'] + f'{subj_id}_{task_n}_outcomes.csv')
+                    
+                elif task == 'timing_task':
+                	fprint(f"Starting {task}")
+                	task_karg ={"win": win, 
+                                "event_marker": streams['marker']}            	
+                	run_task(Timing_Test, s2, cmd, subj_id, task, send_stdout, task_karg)
+    
+                elif task =="sit_to_stand_task":
+                    fprint(f"Starting {task}")
+                    task_karg ={"win": win,
+                                "marker_outlet": streams['marker']}             
+                    run_task(Sit_to_Stand, s2, cmd, subj_id, task, send_stdout, task_karg)
+    
+                else:
+                    fprint(f"Task not {task} implemented")
             
         elif data in ["close", "shutdown"]: 
             

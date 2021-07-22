@@ -9,7 +9,7 @@ from numpy.random import shuffle
 import os
 
 from psychopy.hardware import keyboard
-
+from tasks.utils import make_win
 
 
 
@@ -20,7 +20,8 @@ class mouse_task():
         self.marker_outlet = marker_outlet
         self.win = win
         self.path = path
-
+        self.trials = 5
+        
         # Store info about the experiment session
         psychopyVersion = '2020.2.3' # psychopy.__version__
         expName = 'mouse'  # from the Builder filename that created this script
@@ -63,9 +64,13 @@ class mouse_task():
         
             self.win_temp = True
         else:
-            self.win = win
+            win = win
             self.win_temp = False
-      
+            
+        win.color = [0,0,0]
+        win.flip()
+
+        
         # store frame rate of monitor if we can measure it
         expInfo['frameRate'] = win.getActualFrameRate()
         if expInfo['frameRate'] != None:
@@ -96,7 +101,7 @@ class mouse_task():
         polygon = visual.Polygon(
             win=win, name='polygon',
             edges=9999, size=(0.05, 0.05),
-            ori=0, pos=(0, 0),
+            ori=0, pos=(0, 0),  units='norm',
             lineWidth=1, lineColor='red', lineColorSpace='rgb',
             fillColor='red', fillColorSpace='rgb',
             opacity=1, depth=0.0, interpolate=True)
@@ -120,7 +125,7 @@ class mouse_task():
         routineTimer = core.CountdownTimer()  # to track time remaining of each (non-slip) routine 
         
         # set up handler to look after randomisation of conditions etc
-        trials = data.TrialHandler(nReps=10, method='random', 
+        trials = data.TrialHandler(nReps=self.trials, method='random', 
             extraInfo=expInfo, originPath=-1,
             trialList=[None],
             seed=None, name='trials')
@@ -280,8 +285,11 @@ class mouse_task():
         logging.flush()
         # make sure everything is closed down
         thisExp.abort()  # or data files will save again on exit
-        if self.win_tem:
+        if self.win_temp:
             win.close()
+        else:
+            win.flip()
+            
         # core.quit()
     
  
