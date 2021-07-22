@@ -121,7 +121,7 @@ class Sensor:
 
 if 0:
     
-    mac = "CE:F3:BD:BD:04:8F"
+    mac = "EE:99:D8:9D:69:5F"
     mbt = Sensor(mac)
     mbt.start()
     
