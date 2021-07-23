@@ -50,7 +50,7 @@ cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Once)
 cam.BalanceWhiteAuto.SetValue(0)
 
 
-
+# cam.Width.SetValue(1000)
 
 cam.BeginAcquisition()
 nFrames = 1000
@@ -62,9 +62,10 @@ for _ in range(nFrames):
     im = cam.GetNextImage(1000)
     ts = im.GetTimeStamp()
     # im_conv = im.Convert(PySpin.PixelFormat_BGR8, PySpin.HQ_LINEAR)
+    frame_bgr = cv2.demosaicing(im, cv2.COLOR_BayerBG2BGR)
     # im_conv_d = im_conv.GetData()
     
-    image_queue.append(im.GetData())
+    # image_queue.append(im.GetData())
  #   stamp.append(time.time_ns())
     stamp.append(ts)
     
@@ -125,12 +126,18 @@ import cv2
 import EasyPySpin
 
 cap = EasyPySpin.VideoCapture(0)
-ret, frame = cap.read()
 
-frame_bgr = cv2.demosaicing(frame, cv2.COLOR_BayerBG2BGR) # The second argument may need to be changed depending on your sensor.
-
-cv2.imshow("output", frame_bgr)
-
-    
+stamp = []
+for _ in range(nFrames):
+    ret, ts, frame = cap.read()
+    stamp.append(ts)
+    frame = cv2.cvtColor(frame, cv2.COLOR_BayerBG2BGR) 
+        
 cap.release()
 
+
+print((np.diff(stamp).mean()/1e6))
+
+print(1000/(np.diff(stamp).mean()/1e6))
+
+plt.plot(np.array(stamp)/1e6)
