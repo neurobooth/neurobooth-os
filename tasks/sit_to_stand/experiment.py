@@ -37,7 +37,9 @@ class Sit_to_Stand():
         else:
             self.win = win
             self.win_temp = False
-
+            
+        self.win.color = [0, 0, 0]
+        self.win.flip()
         self.run()
 
     def send_marker(self, msg=None):
@@ -51,7 +53,7 @@ class Sit_to_Stand():
         welcome_audio = sound.Sound(self.fpath + '/welcome.wav', secs=-1, stereo=True, hamming=True,
             name='sustainph_audio_instructions')
 
-        text='For this task, you will do sit-to-stand five times, as quickly as possible\n\nYou will be utl.presented with the instruction video next\n\nPress any button to continue'
+        text='For this task, you will do sit-to-stand five times, as quickly as possible\n\nYou will be presented with the instruction video next\n\nPress any button to continue'
         instructions = utl.create_text_screen(self.win, text)
         instructions_audio = sound.Sound(self.fpath + '/instructions.wav', secs=-1, stereo=True, hamming=True)
         instruction_video = visual.MovieStim3(win=self.win, filename=self.fpath + '/instructions.mp4', noAudio=True)
@@ -69,7 +71,7 @@ class Sit_to_Stand():
         end_audio = sound.Sound(self.fpath + '/end.wav', secs=-1, stereo=True, hamming=True)
 
 
-        utl.present(self.win, welcome, welcome_audio, 10)
+        # utl.present(self.win, welcome, welcome_audio, 10)
         self.send_marker("Intructions-start_0")
         
         utl.present(self.win, instructions, instructions_audio, 12)
@@ -84,13 +86,11 @@ class Sit_to_Stand():
         utl.present(self.win, task, task_audio, 5)
         self.send_marker("Task-end_0")
 
-        utl.present(self.win, end, end_audio, 5)
+        utl.present(self.win, end, end_audio, 2)
 
         # Close win if just created for the task
         if self.win_temp:
             self.win.close()
-        else:
-            self.win.flip()
 
 
 if __name__ == "__main__" :

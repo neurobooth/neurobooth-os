@@ -10,6 +10,7 @@ import config
 from psychopy import visual, core, event, monitors
 from tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 from math import sin, pi
+import threading
 
 dummy_mode = False
 # Monitor resolution
@@ -26,13 +27,17 @@ class pursuit():
     def __init__(self, subj_id, eye_tracker, marker_outlet=None, win=None,  **kwarg):
         self.subj_id = subj_id
         self.filename = f"{config.paths['data_out']}{subj_id}_pursuit.edf"  
+        self.et = eye_tracker
+        self.filename = eye_tracker.filename
         self.win = win
+        
         self.mon_size = eye_tracker.mon_size
         self.tk = eye_tracker.tk
-        # Step 2: Open an EDF data file on the Host
-        self.tk.openDataFile('pursuit.edf')
+
+        # self.tk.openDataFile('pursuit.edf')
         # Add preamble text (file header)
-        self.tk.sendCommand("add_file_preamble_text 'Smooth pursuit task'")
+        # self.tk.setOfflineMode()
+        # self.tk.sendCommand("add_file_preamble_text 'Smooth pursuit task'")
         
         if not eye_tracker.calibrated:
             eye_tracker.calibrate()
@@ -43,6 +48,7 @@ class pursuit():
         
     def task_setup(self):
         # prepare the pursuit target, the clock and the movement parameters
+        self.win.color = [0, 0, 0]
         self.target = visual.GratingStim(self.win, tex=None, mask='circle', size=25)
         self.pursuitClock = core.Clock()
         
@@ -68,19 +74,25 @@ class pursuit():
         self.tk.closeDataFile()
         
         # Step 9: Download EDF file to a local folder ('edfData')
-        msg = 'Thank you \n Starting next task'
+        msg = 'Thank you \n Downloading EDF'
         edf = visual.TextStim(self.win, text=msg, color='white')
         edf.draw()
         self.win.flip()
         
-        if not os.path.exists(config.paths['data_out']):
-            os.mkdir(config.paths['data_out'])
-        self.tk.receiveDataFile('pursuit.edf', self.filename)
+        # self.receiveEDF()
+        # x = threading.Thread(target=self.receiveEDF, daemon=True)
+        # x.start()
 
         msg = 'Starting next task'
         edf = visual.TextStim(self.win, text=msg, color='white')
         edf.draw()
         self.win.flip()
+        
+        
+    def receiveEDF(self):
+        if not os.path.exists(config.paths['data_out']):
+            os.mkdir(config.paths['data_out'])
+        self.tk.receiveDataFile('pursuit.edf', self.filename)     
         
         
     def run_trial(self, trial_duration, movement_pars):
@@ -139,7 +151,7 @@ class pursuit():
                 _x = int(tar_x + SCN_W/2.0)
                 _y = int(SCN_H/2.0 - tar_y)
                 tar_msg = f'!V TARGET_POS target {_x}, {_y} 1 0'
-                self.tk.sendMessage(tar_msg)
+                # self.tk.sendMessage(tar_msg)
     
             time_elapsed = flip_time - move_start
     
@@ -157,6 +169,7 @@ class pursuit():
     
         # Stop recording
         self.tk.stopRecording()
+        # self.et.paused = True
     
         # Send trial variables to record in the EDF data file
         self.tk.sendMessage(f"!V TRIAL_VAR amp_x {amp_x:.2f}")

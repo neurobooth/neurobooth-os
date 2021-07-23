@@ -13,6 +13,19 @@ prefs.hardware['audioLib']=['pyo']
 from psychopy import sound, core, event, monitors, visual
 import time
 
+
+def make_win(monitor_width=55, monitor_distance=50):    
+    mon = monitors.getAllMonitors()[0]
+    customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
+    
+    mon_size = monitors.Monitor(mon).getSizePix()
+    customMon.setSizePix(mon_size)
+    customMon.saveMon()
+    
+    
+    win = visual.Window(mon_size, fullscr=False, monitor=customMon, units='pix', color='white')
+    return win
+
 def create_text_screen(win, text):
     screen = visual.TextStim(win=win, name='',
                              text=text,
@@ -25,11 +38,13 @@ def create_text_screen(win, text):
                              colorSpace='rgb',
                              opacity=None,
                              languageStyle='LTR',
-                             depth=0.0)
+                             depth=0.0,
+                             units='height')
     return screen
 
 
 def present(win, screen, audio, wait_time, win_color=(0, 0, 0)):
+    win.color = win_color
     if screen is not None:
         screen.draw()
         win.flip()
@@ -37,7 +52,6 @@ def present(win, screen, audio, wait_time, win_color=(0, 0, 0)):
         audio.play()
     core.wait(wait_time)
     event.waitKeys()
-    win.color = win_color
     win.flip()
 
 def play_video(win, mov):
@@ -48,12 +62,7 @@ def play_video(win, mov):
         if event.getKeys():
             break
 
-def make_win(monitor_width=55, monitor_distance=50):    
-    mon = monitors.getAllMonitors()[0]
-    customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
-    mon_size = monitors.Monitor(mon).getSizePix()
-    win = visual.Window(mon_size, fullscr=False, monitor=customMon, units='pix', color='white')
-    return win
+
 
 # win = visual.Window(
 #     size=(SCN_W, SCN_H), fullscr=full_screen, screen=0,

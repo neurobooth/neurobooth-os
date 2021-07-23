@@ -13,6 +13,8 @@ from tasks.mouse import mouse_task
 from tasks.test_timing.audio_video_test import Timing_Test
 from tasks.sit_to_stand.experiment import Sit_to_Stand
 from tasks.wellcome_finish_screens import welcome_screen, finish_screen
+from tasks.smooth_pursuit.pursuit_task import pursuit
+
 
 def fake_task(**kwarg):
     sleep(10)
@@ -162,6 +164,18 @@ def Main():
                     task_karg ={"win": win,
                                 "marker_outlet": streams['marker']}             
                     run_task(Sit_to_Stand, s2, cmd, subj_id, task, send_stdout, task_karg)
+                    
+                elif task =="sit_to_stand_task":
+                    fprint(f"Starting {task}")
+                    
+                    task_karg ={"win": win,            
+                                "subj_id": subj_id,
+                                "marker_outlet": streams['marker'],
+                                "eye_tracker": streams['eye_tracker']}
+                    
+                    res = run_task(pursuit, task_karg)      
+                    run_task(Sit_to_Stand, s2, cmd, subj_id, task, send_stdout, task_karg)                    
+                    
     
                 else:
                     fprint(f"Task not {task} implemented")

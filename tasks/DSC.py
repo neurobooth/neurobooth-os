@@ -23,7 +23,7 @@ def present_msg(elems, win, key_resp="return"):
 
     while not event.getKeys(keyList=key_resp):
         a = "next"
-    print(a)
+        print(a)
 
 
 
@@ -44,7 +44,7 @@ class DSC():
         self.fpath = op.dirname(op.abspath(__file__)).replace("\\", "/")
         self.tot_time = 10
         
-        
+       
         try:
             self.io = launchHubServer()
         except RuntimeError:
@@ -263,7 +263,7 @@ class DSC():
                 if r["type"] != 'practice' and  r["state"] != 'timeout']
 
         # all correct rts
-        tmp2 = [r['rt'] for r in self.results  if r["correct"] ]
+        tmp2 = [r['rt'] for r in tmp1  if r["correct"] ]
 
         # compute score and outcome variables
         score = self.outcomes["score"] = len(tmp2)

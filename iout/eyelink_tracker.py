@@ -10,9 +10,10 @@ import threading
 import config
 from tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
+
 class EyeTracker():
 
-    def __init__(self, sample_rate=500, monitor_width=55, monitor_distance=50, calibration_type="HV9",
+    def __init__(self, sample_rate=500, monitor_width=55, monitor_distance=50, calibration_type="HV5",
                  win=None, with_lsl=True, ip='192.168.100.15'):
         self.IP = ip
         self.sample_rate = sample_rate
@@ -33,13 +34,14 @@ class EyeTracker():
 
         # Setup outlet stream info
         self.oulet_id = str(uuid.uuid4())
-        self.stream_info = StreamInfo('EyeLink', 'Gaze', 14, self.sample_rate, 'float32', self.oulet_id)
+        self.stream_info = StreamInfo('EyeLink', 'Gaze', 20, self.sample_rate, 'float32', self.oulet_id)
         self.stream_info.desc().append_child_value("fps", str(self.sample_rate))
         # self.stream_info.desc().append_child_value("device_name", self.device_name)
         print(f"-OUTLETID-:EyeLink:{self.oulet_id}")
 
         self.calibrated = False
         self.recording = False
+        self.paused = True
         self.connect_tracker()
 
 
@@ -64,7 +66,10 @@ class EyeTracker():
 
         # Choose a calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical)
         self.tk.sendCommand(f"calibration_type = {self.calibration_type }")
-
+        
+        self.tk.sendCommand("calibration_area_proportion = 0.80 0.78")
+        self.tk.sendCommand("validation_area_proportion = 0.80 0.78")                        
+                             
     def calibrate(self):
         calib_prompt = 'You will see dots on the screen, please gaze at them'
         calib_msg = visual.TextStim(self.win, text=calib_prompt, color='white', units='pix')
@@ -94,39 +99,50 @@ class EyeTracker():
         self.tk.startRecording(1,1,1,1)
         print("Eyetracker recording")
         self.recording = True
-        self.stream_thread = threading.Thread(target=self.recording)
+        self.stream_thread = threading.Thread(target=self.record)
+        self.stream_thread.start()
 
-    def recording(self):
+    def record(self):
+        print("Eyetracker LSL recording")
+        self.paused = False
         while self.recording:
+            if self.paused:
+                time.sleep(.1)
+                continue
+            
             smp = self.tk.getNewestSample()
             # now = pylsl.local_clock()
             ppd = smp.getPPD()
             timestamp = smp.getTime()
-            values = [0, 0, 0, 0, 0, 0, 0, 0, smp.getTargetX(), smp.getTargetY(), smp.getTargetDistance(), ppd[0],
-                      ppd[1], timestamp]
+            values = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                      smp.getTargetX(), smp.getTargetY(), smp.getTargetDistance(),
+                      ppd[0], ppd[1], timestamp]
             if smp is not None:
                 # Grab gaze, HREF, raw, & pupil size data
                 if smp.isRightSample():
                     gaze = smp.getRightEye().getGaze()
-                    href = smp.getRightEye().getHREF()
-                    raw = smp.getRightEye().getRawPupil()
-                    pupil = smp.getRightEye().getPupilSize()
-                    values[:4] = [gaze, href, raw, pupil]
+                    href = smp.getRightEye().getHREF()  # head ref not necessary
+                    raw = smp.getRightEye().getRawPupil()  # raw not necessary
+                    pupil = smp.getRightEye().getPupilSize() # pupil size
+                    values[:7] = [p for pp in [gaze, href, raw] for p in pp] + [pupil]
                 elif smp.isLeftSample():
                     gaze = smp.getLeftEye().getGaze()
                     href = smp.getLeftEye().getHREF()
                     raw = smp.getLeftEye().getRawPupil()
                     pupil = smp.getLeftEye().getPupilSize()
-                    values[4:8] = [gaze, href, raw, pupil]
+                    values[7:14] = [p for pp in [gaze, href, raw] for p in pp] + [pupil]
 
                 self.outlet.push_sample(values)
-        self.tk.closeDataFile()
-        print("saving EDF file to disk")
-        self.tk.receiveDataFile({self.filename}, f'{config.paths["data_out"]}{self.filename}')
-        print("saving EDF file to disk DONE")
+            time.sleep(.002)
+            
+        # self.tk.closeDataFile()
+        # print("saving EDF file to disk")
+        # self.tk.receiveDataFile(self.filename, f'{config.paths["data_out"]}{self.filename}')
+        # print("saving EDF file to disk DONE")
 
     def stop(self):
         self.recording = False
+        self.stream_thread.join()
 
     def close(self):
        if self.recording == True:
