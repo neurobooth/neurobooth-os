@@ -40,7 +40,7 @@ def start_lsl_threads(node_name):
     return streams
 
 
-def connect_mbient(dev_name="LF", try_nmax=5):
+def connect_mbient(dev_name="LH", try_nmax=5):
     from iout.mbient import Sensor
     
     mac = config.mbient_macs[dev_name]
