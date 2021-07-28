@@ -37,8 +37,9 @@ class EyeTracker():
         self.stream_info = StreamInfo('EyeLink', 'Gaze', 20, self.sample_rate, 'float32', self.oulet_id)
         self.stream_info.desc().append_child_value("fps", str(self.sample_rate))
         # self.stream_info.desc().append_child_value("device_name", self.device_name)
+        self.outlet = StreamOutlet(self.stream_info)
         print(f"-OUTLETID-:EyeLink:{self.oulet_id}")
-
+        self.streaming = True
         self.calibrated = False
         self.recording = False
         self.paused = True
@@ -92,7 +93,7 @@ class EyeTracker():
     def start(self, filename="TEST.EDF"):
         self.filename = filename
         self.tk.openDataFile(filename)
-        self.outlet = StreamOutlet(self.stream_info)
+        # self.outlet = StreamOutlet(self.stream_info)
         self.streaming = True
 
         pylink.beginRealTimeMode(100)
@@ -103,21 +104,31 @@ class EyeTracker():
         self.stream_thread.start()
 
     def record(self):
+        import time
         print("Eyetracker LSL recording")
         self.paused = False
+        old_sample = None
+        values = []
         while self.recording:
             if self.paused:
                 time.sleep(.1)
                 continue
             
             smp = self.tk.getNewestSample()
-            # now = pylsl.local_clock()
-            ppd = smp.getPPD()
-            timestamp = smp.getTime()
-            values = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                      smp.getTargetX(), smp.getTargetY(), smp.getTargetDistance(),
-                      ppd[0], ppd[1], timestamp]
-            if smp is not None:
+            
+            if old_sample == smp:
+                print("same samples")
+                print(values)
+                
+            if smp is not None and old_sample != smp:  
+                
+                # now = pylsl.local_clock()
+                ppd = smp.getPPD()
+                timestamp = smp.getTime()
+                values = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          smp.getTargetX(), smp.getTargetY(), smp.getTargetDistance(),
+                          ppd[0], ppd[1], timestamp]
+            
                 # Grab gaze, HREF, raw, & pupil size data
                 if smp.isRightSample():
                     gaze = smp.getRightEye().getGaze()
@@ -125,7 +136,7 @@ class EyeTracker():
                     raw = smp.getRightEye().getRawPupil()  # raw not necessary
                     pupil = smp.getRightEye().getPupilSize() # pupil size
                     values[:7] = [p for pp in [gaze, href, raw] for p in pp] + [pupil]
-                elif smp.isLeftSample():
+                if smp.isLeftSample():
                     gaze = smp.getLeftEye().getGaze()
                     href = smp.getLeftEye().getHREF()
                     raw = smp.getLeftEye().getRawPupil()
@@ -133,7 +144,12 @@ class EyeTracker():
                     values[7:14] = [p for pp in [gaze, href, raw] for p in pp] + [pupil]
 
                 self.outlet.push_sample(values)
-            time.sleep(.002)
+                old_sample = smp
+                
+        
+            
+            time.sleep(.001)
+        
             
         # self.tk.closeDataFile()
         # print("saving EDF file to disk")

@@ -14,7 +14,7 @@ from psychopy import sound, core, event, monitors, visual
 import time
 
 
-def make_win(monitor_width=55, monitor_distance=50):    
+def make_win(full_screen=True, monitor_width=55, monitor_distance=50):    
     mon = monitors.getAllMonitors()[0]
     customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
     
@@ -23,7 +23,7 @@ def make_win(monitor_width=55, monitor_distance=50):
     customMon.saveMon()
     
     
-    win = visual.Window(mon_size, fullscr=False, monitor=customMon, units='pix', color='white')
+    win = visual.Window(mon_size, fullscr=full_screen, monitor=customMon, units='pix', color='white')
     return win
 
 def create_text_screen(win, text):
@@ -43,16 +43,19 @@ def create_text_screen(win, text):
     return screen
 
 
-def present(win, screen, audio, wait_time, win_color=(0, 0, 0)):
+def present(win, screen, audio, wait_time, win_color=(0, 0, 0), waitKeys=True, first_screen=False):
     win.color = win_color
     if screen is not None:
         screen.draw()
         win.flip()
+        if first_screen:
+            event.waitKeys()
     if audio is not None:
         audio.play()
     core.wait(wait_time)
-    event.waitKeys()
-    win.flip()
+    if waitKeys:
+        event.waitKeys()
+    # win.flip()
 
 def play_video(win, mov):
     mov.play()

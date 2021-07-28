@@ -55,8 +55,10 @@ class pursuit():
         # Parameters for the Sinusoidal movement pattern
         # [amp_x, amp_y, phase_x, phase_y, angular_freq_x, angular_freq_y]
         self.mov_pars = [
-                [300, 300, pi*3/2, 0, 1/8.0, 1/8.0],
-                [300, 300, pi/2, 0, 1/8.0, 1/8.0]
+                [450, 0, 0, 0, 1/2.5, 1/2.5],
+                [450, 0, 0, 0, 1/3.0, 1/3.0],
+                [450, 0, 0, 0, 1/2.0, 1/2.0],
+                [450, 0, 0, 0, 1/1.0, 1/1.0]
                 ]
 
 
@@ -151,7 +153,7 @@ class pursuit():
                 _x = int(tar_x + SCN_W/2.0)
                 _y = int(SCN_H/2.0 - tar_y)
                 tar_msg = f'!V TARGET_POS target {_x}, {_y} 1 0'
-                # self.tk.sendMessage(tar_msg)
+                self.tk.sendMessage(tar_msg)
     
             time_elapsed = flip_time - move_start
     

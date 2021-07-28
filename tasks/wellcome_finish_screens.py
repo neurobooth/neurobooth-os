@@ -19,8 +19,9 @@ def my_textbox2(win, text, pos=(0,0), size=(None, None)):
                    borderColor=None, fillColor=None, editable=False, alignment='center')
     return tbx
     
-def welcome_screen(with_audio=True):
-    win = utl.make_win()
+def welcome_screen(with_audio=True, win=None):
+    if win is None:
+        win = utl.make_win(full_screen=False)
     
     welcome = visual.ImageStim(win, image= './tasks/NB1.jpg', units='pix')
     if with_audio:
@@ -28,7 +29,7 @@ def welcome_screen(with_audio=True):
                                     name='welcome_instructions')
     else:
         welcome_audio = None
-    utl.present(win, welcome, welcome_audio, 5)
+    utl.present(win, welcome, welcome_audio, 5, waitKeys=True, first_screen=True)
     
     win.winHandle.activate()
     return win

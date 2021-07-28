@@ -6,7 +6,7 @@ Created on Tue Nov 24 15:41:42 2020
 """
 import config
 
-def start_lsl_threads(node_name):    
+def start_lsl_threads(node_name, win=None):    
     streams = {}    
     if node_name == "acquisition":
         from iout.microphone import MicStream
@@ -33,9 +33,11 @@ def start_lsl_threads(node_name):
     elif node_name == "presentation":     
         from iout.marker import marker_stream       
         from iout.mouse_tracker  import MouseStream
+        from iout.eyelink_tracker import EyeTracker
         
         streams['mouse'] = MouseStream()
         streams['marker'] =  marker_stream()
+        # streams['eye_tracker'] = EyeTracker(win=win)
         
     return streams
 

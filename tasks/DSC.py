@@ -16,14 +16,14 @@ from psychopy.iohub import launchHubServer
 from tasks.utils import make_win
 
 
-def present_msg(elems, win, key_resp="return"):
+def present_msg(elems, win, key_resp="space"):
     for e in elems:
         e.draw()
     win.flip()
-
-    while not event.getKeys(keyList=key_resp):
-        a = "next"
-        print(a)
+    event.waitKeys(keyList=key_resp)
+    # while not event.getKeys(keyList=key_resp):
+    #     a = "next"
+    #     # print(a)
 
 
 
@@ -140,7 +140,7 @@ class DSC():
                 visual.ImageStim(self.win, image=self.fpath+'/DSC/images/key.png', pos=(0, 0), units='deg'),
                 self.my_textbox2(f"You should press <b>{frame['digit']}</b> on the <b>keyboard</b> " +\
                                             "when you see this symbol", (0, -7)),
-                self.my_textbox2('Press [enter] to continue', (0, -10)),
+                self.my_textbox2('Press [continue] ', (0, -10)),
                 ]
 
                 present_msg(message, self.win)
@@ -279,10 +279,10 @@ class DSC():
         if self.showresults:
             mes = [self.my_textbox2(f"Your score is {score}. \nThe test is " + \
                       "over. \nThank you for participating!",(0, 2)),
-            self.my_textbox2('Press <b>[enter]</b> to continue', pos=(0, -7))
+            self.my_textbox2('Press <b>[continue]</b>', pos=(0, -7))
             ]
 
-            present_msg(mes, self.win, key_resp="return")
+            present_msg(mes, self.win, key_resp="space")
             
         # Close win if just created for the task
         if self.win_temp:
@@ -310,7 +310,7 @@ class DSC():
             "begin": [
                 self.my_textbox2("Digit-Symbol Coding Test", (0, 6)),
 
-                self.my_textbox2('Press <b>[enter]</b> for instructions', (0, -6)),
+                self.my_textbox2('Press <b>[Continue]</b> for instructions', (0, -6)),
 
                 visual.ImageStim(self.win, image=self.fpath + '/DSC/images/key.png', pos=(0, 0), units='deg')
                 ],
@@ -321,7 +321,7 @@ class DSC():
 
                     self.my_textbox2("Each <b>symbol</b> has a <b>number</b>",(0, -5)),
 
-                    self.my_textbox2('Press [enter] to continue',(0, -7)),
+                    self.my_textbox2('Press [Continue] to continue',(0, -7)),
 
                     visual.ImageStim(self.win, image=self.fpath+'/DSC/images/key.png', pos=(0, 0), units='deg')
                 ],
@@ -335,7 +335,7 @@ class DSC():
                            "press its number on the <b>keyboard</b> \n" +
                           "(here it is  <b>1</b>).", (0, -6)),
 
-                    self.my_textbox2( 'Press <b>[enter]</b> to continue',(0, -10)),
+                    self.my_textbox2( 'Press <b>[Continue]</b> to continue',(0, -10)),
                     ],
                 [
                     visual.ImageStim(self.win, image=self.fpath+'/DSC/images/2.gif', pos=(0, 6), units='deg'),
@@ -352,7 +352,7 @@ class DSC():
                  self.my_textbox2("Your score will be how many correct responses you" +
                              " make in a minute and a half,so try to be \
                                  <b>ACCURATE</b> and <b>QUICK</b>!", (0, -4)),
-                 self.my_textbox2( 'Press <b>[enter]</b> to continue',(0, -10))
+                 self.my_textbox2( 'Press <b>[Continue]</b> to continue',(0, -10))
                 ]
                                  }
 

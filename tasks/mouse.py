@@ -6,6 +6,7 @@ from __future__ import absolute_import, division
 from psychopy import visual, core, data, event, logging
 from psychopy.constants import NOT_STARTED, STARTED, FINISHED
 from numpy.random import shuffle
+import numpy as np
 import os
 
 from psychopy.hardware import keyboard
@@ -20,7 +21,7 @@ class mouse_task():
         self.marker_outlet = marker_outlet
         self.win = win
         self.path = path
-        self.trials = 5
+        self.trials = 3
         
         # Store info about the experiment session
         psychopyVersion = '2020.2.3' # psychopy.__version__
@@ -82,17 +83,19 @@ class mouse_task():
         defaultKeyboard = keyboard.Keyboard()
         mouse = event.Mouse(win=win)
         text = visual.TextStim(win=win, name='text',
-            text='You will see series of red dots\n\nYour task is to click on the red dot\n\nclick to Continue',
-            font='Arial',
+            text='You will see series of red dots\n\nYour task is to click on the red dot\n\nPress any button to Continue',
+            font='Arial', units='height',
             pos=(0, 0), height=0.05, wrapWidth=None, ori=0,
             color='white', colorSpace='rgb', opacity=1,
             languageStyle='LTR',
             depth=0.0)
         text.setAutoDraw(True)
         win.flip()
+        # MARKER
         buttons = [0, 0, 0]
-        while buttons != [1, 0, 0]:
-            buttons, times = mouse.getPressed(getTime=True)
+        # while buttons != [1, 0, 0]:
+        #     buttons, times = mouse.getPressed(getTime=True)
+        event.waitKeys()
         
         text.setAutoDraw(False)
         
@@ -100,16 +103,18 @@ class mouse_task():
         trialClock = core.Clock()
         polygon = visual.Polygon(
             win=win, name='polygon',
-            edges=9999, size=(0.05, 0.05),
-            ori=0, pos=(0, 0),  units='norm',
-            lineWidth=1, lineColor='red', lineColorSpace='rgb',
-            fillColor='red', fillColorSpace='rgb',
+            edges=9999, size=(30, 30),
+            ori=0, pos=(0, 0),  units='pix',
+            lineWidth=1, lineColor='white', lineColorSpace='rgb',
+            fillColor='white', fillColorSpace='rgb',
             opacity=1, depth=0.0, interpolate=True)
         
         x, y = [None, None]
         mouse.mouseClock = core.Clock()
         xLocs = [-.4, -.35, -.3, -.25, -.2, -.15, -.1, -.05, 0, 0.05, .1, .15, .2, .25, .3, .35, .4]
         yLocs = [-.4, -.35, -.3, -.25, -.2, -.15, -.1, -.05, 0, 0.05, .1, .15, .2, .25, .3, .35, .4]
+        xLocs = [xLoc*1920 for xLoc in xLocs]
+        yLocs = [yLoc*1080 for yLoc in yLocs]
         locs = []
         
         for x in xLocs:
@@ -189,6 +194,7 @@ class mouse_task():
                     polygon.tStartRefresh = tThisFlipGlobal  # on global time
                     win.timeOnFlip(polygon, 'tStartRefresh')  # time at next scr refresh
                     polygon.setAutoDraw(True)
+                    # MARKER Trial start 1
                 # *mouse* updates
                 if mouse.status == NOT_STARTED and t >= 0.0-frameTolerance:
                     # keep track of start time/frame for later
@@ -199,6 +205,7 @@ class mouse_task():
                     mouse.status = STARTED
                     mouse.mouseClock.reset()
                     prevButtonState = mouse.getPressed()  # if button is down already this ISN'T a new click
+                    
                 if mouse.status == STARTED:  # only update if started and not finished!
                     x, y = mouse.getPos()
                     print(x, y, mouse.mouseClock.getTime())
@@ -211,6 +218,7 @@ class mouse_task():
                             for obj in [polygon]:
                                 if obj.contains(mouse):
                                     gotValidClick = True
+                                    # MARKER RESPONSE 1
                                     mouse.clicked_name.append(obj.name)
                             x, y = mouse.getPos()
                             mouse.x.append(x)
