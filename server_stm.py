@@ -2,9 +2,12 @@ import socket
 import io
 import pandas as pd
 import sys
+import os
 from time import time, sleep  
 from iout.screen_capture import ScreenMirror
 from iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
+from iout.eyelink_tracker import EyeTracker
+
 import config
 from netcomm.client import socket_message, node_info
 from tasks.DSC import DSC
@@ -14,7 +17,10 @@ from tasks.test_timing.audio_video_test import Timing_Test
 from tasks.sit_to_stand.experiment import Sit_to_Stand
 from tasks.wellcome_finish_screens import welcome_screen, finish_screen
 from tasks.smooth_pursuit.pursuit_task import pursuit
+import tasks.utils as utl
 
+os.chdir(r'C:\neurobooth-eel\\')
+print(os.getcwd())
 
 def fake_task(**kwarg):
     sleep(10)
@@ -22,15 +28,18 @@ def fake_task(**kwarg):
 
 
 def run_task(task_funct, s2, cmd, subj_id, task, send_stdout, task_karg={}):    
-    resp = socket_message(f"record_start:{subj_id}_{task}", "acquisition", wait_data=1)
+    resp = socket_message(f"record_start:{subj_id}_{task}", "acquisition", wait_data=2)
     print(resp)
     s2.sendall(cmd.encode('utf-8') )
+    sleep(.5)
     s2.sendall(b"select all\n")
-    sleep(.01)
+    sleep(.5)
     s2.sendall(b"start\n")
+    sleep(.5)
     res = task_funct(**task_karg)
     s2.sendall(b"stop\n")
     socket_message("record_stop", "acquisition")
+    sleep(2)
     return res
                 
               
@@ -66,8 +75,9 @@ def Main():
     def fprint(str_print):
         print(str_print)
         send_stdout()
-    
-    win = welcome_screen()
+
+    win = utl.make_win(full_screen=True)
+    # win = welcome_screen(with_audio=True)
     streams, screen_running = {}, False            
     # a forever loop until client wants to exit 
     while True:   
@@ -107,21 +117,30 @@ def Main():
                 fprint("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:    
-                streams = start_lsl_threads("presentation")
+                streams = start_lsl_threads("presentation", win=win)
                 send_stdout()
                 streams['mouse'].start()
+                if 'eye_tracker' in streams.keys():
+                    streams['eye_tracker'].win = win
                 fprint("Preparing devices")
-                                               
+                            
         elif "present" in data:   #-> "present:TASKNAME:subj_id"
             # task_name can be list of task1-task2-task3  
             tasks = data.split(":")[1].split("-")
+            tasks = ["pursuit_task", "DSC_task", "mouse_task", "sit_to_stand_task"]
+            tasks = ["DSC_task", "mouse_task", "sit_to_stand_task"]
+
             subj_id = data.split(":")[2] 
             
+            win = welcome_screen(with_audio=True, win=win)
+            # streams['eye_tracker'] = EyeTracker(win=win)
             # Connection to LabRecorder in ctr pc
             host_ctr, _ = node_info("control")
             s2 = socket.create_connection((host_ctr, 22345))
             
-            for task in tasks:
+            for task in tasks:                
+                host_ctr, _ = node_info("control")
+                # s2 = socket.create_connection((host_ctr, 22345))
                 fprint(f"initiating {task}") 
                 send_stdout()
                 
@@ -131,6 +150,7 @@ def Main():
                     fake_task(s2, cmd, subj_id, task, send_stdout)   
                     msg = f"Done with {task}"
                     # c.send(msg.encode("ascii")) 
+ 
     
                 elif task == "mouse_task":    
                     fprint(f"Starting {task}")
@@ -165,20 +185,22 @@ def Main():
                                 "marker_outlet": streams['marker']}             
                     run_task(Sit_to_Stand, s2, cmd, subj_id, task, send_stdout, task_karg)
                     
-                elif task =="sit_to_stand_task":
+                elif task =="pursuit_task":
                     fprint(f"Starting {task}")
                     
                     task_karg ={"win": win,            
                                 "subj_id": subj_id,
                                 "marker_outlet": streams['marker'],
-                                "eye_tracker": streams['eye_tracker']}
-                    
-                    res = run_task(pursuit, task_karg)      
-                    run_task(Sit_to_Stand, s2, cmd, subj_id, task, send_stdout, task_karg)                    
-                    
+                                "eye_tracker": streams['eye_tracker']
+                                }
+                    streams['eye_tracker'].start(f"{subj_id}_prst.edf")
+                    run_task(pursuit, s2, cmd, subj_id, task, send_stdout, task_karg)
+                    streams['eye_tracker'].stop()
     
                 else:
                     fprint(f"Task not {task} implemented")
+                
+            finish_screen(win)
             
         elif data in ["close", "shutdown"]: 
             
