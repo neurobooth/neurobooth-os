@@ -96,7 +96,7 @@ def Main():
             fprint("Starting recording")            
             fname = config.paths['data_out'] + data.split(":")[-1]
             for k in streams.keys():
-                if k[:-1] in ["hiFeed", "intel", "ximea"]:
+                if k[:-1] in ["hiFeed", "intel", "flir"]:
                     streams[k].start(fname)
             msg = "ACQ_ready"
             c.send(msg.encode("ascii"))
