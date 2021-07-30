@@ -33,6 +33,7 @@ def prepare_devices():
 
 
 def task_presentation(task_name, filename):
+    # task_name can be list of task1-task2-task3
     socket_message(f"present:{task_name}:{filename}", "presentation")
     
 

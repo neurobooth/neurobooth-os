@@ -17,6 +17,7 @@ import queue
 import main_control_rec as ctr_rec
 from realtime.lsl_plotter import update_streams_fromID, get_lsl_images, stream_plotter
 from netcomm.server_ctr import server_com
+from netcomm.client import socket_message
 
 # from netcomm.server_ctr import test as server_com
     
@@ -75,10 +76,12 @@ def main_layout(frame_sz=(320, 240)):
         [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(64, 10)), space()],
         [space()],          
         # [space()],
-        [space(), sg.Checkbox('Symbol Digit Matching Task', key='DSC_task', size=(44, 1))],
-        [space(), sg.Checkbox('Mouse Task', key='mouse_task', size=(44, 1))],
-        [space(), sg.Checkbox('Time testing', key='timing_task', size=(44, 1))],
-        [space(), sg.Checkbox('Sit to Stand', key='sit_to_stand', size=(44, 1))],
+        [space(), sg.Checkbox('Symbol Digit Matching Task', key='DSC_task', size=(15, 1)),
+         space(), sg.Checkbox('Mouse Task', key='mouse_task', size=(15, 1)),
+         space(), sg.Checkbox('Pursuit Task', key='pursuit_task', size=(15, 1)),
+         ],
+        [space(), sg.Checkbox('Time testing', key='timing_task', size=(15, 1)),
+         space(), sg.Checkbox('Sit to Stand', key='sit_to_stand_task', size=(15, 1))],
         [space()],          
         [space(), sg.ReadFormButton('Save', button_color=('white', 'black'))],         
         [space()],
@@ -90,6 +93,7 @@ def main_layout(frame_sz=(320, 240)):
          space(5), lay_butt('Display', 'RTD'), 
          space(5), lay_butt('Connect Devices', 'Connect'),
          space(5), lay_butt('Plot Devices', 'plot'),
+         space(5), lay_butt('Connect Eyelink', 'eyetracker'),
           ],
         [space()],
         [space(5), lay_butt('Terminate servers','Shut Down'),
@@ -140,6 +144,7 @@ def serv_data_received():
     
     while True:  # while items in queue
         try:
+            # print("serv_data_received")
             event_feedb = serv_event.get(False)
             print(event_feedb)
             stream_ids_old = stream_ids.copy()
@@ -202,6 +207,11 @@ while True:
     elif event == "init_servs":
         ctr_rec.start_servers()
         _ = ctr_rec.test_lan_delay(50)
+    
+    elif event == 'eyetracker':
+        print(event)
+        socket_message(event, "presentation")
+        print(event, "finished")
         
     elif event == 'Start':
         if not session_saved:
@@ -214,7 +224,8 @@ while True:
         
         if len(tasks):
             start_tasks= True
-            running_task = tasks.pop(0)
+            
+            running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3                       
             ctr_rec.task_presentation(running_task, session_info['subj_id'])
         else:
             print("Start button pressed but no task selected")      

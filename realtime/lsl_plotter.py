@@ -47,17 +47,19 @@ def update_streams_fromID(stream_ids):
     
     streams = []
     for id_stream in  stream_ids.values():
-        streams += pylsl.resolve_byprop("source_id", id_stream)
+        print("resolving: ", id_stream)
+        streams += pylsl.resolve_byprop("source_id", id_stream, timeout=10)
     
     inlets= {}
-    for info in streams:            
+    for info in streams:  
+        
         name = info.name()     
-
+        print("outlet name: ", name)  
         if info.type() == 'Markers':
             print('(NOT YET) Adding marker inlet: ' + name)
             # inlets.append(MarkerInlet(info))
             
-        elif info.name()  in ["Screen", "Webcam", "Mouse", "Audio", "mbient"]:
+        elif info.name()  in ["Screen", "Webcam", "Mouse", "Audio", "mbient", "EyeLink"]:
             print('Adding data inlet: ' + name)
             
             inlet = pylsl.StreamInlet(info)#, recover=False)

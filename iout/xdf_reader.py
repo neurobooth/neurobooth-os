@@ -2,7 +2,7 @@ import pyxdf
 import matplotlib.pyplot as plt
 import numpy as np
 
-file = r'C:\neurobooth\neurobooth_data\t__timing_task.xdf'
+file = r'C:\neurobooth\neurobooth_data\sz2__DSC_task.xdf'
 data, header = pyxdf.load_xdf(file)
 
 
@@ -58,7 +58,7 @@ plt.legend()
 
 
 fig, ax = plt.subplots(1,2)
-n = 1
+n = 4
 tdiff = np.diff(data[n]['time_stamps'])
 ax[0].plot(tdiff)
 ax[0].set_title("ff")
@@ -66,7 +66,7 @@ ax[1].hist(np.diff(data[n]['time_stamps']), 25)
 
 
 fig, ax = plt.subplots(1,2)
-n = 0
+n =  4
 ts = np.array([ float(s[0]) for s in data[n]['time_series']])
 ts = np.diff(ts)
 ax[0].plot(ts)
