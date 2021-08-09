@@ -53,7 +53,7 @@ def task_mapping(task_name):
 def main_layout(sess_info, frame_sz=(320, 240)):
     frame_cam = np.ones(frame_sz)
     imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
-        
+    sess_info, = sess_info
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0))
     

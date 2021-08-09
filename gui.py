@@ -110,6 +110,8 @@ while True:
         if values["_tasks_"] == "":
             sg.PopupError('No task combo')
         else:
+            if values.get(0):  # Wierd key with 0
+                del values[0]
             sess_info = values
             window.close()
             
