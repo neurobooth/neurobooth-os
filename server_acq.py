@@ -77,11 +77,12 @@ def Main():
                 fprint ("Already running low feed video streaming")
             
         elif "prepare" in data:
+            collection_id = data.split(":")[-1]
             if len(streams):
                 fprint("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
-                streams = start_lsl_threads("acquisition")            
+                streams = start_lsl_threads("acquisition", collection_id)            
                 streams['micro'].start()
                 for k in streams.keys():
                     if k[:-3] in ["mbient"] and streams.get(k) is not None:                

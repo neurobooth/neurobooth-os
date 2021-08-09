@@ -46,29 +46,30 @@ def task_mapping(task_name):
              }
     return tasks[task_name]
     
-def main_layout(sess_info, frame_sz=(320, 240)):
+
+def main_layout(frame_sz=(320, 240)):
     frame_cam = np.ones(frame_sz)
     imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
-    sess_info, = sess_info
+        
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0))
-    
-    field_tasks = []
-    for task in sess_info['_tasks_'].split(","):
-        name, key = task_mapping(task.replace(" ", ""))
-        field_tasks.append([space(), sg.Checkbox(name, key=key, size=(44, 1))])
-        
     layout_col1 = [
-        [sg.Text(f'Subject ID: {sess_info["subj_id"]}', pad=((0, 0), 0), justification='left',  size=(44, 1))],
+        [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Input(key='subj_id', size=(44, 1), background_color='white', text_color='black')],
         [space()],
-        [sg.Text(f'RC ID: {sess_info["rc_id"]}', pad=((0, 0), 0), justification='left')],
+        [sg.Text('RC ID:', pad=((0, 0), 0), justification='left'),  sg.Input(key='rc_id', size=(44, 1), background_color='white', text_color='black')],
         [space()],
         [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(64, 10)), space()],
-        [space(), sg.Combo([task_mapping(t.replace(" ", ""))[0] for t in sess_info['_tasks_'].split(",")]),
-         sg.ReadFormButton('Save', key="_task_notes_")],  
-        [space()]
-        ] + field_tasks + [       
-        [space()],  
+        [space()],          
+        # [space()],
+        [space(), sg.Checkbox('Symbol Digit Matching Task', key='DSC_task', size=(15, 1)),
+         space(), sg.Checkbox('Mouse Task', key='mouse_task', size=(15, 1)),
+         space(), sg.Checkbox('Pursuit Task', key='pursuit_task', size=(15, 1)),
+         ],
+        [space(), sg.Checkbox('Time testing', key='timing_task', size=(15, 1)),
+         space(), sg.Checkbox('Sit to Stand', key='sit_to_stand_task', size=(15, 1))],
+        [space()],          
+        [space(), sg.ReadFormButton('Save', button_color=('white', 'black'))],         
+        [space()],
         [space()],
         [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left', auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))],
         [space()],
@@ -77,6 +78,7 @@ def main_layout(sess_info, frame_sz=(320, 240)):
          space(5), lay_butt('Display', 'RTD'), 
          space(5), lay_butt('Connect Devices', 'Connect'),
          space(5), lay_butt('Plot Devices', 'plot'),
+         space(5), lay_butt('Connect Eyelink', 'eyetracker'),
           ],
         [space()],
         [space(5), lay_butt('Terminate servers','Shut Down'),
@@ -96,7 +98,6 @@ def main_layout(sess_info, frame_sz=(320, 240)):
     
     layout = [[sg.Column(layout_col1,  pad=(0,0)), sg.Column(layout_col2, pad=(0,0), element_justification='c')] ]
     return layout
-
 
 def win_gen(layout, *args):
     window = sg.Window("Neurobooth",
