@@ -12,16 +12,18 @@ import uuid
 states = []
 
 class Sensor:
-    def __init__(self, mac_address, dev_name="mbient", buzz_time_sec=2):
+    def __init__(self, mac, dev_name="mbient", acc_hz =100, gyro_hz=200, buzz_time_sec=2):
         
-        self.mac = mac_address
+        self.mac = mac
         self.dev_name = dev_name
         self.connector = MetaWear
         self.connect()
         
         self.processor = None
         self.buzz_time = buzz_time_sec *1000
-
+        self.acc_hz = acc_hz
+        self.gyro_hz = gyro_hz
+        
         # Setup outlet stream infos
         self.oulet_id =  str(uuid.uuid4())
         self.stream_mbient = StreamInfo(name=f'mbient_{self.dev_name}', type='acc',
@@ -50,7 +52,11 @@ class Sensor:
     def setup(self):
         libmetawear.mbl_mw_settings_set_connection_parameters(self.device.board, 7.5, 7.5, 0, 6000)
         sleep(1.5)
-
+        
+        libmetawear.mbl_mw_acc_set_odr(self.device.board, self.acc_hz)
+        libmetawear.mbl_mw_acc_set_range(self.device.board, 16.0)
+        libmetawear.mbl_mw_gyro_bmi160_set_odr(self.device.board, self.gyro_hz)
+        libmetawear.mbl_mw_gyro_bmi160_set_range(self.device.board, 2000)
         e = Event()
 
         def processor_created(context, pointer):
@@ -64,6 +70,7 @@ class Sensor:
 
         acc = libmetawear.mbl_mw_acc_get_acceleration_data_signal(self.device.board)
         gyro = libmetawear.mbl_mw_gyro_bmi160_get_rotation_data_signal(self.device.board)
+        
 
         signals = (c_void_p * 1)()
         signals[0] = gyro

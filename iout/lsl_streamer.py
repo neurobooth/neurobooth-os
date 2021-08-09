@@ -5,33 +5,30 @@ Created on Tue Nov 24 15:41:42 2020
 @author: adona
 """
 import config
+from iout import metadator as meta
 
 
-def start_lsl_threads(node_name, collection_id="mvp_25", win=None):    
+def start_lsl_threads(node_name, collection_id="mvp_025", win=None):    
     streams = {}    
     if node_name == "acquisition":
         from iout.microphone import MicStream
         from iout.camera_brio import VidRec_Brio
         from iout.camera_intel import VidRec_Intel
         from iout.ximea_cam import VidRec_Ximea
-
         
-        # streams["hiFeed1"] = VidRec_Brio(camindex=config.cam_inx["brio1"] , doPreview=False)
-        # streams["hiFeed2"] = VidRec_Brio(camindex=config.cam_inx["brio2"] , doPreview=False)
-        streams["intel1"] = VidRec_Intel(size_rgb=(640, 480), size_depth=(640, 360),
-                 fps_rgb=60, fps_depth=60, camindex=config.cam_inx["intel1"])
+        kward_devs = meta.get_kwarg_collection(collection_id)
         
-        streams["intel2"] = VidRec_Intel(camindex=config.cam_inx["intel2"])
-        streams["intel3"] = VidRec_Intel(camindex=config.cam_inx["intel3"])
         streams['micro'] = MicStream()
-        # streams["ximea1"] = VidRec_Ximea()
-        
-        mbients = ["RH", "LH", "LF"]
-        mbient_name = 'RH'
-        for mbient_name in mbients:
-            streams[f"mbient_{mbient_name}"] = connect_mbient(mbient_name)
-            if streams[f"mbient_{mbient_name}"] is None:
-                del streams[f"mbient_{mbient_name}"]
+        for kdev, argsdev in kward_devs.items():
+            if "Intel" in kdev:
+                streams[kdev] = VidRec_Intel(**argsdev)
+            elif "Mbient" in kdev:
+                print(kdev)
+               
+                streams[kdev] = connect_mbient(**argsdev)
+                if streams[kdev] is None:
+                    del streams[kdev]
+                    
        
     elif node_name == "presentation":     
         from iout.marker import marker_stream       
@@ -45,16 +42,16 @@ def start_lsl_threads(node_name, collection_id="mvp_25", win=None):
     return streams
 
 
-def connect_mbient(dev_name="LH", try_nmax=5):
+def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=5, **kwarg):
     from iout.mbient import Sensor
     
-    mac = config.mbient_macs[dev_name]
-    
+       
     tinx = 0
     print(f"Trying to connect mbient {dev_name}, mac {mac}")
     while True:        
         try:            
-            sens = Sensor(mac, dev_name)
+          
+            sens = Sensor( mac, dev_name, **kwarg)
             return sens 
         except Exception as e:        
             print(f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries {e}")
@@ -86,4 +83,5 @@ def reconnect_streams(streams, cams=False):
         print(f"-OUTLETID-:{k}:{streams[k].oulet_id}")
         
     return streams
+
 

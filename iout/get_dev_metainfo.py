@@ -60,14 +60,14 @@ sens_info_dict = {
     }
     
 sens_intel = OrderedDict()
-sens_intel["sens_Intel_D455_rgb_1"] =   {
+sens_intel["Intel_D455_rgb_1"] =   {
         "sensor_id" : "Intel_D455_rgb_1",#VARCHAR(255) NOT NULL,
         "temporal_res" : 60,#FLOAT NOT NULL,
         "spatial_res_x" : 640, #FLOAT NOT NULL,
         "spatial_res_y" : 480,
         "file_type" : "bag"
         }
-sens_intel["sens_Intel_D455_depth_1"] =  {
+sens_intel["Intel_D455_depth_1"] =  {
         "sensor_id" : "Intel_D455_depth_1",#VARCHAR(255) NOT NULL,
         "temporal_res" : 60,#FLOAT NOT NULL,
         "spatial_res_x" : 640, #FLOAT NOT NULL,
