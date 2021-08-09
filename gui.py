@@ -18,6 +18,7 @@ import main_control_rec as ctr_rec
 from realtime.lsl_plotter import update_streams_fromID, get_lsl_images, stream_plotter
 from netcomm.server_ctr import server_com
 from netcomm.client import socket_message
+from layouts import main_layout, win_gen, init_layout
 
 # from netcomm.server_ctr import test as server_com
     
@@ -29,6 +30,11 @@ def get_session_info(values):
     
 def get_tasks(values): 
     tasks= []
+    try:  # a key 0 is entered by some reason
+        del values[0]
+    except:
+        pass
+    
     for key, val in values.items():
         if "task" in key and val is True:
             tasks.append(key)
@@ -52,81 +58,11 @@ def feedback_com():
 thr = threading.Thread(target=feedback_com, daemon=True)
 thr.start()
         
-def lay_butt(name, key=None):
-    if key is None:
-        key = name
-    return sg.Button(name, button_color=('white', 'black'), key=key)
 
-
-def space(n=10):
-    return sg.Text(' ' * n)
- 
-
-def main_layout(frame_sz=(320, 240)):
-    frame_cam = np.ones(frame_sz)
-    imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
-        
-    sg.theme('Dark Grey 9')
-    sg.set_options(element_padding=(0, 0))
-    layout_col1 = [
-        [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Input(key='subj_id', size=(44, 1), background_color='white', text_color='black')],
-        [space()],
-        [sg.Text('RC ID:', pad=((0, 0), 0), justification='left'),  sg.Input(key='rc_id', size=(44, 1), background_color='white', text_color='black')],
-        [space()],
-        [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(64, 10)), space()],
-        [space()],          
-        # [space()],
-        [space(), sg.Checkbox('Symbol Digit Matching Task', key='DSC_task', size=(15, 1)),
-         space(), sg.Checkbox('Mouse Task', key='mouse_task', size=(15, 1)),
-         space(), sg.Checkbox('Pursuit Task', key='pursuit_task', size=(15, 1)),
-         ],
-        [space(), sg.Checkbox('Time testing', key='timing_task', size=(15, 1)),
-         space(), sg.Checkbox('Sit to Stand', key='sit_to_stand_task', size=(15, 1))],
-        [space()],          
-        [space(), sg.ReadFormButton('Save', button_color=('white', 'black'))],         
-        [space()],
-        [space()],
-        [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left', auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))],
-        [space()],
-        # [space()],
-        [space(1), lay_butt('Initiate servers', 'init_servs'),         
-         space(5), lay_butt('Display', 'RTD'), 
-         space(5), lay_butt('Connect Devices', 'Connect'),
-         space(5), lay_butt('Plot Devices', 'plot'),
-         space(5), lay_butt('Connect Eyelink', 'eyetracker'),
-          ],
-        [space()],
-        [space(5), lay_butt('Terminate servers','Shut Down'),
-         space(5), sg.ReadFormButton('Start', button_color=('white', 'black')),
-         space(5), lay_butt('Stop'),
-         space(5), lay_butt('Test Comm', 'Test_network')         
-        ]]
-    
-    layout_col2 = [[sg.Image(data=imgbytes, key='Screen', size=frame_sz)], 
-                   [space()], [space()], [space()], [space()],
-                   [sg.Image(data=imgbytes, key='Webcam', size=frame_sz)],
-                   [space()], [space()], [space()], [space()],
-                   [space()], [space()], [space()], [space()],
-                   [sg.Text('Inlet streams')],
-                   [sg.Multiline( size=(35, 6),  key='inlet_State', do_not_clear=False, no_scrollbar=True)]
-                   ]
-    
-    layout = [[sg.Column(layout_col1,  pad=(0,0)), sg.Column(layout_col2, pad=(0,0), element_justification='c')] ]
-    return layout
 
 lsl_version = pylsl.__version__
-window = sg.Window("Neurobooth",
-                   main_layout(), 
-                   # keep_on_top=True,
-                    location =(0,0),
-                   default_element_size=(10, 1),
-                   text_justification='l',
-                   auto_size_text=False,
-                   auto_size_buttons=False,
-                   no_titlebar=False,
-                   grab_anywhere=False,
-                   default_button_element_size=(12, 1))
-        
+
+window = win_gen(init_layout)      
 
 plttr = stream_plotter()
 
@@ -158,7 +94,9 @@ def serv_data_received():
             break
 
 event, values = window.read(.5) 
-# window['-OUTPUT-'].__del__()
+
+
+collection_id = "mvp_025"
 
 inlet_keys = []
 while True:
@@ -168,6 +106,15 @@ while True:
     if event == sg.WIN_CLOSED:
         break
     
+    elif event == "_init_sess_save_":
+        if values["_tasks_"] == "":
+            sg.PopupError('No task combo')
+        else:
+            sess_info = values
+            window.close()
+            
+            window = win_gen(main_layout, sess_info)
+            
     elif event == 'RTD':
         ctr_rec.prepare_feedback()
         print('RTD')
@@ -175,7 +122,7 @@ while True:
         serv_data_received()
                 
     elif event == 'Connect':
-        ctr_rec.prepare_devices() 
+        ctr_rec.prepare_devices(collection_id) 
         ctr_rec.initiate_labRec()
         print('Connecting devices')
         serv_data_received()
@@ -198,6 +145,9 @@ while True:
         
     elif event == 'Save':
         session_info, tasks = get_session_info(values)
+        sess_info['subj_id'] = sess_info['subj_id']
+        sess_info['rc_id'] = sess_info['rc_id']
+        sess_info['study_id'] = sess_info['study_id']
         session_saved = True
         print(values)
         
@@ -216,6 +166,9 @@ while True:
     elif event == 'Start':
         if not session_saved:
             session_info, tasks = get_session_info(values)
+            sess_info['subj_id'] = sess_info['subj_id']
+            sess_info['rc_id'] = sess_info['rc_id']
+            sess_info['study_id'] = sess_info['study_id']
             print(values)
         
         inlets = update_streams_fromID(stream_ids)

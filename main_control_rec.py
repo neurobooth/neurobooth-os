@@ -27,9 +27,9 @@ def prepare_feedback():
     socket_message("vis_stream", "acquisition")    
     socket_message("scr_stream", "presentation")
     
-def prepare_devices():
-    socket_message("prepare", "acquisition") 
-    socket_message("prepare", "presentation") 
+def prepare_devices(collection_id="mvp_025"):
+    socket_message(f"prepare:{collection_id}", "acquisition") 
+    socket_message(f"prepare:{collection_id}", "presentation") 
 
 
 def task_presentation(task_name, filename):

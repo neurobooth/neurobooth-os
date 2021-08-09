@@ -31,7 +31,7 @@ def init_layout(exclusion=None, frame_sz=(320, 240)):
         [space()],
         [sg.T("Study ID"), sg.Input(default_text="Neurobooth", key='study_id', size=(44, 1))],
         [space()],     
-        [sg.Text('Task combo: '), sg.Combo(['Timing test', 'DSC, Mouse'],  size=(44, 1), key="_tasks_")],
+        [sg.Text('Task combo: '), sg.Combo(['Timing test', "Pursuit, DSC, Mouse, Sit to stand"],  size=(44, 1), key="_tasks_")],
         # [lay_butt("Exclude tasks", key="_exclusion_")],
         [space()],     
         [space(), sg.ReadFormButton('Save', button_color=('white', 'black'), key="_init_sess_save_")],              
@@ -42,7 +42,10 @@ def init_layout(exclusion=None, frame_sz=(320, 240)):
 def task_mapping(task_name):
     tasks = {"DSC":('Symbol Digit Matching Task', 'DSC_task'),
              "Mouse": ('Mouse Task', 'mouse_task'),
-             'Timing test' : ('Time testing', 'timing_task')
+             'Timing test' : ('Time testing', 'timing_task'),
+             "Pursuit" : ("Pursuit", "pursuit_task"),
+             "Sit to stand" : ("Sit to stand", "sit_to_stand_task")
+             
              }
     return tasks[task_name]
     
@@ -54,9 +57,9 @@ def main_layout(sess_info, frame_sz=(320, 240)):
     sg.set_options(element_padding=(0, 0))
     
     field_tasks = []
-    for task in sess_info['_tasks_'].split(","):
-        name, key = task_mapping(task.replace(" ", ""))
-        field_tasks.append([space(), sg.Checkbox(name, key=key, size=(44, 1))])
+    for task in sess_info['_tasks_'].split(", "):
+        name, key = task_mapping(task)
+        field_tasks.append([space(), sg.Checkbox(name, key=key, size=(44, 1), default=True)])
         
     layout_col1 = [
         [sg.Text(f'Subject ID: {sess_info["subj_id"]}', pad=((0, 0), 0), justification='left',  size=(44, 1))],
@@ -64,7 +67,7 @@ def main_layout(sess_info, frame_sz=(320, 240)):
         [sg.Text(f'RC ID: {sess_info["rc_id"]}', pad=((0, 0), 0), justification='left')],
         [space()],
         [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(64, 10)), space()],
-        [space(), sg.Combo([task_mapping(t.replace(" ", ""))[0] for t in sess_info['_tasks_'].split(",")]),
+        [space(), sg.Combo([task_mapping(t)[0] for t in sess_info['_tasks_'].split(", ")]),
          sg.ReadFormButton('Save', key="_task_notes_")],  
         [space()]
         ] + field_tasks + [       
@@ -112,20 +115,20 @@ def win_gen(layout, *args):
                        default_button_element_size=(12, 1))
     return window
 
-window = win_gen(init_layout)
+# window = win_gen(init_layout)
 
 
-inlet_keys = []
-while True:
-    event, values = window.read()
-    print(event, values)
-    if event == sg.WIN_CLOSED:
-        break
-    if event == "_init_sess_save_":
-        if values["_tasks_"] == "":
-            sg.PopupError('No task combo')
-        else:
-            sess_info = values
-            window.close()
-            window = win_gen(main_layout, sess_info)
-window.close()
+# inlet_keys = []
+# while True:
+#     event, values = window.read()
+#     print(event, values)
+#     if event == sg.WIN_CLOSED:
+#         break
+#     if event == "_init_sess_save_":
+#         if values["_tasks_"] == "":
+#             sg.PopupError('No task combo')
+#         else:
+#             sess_info = values
+#             window.close()
+#             window = win_gen(main_layout, sess_info)
+# window.close()

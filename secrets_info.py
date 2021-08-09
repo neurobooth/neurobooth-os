@@ -21,3 +21,6 @@ presentation = {'name': 'stm',
     
 secrets = {'acquisition' : acquisition, 
            'presentation': presentation}
+
+db_secrets = {"connect_str" : ("dbname='neurobooth' user='neuroboother' host='192.168.100.1' "
+               "password='neuroboothrocks'")}
