@@ -49,10 +49,11 @@ def task_mapping(task_name):
              }
     return tasks[task_name]
     
+
 def main_layout(sess_info, frame_sz=(320, 240)):
     frame_cam = np.ones(frame_sz)
     imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
-    sess_info, = sess_info
+        
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0))
     
@@ -80,6 +81,7 @@ def main_layout(sess_info, frame_sz=(320, 240)):
          space(5), lay_butt('Display', 'RTD'), 
          space(5), lay_butt('Connect Devices', 'Connect'),
          space(5), lay_butt('Plot Devices', 'plot'),
+         space(5), lay_butt('Connect Eyelink', 'eyetracker'),
           ],
         [space()],
         [space(5), lay_butt('Terminate servers','Shut Down'),
@@ -99,7 +101,6 @@ def main_layout(sess_info, frame_sz=(320, 240)):
     
     layout = [[sg.Column(layout_col1,  pad=(0,0)), sg.Column(layout_col2, pad=(0,0), element_justification='c')] ]
     return layout
-
 
 def win_gen(layout, *args):
     window = sg.Window("Neurobooth",

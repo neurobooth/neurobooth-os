@@ -5,9 +5,9 @@ Created on Wed Jul 14 11:24:43 2021
 @author: ACQ
 """
 
-
+from iout.mbient import Sensor
 import pyrealsense2 as rs
-from mbient import Sensor
+
 import PySpin
 
 # Intel
@@ -30,7 +30,7 @@ mac = "EE:99:D8:9D:69:5F"
 mbt = Sensor(mac)
 mbient_info = mbt.device.info
 mbient_info["address"] = mbt.device.address
-
+mbt.close()
 
 # FLIR camera
 system = PySpin.System.GetInstance()

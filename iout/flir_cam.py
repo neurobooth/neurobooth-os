@@ -8,14 +8,15 @@ Created on Wed May 12 16:13:50 2021
 import PySpin
 import matplotlib.pyplot as plt
 import numpy as np
+import queue
 import time
 import os
 import cv2
 import threading
 import uuid
 from pylsl import StreamInfo, StreamOutlet
-
-
+import skvideo
+import skvideo.io
 
 
 class VidRec_Flir():        
@@ -34,6 +35,8 @@ class VidRec_Flir():
         
         self.get_cam()
         self.setup_cam()
+        
+        self.image_queue = queue.Queue()
         
         
         
@@ -71,7 +74,21 @@ class VidRec_Flir():
         print(f"-OUTLETID-:{streamName}:{self.oulet_id}")
         return StreamOutlet(info)
 
+             
+    def camCaptureVid(self): #function to capture images, convert to numpy, send to queue, and release from buffer in separate process
+        while self.recording or self.image_queue.qsize():
+            camNotReady = self.image_queue.empty() # wait for  images readys
+            while camNotReady: #wait until ready in a loop
+                time.sleep(.05)
+                camNotReady = self.image_queue.empty() # wait for images ready
+            
+            dequeuedImage = self.image_queue.get() # get images formated as numpy from separate process queue
+            self.writer.writeFrame(dequeuedImage)
+            self.image_queue.task_done()
+            
 
+        
+        
     def start(self, name="temp_video"):        
         self.prepare(name)
         self.video_thread = threading.Thread(target=self.record)
@@ -82,27 +99,46 @@ class VidRec_Flir():
         self.cam.BeginAcquisition()
         im = self.cam.GetNextImage(1000)
         self.frameSize = (im.GetWidth(), im.GetHeight())
-        self.video_filename ="{}_ximea_{}.avi".format(name, time.time())    
-        self.video_out = cv2.VideoWriter(self.video_filename, self.fourcc,
-                                         self.fps, self.frameSize)
+        self.video_filename ="{}_flir_{}.mp4".format(name, time.time())    
+        # self.video_out = cv2.VideoWriter(self.video_filename, self.fourcc,
+        #                                  self.fps, self.frameSize)
         self.outlet = self.createOutlet(self.video_filename)
         self.streaming = True
 
+        # setup output video file parameters (can try H265 in future for better compression):  
+        # for some reason FFMPEG takes exponentially longer to write at nonstandard frame rates, so just use default 25fps and change elsewhere if needed
+        self.FRAME_RATE_OUT = self.cam.AcquisitionResultingFrameRate()
+        print('frame rate = {:.2f} FPS'.format(self.FRAME_RATE_OUT ))
+        self.crfOut = 21 #controls tradeoff between quality and storage, see https://trac.ffmpeg.org/wiki/Encode/H.264 
+        ffmpegThreads = 10 #this controls tradeoff between CPU usage and memory usage; video writes can take a long time if this value is low
+        #crfOut = 18 #this should look nearly lossless
+        # writer = skvideo.io.FFmpegWriter(movieName, outputdict={'-r': str(FRAME_RATE_OUT), '-vcodec': 'libx264', '-crf': str(crfOut)}) # with frame rate
+        self.writer = skvideo.io.FFmpegWriter(self.video_filename, 
+                outputdict={'-r': str(self.FRAME_RATE_OUT//2.4), '-vcodec': 'libx264', '-crf': str(self.crfOut)})#, '-threads': str(ffmpegThreads)})
+        
+        # fps = self.FRAME_RATE_OUT
+
+        # crf = 17
+        # self.writer = skvideo.io.FFmpegWriter(self.video_filename, 
+        #             inputdict={ '-s':'{}x{}'.format(self.frameSize[0], self.frameSize[1])},
+        #             outputdict={'-r': str(fps), '-c:v': 'libx264', '-crf': str(crf), '-preset': 'ultrafast', '-pix_fmt': 'yuv444p'})
+        
+        
     def record(self):   
         self.recording = True
         self.frame_counter = 0
-
+        self.save_thread = threading.Thread(target=self.camCaptureVid)
+        self.save_thread.start() 
         print(f"FLIR recording {self.video_filename}")
         t0 = time.time()
-        self.image_queue = []
         self.stamp = []
         while self.recording:   
             im = self.cam.GetNextImage(1000)
             tsmp = im.GetTimeStamp()
-            # im_conv = im.Convert(PySpin.PixelFormat_BGR8, PySpin.HQ_LINEAR)
-            # im_conv_d = im_conv.GetData()
-            
-            self.image_queue.append(im.GetData())
+            im_conv = im.Convert(PySpin.PixelFormat_BGR8, PySpin.HQ_LINEAR)
+            im_conv_d = im_conv.GetData()
+            im_conv_d = im_conv_d.reshape((im.GetHeight(), im.GetWidth(), 3) )
+            self.image_queue.put(im_conv_d)
             #   stamp.append(time.time_ns())
             self.stamp.append(tsmp)
             
@@ -124,11 +160,18 @@ class VidRec_Flir():
 
             # self.video_out.write(im_conv_d)
             self.frame_counter += 1
+            
+            if not self.frame_counter % 200:
+                print(f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}")
+            
 
         print(f"FLIR recording ended with {self.frame_counter} frames in {time.time()-t0}")
         self.cam.EndAcquisition() 
         self.recording = False  
-        self.video_out.release()    
+        self.save_thread.join()
+        self.writer.close()
+        print(f"FLIR video saving ended in {time.time()-t0} sec")
+        # self.video_out.release()    
 
     def stop(self):
         if self.open and self.recording:

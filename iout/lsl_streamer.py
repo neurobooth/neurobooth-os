@@ -6,7 +6,8 @@ Created on Tue Nov 24 15:41:42 2020
 """
 import config
 
-def start_lsl_threads(node_name, win=None):    
+
+def start_lsl_threads(node_name, collection_id="mvp_25", win=None):    
     streams = {}    
     if node_name == "acquisition":
         from iout.microphone import MicStream
@@ -17,7 +18,9 @@ def start_lsl_threads(node_name, win=None):
         
         # streams["hiFeed1"] = VidRec_Brio(camindex=config.cam_inx["brio1"] , doPreview=False)
         # streams["hiFeed2"] = VidRec_Brio(camindex=config.cam_inx["brio2"] , doPreview=False)
-        streams["intel1"] = VidRec_Intel(camindex=config.cam_inx["intel1"])
+        streams["intel1"] = VidRec_Intel(size_rgb=(640, 480), size_depth=(640, 360),
+                 fps_rgb=60, fps_depth=60, camindex=config.cam_inx["intel1"])
+        
         streams["intel2"] = VidRec_Intel(camindex=config.cam_inx["intel2"])
         streams["intel3"] = VidRec_Intel(camindex=config.cam_inx["intel3"])
         streams['micro'] = MicStream()
