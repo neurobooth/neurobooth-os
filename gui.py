@@ -10,6 +10,7 @@ import numpy as np
 import cv2
 import pylsl
 import time
+import re
 import sys
 import threading
 import matplotlib
@@ -20,7 +21,7 @@ from netcomm.server_ctr import server_com
 from netcomm.client import socket_message
 from layouts import main_layout, win_gen, init_layout
 
-# from netcomm.server_ctr import test as server_com
+import iout.metadator as meta
     
 def get_session_info(values):
      session_info = values        
@@ -85,18 +86,29 @@ def serv_data_received():
             print(event_feedb)
             stream_ids_old = stream_ids.copy()
             # remove server name
+            serv_name = event_feedb.split(": ")[0]
             event_feedb = event_feedb.split(": ")[1]
-            for prt in event_feedb.split("\n"):
-                stream_ids = get_outlet_ids(prt, stream_ids)
-            if stream_ids_old != stream_ids or ( len(stream_ids) and len(inlets)==0 ):
-                inlets = update_streams_fromID(stream_ids)
+            if "-OUTLETID-" in event_feedb:
+                for prt in event_feedb.split("\n"):
+                    stream_ids = get_outlet_ids(prt, stream_ids)
+                if stream_ids_old != stream_ids or ( len(stream_ids) and len(inlets)==0 ):
+                    inlets = update_streams_fromID(stream_ids)
+            if "UPDATOR:" in event_feedb:
+                #UPDATOR:-chars-
+                rout= re.search("UPDATOR:-([a-z_]*)-", event_feedb)
+                for expr in rout.groups():                    
+                    window.write_event_value('-update_butt-', expr)
+                [(m.start(0), m.end(0)) for m in rout]
+                
+                
         except queue.Empty:
             break
 
 event, values = window.read(.5) 
 
 
-collection_id = "mvp_025"
+conn = meta.get_conn()
+statecolor_init_serv = ["green", "yellow"]
 
 inlet_keys = []
 while True:
@@ -106,6 +118,19 @@ while True:
     if event == sg.WIN_CLOSED:
         break
     
+    elif event == "study_id":
+        print(event, values)
+        study_id = values[event]
+        
+        collection_id, = meta.get_collection_ids(study_id, conn)
+        tasks_obs = meta.get_tasks(collection_id, conn)
+        task_list = []
+        for task in tasks_obs:
+            task_id, _, _ = meta.get_task_param(task, conn)
+            task_list.append(task_id)
+        
+        window["_tasks_"].update(value=", ".join(task_list))
+        
     elif event == "_init_sess_save_":
         if values["_tasks_"] == "":
             sg.PopupError('No task combo')
@@ -113,10 +138,21 @@ while True:
             if values.get(0):  # Wierd key with 0
                 del values[0]
             sess_info = values
-            window.close()
+            subj_id = sess_info['subj_id']
+            rc_id = sess_info['rc_id']
             
+            window.close()            
             window = win_gen(main_layout, sess_info)
             
+    elif event == "-update_butt-":
+        if values == 'init_servs':
+            # 2 colors for init_servers, 1 connected, 2 connected
+            color = statecolor_init_serv.pop()
+            window[values].Update(button_color=('black', color))
+            continue
+        
+        window[values].Update(button_color=('black', 'green'))
+    
     elif event == 'RTD':
         ctr_rec.prepare_feedback()
         print('RTD')
@@ -124,6 +160,8 @@ while True:
         serv_data_received()
                 
     elif event == 'Connect':
+        window['Connect'].Update(button_color=('black', 'red'))
+                                         
         ctr_rec.prepare_devices(collection_id) 
         ctr_rec.initiate_labRec()
         print('Connecting devices')
@@ -157,6 +195,9 @@ while True:
         _ = ctr_rec.test_lan_delay(50)
         
     elif event == "init_servs":
+        
+        window['init_servs'].Update(button_color=('black', 'red'))
+        
         ctr_rec.start_servers()
         _ = ctr_rec.test_lan_delay(50)
     
@@ -185,17 +226,7 @@ while True:
         else:
             print("Start button pressed but no task selected")      
         
-    elif event == 'Stop':
-        for k in list(inlets.keys()):
-            if k not in ["Webcam", "Screen"]:
-                inlets[k].close_stream()
-                inlets.pop(k, None)  
-           
-        ctr_rec.close_all()
-        session_saved = False
-        print("Stopping devices")
-        plttr.stop()
-        
+       
     elif event ==  'Shut Down':
         for k in list(inlets.keys()):
             if k in inlets.keys():

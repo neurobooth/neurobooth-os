@@ -44,7 +44,10 @@ def Main():
     def fprint(str_print):
         print(str_print)
         send_stdout()
-        
+    
+    # Signal event to change init_serv button to green
+    fprint ("UPDATOR:-init_servs-")
+    
     streams = {}
     # a forever loop until client wants to exit 
     while True: 
