@@ -72,7 +72,11 @@ def Main():
         print(str_print)
         send_stdout()
 
-    win = utl.make_win(full_screen=True)
+    win = utl.make_win(full_screen=False)
+    
+    # Signal event to change init_serv button to green
+    fprint ("UPDATOR:-init_servs-")
+    
     # win = welcome_screen(with_audio=True)
     streams, screen_running = {}, False            
     # a forever loop until client wants to exit 
