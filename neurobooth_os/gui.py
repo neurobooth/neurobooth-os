@@ -87,7 +87,7 @@ def serv_data_received():
             stream_ids_old = stream_ids.copy()
             # remove server name
             serv_name = event_feedb.split(": ")[0]
-            event_feedb = event_feedb.split(": ")[1]
+            event_feedb = event_feedb.replace("STM:", "").replace("ACQ:", "")
             if "-OUTLETID-" in event_feedb:
                 for prt in event_feedb.split("\n"):
                     stream_ids = get_outlet_ids(prt, stream_ids)
@@ -98,7 +98,7 @@ def serv_data_received():
                 rout= re.search("UPDATOR:-([a-z_]*)-", event_feedb)
                 for expr in rout.groups():                    
                     window.write_event_value('-update_butt-', expr)
-                [(m.start(0), m.end(0)) for m in rout]
+                
                 
                 
         except queue.Empty:
@@ -145,13 +145,13 @@ while True:
             window = win_gen(main_layout, sess_info)
             
     elif event == "-update_butt-":
-        if values == 'init_servs':
+        if values['-update_butt-'] == 'init_servs':
             # 2 colors for init_servers, 1 connected, 2 connected
             color = statecolor_init_serv.pop()
-            window[values].Update(button_color=('black', color))
+            window[values['-update_butt-']].Update(button_color=('black', color))
             continue
         
-        window[values].Update(button_color=('black', 'green'))
+        window[values['-update_butt-']].Update(button_color=('black', 'green'))
     
     elif event == 'RTD':
         ctr_rec.prepare_feedback()
@@ -168,7 +168,7 @@ while True:
         serv_data_received()
         inlets = update_streams_fromID(stream_ids)
         dev_prepared = True
-        print("prepared")
+        
     
     elif event == 'plot':
         event = "None"
