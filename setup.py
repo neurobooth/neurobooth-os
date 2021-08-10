@@ -18,7 +18,7 @@ MAINTAINER = 'Adonay Nunes'
 MAINTAINER_EMAIL = 'adonay.s.nunes@gmail.com'
 URL = ''
 LICENSE = 'BSD (3-clause)'
-DOWNLOAD_URL = 'https://github.com/neurobooth/neurobooth-eel'
+DOWNLOAD_URL = 'https://github.com/neurobooth/neurobooth-os'
 
 # get the version
 version = None
