@@ -8,7 +8,7 @@ Created on Fri Apr  2 08:01:51 2021
 import PySimpleGUI as sg
 import numpy as np
 import cv2
-
+import iout.metadator as meta
         
 def lay_butt(name, key=None):
     if key is None:
@@ -18,20 +18,23 @@ def lay_butt(name, key=None):
 
 def space(n=10):
     return sg.Text(' ' * n)
- 
+
+
+# meta.get_study_ids(meta.get_conn())
+
 def init_layout(exclusion=None, frame_sz=(320, 240)):
    
         
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0))
     layout = [
-        [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Input(default_text="test", key='subj_id', size=(44, 1), background_color='white', text_color='black')],
+        [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Combo(meta.get_subj_ids(meta.get_conn()), default_value="test", key='subj_id', size=(44, 1), background_color='white', text_color='black')],
         [space()],
         [sg.Text('RC ID:', pad=((0, 0), 0), justification='left'),  sg.Input(default_text="AN", key='rc_id', size=(44, 1), background_color='white', text_color='black')],
         [space()],
-        [sg.T("Study ID"), sg.Input(default_text="Neurobooth", key='study_id', size=(44, 1))],
+        [sg.T("Study ID"),  sg.Combo(meta.get_study_ids(meta.get_conn()), key='study_id', enable_events=True, size=(44, 1))],
         [space()],     
-        [sg.Text('Task combo: '), sg.Combo(['Timing test', "Pursuit, DSC, Mouse, Sit to stand"],  size=(44, 1), key="_tasks_")],
+        [sg.Text('Task combo: '), sg.Combo("",  size=(44, 1), key="_tasks_")],
         # [lay_butt("Exclude tasks", key="_exclusion_")],
         [space()],     
         [space(), sg.ReadFormButton('Save', button_color=('white', 'black'), key="_init_sess_save_")],              
@@ -40,14 +43,13 @@ def init_layout(exclusion=None, frame_sz=(320, 240)):
     return layout
 
 def task_mapping(task_name):
-    tasks = {"DSC":('Symbol Digit Matching Task', 'DSC_task'),
-             "Mouse": ('Mouse Task', 'mouse_task'),
-             'Timing test' : ('Time testing', 'timing_task'),
-             "Pursuit" : ("Pursuit", "pursuit_task"),
-             "Sit to stand" : ("Sit to stand", "sit_to_stand_task")
-             
+    tasks = {"DSC_task_1":'Symbol Digit Matching Task',
+             "mouse_task_1": 'Mouse Task',
+             'Timing test' : 'Time testing',
+             "pursuit_task_1" : "Pursuit",
+             "sit_to_stand_task_1" : "Sit to stand"
              }
-    return tasks[task_name]
+    return  tasks[task_name], task_name
     
 
 def main_layout(sess_info, frame_sz=(320, 240)):
@@ -63,9 +65,10 @@ def main_layout(sess_info, frame_sz=(320, 240)):
         field_tasks.append([space(), sg.Checkbox(name, key=key, size=(44, 1), default=True)])
         
     layout_col1 = [
-        [sg.Text(f'Subject ID: {sess_info["subj_id"]}', pad=((0, 0), 0), justification='left',  size=(44, 1))],
-        [space()],
-        [sg.Text(f'RC ID: {sess_info["rc_id"]}', pad=((0, 0), 0), justification='left')],
+        [sg.Text(f'Subject ID: {sess_info["subj_id"]}', pad=((0, 0), 0), justification='left',  size=(25, 1)), 
+         sg.Text(f'RC ID: {sess_info["rc_id"]}', pad=((0, 0), 0), justification='left')
+         ],
+        
         [space()],
         [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left'),  sg.Multiline(key='notes', default_text='', size=(64, 10)), space()],
         [space(), sg.Combo([task_mapping(t)[0] for t in sess_info['_tasks_'].split(", ")]),
@@ -81,12 +84,10 @@ def main_layout(sess_info, frame_sz=(320, 240)):
          space(5), lay_butt('Display', 'RTD'), 
          space(5), lay_butt('Connect Devices', 'Connect'),
          space(5), lay_butt('Plot Devices', 'plot'),
-         space(5), lay_butt('Connect Eyelink', 'eyetracker'),
           ],
         [space()],
         [space(5), lay_butt('Terminate servers','Shut Down'),
          space(5), sg.ReadFormButton('Start', button_color=('white', 'black')),
-         space(5), lay_butt('Stop'),
          space(5), lay_butt('Test Comm', 'Test_network')         
         ]]
     
