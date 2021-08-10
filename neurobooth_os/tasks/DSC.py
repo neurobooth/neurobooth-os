@@ -14,7 +14,8 @@ from psychopy import core, visual, event
 from psychopy.visual.textbox2 import TextBox2
 from psychopy import iohub
 from psychopy.iohub import launchHubServer
-from tasks.utils import make_win
+
+from neurbooth_os.tasks.utils import make_win
 
 
 def present_msg(elems, win, key_resp="space"):
@@ -394,7 +395,10 @@ class DSC():
 
 
 
+if __name__ == '__main__':
+    from neurobooth_eel.tasks import DSC
 
+    dsc = DSC()
 
 
 

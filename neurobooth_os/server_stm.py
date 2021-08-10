@@ -131,8 +131,7 @@ def Main():
         elif "present" in data:   #-> "present:TASKNAME:subj_id"
             # task_name can be list of task1-task2-task3  
             tasks = data.split(":")[1].split("-")
-            tasks = ["pursuit_task_1", "DSC_task_1", "mouse_task_1", "sit_to_stand_task_1"]
-            tasks = ["DSC_task_1", "mouse_task_1", "sit_to_stand_task_1"]
+          
 
             subj_id = data.split(":")[2] 
             
