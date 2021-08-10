@@ -6,18 +6,14 @@ import os
 from time import time, sleep  
 from iout.screen_capture import ScreenMirror
 from iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
-from iout.eyelink_tracker import EyeTracker
 
 import config
 from netcomm.client import socket_message, node_info
-from tasks.DSC import DSC
-from tasks.mouse import mouse_task
 
 from tasks.test_timing.audio_video_test import Timing_Test
-from tasks.sit_to_stand.experiment import Sit_to_Stand
 from tasks.wellcome_finish_screens import welcome_screen, finish_screen
-from tasks.smooth_pursuit.pursuit_task import pursuit
 import tasks.utils as utl
+from tasks.task_importer import get_task_funcs
 
 os.chdir(r'C:\neurobooth-eel\\')
 print(os.getcwd())
@@ -112,12 +108,16 @@ def Main():
             send_stdout()
             
         elif "prepare" in data:
+            # data = "prepare:collection_id"
+            
+            collection_id = data.split(":")[-1]
+            task_func_dict = get_task_funcs(collection_id)
             
             if len(streams):
                 fprint("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:    
-                streams = start_lsl_threads("presentation", win=win)
+                streams = start_lsl_threads("presentation", collection_id, win=win)
                 send_stdout()
                 streams['mouse'].start()
                 if 'eye_tracker' in streams.keys():
@@ -127,76 +127,45 @@ def Main():
         elif "present" in data:   #-> "present:TASKNAME:subj_id"
             # task_name can be list of task1-task2-task3  
             tasks = data.split(":")[1].split("-")
-            tasks = ["pursuit_task", "DSC_task", "mouse_task", "sit_to_stand_task"]
-            tasks = ["DSC_task", "mouse_task", "sit_to_stand_task"]
+            tasks = ["pursuit_task_1", "DSC_task_1", "mouse_task_1", "sit_to_stand_task_1"]
+            tasks = ["DSC_task_1", "mouse_task_1", "sit_to_stand_task_1"]
 
             subj_id = data.split(":")[2] 
             
             win = welcome_screen(with_audio=True, win=win)
-            # streams['eye_tracker'] = EyeTracker(win=win)
+
             # Connection to LabRecorder in ctr pc
             host_ctr, _ = node_info("control")
             s2 = socket.create_connection((host_ctr, 22345))
             
             for task in tasks:                
                 host_ctr, _ = node_info("control")
-                # s2 = socket.create_connection((host_ctr, 22345))
                 fprint(f"initiating {task}") 
                 send_stdout()
                 
                 cmd = "filename {root:" + config.paths['data_out'] + "} {template:%p_%b.xdf} {participant:" + subj_id + "_} {task:" + task + "}\n"
                 
-                if task == "fakest_task":
-                    fake_task(s2, cmd, subj_id, task, send_stdout)   
-                    msg = f"Done with {task}"
+                task_karg ={"win": win,
+                            "path": config.paths['data_out'],
+                            "subj_id": subj_id,
+                            "eye_tracker": streams['eye_tracker'],
+                            "marker_outlet": streams['marker'],
+                            "event_marker": streams['marker']}
+                
+                if task in task_func_dict.keys():
+                    tsk_fun = task_func_dict[task] 
                     # c.send(msg.encode("ascii")) 
- 
-    
-                elif task == "mouse_task":    
-                    fprint(f"Starting {task}")
-                    task_karg ={"win": win,
-                                "path": config.paths['data_out'],
-                                "subj_id": subj_id,
-                                "marker_outlet": streams['marker']}
-                    
-                    res = run_task(mouse_task, s2, cmd, subj_id, task, send_stdout, task_karg)
-                    
-                elif task == "DSC_task": 
-                    fprint(f"Starting {task}")
-                    task_karg ={"win": win,
-                                "marker_outlet": streams['marker']}
-                    dsc = run_task(DSC, s2, cmd, subj_id, task, send_stdout, task_karg)
-                    
-                    df_res = pd.DataFrame(dsc.results) 
-                    df_out = pd.DataFrame.from_dict(dsc.outcomes, orient='index', columns=['vals'])                
-                    task_n = task.replace("_task", "")
-                    df_res.to_csv(config.paths['data_out'] + f'{subj_id}_{task_n}_results.csv')
-                    df_out.to_csv(config.paths['data_out'] + f'{subj_id}_{task_n}_outcomes.csv')
+                    fprint(f"Starting task: {task}") 
+                    res = run_task(tsk_fun, s2, cmd, subj_id, task, send_stdout, task_karg)
+                        
+                    streams['eye_tracker'].stop()
+                    fprint(f"Finished task: {task}") 
                     
                 elif task == 'timing_task':
-                	fprint(f"Starting {task}")
-                	task_karg ={"win": win, 
-                                "event_marker": streams['marker']}            	
-                	run_task(Timing_Test, s2, cmd, subj_id, task, send_stdout, task_karg)
-    
-                elif task =="sit_to_stand_task":
-                    fprint(f"Starting {task}")
-                    task_karg ={"win": win,
-                                "marker_outlet": streams['marker']}             
-                    run_task(Sit_to_Stand, s2, cmd, subj_id, task, send_stdout, task_karg)
-                    
-                elif task =="pursuit_task":
-                    fprint(f"Starting {task}")
-                    
-                    task_karg ={"win": win,            
-                                "subj_id": subj_id,
-                                "marker_outlet": streams['marker'],
-                                "eye_tracker": streams['eye_tracker']
-                                }
-                    streams['eye_tracker'].start(f"{subj_id}_prst.edf")
-                    run_task(pursuit, s2, cmd, subj_id, task, send_stdout, task_karg)
-                    streams['eye_tracker'].stop()
-    
+                    fprint(f"Starting {task}") 
+                    run_task(Timing_Test, s2, cmd, subj_id, task, send_stdout, task_karg)
+                    fprint(f"Finished task: {task}") 
+
                 else:
                     fprint(f"Task not {task} implemented")
                 

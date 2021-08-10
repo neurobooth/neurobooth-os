@@ -9,6 +9,7 @@ import random
 import time
 import os.path as op
 import numpy as np
+import pandas as pd
 from psychopy import core, visual, event
 from psychopy.visual.textbox2 import TextBox2
 from psychopy import iohub
@@ -29,9 +30,11 @@ def present_msg(elems, win, key_resp="space"):
 
 class DSC():
 
-    def __init__(self, marker_outlet=None, win=None, **kwarg):
+    def __init__(self, marker_outlet=None, win=None, path ="", subj_id="test", **kwarg):
         self.testVersion = 'DSC_simplified_oneProbe_2019'
         self.chosenInput = 'keys'    # input type (taps or keys)
+        self.path_out = path
+        self.subj_id = subj_id
         self.frameSequence = []
         self.tmbUI = dict.fromkeys(["response", "symbol", "digit", "message",
                                     "status", "rt", "downTimestamp", ])
@@ -290,18 +293,12 @@ class DSC():
         else:
             self.win.flip()
 
-        # TODO:     SAVE RESULTS AS YOU LIKE THE MOST
-        #
-        #
-        #
-        #                if(filename == false): filename = "DSCresults.csv";
-        #                tmbSubmitToFile(results,filename,autosave);
-        #
-        #            else:
-        #
-        #                tmbSubmitToServer(results,score,outcomes);
-
-
+        # SAVE RESULTS to file
+        df_res = pd.DataFrame(self.results) 
+        df_out = pd.DataFrame.from_dict(self.outcomes, orient='index', columns=['vals'])                
+        
+        df_res.to_csv(self.path + f'{self.subj_id}_DSC_results.csv')
+        df_out.to_csv(self.path + f'{self.subj_id}_DSC_outcomes.csv')
 
     def setFrameSequence(self):
         

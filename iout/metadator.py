@@ -56,8 +56,8 @@ def get_task_stim(stimulus_id, conn):
     table_stimulus = Table('stimulus', conn)   
     stimulus_df = table_stimulus.query(
         f"SELECT * from stimulus WHERE stimulus_id = '{stimulus_id}'")
-    stim_file = stimulus_df["stimulus_file"]
-    stim_fparam = stimulus_df["parameters_file"]
+    stim_file, = stimulus_df["stimulus_file"]
+    stim_fparam, = stimulus_df["parameters_file"]
     return stim_file, stim_fparam
     
 def get_sens_param(sens_id, conn):

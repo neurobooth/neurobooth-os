@@ -10,7 +10,7 @@ import tasks.utils as utl
 
 
 class Sit_to_Stand():
-    def __init__(self, marker_outlet=None, win=None):
+    def __init__(self, marker_outlet=None, win=None, **kwarg):
         
         self.fpath = op.dirname(op.abspath(__file__)).replace("\\", "/")
         

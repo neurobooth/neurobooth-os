@@ -16,7 +16,7 @@ from tasks.utils import make_win
 
 class mouse_task():
     
-    def __init__(self, marker_outlet=None, win=None, path="", subj_id="test"):
+    def __init__(self, marker_outlet=None, win=None, path="", subj_id="test", **kwarg):
         self.subj_id = subj_id
         self.marker_outlet = marker_outlet
         self.win = win
