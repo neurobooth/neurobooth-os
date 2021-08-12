@@ -5,7 +5,7 @@ from time import time, sleep
 # import wmi
 import re
 import os
-from secrets_info import secrets
+from neurobooth_os.secrets_info import secrets
 
 
 def socket_message(message, node_name, wait_data=0):
@@ -129,7 +129,8 @@ def start_server(node_name, save_pid_txt=True):
     cmd_str = f"SCHTASKS /S {s['name']} /U {s['name']}\{s['user']} /P {s['pass']}"
     cmd_1 = cmd_str +  f" /Create /TN TaskOnEvent /TR {s['bat']} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
     cmd_2 = cmd_str + ' /Run /TN "TaskOnEvent"'
-    # out = os.popen(cmd_1).read()
+    # Cmd1 creates a scheduled task, cmd2 initiates it
+    out = os.popen(cmd_1).read()
     out = os.popen(cmd_2).read()
      
     sleep(.3)
