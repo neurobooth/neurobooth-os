@@ -4,16 +4,16 @@ import pandas as pd
 import sys
 import os
 from time import time, sleep  
-from iout.screen_capture import ScreenMirror
-from iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
+from neurobooth_os.iout.screen_capture import ScreenMirror
+from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
 
 import config
-from netcomm.client import socket_message, node_info
+from neurobooth_os.netcomm.client import socket_message, node_info
 
-from tasks.test_timing.audio_video_test import Timing_Test
-from tasks.wellcome_finish_screens import welcome_screen, finish_screen
-import tasks.utils as utl
-from tasks.task_importer import get_task_funcs
+from neurobooth_os.tasks.test_timing.audio_video_test import Timing_Test
+from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
+import neurobooth_os.tasks.utils as utl
+from neurobooth_os.tasks.task_importer import get_task_funcs
 
 os.chdir(r'C:\neurobooth-eel\\')
 print(os.getcwd())
