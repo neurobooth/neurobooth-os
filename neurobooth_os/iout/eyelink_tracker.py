@@ -13,7 +13,7 @@ from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLi
 
 class EyeTracker():
 
-    def __init__(self, sample_rate=500, monitor_width=55, monitor_distance=50, calibration_type="HV5",
+    def __init__(self, sample_rate=1000, monitor_width=55, monitor_distance=50, calibration_type="HV5",
                  win=None, with_lsl=True, ip='192.168.100.15'):
         self.IP = ip
         self.sample_rate = sample_rate
