@@ -4,7 +4,7 @@ Created on Tue Nov 24 15:41:42 2020
 
 @author: adona
 """
-import config
+from neurobooth_os import config
 from neurobooth_os.iout import metadator as meta
 
 
@@ -64,7 +64,7 @@ def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=5, **kwarg):
 def close_streams(streams, cams=False):
     for k in list(streams):
         print(f"Closing {k} stream")
-        if cams and k[:-1] in ["hiFeed", "intel", "mbient"]:
+        if cams and any([True for d in  ["hiFeed", "Intel", "ximea"] if d in k]):
             streams[k].close()
         else:
             streams[k].stop()
@@ -72,9 +72,9 @@ def close_streams(streams, cams=False):
     return streams
 
 
-def reconnect_streams(streams, cams=False):
+def reconnect_streams(streams):
     for k in list(streams): 
-        if k[:-1] in ["hiFeed", "intel", "ximea"]:
+        if any([True for d in  ["hiFeed", "Intel", "ximea"] if d in k]):
             continue
         
         if not streams[k].streaming:
