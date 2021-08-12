@@ -26,9 +26,9 @@ class pursuit():
     
     def __init__(self, subj_id, eye_tracker, marker_outlet=None, win=None,  **kwarg):
         self.subj_id = subj_id
-        self.filename = f"{config.paths['data_out']}{subj_id}_pursuit.edf"  
+        self.filename = f"{subj_id}_pursuit.edf"  
         self.et = eye_tracker
-        self.filename = eye_tracker.filename
+        # self.filename = eye_tracker.fname_temp
         self.win = win
         
         self.mon_size = eye_tracker.mon_size
@@ -43,12 +43,16 @@ class pursuit():
             eye_tracker.calibrate()
             
         self.task_setup()
+        
+        self.et.start(self.filename)
         self.run()
+        # self.et.stop()
         
         
     def task_setup(self):
         # prepare the pursuit target, the clock and the movement parameters
         self.win.color = [0, 0, 0]
+        self.win.flip()
         self.target = visual.GratingStim(self.win, tex=None, mask='circle', size=25)
         self.pursuitClock = core.Clock()
         
@@ -65,7 +69,7 @@ class pursuit():
     def run(self):
         
         # Run a block of 2 trials, in random order
-        test_list = self.mov_pars[:]
+        test_list = self.mov_pars[:1]
         random.shuffle(test_list)
         for trial in test_list:
             self.run_trial(8.0, trial)
