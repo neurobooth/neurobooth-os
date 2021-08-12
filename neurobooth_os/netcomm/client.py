@@ -5,7 +5,7 @@ from time import time, sleep
 # import wmi
 import re
 import os
-from secrets_info import secrets
+from neurobooth_os.secrets_info import secrets
 
 
 def socket_message(message, node_name, wait_data=0):

@@ -2,9 +2,9 @@ import socket, os
 import io
 import sys
 from time import time, sleep
-import config
+from neurobooth_os import config
 
-from netcomm.client import socket_message
+from neurobooth_os.netcomm.client import socket_message
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
 
