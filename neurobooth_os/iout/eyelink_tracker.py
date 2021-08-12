@@ -8,7 +8,7 @@ import uuid
 from pylsl import StreamInfo, StreamOutlet
 import threading
 import config
-from tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
+from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 
 class EyeTracker():

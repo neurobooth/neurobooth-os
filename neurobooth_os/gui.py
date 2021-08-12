@@ -15,8 +15,9 @@ import sys
 import threading
 import matplotlib
 import queue
+
 import neurobooth_os.main_control_rec as ctr_rec
-from realtime.lsl_plotter import update_streams_fromID, get_lsl_images, stream_plotter
+from neurobooth_os.realtime.lsl_plotter import update_streams_fromID, get_lsl_images, stream_plotter
 from neurobooth_os.netcomm.server_ctr import server_com
 from neurobooth_os.netcomm.client import socket_message
 from neurobooth_os.layouts import main_layout, win_gen, init_layout

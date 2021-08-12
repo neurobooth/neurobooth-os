@@ -4,9 +4,9 @@ import threading
 import uuid
 import cv2
 from pylsl import StreamInfo, StreamOutlet
-from iout import dshowcapture
 import time
 import functools
+from neurobooth_os.iout import dshowcapture
 import warnings
 warnings.filterwarnings('ignore')
 

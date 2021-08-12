@@ -5,7 +5,7 @@ Created on Tue Nov 24 15:41:42 2020
 @author: adona
 """
 import config
-from iout import metadator as meta
+from neurobooth_os.iout import metadator as meta
 
 
 def start_lsl_threads(node_name, collection_id="mvp_025", win=None):    

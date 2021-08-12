@@ -1,8 +1,8 @@
 import socket 
 from time import time  
-from iout.camera_brio import VidRec_Brio
-from iout.lsl_streamer import start_lsl_threads
-import config
+from neurobooth_os.iout.camera_brio import VidRec_Brio
+from neurobooth_os.iout.lsl_streamer import start_lsl_threads
+import neurobooth_os.config
  
   
 def Main(): 
