@@ -4,9 +4,9 @@ Created on Tue Aug 10 10:33:10 2021
 
 @author: STM
 """
-
-import iout.metadator as meta
 import importlib
+import neurobooth_os.iout.metadator as meta
+
 
 def str_fileid_to_eval(stim_file_str):
     """" Converts string path.to.module.py::function() to callable

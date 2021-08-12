@@ -6,7 +6,7 @@ Created on Mon May 10 13:01:13 2021
 """
 
 # from iout import dshowcapture
-import iout.dshowcapture as  dshowcapture
+import neurobooth_os.iout.dshowcapture as  dshowcapture
 import numpy as np
 import cv2
 import pyrealsense2 as rs

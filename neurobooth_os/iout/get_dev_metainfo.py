@@ -5,11 +5,11 @@ Created on Wed Jul 14 11:24:43 2021
 @author: ACQ
 """
 
-from iout.mbient import Sensor
+from neurobooth_os.iout.mbient import Sensor
 import pyrealsense2 as rs
 from collections import OrderedDict
 import PySpin
-import config as cfg
+import neurobooth_os.config as cfg
 
 
 

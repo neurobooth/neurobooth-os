@@ -9,7 +9,7 @@ from psychopy import prefs
 prefs.hardware['audioLib']=['pyo']
 from psychopy.visual.textbox2 import TextBox2
 from psychopy import sound, visual, event
-import tasks.utils as utl
+import neurobooth_os.tasks.utils as utl
 
 
 def my_textbox2(win, text, pos=(0,0), size=(None, None)):

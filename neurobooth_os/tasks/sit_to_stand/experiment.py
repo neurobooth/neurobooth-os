@@ -5,7 +5,7 @@ from psychopy import prefs
 prefs.hardware['audioLib']=['pyo']
 from psychopy import sound, core, event
 import time
-import tasks.utils as utl
+import neurobooth_os.tasks.utils as utl
 
 
 
