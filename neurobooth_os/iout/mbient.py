@@ -43,8 +43,9 @@ class Sensor:
         
     def data_handler(self, ctx, data):
         values = parse_value(data, n_elem = 2)
+        #pylsl.local_clock()
         vals = [values[0].x, values[0].y, values[0].z, values[1].x, values[1].y, values[1].z]
-        
+
         self.outlet.push_sample(vals)
         # print("acc: (%.4f,%.4f,%.4f), gyro; (%.4f,%.4f,%.4f)" % (values[0].x, values[0].y, values[0].z, values[1].x, values[1].y, values[1].z))
 
