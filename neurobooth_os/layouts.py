@@ -8,7 +8,7 @@ Created on Fri Apr  2 08:01:51 2021
 import PySimpleGUI as sg
 import numpy as np
 import cv2
-import iout.metadator as meta
+import neurobooth_os.iout.metadator as meta
         
 def lay_butt(name, key=None):
     if key is None:
@@ -24,7 +24,7 @@ def space(n=10):
 
 def init_layout(exclusion=None, frame_sz=(320, 240)):
    
-        
+        # TODO add collection id --> tasks
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0))
     layout = [
