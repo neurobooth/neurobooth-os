@@ -37,7 +37,7 @@ def get_collection_ids(study_id, conn):
 def get_tasks(collection_id, conn):
     table_collection = Table('collection', conn=conn)
     collection_df = table_collection.query(
-        f"SELECT * from collection WHERE collection_name = '{collection_id}'")
+        f"SELECT * from collection WHERE collection_id = '{collection_id}'")
     tasks_ids, = collection_df["tech_obs_array"]
     return tasks_ids
     
