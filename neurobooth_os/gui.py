@@ -123,7 +123,14 @@ while True:
         print(event, values)
         study_id = values[event]
         
-        collection_id, = meta.get_collection_ids(study_id, conn)
+        collection_ids = meta.get_collection_ids(study_id, conn)
+        
+        window["collection_id"].update(values=collection_ids)
+        
+    elif event == "collection_id":
+        print(event, values)
+        collection_id = values[event]
+
         tasks_obs = meta.get_tasks(collection_id, conn)
         task_list = []
         for task in tasks_obs:
@@ -131,7 +138,7 @@ while True:
             task_list.append(task_id)
         
         window["_tasks_"].update(value=", ".join(task_list))
-        
+                
     elif event == "_init_sess_save_":
         if values["_tasks_"] == "":
             sg.PopupError('No task combo')
@@ -140,7 +147,7 @@ while True:
                 del values[0]
             sess_info = values
             subj_id = sess_info['subj_id']
-            rc_id = sess_info['rc_id']
+            staff_id = sess_info['staff_id']
             
             window.close()            
             window = win_gen(main_layout, sess_info)
@@ -187,7 +194,7 @@ while True:
     elif event == 'Save':
         session_info, tasks = get_session_info(values)
         sess_info['subj_id'] = sess_info['subj_id']
-        sess_info['rc_id'] = sess_info['rc_id']
+        sess_info['staff_id'] = sess_info['staff_id']
         sess_info['study_id'] = sess_info['study_id']
         session_saved = True
         print(values)
@@ -211,7 +218,7 @@ while True:
         if not session_saved:
             session_info, tasks = get_session_info(values)
             sess_info['subj_id'] = sess_info['subj_id']
-            sess_info['rc_id'] = sess_info['rc_id']
+            sess_info['staff_id'] = sess_info['staff_id']
             sess_info['study_id'] = sess_info['study_id']
             print(values)
         
