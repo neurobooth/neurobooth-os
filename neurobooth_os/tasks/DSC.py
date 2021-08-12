@@ -15,7 +15,7 @@ from psychopy.visual.textbox2 import TextBox2
 from psychopy import iohub
 from psychopy.iohub import launchHubServer
 
-from neurbooth_os.tasks.utils import make_win
+from neurobooth_os.tasks.utils import make_win
 
 
 def present_msg(elems, win, key_resp="space"):
