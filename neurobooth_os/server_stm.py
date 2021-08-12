@@ -14,7 +14,7 @@ from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_s
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
 
-os.chdir(r'C:\neurobooth-eel\\')
+os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')
 print(os.getcwd())
 
 def fake_task(**kwarg):
