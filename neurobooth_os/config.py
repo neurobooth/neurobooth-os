@@ -12,42 +12,6 @@ paths["LabRecorder"] = r'C:\neurobooth\LabRecorder\LabRecorder.exe'
 paths['nas'] =  r'Z:\session_data\\'
 
 
-task_config = {}
-
-task_config["sync_test"]={
-    "stimuli": "synch_task.html",
-    "devices" : [
-        "cameras",
-        "micro",
-        "mouse"
-        ]    
-    }
-
-task_config["dsc"]={
-    "stimuli": "DSC_simplified_oneProbe_2020.html",
-    "devices" : [
-        "cameras",
-        "micro",
-        ]    
-    }
-
-task_config["mt"]={
-    "stimuli": "mouse_tracking.html",
-    "devices" : [
-        "cameras",
-        "micro",
-        "mouse"
-        ]    
-    }
-
-task_config["ft"]={
-    "stimuli": "task_motor_assess/motortask_instructions.html",
-    "devices" : [
-        "cameras",
-        "micro",
-        ]    
-    }
-
 mbient_macs = {
     "RH": "EE:99:D8:9D:69:5F",  #"D1:49:43:61:54:08",
     "LH": "CE:F3:BD:BD:04:8F",
