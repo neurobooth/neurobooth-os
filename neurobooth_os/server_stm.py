@@ -4,7 +4,7 @@ import pandas as pd
 import sys
 import os
 from time import time, sleep  
-import config
+from neurobooth_os import config
 
 from neurobooth_os.iout.screen_capture import ScreenMirror
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
@@ -158,9 +158,15 @@ def Main():
                     tsk_fun = task_func_dict[task] 
                     # c.send(msg.encode("ascii")) 
                     fprint(f"Starting task: {task}") 
-                    res = run_task(tsk_fun, s2, cmd, subj_id, task, send_stdout, task_karg)
+                    
+                    if task != "pursuit_task_1":
+                        fname =  f"{config.paths['data_out']}{subj_id}{task}.edf"
+                        streams['eye_tracker'].start(fname)
                         
+                    res = run_task(tsk_fun, s2, cmd, subj_id, task, send_stdout, task_karg)
+                                    
                     streams['eye_tracker'].stop()
+                    
                     fprint(f"Finished task: {task}") 
                     
                 elif task == 'timing_task':

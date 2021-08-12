@@ -84,11 +84,13 @@ def serv_data_received():
         try:
             # print("serv_data_received")
             event_feedb = serv_event.get(False)
-            print(event_feedb)
+            
             stream_ids_old = stream_ids.copy()
             # remove server name
             serv_name = event_feedb.split(": ")[0]
-            event_feedb = event_feedb.replace("STM:", "").replace("ACQ:", "")
+            event_feedb = event_feedb.replace("STM: ", "").replace("ACQ: ", "")
+            print(serv_name,":::")
+            print(event_feedb)
             if "-OUTLETID-" in event_feedb:
                 for prt in event_feedb.split("\n"):
                     stream_ids = get_outlet_ids(prt, stream_ids)
@@ -155,8 +157,9 @@ while True:
     elif event == "-update_butt-":
         if values['-update_butt-'] == 'init_servs':
             # 2 colors for init_servers, 1 connected, 2 connected
-            color = statecolor_init_serv.pop()
-            window[values['-update_butt-']].Update(button_color=('black', color))
+            if len(statecolor_init_serv):
+                color = statecolor_init_serv.pop()
+                window[values['-update_butt-']].Update(button_color=('black', color))
             continue
         
         window[values['-update_butt-']].Update(button_color=('black', 'green'))
@@ -217,9 +220,9 @@ while True:
     elif event == 'Start':
         if not session_saved:
             session_info, tasks = get_session_info(values)
-            sess_info['subj_id'] = sess_info['subj_id']
-            sess_info['staff_id'] = sess_info['staff_id']
-            sess_info['study_id'] = sess_info['study_id']
+            session_info['subj_id'] = sess_info['subj_id']
+            session_info['staff_id'] = sess_info['staff_id']
+            session_info['study_id'] = sess_info['study_id']
             print(values)
         
         inlets = update_streams_fromID(stream_ids)
