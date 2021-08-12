@@ -10,7 +10,7 @@ import pyrealsense2 as rs
 from collections import OrderedDict
 import PySpin
 import neurobooth_os.config as cfg
-
+import pyaudio
 
 
 
@@ -97,6 +97,16 @@ sens_FLIR["FLIR_rgb_1"] =   {
         }
 
 
+sens_yeti = OrderedDict()
+sens_yeti["Yeti_mic_1"] =   {
+        "sensor_id" : "Yeti_mic_1",#VARCHAR(255) NOT NULL,
+        "temporal_res" : 44100,#FLOAT NOT NULL,
+        "spatial_res_x" : None, #FLOAT NOT NULL,
+        "spatial_res_y" : None,
+        "file_type" : "xdf"
+        }
+
+insert_to_table('sensor', list(sens_yeti.values()))
 
 for sens in [sens_intel, sens_mbient, sens_FLIR]:
     insert_to_table('sensor', list(sens.values()))
@@ -188,5 +198,30 @@ dev_FLIR_info = {
 
 insert_to_table('device', [ dev_FLIR_info])
 
+# Yeti mic
+audio = pyaudio.PyAudio()
 
+# Get Blue Yeti mic device ID
+info = audio.get_host_api_info_by_index(0)        
+for i in range(info.get('deviceCount')):
+        if (audio.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+            dev_info = audio.get_device_info_by_host_api_device_index(0, i)
+           
+            if "BLUE USB" in dev_info['name']:                
+                dev_inx = i
+                device_name = dev_info['name']
+                break
+            
+dev_Yeti_info = {
+    "device_id" : "Yeti_mic_dev_1",
+    "device_sn" : "None",
+    "wearable_bool" : False,
+    "device_location" : "44_42_56",
+    "device_name" : device_name,
+    "device_model" : "Yeti Pro",
+    'device_make' : "BLUE Yeti",
+    'device_firmware' : "None",
+    "sensor_id_array": make_id_array(sens_yeti)
+    }
 
+insert_to_table('device', [ dev_Yeti_info])
