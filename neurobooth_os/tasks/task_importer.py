@@ -27,7 +27,7 @@ def str_fileid_to_eval(stim_file_str):
     return task_func
 
 
-collection_id = "mvp_025"
+
 
 def get_task_funcs(collection_id):
     """" Using collection_id retrieves callable task objects
