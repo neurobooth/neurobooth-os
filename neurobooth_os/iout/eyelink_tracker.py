@@ -92,7 +92,8 @@ class EyeTracker():
 
     def start(self, filename="TEST.EDF"):
         self.filename = filename
-        self.tk.openDataFile(filename)
+        self.fname_temp = "name8chr.edf"
+        self.tk.openDataFile(self.fname_temp)
         # self.outlet = StreamOutlet(self.stream_info)
         self.streaming = True
 
@@ -112,6 +113,7 @@ class EyeTracker():
         while self.recording:
             if self.paused:
                 time.sleep(.1)
+                print("eyetracker sleeping")
                 continue
             
             smp = self.tk.getNewestSample()
@@ -146,19 +148,23 @@ class EyeTracker():
                 self.outlet.push_sample(values)
                 old_sample = smp
                 
-        
-            
             time.sleep(.001)
         
             
         # self.tk.closeDataFile()
-        # print("saving EDF file to disk")
-        # self.tk.receiveDataFile(self.filename, f'{config.paths["data_out"]}{self.filename}')
+        # print(f"saving {self.fname_temp} EDF file to disk as {self.filename}")
+        # self.tk.receiveDataFile(self.fname_temp, f'{config.paths["data_out"]}{self.filename}')
         # print("saving EDF file to disk DONE")
 
     def stop(self):
         self.recording = False
-        self.stream_thread.join()
+        if self.streaming:
+            print("stopping streaming")
+            self.stream_thread.join()
+            print("Eyelink stoped recording, downaloading edf")
+            self.tk.receiveDataFile(self.fname_temp, f'{config.paths["data_out"]}{self.filename}')
+
+            self.streaming = False
 
     def close(self):
        if self.recording == True:

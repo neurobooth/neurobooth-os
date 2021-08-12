@@ -298,8 +298,8 @@ class DSC():
         df_res = pd.DataFrame(self.results) 
         df_out = pd.DataFrame.from_dict(self.outcomes, orient='index', columns=['vals'])                
         
-        df_res.to_csv(self.path + f'{self.subj_id}_DSC_results.csv')
-        df_out.to_csv(self.path + f'{self.subj_id}_DSC_outcomes.csv')
+        df_res.to_csv(self.path_out + f'{self.subj_id}_DSC_results.csv')
+        df_out.to_csv(self.path_out + f'{self.subj_id}_DSC_outcomes.csv')
 
     def setFrameSequence(self):
         
