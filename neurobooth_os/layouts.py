@@ -24,17 +24,19 @@ def space(n=10):
 
 def init_layout(exclusion=None, frame_sz=(320, 240)):
    
-        # TODO add collection id --> tasks
+    # TODO add collection id --> tasks
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0))
     layout = [
         [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Combo(meta.get_subj_ids(meta.get_conn()), default_value="test", key='subj_id', size=(44, 1), background_color='white', text_color='black')],
         [space()],
-        [sg.Text('RC ID:', pad=((0, 0), 0), justification='left'),  sg.Input(default_text="AN", key='rc_id', size=(44, 1), background_color='white', text_color='black')],
+        [sg.Text('Staff ID:', pad=((0, 0), 0), justification='left'),  sg.Input(default_text="AN", key='staff_id', size=(44, 1), background_color='white', text_color='black')],
         [space()],
         [sg.T("Study ID"),  sg.Combo(meta.get_study_ids(meta.get_conn()), key='study_id', enable_events=True, size=(44, 1))],
-        [space()],     
-        [sg.Text('Task combo: '), sg.Combo("",  size=(44, 1), key="_tasks_")],
+        [space()],  
+        [sg.T("Collection ID"),  sg.Combo("", key='collection_id', enable_events=True, size=(44, 1))],
+        [space()],   
+        [sg.Text('Task combo: '), sg.Combo("",  size=(54, 1), key="_tasks_")],
         # [lay_butt("Exclude tasks", key="_exclusion_")],
         [space()],     
         [space(), sg.ReadFormButton('Save', button_color=('white', 'black'), key="_init_sess_save_")],              
@@ -66,7 +68,7 @@ def main_layout(sess_info, frame_sz=(320, 240)):
         
     layout_col1 = [
         [sg.Text(f'Subject ID: {sess_info["subj_id"]}', pad=((0, 0), 0), justification='left',  size=(25, 1)), 
-         sg.Text(f'RC ID: {sess_info["rc_id"]}', pad=((0, 0), 0), justification='left')
+         sg.Text(f'Staff ID: {sess_info["staff_id"]}', pad=((0, 0), 0), justification='left')
          ],
         
         [space()],
