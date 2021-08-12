@@ -37,7 +37,7 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None):
         
         streams['mouse'] = MouseStream()
         streams['marker'] =  marker_stream()
-        # streams['eye_tracker'] = EyeTracker(win=win)
+        streams['eye_tracker'] = EyeTracker(win=win)
         
     return streams
 
