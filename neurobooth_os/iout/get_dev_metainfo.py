@@ -111,6 +111,17 @@ insert_to_table('sensor', list(sens_yeti.values()))
 for sens in [sens_intel, sens_mbient, sens_FLIR]:
     insert_to_table('sensor', list(sens.values()))
 
+# eyelink
+
+sens_Eyelink = OrderedDict()
+sens_Eyelink["sens_Eyelink_sens_1"] = {
+        "sensor_id" : "sens_Eyelink_sens_1",#VARCHAR(255) NOT NULL,
+        "temporal_res" : 1000,#FLOAT NOT NULL,
+        "spatial_res_x" : None, #FLOAT NOT NULL,
+        "spatial_res_y" : None,
+        "file_type" : "edf"
+    }
+insert_to_table('sensor', list(sens_Eyelink.values()))
 
 ############# DEVICES #############
 
@@ -225,3 +236,43 @@ dev_Yeti_info = {
     }
 
 insert_to_table('device', [ dev_Yeti_info])
+
+
+
+import socket
+pc_name = socket.gethostname()
+
+if pc_name == "stm":
+    import pylink
+    
+    ip='192.168.100.15'
+    
+    tk = pylink.EyeLink(ip)
+    
+    dev_Eyelink_info = {
+        "device_id" : "Eyelink_1",
+        "device_sn" : tk.getTrackerAddress(),
+        "wearable_bool" : False,
+        "device_location" : "25_19_36",
+        "device_name" : "EYELIN Portable Duo",
+        "device_model" : tk.getTrackerVersionString(),
+        'device_make' : "SR",
+        'device_firmware' : "None",
+        "sensor_id_array": make_id_array(sens_Eyelink)
+    } 
+    
+    
+    insert_to_table('device', [ dev_Eyelink_info])
+
+  
+
+    
+    # tk.getTrackerVersion()
+    # tk.getTrackerVersionString()
+   
+    # tk.getEyeUsed()
+    # tk.getCalibrationResult()
+    # tk.getCalibrationMessage()
+    
+  
+  
