@@ -70,6 +70,10 @@ class VidRec_Flir():
         info.desc().append_child_value("size_rgb", str(self.frameSize)) 
         info.desc().append_child_value("serial_number", self.serial_num) 
         info.desc().append_child_value("fps_rgb", str(self.fps))
+        info.desc().append_child_value("exposure", str(self.exposure))       
+        info.desc().append_child_value("gain", str(self.gain))    
+        info.desc().append_child_value("gamma", str(self.gamma)) 
+        
         # info.desc().append_child_value("device_model_id", self.cam.get_device_name().decode())
         print(f"-OUTLETID-:{streamName}:{self.oulet_id}")
         return StreamOutlet(info)
