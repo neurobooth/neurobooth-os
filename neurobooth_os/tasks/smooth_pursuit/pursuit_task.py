@@ -11,9 +11,9 @@ from psychopy import visual, core, event, monitors
 from tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 from math import sin, pi
 import threading
+from utils import deg2pix, peak_vel2freq
 
 dummy_mode = False
-# Monitor resolution
 SCN_W, SCN_H = (1920, 1080)
 
 
@@ -22,9 +22,11 @@ filename = config.paths['data_out'] + filename
 
 
 
+
+
 class pursuit():
     
-    def __init__(self, subj_id, eye_tracker, marker_outlet=None, win=None,  **kwarg):
+    def __init__(self, subj_id, eye_tracker, marker_outlet=None, win=None, monitor_width = 55, cmdist=75, amplitude_deg=30, peak_velocity_deg=33.3,  **kwarg):
         self.subj_id = subj_id
         self.filename = f"{subj_id}_pursuit.edf"  
         self.et = eye_tracker
@@ -33,6 +35,13 @@ class pursuit():
         
         self.mon_size = eye_tracker.mon_size
         self.tk = eye_tracker.tk
+        self.monitor_width = monitor_width
+        self.pixpercm = self.mon_size[0]/self.monitor_width
+        self.cmdist = cmdist
+        self.amplitude_deg = amplitude_deg
+        self.peak_velocity_deg = peak_velocity_deg
+        self.amplitude_pixel = deg2pix(self.amplitude_deg, self.cmdist, self.pixpercm)
+        self.angular_freq = peak_vel2freq(self.peak_velocity_deg, self.peak_velocity_deg)
 
         # self.tk.openDataFile('pursuit.edf')
         # Add preamble text (file header)
@@ -59,10 +68,12 @@ class pursuit():
         # Parameters for the Sinusoidal movement pattern
         # [amp_x, amp_y, phase_x, phase_y, angular_freq_x, angular_freq_y]
         self.mov_pars = [
-                [450, 0, 0, 0, 1/2.5, 1/2.5],
-                [450, 0, 0, 0, 1/3.0, 1/3.0],
-                [450, 0, 0, 0, 1/2.0, 1/2.0],
-                [450, 0, 0, 0, 1/1.0, 1/1.0]
+            
+                [self.amplitude_pixel/2, 0, 0, 0, self.angular_freq , self.angular_freq],
+                [self.amplitude_pixel/2, 0, 0, 0, self.angular_freq , self.angular_freq],
+                [self.amplitude_pixel/2, 0, 0, 0, self.angular_freq , self.angular_freq],
+                [self.amplitude_pixel/2, 0, 0, 0, self.angular_freq , self.angular_freq]
+                
                 ]
 
 
