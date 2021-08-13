@@ -9,6 +9,8 @@ from neurobooth_terra import list_tables, create_table, drop_table, Table
 import psycopg2
 import pandas as pd
 import json
+from collections import OrderedDict
+
 
 def get_conn():
     connect_str = ("dbname='neurobooth' user='neuroboother' host='192.168.100.1' "
@@ -75,7 +77,7 @@ def get_dev_sn(dev_id, conn):
     return sn
 
 
-def db_devinfo_tofunct(dev_dic, key):
+def meta_devinfo_tofunct(dev_dic, key):
     # get dev and sensor info from DB and convert to arg funct
     # input: dev_dic = {key: {"SN": str,
     #                       "sensors": {"sensor1": {},
@@ -122,12 +124,9 @@ def db_devinfo_tofunct(dev_dic, key):
                  
                  
 
-def get_kwarg_collection(collection_id):
+def get_kwarg_task(task_id, conn):
             
-    conn =  get_conn()
-    collection_id = "mvp_025"
-    tasks = get_tasks(collection_id, conn)
-    stim_id, dev_ids, sens_ids = get_task_param(tasks[0], conn)
+    stim_id, dev_ids, sens_ids = get_task_param(task_id, conn)
     
     dev_infos = {}
     dev_kwarg = {}
@@ -142,9 +141,30 @@ def get_kwarg_collection(collection_id):
                 continue
             dev_infos[dev_id]["sensors"][sens_id] = get_sens_param(sens_id, conn)
     
-        kwarg = db_devinfo_tofunct(dev_infos, dev_id)
+        kwarg = meta_devinfo_tofunct(dev_infos, dev_id)
         
         dev_kwarg[dev_id] = kwarg           
     return dev_kwarg
 
 
+def get_coll_dev_kwarg_tasks(collection_id):
+    # Get device Kwargs for all the tasks
+    # outputs dict with keys = stimulus_id, vals = dict with dev parameters
+           
+    conn =  get_conn()
+    tasks = get_tasks(collection_id, conn)   
+    
+    tasks_kwarg = OrderedDict()
+    for task in tasks:        
+        stim_id, _, _ = get_task_param(task, conn)
+        task_kwarg = get_kwarg_task(task, conn)
+        tasks_kwarg[stim_id] = task_kwarg
+        
+    return tasks_kwarg
+        
+    
+    
+    
+    
+    
+    
