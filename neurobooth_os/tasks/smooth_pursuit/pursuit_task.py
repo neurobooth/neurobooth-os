@@ -8,7 +8,7 @@ import os
 import random
 import config
 from psychopy import visual, core, event, monitors
-from tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
+from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 from math import sin, pi
 import threading
 
