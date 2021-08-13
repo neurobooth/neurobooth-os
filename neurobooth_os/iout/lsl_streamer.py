@@ -8,29 +8,32 @@ from neurobooth_os import config
 from neurobooth_os.iout import metadator as meta
 
 
-def start_lsl_threads(node_name, collection_id="mvp_025", win=None):    
+def start_lsl_threads(node_name, collection_id="mvp_025", win=None):  
+    
+    # Get params from all tasks
+    kwarg_devs = meta.get_coll_dev_kwarg_tasks(collection_id)    
+    # Get params from first task
+    kward_devs_task1 = kwarg_devs[next(iter(kwarg_devs))]
+    
     streams = {}    
     if node_name == "acquisition":
-        from iout.microphone import MicStream
-        from iout.camera_brio import VidRec_Brio
-        from iout.camera_intel import VidRec_Intel
-        from iout.ximea_cam import VidRec_Ximea
-        
-        kward_devs = meta.get_coll_dev_kwarg_tasks(collection_id)
-        
-        # Get params from first task
-        kward_devs_task1 = kward_devs[next(iter(kward_devs))]
+        from neurobooth_os.iout.microphone import MicStream
+        from neurobooth_os.iout.camera_brio import VidRec_Brio
+        from neurobooth_os.iout.camera_intel import VidRec_Intel
+        from neurobooth_os.iout.flir_cam import VidRec_Flir
         
         streams['micro'] = MicStream()
         for kdev, argsdev in kward_devs_task1.items():
             if "Intel" in kdev:
                 streams[kdev] = VidRec_Intel(**argsdev)
-            elif "Mbient" in kdev:
-                print(kdev)
-               
+            elif "Mbient" in kdev:   
                 streams[kdev] = connect_mbient(**argsdev)
                 if streams[kdev] is None:
                     del streams[kdev]
+            elif "FLIR " in kdev:
+                streams[kdev] = VidRec_Flir(**argsdev)
+            elif "Mic_Yeti" in kdev:
+                 streams[kdev] = MicStream(**argsdev)
                     
        
     elif node_name == "presentation":     
@@ -40,7 +43,10 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None):
         
         streams['mouse'] = MouseStream()
         streams['marker'] =  marker_stream()
-        streams['eye_tracker'] = EyeTracker(win=win)
+        
+        for kdev, argsdev in kward_devs_task1.items():            
+            if 'Eyelink' in kdev:           
+                streams['eye_tracker'] = EyeTracker(win=win, **argsdev)
         
     return streams
 

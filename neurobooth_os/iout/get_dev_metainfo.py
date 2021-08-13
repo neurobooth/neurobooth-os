@@ -100,8 +100,8 @@ sens_FLIR["FLIR_rgb_1"] =   {
 sens_yeti = OrderedDict()
 sens_yeti["Yeti_mic_1"] =   {
         "sensor_id" : "Yeti_mic_1",#VARCHAR(255) NOT NULL,
-        "temporal_res" : 44100,#FLOAT NOT NULL,
-        "spatial_res_x" : None, #FLOAT NOT NULL,
+        "temporal_res" : 44100, #FLOAT NOT NULL,
+        "spatial_res_x" : 1024, #FLOAT NOT NULL,
         "spatial_res_y" : None,
         "file_type" : "xdf"
         }
@@ -114,8 +114,8 @@ for sens in [sens_intel, sens_mbient, sens_FLIR]:
 # eyelink
 
 sens_Eyelink = OrderedDict()
-sens_Eyelink["sens_Eyelink_sens_1"] = {
-        "sensor_id" : "sens_Eyelink_sens_1",#VARCHAR(255) NOT NULL,
+sens_Eyelink["Eyelink_sens_1"] = {
+        "sensor_id" : "Eyelink_sens_1",#VARCHAR(255) NOT NULL,
         "temporal_res" : 1000,#FLOAT NOT NULL,
         "spatial_res_x" : None, #FLOAT NOT NULL,
         "spatial_res_y" : None,
