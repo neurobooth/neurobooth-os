@@ -21,7 +21,7 @@ import skvideo.io
 
 class VidRec_Flir():        
     def __init__(self, fourcc=cv2.VideoWriter_fourcc(*'MJPG'),
-                 sizex=round(1936/2), sizey=round(1216/2), fps=160, 
+                 sizex=round(1936/2), sizey=round(1216/2), fps=196, 
                  camSN="20522874", exposure=4500, gain=20, gamma=.6):
         
         self.open = False

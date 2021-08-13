@@ -73,21 +73,22 @@ def get_dev_sn(dev_id, conn):
     table_sens = Table('device', conn=conn)
     device_df = table_sens.query(
         f"SELECT * from device WHERE device_id = '{dev_id}'")
-    sn, = device_df["device_sn"]
-    return sn
-
-
-def meta_devinfo_tofunct(dev_dic, key):
-    # get dev and sensor info from DB and convert to arg funct
-    # input: dev_dic = {key: {"SN": str,
-    #                       "sensors": {"sensor1": {},
-    #                               "sensor2: {}
-    #                        }}
+    sn = device_df["device_sn"]
+    if len(sn) == 0:
+        return None
+    return sn[0]
     
-    info = dev_dic[key]
+
+
+def meta_devinfo_tofunct(dev_id_param, dev_id):
+    # Convert SN and sens param from metadata to kwarg for device function
+    # input: dict, from get_kwarg_task
+    #   dict with keys: "SN":"xx", "sensors": {"sensor_ith":{parameters}}
+
+    info = dev_id_param
     kwarg = { }
-    if "Intel" in key:        
-        kwarg["camindex"] = [int(key[-1]), info["SN"]]
+    if "Intel" in dev_id:        
+        kwarg["camindex"] = [int(dev_id[-1]), info["SN"]]
                
         for k in info['sensors'].keys():
             if "rgb" in k:
@@ -100,48 +101,60 @@ def meta_devinfo_tofunct(dev_dic, key):
                 size_x = int(info['sensors'][k]['spatial_res_x'])
                 size_y = int(info['sensors'][k]['spatial_res_y'])
                 kwarg["size_depth"]  = (size_x, size_y)
-                kwarg["fps_depth"]  =  int(info['sensors'][k]['temporal_res'] )               
-            
-        return kwarg
+                kwarg["fps_depth"]  =  int(info['sensors'][k]['temporal_res'] )
     
-    elif "Mbient" in key:
-         kwarg["dev_name"] = key.split("_")[1]
+    elif "Mbient" in dev_id:
+         kwarg["dev_name"] = dev_id.split("_")[1]
          kwarg["mac"] = info["SN"]
          for k in info['sensors'].keys():
             if "acc" in k:
                 kwarg["acc_hz"]  = int(info['sensors'][k]['temporal_res'])                
             elif "gra" in k:
                 kwarg["gyro_hz"]  = int(info['sensors'][k]['temporal_res'])                
-         return kwarg
 
-    elif "FLIR_blackfly" in key:        
+    elif "FLIR_blackfly" in dev_id:        
         kwarg["camSN"] = info["SN"]
         k, = info['sensors'].keys()
+        # TODO test asserting assert(len(list(info['sensors']))==1) raise f"{dev_id} should have only one sensor"
         kwarg["fps"] = int(info['sensors'][k]['temporal_res'])
         kwarg["sizex"] = int(info['sensors'][k]['spatial_res_x'])
         kwarg["sizey"] = int(info['sensors'][k]['spatial_res_y'])
-        return kwarg
-                 
-                 
+    
+    elif "Mic_Yeti" in dev_id:
+       # TODO test asserting assert(len(list(info['sensors']))==1) raise f"{dev_id} should have only one sensor"
+         k, = info['sensors'].keys()
+         kwarg["RATE"] = int(info['sensors'][k]['temporal_res'])
+         kwarg["CHUNK"] = int(info['sensors'][k]['spatial_res_x'])
+    
+    elif "Eyelink" in dev_id:
+        kwarg["ip"] = info["SN"]
+       # TODO test asserting assert(len(list(info['sensors']))==1) raise f"{dev_id} should have only one sensor"
+        k, = info['sensors'].keys()
+        kwarg["sample_rate"] =  int(info['sensors'][k]['temporal_res'])
+    else:
+         print(f"Device id parameters not found for {dev_id} in meta_devinfo_tofunct")
+         
+    return kwarg
+
 
 def get_kwarg_task(task_id, conn):
             
     stim_id, dev_ids, sens_ids = get_task_param(task_id, conn)
     
-    dev_infos = {}
     dev_kwarg = {}
     for dev_id, dev_sens_ids in zip( dev_ids, sens_ids):
-        dev_infos[dev_id] = {}
-        dev_infos[dev_id]["SN"] = get_dev_sn(dev_id, conn) 
+        # TODO test that dev_sens_ids are from correct dev_id, eg. dev_sens_ids =  {Intel_D455_rgb_1,Intel_D455_depth_1} dev_id= Intel_D455_x
+        dev_id_param = {}
+        dev_id_param["SN"] = get_dev_sn(dev_id, conn) 
         
-        dev_infos[dev_id]["sensors"] = {}
+        dev_id_param["sensors"] = {}
             
         for sens_id in dev_sens_ids:
             if sens_id == "":
                 continue
-            dev_infos[dev_id]["sensors"][sens_id] = get_sens_param(sens_id, conn)
+            dev_id_param["sensors"][sens_id] = get_sens_param(sens_id, conn)
     
-        kwarg = meta_devinfo_tofunct(dev_infos, dev_id)
+        kwarg = meta_devinfo_tofunct(dev_id_param, dev_id)
         
         dev_kwarg[dev_id] = kwarg           
     return dev_kwarg
