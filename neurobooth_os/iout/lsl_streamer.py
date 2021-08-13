@@ -16,10 +16,13 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None):
         from iout.camera_intel import VidRec_Intel
         from iout.ximea_cam import VidRec_Ximea
         
-        kward_devs = meta.get_kwarg_collection(collection_id)
+        kward_devs = meta.get_coll_dev_kwarg_tasks(collection_id)
+        
+        # Get params from first task
+        kward_devs_task1 = kward_devs[next(iter(kward_devs))]
         
         streams['micro'] = MicStream()
-        for kdev, argsdev in kward_devs.items():
+        for kdev, argsdev in kward_devs_task1.items():
             if "Intel" in kdev:
                 streams[kdev] = VidRec_Intel(**argsdev)
             elif "Mbient" in kdev:
