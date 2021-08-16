@@ -1,10 +1,7 @@
 
 {
 "_comment":"use oculomotor_utils.py (max_vel_to_amp) to convert max_vel_x to amp_x",
-"max_vel_x":"33.3",
-"max_vel_y":"",
-"phase_x":"pi*3/2",
-"phase_y":"",
-"angular_freq_x":"4/10",
-"angular_freq_y":""
+"peak_velocity_deg":33.3,
+"amplitude_deg":30,
+
 }

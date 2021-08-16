@@ -10,7 +10,7 @@ import numpy as np
 import os
 
 from psychopy.hardware import keyboard
-from neuroboot_os.tasks.utils import make_win
+from neurobooth_os.tasks.utils import make_win
 
 
 
