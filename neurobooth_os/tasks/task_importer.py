@@ -19,7 +19,7 @@ def str_fileid_to_eval(stim_file_str):
             callable of the function pointed by stim_file_str
     """
     strpars = stim_file_str.split(".py::")
-    filepath = strpars[0]
+    filepath = "neurobooth_os." +strpars[0]
     func = strpars[1].replace("()","")
     
     task_module = importlib.import_module(filepath)
