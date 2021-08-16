@@ -96,6 +96,7 @@ def Main():
             fprint(f"ACQ devices prepared: {devs}")
             send_stdout()
             
+            fprint ("UPDATOR:-Connect-")
     
         elif "record_start" in data:  #-> "record:FILENAME"
             fprint("Starting recording")            
