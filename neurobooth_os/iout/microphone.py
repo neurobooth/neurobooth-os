@@ -4,17 +4,21 @@ import numpy as np
 import threading
 import time
 import uuid
+import wave
 
 
 class MicStream():
     def __init__(self, CHANNELS=1, RATE=44100,  CHUNK=1024,
-                 FORMAT=pyaudio.paFloat32):
+                 FORMAT=pyaudio.paFloat32, save_on_disk=False):
        
         self.CHUNK = CHUNK
         self.fps = RATE
+        self.save_on_disk = save_on_disk
+        self.CHANNELS = CHANNELS
+        self.FORMAT = FORMAT
         # Create audio object
         audio = pyaudio.PyAudio()
-        
+        self.p = audio
         # Get Blue Yeti mic device ID
         info = audio.get_host_api_info_by_index(0)        
         for i in range(info.get('deviceCount')):
@@ -52,6 +56,9 @@ class MicStream():
         self.outlet_audio = StreamOutlet(self.stream_info_audio)
         self.streaming = True
         self.stream_on = True
+        if self.save_on_disk:            
+            self.frames = []
+            self.frames_raw = []
         self.stream_thread = threading.Thread(target=self.stream)
         self.stream_thread.start()
     
@@ -61,6 +68,10 @@ class MicStream():
         while self.streaming:
             data = self.stream_in.read(self.CHUNK)
             decoded = np.frombuffer(data, 'float32')
+            if self.save_on_disk:
+                self.frames_raw.append(data)
+                self.frames.append(decoded)
+                
             try:
                 self.outlet_audio.push_sample(decoded)
             except:  # "OSError" from C++
@@ -74,6 +85,21 @@ class MicStream():
 
     def stop(self):
         self.streaming = False
+        if self.save_on_disk:
+            wf = wave.open("decoded_mic_data.wav", 'wb')
+            wf.setnchannels(self.CHANNELS)
+            wf.setsampwidth(self.p.get_sample_size(self.FORMAT))
+            wf.setframerate(self.fps)
+            wf.writeframes(b''.join(self.frames))
+            wf.close()
+
+            wf = wave.open("raw_mic_data.wav", 'wb')
+            wf.setnchannels(self.CHANNELS)
+            wf.setsampwidth(self.p.get_sample_size(self.FORMAT))
+            wf.setframerate(self.fps)
+            wf.writeframes(b''.join(self.frames_raw))
+            wf.close()
+           
 
 
 # for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
