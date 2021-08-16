@@ -161,7 +161,7 @@ def get_kwarg_task(task_id, conn):
 
 
 def get_coll_dev_kwarg_tasks(collection_id):
-    # Get device Kwargs for all the tasks
+    # Get devices kwargs for all the tasks
     # outputs dict with keys = stimulus_id, vals = dict with dev parameters
            
     conn =  get_conn()
@@ -176,7 +176,8 @@ def get_coll_dev_kwarg_tasks(collection_id):
     return tasks_kwarg
         
     
-    
+def get_new_dev_param(kwarg_task1, kwarg_task):
+    pass    
     
     
     
