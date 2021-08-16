@@ -6,14 +6,14 @@
 import pylink
 import os
 import random
-import config
+from neurobooth_os import config 
 from psychopy import visual, core, event, monitors
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 from math import sin, pi
 import threading
+from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq
 
 dummy_mode = False
-# Monitor resolution
 SCN_W, SCN_H = (1920, 1080)
 
 
@@ -22,9 +22,12 @@ filename = config.paths['data_out'] + filename
 
 
 
+
+
 class pursuit():
     
-    def __init__(self, subj_id, eye_tracker, marker_outlet=None, win=None,  **kwarg):
+    def __init__(self, subj_id, eye_tracker, marker_outlet=None, win=None, monitor_width = 55, 
+                 cmdist=75, amplitude_deg=30, peak_velocity_deg=33.3,  **kwarg):
         self.subj_id = subj_id
         self.filename = f"{subj_id}_pursuit.edf"  
         self.et = eye_tracker
@@ -33,12 +36,37 @@ class pursuit():
         
         self.mon_size = eye_tracker.mon_size
         self.tk = eye_tracker.tk
+        self.monitor_width = monitor_width
+        self.pixpercm = self.mon_size[0]/self.monitor_width
+        self.cmdist = cmdist
+        self.amplitude_deg = amplitude_deg
+        self.peak_velocity_deg = peak_velocity_deg
+        self.amplitude_pixel = deg2pix(self.amplitude_deg, self.cmdist, self.pixpercm)
+        self.angular_freq = peak_vel2freq(self.peak_velocity_deg, self.peak_velocity_deg)
 
         # self.tk.openDataFile('pursuit.edf')
         # Add preamble text (file header)
         # self.tk.setOfflineMode()
         # self.tk.sendCommand("add_file_preamble_text 'Smooth pursuit task'")
         
+        if win is None:
+            full_screen = False
+            # Monitor resolution
+            mon = monitors.getAllMonitors()[0]
+            mon_size = monitors.Monitor(mon).getSizePix()
+            
+            # Setup the Window
+            self.win = visual.Window(
+                size=mon_size, fullscr=full_screen, screen=0,
+                winType='pyglet', allowGUI=False, allowStencil=False,
+                monitor='testMonitor', color=[0,0,0], colorSpace='rgb',
+                blendMode='avg', useFBO=True,
+                units='height')
+            self.win_temp = True
+        else:
+            self.win = win
+            self.win_temp = False
+            
         if not eye_tracker.calibrated:
             eye_tracker.calibrate()
             
@@ -59,17 +87,19 @@ class pursuit():
         # Parameters for the Sinusoidal movement pattern
         # [amp_x, amp_y, phase_x, phase_y, angular_freq_x, angular_freq_y]
         self.mov_pars = [
-                [450, 0, 0, 0, 1/2.5, 1/2.5],
-                [450, 0, 0, 0, 1/3.0, 1/3.0],
-                [450, 0, 0, 0, 1/2.0, 1/2.0],
-                [450, 0, 0, 0, 1/1.0, 1/1.0]
+            
+                [self.amplitude_pixel/2, 0, 0, 0, self.angular_freq , self.angular_freq],
+                [self.amplitude_pixel/2, 0, 0, 0, self.angular_freq , self.angular_freq],
+                [self.amplitude_pixel/2, 0, 0, 0, self.angular_freq , self.angular_freq],
+                [self.amplitude_pixel/2, 0, 0, 0, self.angular_freq , self.angular_freq]
+                
                 ]
 
 
     def run(self):
         
         # Run a block of 2 trials, in random order
-        test_list = self.mov_pars[:1]
+        test_list = self.mov_pars
         random.shuffle(test_list)
         for trial in test_list:
             self.run_trial(8.0, trial)
