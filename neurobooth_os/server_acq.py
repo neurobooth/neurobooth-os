@@ -86,23 +86,17 @@ def Main():
                 fprint("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
-                streams = start_lsl_threads("acquisition", collection_id)            
-                streams['micro'].start()
-                for k in streams.keys():
-                    if k[:-3] in ["mbient"] and streams.get(k) is not None:                
-                        streams[k].start()
+                streams = start_lsl_threads("acquisition", collection_id)
                         
             devs = list(streams.keys())
-            fprint(f"ACQ devices prepared: {devs}")
-            send_stdout()
-            
             fprint ("UPDATOR:-Connect-")
+            send_stdout()
     
         elif "record_start" in data:  #-> "record:FILENAME"
             fprint("Starting recording")            
             fname = config.paths['data_out'] + data.split(":")[-1]
             for k in streams.keys():
-                if k[:-1] in ["hiFeed", "intel", "flir"]:
+                if k[:-1] in ["hiFeed", "Intel", "FLIR"]:
                     streams[k].start(fname)
             msg = "ACQ_ready"
             c.send(msg.encode("ascii"))
@@ -112,7 +106,7 @@ def Main():
         elif "record_stop" in data: 
             fprint("Closing recording")    
             for k in streams.keys():
-                if k[:-1] in ["hiFeed", "intel", "ximea"]:
+                if k[:-1] in ["hiFeed", "Intel", "FLIR"]:
                     streams[k].stop()
             send_stdout()
             
