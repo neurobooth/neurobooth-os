@@ -6,12 +6,12 @@
 import pylink
 import os
 import random
-import config
+from neurobooth_os import config 
 from psychopy import visual, core, event, monitors
-from tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
+from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 from math import sin, pi
 import threading
-from utils import deg2pix, peak_vel2freq
+from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq
 
 dummy_mode = False
 SCN_W, SCN_H = (1920, 1080)
@@ -25,8 +25,8 @@ filename = config.paths['data_out'] + filename
 
 
 class pursuit():
-    
-    def __init__(self, subj_id, eye_tracker, marker_outlet=None, win=None, monitor_width = 55, cmdist=75, amplitude_deg=30, peak_velocity_deg=33.3,  **kwarg):
+    def __init__(self, subj_id, eye_tracker, marker_outlet=None, win=None, monitor_width = 55, 
+                 cmdist=75, amplitude_deg=30, peak_velocity_deg=33.3,  **kwarg):
         self.subj_id = subj_id
         self.filename = f"{subj_id}_pursuit.edf"  
         self.et = eye_tracker
@@ -48,6 +48,24 @@ class pursuit():
         # self.tk.setOfflineMode()
         # self.tk.sendCommand("add_file_preamble_text 'Smooth pursuit task'")
         
+        if win is None:
+            full_screen = False
+            # Monitor resolution
+            mon = monitors.getAllMonitors()[0]
+            mon_size = monitors.Monitor(mon).getSizePix()
+            
+            # Setup the Window
+            self.win = visual.Window(
+                size=mon_size, fullscr=full_screen, screen=0,
+                winType='pyglet', allowGUI=False, allowStencil=False,
+                monitor='testMonitor', color=[0,0,0], colorSpace='rgb',
+                blendMode='avg', useFBO=True,
+                units='height')
+            self.win_temp = True
+        else:
+            self.win = win
+            self.win_temp = False
+            
         if not eye_tracker.calibrated:
             eye_tracker.calibrate()
             
@@ -80,7 +98,7 @@ class pursuit():
     def run(self):
         
         # Run a block of 2 trials, in random order
-        test_list = self.mov_pars[:1]
+        test_list = self.mov_pars
         random.shuffle(test_list)
         for trial in test_list:
             self.run_trial(8.0, trial)

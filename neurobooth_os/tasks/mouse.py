@@ -10,18 +10,18 @@ import numpy as np
 import os
 
 from psychopy.hardware import keyboard
-from tasks.utils import make_win
+from neurobooth_os.tasks.utils import make_win
 
 
 
 class mouse_task():
     
-    def __init__(self, marker_outlet=None, win=None, path="", subj_id="test", **kwarg):
+    def __init__(self, marker_outlet=None, win=None, path="", subj_id="test", n_trials=3, **kwarg):
         self.subj_id = subj_id
         self.marker_outlet = marker_outlet
         self.win = win
         self.path = path
-        self.trials = 3
+        self.trials = n_trials
         
         # Store info about the experiment session
         psychopyVersion = '2020.2.3' # psychopy.__version__
