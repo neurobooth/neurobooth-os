@@ -91,7 +91,10 @@ def Main():
             devs = list(streams.keys())
             fprint ("UPDATOR:-Connect-")
             send_stdout()
-    
+
+        elif "dev_param_update" in data:
+            None
+            
         elif "record_start" in data:  #-> "record:FILENAME"
             fprint("Starting recording")            
             fname = config.paths['data_out'] + data.split(":")[-1]
