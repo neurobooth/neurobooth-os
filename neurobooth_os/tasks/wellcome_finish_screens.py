@@ -35,8 +35,7 @@ def welcome_screen(with_audio=True, win=None):
     return win
 
 
-def finish_screen(win):
-    
+def finish_screen(win):    
     
     finish = visual.ImageStim(win, './tasks/NB2.jpg', units='pix')
     utl.present(win, finish, None, 2)

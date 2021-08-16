@@ -126,6 +126,8 @@ def Main():
                 if 'eye_tracker' in streams.keys():
                     streams['eye_tracker'].win = win
                 fprint("Preparing devices")
+                
+            fprint ("UPDATOR:-Connect-")
                             
         elif "present" in data:   #-> "present:TASKNAME:subj_id"
             # task_name can be list of task1-task2-task3  
@@ -142,17 +144,18 @@ def Main():
             
             for task in tasks:                
                 host_ctr, _ = node_info("control")
-                fprint(f"initiating {task}") 
+                fprint(f"Initiating task: {task}") 
                 send_stdout()
                 
                 cmd = "filename {root:" + config.paths['data_out'] + "} {template:%p_%b.xdf} {participant:" + subj_id + "_} {task:" + task + "}\n"
                 
                 task_karg ={"win": win,
                             "path": config.paths['data_out'],
-                            "subj_id": subj_id,
-                            "eye_tracker": streams['eye_tracker'],
+                            "subj_id": subj_id,                            
                             "marker_outlet": streams['marker'],
                             "event_marker": streams['marker']}
+                if streams.get('eye_tracker'):
+                    task_karg["eye_tracker"] = streams['eye_tracker']
                 
                 if task in task_func_dict.keys():
                     tsk_fun = task_func_dict[task] 
@@ -161,11 +164,12 @@ def Main():
                     
                     if task != "pursuit_task_1":
                         fname =  f"{config.paths['data_out']}{subj_id}{task}.edf"
-                        streams['eye_tracker'].start(fname)
+                        if streams.get('eye_tracker'):
+                            streams['eye_tracker'].start(fname)
                         
                     res = run_task(tsk_fun, s2, cmd, subj_id, task, send_stdout, task_karg)
-                                    
-                    streams['eye_tracker'].stop()
+                    if streams.get('eye_tracker'):                                    
+                        streams['eye_tracker'].stop()
                     
                     fprint(f"Finished task: {task}") 
                     
