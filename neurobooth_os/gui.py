@@ -172,7 +172,8 @@ while True:
                 
     elif event == 'Connect':
         window['Connect'].Update(button_color=('black', 'red'))
-                                         
+        event, values = window.read(.1)
+                                 
         ctr_rec.prepare_devices(collection_id) 
         ctr_rec.initiate_labRec()
         print('Connecting devices')
