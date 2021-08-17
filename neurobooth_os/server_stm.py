@@ -13,6 +13,7 @@ from neurobooth_os.tasks.test_timing.audio_video_test import Timing_Test
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
+from neurobooth_os.iout import metadator as meta
 
 os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')
 print(os.getcwd())
@@ -144,8 +145,9 @@ def Main():
             
             for task in tasks:                
                 host_ctr, _ = node_info("control")
-                fprint(f"Initiating task: {task}") 
-                send_stdout()
+                tech_obs_log_id = meta.make_new_tech_obs_id()
+                 
+                
                 
                 cmd = "filename {root:" + config.paths['data_out'] + "} {template:%p_%b.xdf} {participant:" + subj_id + "_} {task:" + task + "}\n"
                 
@@ -154,27 +156,27 @@ def Main():
                             "subj_id": subj_id,                            
                             "marker_outlet": streams['marker'],
                             "event_marker": streams['marker']}
-                if streams.get('eye_tracker'):
-                    task_karg["eye_tracker"] = streams['eye_tracker']
+                if streams.get('Eyelink'):
+                    task_karg["Eyelink"] = streams['Eyelink']
                 
                 if task in task_func_dict.keys():
                     tsk_fun = task_func_dict[task] 
                     # c.send(msg.encode("ascii")) 
-                    fprint(f"Starting task: {task}") 
-                    
+                    fprint(f"Initiating task: {task}:{tech_obs_log_id}")
+                                        
                     if task != "pursuit_task_1":
                         fname =  f"{config.paths['data_out']}{subj_id}{task}.edf"
                         if streams.get('eye_tracker'):
                             streams['eye_tracker'].start(fname)
                         
                     res = run_task(tsk_fun, s2, cmd, subj_id, task, send_stdout, task_karg)
-                    if streams.get('eye_tracker'):                                    
-                        streams['eye_tracker'].stop()
+                    if streams.get('Eyelink'):                                    
+                        streams['Eyelink'].stop()
                     
                     fprint(f"Finished task: {task}") 
                     
                 elif task == 'timing_task':
-                    fprint(f"Starting {task}") 
+                    fprint(f"Initiating task: {task}:{tech_obs_log_id}") 
                     run_task(Timing_Test, s2, cmd, subj_id, task, send_stdout, task_karg)
                     fprint(f"Finished task: {task}") 
 
@@ -183,8 +185,7 @@ def Main():
                 
             finish_screen(win)
             
-        elif data in ["close", "shutdown"]: 
-            
+        elif data in ["close", "shutdown"]:             
             streams = close_streams(streams)          
             fprint("Closing devices")
             send_stdout()
