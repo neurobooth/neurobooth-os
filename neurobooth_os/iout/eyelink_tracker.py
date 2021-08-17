@@ -168,7 +168,7 @@ class EyeTracker():
 
     def close(self):
        if self.recording == True:
-           self.recording == False
+           self.stop()
        self.tk.close()
 
 # info = pylsl.stream_info("EyeLink", "Gaze", 9, 100, pylsl.cf_float32, "eyelink-" + socket.gethostname());
