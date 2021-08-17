@@ -106,13 +106,23 @@ def serv_data_received():
                 rout= re.search("UPDATOR:-([A-Za-z_]*)-", event_feedb)
                 for expr in rout.groups():                    
                     window.write_event_value('-update_butt-', expr)
-            
+            if "Initiating task:" in event_feedb:
+                task_inf = re.search("Initiating task: ([A-Za-z_1-9]*):([A-Za-z_1-9]*)", event_feedb)
+                task_id, obs_id = task_inf.groups()
+                window["task_title"].update("Running Task:")
+                window["task_running"].update(task_id, background_color="green")
+                
+            if "Finished task:"  in event_feedb:
+                task_inf = re.search("Finished task: ([A-Za-z_1-9]*)", event_feedb)
+                task_id = task_inf.groups()
+                window["task_running"].update(task_id, background_color="red")
+                
         except queue.Empty:
             break
 
 
 conn = meta.get_conn()
-log_id = meta.make_new_tech_obs_id(conn)
+log_id = meta.make_new_tech_obs_id()
    
 tech_obs_log = OrderedDict()
 tech_obs_log["tech_obs_log_id"] = ""
