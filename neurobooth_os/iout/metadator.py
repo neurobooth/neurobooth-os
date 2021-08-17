@@ -43,7 +43,23 @@ def get_tasks(collection_id, conn):
     tasks_ids, = collection_df["tech_obs_array"]
     return tasks_ids
     
+def get_tech_obs_logs(conn):
+    table_tech_obs_log = Table("tech_obs_log", conn=conn)
+    tech_obs = table_tech_obs_log.query("SELECT * from tech_obs_log")
+    return tech_obs
 
+def make_new_tech_obs_id():
+    conn = get_conn()
+    tech_obs = get_tech_obs_logs(conn)
+    if list(tech_obs.index) == []:
+        tech_id = "session_log_1"
+    else:
+        tech_id_last = tech_obs.index[-1]
+        num = int(tech_id_last.split("_")[-1])
+        tech_id = f"session_log_{num + 1}"
+    return tech_id
+    
+    
 def get_task_param(task_id, conn):
     table_tech_obs = Table('tech_obs_data', conn=conn)
     tech_obs_df = table_tech_obs.query(
