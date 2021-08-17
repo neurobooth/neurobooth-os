@@ -25,7 +25,6 @@ filename = config.paths['data_out'] + filename
 
 
 class pursuit():
-    
     def __init__(self, subj_id, eye_tracker, marker_outlet=None, win=None, monitor_width = 55, 
                  cmdist=75, amplitude_deg=30, peak_velocity_deg=33.3,  **kwarg):
         self.subj_id = subj_id

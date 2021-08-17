@@ -22,7 +22,7 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None):
         from neurobooth_os.iout.camera_intel import VidRec_Intel
         from neurobooth_os.iout.flir_cam import VidRec_Flir
         
-        streams['micro'] = MicStream()
+        # streams['micro'] = MicStream()
         for kdev, argsdev in kward_devs_task1.items():
             if "Intel" in kdev:
                 streams[kdev] = VidRec_Intel(**argsdev)
@@ -30,12 +30,14 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None):
                 streams[kdev] = connect_mbient(**argsdev)
                 if streams[kdev] is None:
                     del streams[kdev]
+                else:
+                    streams[kdev].start()
             elif "FLIR " in kdev:
                 streams[kdev] = VidRec_Flir(**argsdev)
             elif "Mic_Yeti" in kdev:
                  streams[kdev] = MicStream(**argsdev)
-                    
-       
+                 streams[kdev].start()
+                        
     elif node_name == "presentation":     
         from iout.marker import marker_stream       
         from iout.mouse_tracker  import MouseStream
@@ -46,13 +48,13 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None):
         
         for kdev, argsdev in kward_devs_task1.items():            
             if 'Eyelink' in kdev:           
-                streams['eye_tracker'] = EyeTracker(win=win, **argsdev)
+                streams['Eyelink'] = EyeTracker(win=win, **argsdev)
         
     return streams
 
 
 def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=5, **kwarg):
-    from iout.mbient import Sensor
+    from neurobooth_os.iout.mbient import Sensor
     
        
     tinx = 0

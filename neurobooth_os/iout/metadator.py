@@ -176,8 +176,38 @@ def get_coll_dev_kwarg_tasks(collection_id):
     return tasks_kwarg
         
     
-def get_new_dev_param(kwarg_task1, kwarg_task):
-    pass    
+def get_new_dev_param(kwarg_task1, kwarg_task2):
+    # change device and device parameters between tasks
+    # TODO test kwarg_task from get_coll_dev_kwarg_tasks(collection_id)    
+    
+    open_dev = []
+    close_dev = []
+    change_param = {}
+    for k1, v1 in kwarg_task1.items():
+        # dev not present in task2
+        if not kwarg_task2.get(k1):
+            close_dev.append(k1)
+            # print("close", k1)
+            continue
+        
+        # dev parameters change
+        if not v1 == kwarg_task2.get(k1):
+            v2 = kwarg_task2.get(k1)
+            # print(v1)
+            change_param[k1] = {}
+            for  kk1, vv1 in v1.items():
+                if vv1 != v2.get(kk1):
+                    change_param[k1]["vv1"] = v2.get(kk1)
+                    # print(kk1, vv1, v2.get(kk1))
+
+    for k2, v2 in kwarg_task2.items():
+        # print(k1, v1)
+        if not kwarg_task1.get(k2):
+            open_dev.append(k2)
+            # print(k2)
+            
+    
+    return open_dev,  close_dev, change_param
     
     
     
