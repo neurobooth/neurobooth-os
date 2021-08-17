@@ -146,9 +146,7 @@ def Main():
             for task in tasks:                
                 host_ctr, _ = node_info("control")
                 tech_obs_log_id = meta.make_new_tech_obs_id()
-                 
-                
-                
+                                
                 cmd = "filename {root:" + config.paths['data_out'] + "} {template:%p_%b.xdf} {participant:" + subj_id + "_} {task:" + task + "}\n"
                 
                 task_karg ={"win": win,
@@ -157,7 +155,7 @@ def Main():
                             "marker_outlet": streams['marker'],
                             "event_marker": streams['marker']}
                 if streams.get('Eyelink'):
-                    task_karg["Eyelink"] = streams['Eyelink']
+                    task_karg["eye_tracker"] = streams['Eyelink']
                 
                 if task in task_func_dict.keys():
                     tsk_fun = task_func_dict[task] 
