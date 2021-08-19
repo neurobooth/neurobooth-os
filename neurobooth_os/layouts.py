@@ -24,7 +24,6 @@ def space(n=10):
 
 def init_layout(exclusion=None, frame_sz=(320, 240)):
    
-    # TODO add collection id --> tasks
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0))
     layout = [
@@ -36,8 +35,7 @@ def init_layout(exclusion=None, frame_sz=(320, 240)):
         [space()],  
         [sg.T("Collection ID"),  sg.Combo("", key='collection_id', enable_events=True, size=(44, 1))],
         [space()],   
-        [sg.Text('Task combo: '), sg.Combo("",  size=(54, 1), key="_tasks_")],
-        # [lay_butt("Exclude tasks", key="_exclusion_")],
+        [sg.Text('Task combo: '), sg.Combo("",  size=(64, 1), key="_tasks_")],
         [space()],     
         [space(), sg.ReadFormButton('Save', button_color=('white', 'black'), key="_init_sess_save_")],              
         ]
@@ -93,13 +91,13 @@ def main_layout(sess_info, frame_sz=(320, 240)):
          space(5), lay_butt('Test Comm', 'Test_network')         
         ]]
     
-    layout_col2 = [[sg.Image(data=imgbytes, key='Screen', size=frame_sz)], 
+    layout_col2 = [[sg.Image(data=imgbytes, key='Webcam', size=frame_sz)],
                    [space()], [space()], [space()], [space()],
-                   [sg.Image(data=imgbytes, key='Webcam', size=frame_sz)],
-                   [space()], [space()], [space()], [space()],
+                   [sg.Text('',  justification='left',k="task_title")],
+                   [sg.Text('', k="task_running", justification='left', size=(20,1))],
                    [space()], [space()], [space()], [space()],
                    [sg.Text('Inlet streams')],
-                   [sg.Multiline( size=(35, 6),  key='inlet_State', do_not_clear=False, no_scrollbar=True)]
+                   [sg.Multiline(size=(35, 10),  key='inlet_State', do_not_clear=False, no_scrollbar=True)]
                    ]
     
     layout = [[sg.Column(layout_col1,  pad=(0,0)), sg.Column(layout_col2, pad=(0,0), element_justification='c')] ]

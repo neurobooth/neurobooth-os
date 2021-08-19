@@ -101,18 +101,31 @@ def serv_data_received():
                     stream_ids = get_outlet_ids(prt, stream_ids)
                 if stream_ids_old != stream_ids or ( len(stream_ids) and len(inlets)==0 ):
                     inlets = update_streams_fromID(stream_ids)
+                    
             if "UPDATOR:" in event_feedb:
                 #UPDATOR:-chars-
                 rout= re.search("UPDATOR:-([A-Za-z_]*)-", event_feedb)
                 for expr in rout.groups():                    
                     window.write_event_value('-update_butt-', expr)
-            
+            if "Initiating task:" in event_feedb:
+                task_inf = re.search("Initiating task: ([A-Za-z_1-9]*):([A-Za-z_1-9]*)", event_feedb)
+                task_id, obs_id = task_inf.groups()
+                window["task_title"].update("Running Task:")
+                window["task_running"].update(task_id, background_color="green")
+                window['Start'].Update(button_color=('black', 'green'))
+                
+            if "Finished task:"  in event_feedb:
+                task_inf = re.search("Finished task: ([A-Za-z_1-9]*)", event_feedb)
+                task_id = task_inf.groups()
+                window["task_running"].update(task_id, background_color="red")
+                window['Start'].Update(button_color=('black', 'red'))
+                
         except queue.Empty:
             break
 
 
 conn = meta.get_conn()
-log_id = meta.make_new_tech_obs_id(conn)
+log_id = meta.make_new_tech_obs_id()
    
 tech_obs_log = OrderedDict()
 tech_obs_log["tech_obs_log_id"] = ""
@@ -232,7 +245,7 @@ while True:
         inlets = update_streams_fromID(stream_ids)
         time.sleep(.5)
         serv_data_received()
-        
+        window['Start'].Update(button_color=('black', 'yellow'))
         if len(tasks):
             start_tasks= True            
             running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3                       
@@ -258,10 +271,16 @@ while True:
     serv_data_received()
     
     # Get LSL inlets
-    for k in stream_ids.keys():
-        if k not in inlet_keys:
-            inlet_keys.append(k)            
-            window['inlet_State'].update(inlet_keys)
+    if inlet_keys != list(stream_ids):
+        inlet_keys =  list(stream_ids)
+        inlet_keys_disp = "\n".join(inlet_keys)
+        window['inlet_State'].update(inlet_keys_disp)
+    # for k in stream_ids.keys():
+    #     if k not in inlet_keys:
+    #         inlet_keys.append(k)
+    #         for inlet in inlet_keys:
+          
+            
             
 
 window.close()
