@@ -396,7 +396,7 @@ class DSC():
 
 
 if __name__ == '__main__':
-    from neurobooth_eel.tasks import DSC
+    from neurobooth_os.tasks.DSC  import DSC
 
     dsc = DSC()
 
