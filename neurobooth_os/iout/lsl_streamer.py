@@ -72,10 +72,10 @@ def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=5, **kwarg):
                 break    
 
 
-def close_streams(streams, cams=False):
+def close_streams(streams):
     for k in list(streams):
         print(f"Closing {k} stream")
-        if cams and any([True for d in  ["hiFeed", "Intel", "ximea"] if d in k]):
+        if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
             streams[k].close()
         else:
             streams[k].stop()
@@ -85,7 +85,7 @@ def close_streams(streams, cams=False):
 
 def reconnect_streams(streams):
     for k in list(streams): 
-        if any([True for d in  ["hiFeed", "Intel", "ximea"] if d in k]):
+        if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
             continue
         
         if not streams[k].streaming:
