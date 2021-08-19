@@ -87,9 +87,10 @@ def Main():
                 streams = reconnect_streams(streams)
             else:
                 streams = start_lsl_threads("acquisition", collection_id)
-                        
+            
+            send_stdout()
             devs = list(streams.keys())
-            fprint ("UPDATOR:-Connect-")
+            fprint("UPDATOR:-Connect-")
             send_stdout()
 
         elif "dev_param_update" in data:
