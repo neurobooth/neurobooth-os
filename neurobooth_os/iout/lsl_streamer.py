@@ -6,7 +6,7 @@ Created on Tue Nov 24 15:41:42 2020
 """
 from neurobooth_os import config
 from neurobooth_os.iout import metadator as meta
-
+import time
 
 def start_lsl_threads(node_name, collection_id="mvp_025", win=None):  
     
@@ -56,7 +56,6 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None):
 def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=5, **kwarg):
     from neurobooth_os.iout.mbient import Sensor
     
-       
     tinx = 0
     print(f"Trying to connect mbient {dev_name}, mac {mac}")
     while True:        
@@ -65,8 +64,9 @@ def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=5, **kwarg):
             sens = Sensor( mac, dev_name, **kwarg)
             return sens 
         except Exception as e:        
-            print(f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries {e}")
+            # print(f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries {e}")
             tinx += 1
+            time.sleep(.5)
             if tinx >= try_nmax:
                 print(f"Failed to connect mbient {dev_name}")
                 break    

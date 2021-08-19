@@ -62,7 +62,10 @@ for _ in range(nFrames):
     im = cam.GetNextImage(1000)
     ts = im.GetTimeStamp()
     # im_conv = im.Convert(PySpin.PixelFormat_BGR8, PySpin.HQ_LINEAR)
-    frame_bgr = cv2.demosaicing(im, cv2.COLOR_BayerBG2BGR)
+    img_NDArray = im.GetNDArray()
+    
+    frame_bgr = cv2.demosaicing(img_NDArray, cv2.COLOR_BayerBG2BGR)
+    im.Release()
     # im_conv_d = im_conv.GetData()
     
     # image_queue.append(im.GetData())
@@ -75,14 +78,15 @@ for _ in range(nFrames):
     #  Images retrieved directly from the camera (i.e. non-converted
     #  images) need to be released in order to keep from filling the
     #  buffer.
-    im.Release()
+  
 
 
 print((np.diff(stamp).mean()/1e6))
 
 print(1000/(np.diff(stamp).mean()/1e6))
 
-plt.plot(np.array(stamp)/1e6)
+
+# plt.plot(np.array(stamp)/1e6)
 
 plt.figure()
 plt.plot(np.diff(stamp)/1e6)
