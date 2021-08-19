@@ -37,8 +37,8 @@ def update_streams():
             inlet = pylsl.StreamInlet(info)#, recover=False)
             inlets[name] = inlet
     
-        else:
-            print('Don\'t know what to do with stream ' + info.name())
+        # else:
+        #     print('Don\'t know what to do with stream ' + info.name())
     return inlets
 
 
@@ -48,7 +48,7 @@ def update_streams_fromID(stream_ids):
     streams = []
     for id_stream in  stream_ids.values():
         print("resolving: ", id_stream)
-        streams += pylsl.resolve_byprop("source_id", id_stream, timeout=10)
+        streams += pylsl.resolve_byprop("source_id", id_stream, timeout=1)
     
     inlets= {}
     for info in streams:  
@@ -65,8 +65,8 @@ def update_streams_fromID(stream_ids):
             inlet = pylsl.StreamInlet(info)#, recover=False)
             inlets[name] = inlet
     
-        else:
-            print('Don\'t know what to do with stream ' + info.name())
+        # else:
+        #     print('Don\'t know what to do with stream ' + info.name())
     return inlets
 
 
