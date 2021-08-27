@@ -123,16 +123,35 @@ class Sensor:
     
     def close(self):
        self.device.on_disconnect = lambda status: print (f"Mbient {self.dev_name} disconnected!")
+       # Stops data logging
+       # print("stop logging")
+       # libmetawear.mbl_mw_logging_stop(self.device.board)
+       # Clear the logger of saved entries
+       # print("Erase logger")
+       # libmetawear.mbl_mw_logging_clear_entries(self.device.board)
+       # Remove all macros on the flash memory
+       # print("Erase macros")
+       # libmetawear.mbl_mw_macro_erase_all(self.device.board)
+       # Restarts the board after performing garbage collection
+       # print("Clear  macros")
+       libmetawear.mbl_mw_debug_reset_after_gc(self.device.board)
+       # print("Disconnect")
+       # libmetawear.mbl_mw_debug_disconnect(self.device.board)
        self.device.disconnect()
         
 
 
-if 0:
+
+if __name__ == "__main__":
+
     
     mac = "EE:99:D8:9D:69:5F"
     mbt = Sensor(mac)
     mbt.start()
-    
+    sleep(3)
+    mbt.stop()
+    sleep(1)
+    mbt.close()
 #        
 #    for s in states:
 #        print("Configuring %s" % (s.device.address))
