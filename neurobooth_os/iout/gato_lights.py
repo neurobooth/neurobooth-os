@@ -7,11 +7,11 @@ Created on Wed Aug 18 14:46:18 2021
 
 import leglight
 
-myLight_L = leglight.LegLight('192.168.137.98',9123)
+myLight_L = leglight.LegLight('192.168.137.101',9123)
 myLight_L.on()
 myLight_L.color(5500)
 
-myLight_R = leglight.LegLight('192.168.137.115',9123)
+myLight_R = leglight.LegLight('192.168.137.55',9123)
 myLight_R.on()
 myLight_R.color(5500)
 

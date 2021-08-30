@@ -23,8 +23,8 @@ def fake_task(**kwarg):
     
 
 
-def run_task(task_funct, s2, cmd, subj_id, task, send_stdout, task_karg={}):    
-    resp = socket_message(f"record_start:{subj_id}_{task}", "acquisition", wait_data=2)
+def run_task(task_funct, s2, cmd, subj_id, task, tech_obs_log_id, send_stdout, task_karg={}):    
+    resp = socket_message(f"record_start:{subj_id}_{task}:{tech_obs_log_id}", "acquisition", wait_data=2)
     print(resp)
     s2.sendall(cmd.encode('utf-8') )
     sleep(.5)
@@ -172,6 +172,8 @@ def Main():
                         streams['Eyelink'].stop()
                     
                     fprint(f"Finished task: {task}") 
+                    if streams.get('Eyelink'):  
+                        del streams['Eyelink']
                     
                 elif task == 'timing_task':
                     fprint(f"Initiating task: {task}:{tech_obs_log_id}") 
