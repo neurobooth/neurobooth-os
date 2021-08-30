@@ -17,7 +17,7 @@ import uuid
 from pylsl import StreamInfo, StreamOutlet
 import skvideo
 import skvideo.io
-
+import h5py
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
@@ -89,16 +89,11 @@ class VidRec_Flir():
              
     def camCaptureVid(self): #function to capture images, convert to numpy, send to queue, and release from buffer in separate process
         while self.recording or self.image_queue.qsize():
-            camNotReady = self.image_queue.empty() # wait for  images readys
-            while camNotReady: #wait until ready in a loop
-                time.sleep(.002)
-                camNotReady = self.image_queue.empty() # wait for images ready
+            dequeuedImage = self.image_queue.get(block=True, timeout=1) # get images formated as numpy from separate process queue
             
-            dequeuedImage = self.image_queue.get() # get images formated as numpy from separate process queue
-            
-            self.writer.writeFrame(dequeuedImage)
+            # self.writer.writeFrame(dequeuedImage)
             # self.writer.write(dequeuedImage)
-            self.image_queue.task_done()
+            # self.image_queue.task_done()
             
 
         
@@ -215,7 +210,7 @@ if __name__ == "__main__":
 
     ximi = VidRec_Flir()
     ximi.start()
-    time.sleep(20)
+    time.sleep(10)
     ximi.close()
     tdiff = np.diff(ximi.stamp)/1e6
     plt.figure(), plt.hist(tdiff, 50)

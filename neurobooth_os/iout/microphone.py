@@ -24,6 +24,7 @@ class MicStream():
         for i in range(info.get('deviceCount')):
                 if (audio.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
                     dev_name = audio.get_device_info_by_host_api_device_index(0, i).get('name')
+                    # print(dev_name)
                     if "BLUE USB" in dev_name:
                         dev_inx = i
                         self.device_name = dev_name

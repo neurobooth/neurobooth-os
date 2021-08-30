@@ -59,6 +59,22 @@ def make_new_tech_obs_id():
         tech_id = f"session_log_{num + 1}"
     return tech_id
     
+
+def get_sens_file_logs(conn):
+    table_sens_log = Table("sensor_file_log", conn=conn)
+    sens_log = table_sens_log.query("SELECT * from sensor_file_log")
+    return sens_log
+
+def make_new_sess_log_id():
+    conn = get_conn()
+    sens_log = get_sens_file_logs(conn)
+    if list(sens_log.index) == []:
+        sens_id = "sens_log_1"
+    else:
+        sens_id_last = sens_log.index[-1]
+        num = int(sens_id_last.split("_")[-1])
+        sens_id = f"sens_log_{num + 1}"
+    return sens_id
     
 def get_task_param(task_id, conn):
     table_tech_obs = Table('tech_obs_data', conn=conn)
