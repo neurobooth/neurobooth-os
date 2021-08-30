@@ -7,6 +7,7 @@ Created on Tue Mar  9 14:55:50 2021
 """
 import random
 import time
+from datetime import datetime
 import os.path as op
 import numpy as np
 import pandas as pd
@@ -26,6 +27,7 @@ def present_msg(elems, win, key_resp="space"):
     # while not event.getKeys(keyList=key_resp):
     #     a = "next"
     #     # print(a)
+
 
 
 
@@ -58,6 +60,7 @@ class DSC():
         
         self.keyboard = self.io.devices.keyboard
 
+
         if marker_outlet is not None:
             self.with_lsl = True
             self.marker = marker_outlet
@@ -70,11 +73,19 @@ class DSC():
         self.io.quit()
 
 
-    def send_marker(self, msg=None):
+    def send_marker(self, marker, with_lsl, msg=None):
         # msg format str {word}_{value}
-        if self.with_lsl:
-            self.marker.push_sample([f"{msg}_{time.time()}"])
-
+        ts = time.time()
+        dt_object = datetime.fromtimestamp(ts)
+        ts_meta = dt_object.strftime("%Y-%m-%d %H:%M:%S")
+        
+        if with_lsl:            
+            marker.push_sample([f"{msg}:{ts}"])
+        if self.sess_log:
+           if any([True for m in ["Instruction-start", "Instruction-end",
+                                   "Task-start", "Task-end"] if m in msg ]):
+                # marker_list.append(...)
+                pass
 
     def my_textbox2(self, text, pos=(0,0), size=(None, None)):
         # xsize = min(len(text), 30)

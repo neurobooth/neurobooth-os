@@ -2,7 +2,12 @@ import pyxdf
 import matplotlib.pyplot as plt
 import numpy as np
 
-file = r'C:\neurobooth\neurobooth_data\sz2__DSC_task.xdf'
+import os.path as op
+
+neurobooth_data_dir = r'C:\neurobooth\neurobooth_data'
+file = op.join(neurobooth_data_dir, 'mainakjas__mouse_task_1.xdf')
+
+
 data, header = pyxdf.load_xdf(file)
 
 
@@ -30,7 +35,7 @@ for ix, stream in enumerate(data):
         continue
     for k, v in desc.items():
         print(k, v)
-    # print(desc[0])
+    print(desc[0])
 
     # add real fps
     #to json
