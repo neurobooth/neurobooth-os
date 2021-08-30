@@ -60,7 +60,7 @@ def get_outlet_ids(str_prt, dic_ids):
             print(f"Outlet id bad formatted: {str_prt}")
     return dic_ids
     
-serv_event = queue.Queue(maxsize=10)
+serv_event = queue.Queue(maxsize=20)
 def feedback_com():
     global serv_event    
     def callback(inp):
@@ -134,11 +134,28 @@ tech_obs_log["study_id"] = ""
 tech_obs_log["tech_obs_id"] = ""
 tech_obs_log["staff_id"] = ""
 tech_obs_log["application_id"] = "neurobooth_os"
-tech_obs_log["site_date"] = datetime.now().strftime("%Y_%m_%d")
-tech_obs_log["event_array"] =[]
+tech_obs_log["site_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+tech_obs_log["event_array"] =[] # maker_name:timestamp
 tech_obs_log["collection_name"] = ""
-tech_obs_log["sensor_file_ids"] = ""
-tech_obs_log["date_times"] = datetime.now().strftime("%Y_%m_%d")
+tech_obs_log["sensor_file_ids"] = "" # intel videos, FLIR, eyetracker, lsls_xdf,
+tech_obs_log["date_times"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+sensor_file_log = OrderedDict()
+sensor_file_log["sensor_file_id"] = ""
+sensor_file_log["subject_id"] = ""
+sensor_file_log["study_id"] = ""
+sensor_file_log["tech_obs_log_id"] = ""
+sensor_file_log["tech_obs_id"]= ""
+ # ["true_temporal_resolution"], 
+ # ["true_spatial_resolution"], 
+# sensor_file_log["file_start_time"]= ""
+# sensor_file_log["file_end_time"]= ""
+sensor_file_log["device_id"]= ""
+sensor_file_log["sensor_id"]= ""
+sensor_file_log["collection_id"]= ""
+sensor_file_log["sensor_file_path"]=[]
+
 
 
 statecolors = {"init_servs" : ["green", "yellow"],
@@ -153,6 +170,7 @@ while True:
     if event == sg.WIN_CLOSED:
         break
     
+    ## Initial Window
     elif event == "study_id":
         print(event, values)
         study_id = values[event]   
@@ -186,6 +204,7 @@ while True:
             # Open new layout with main window            
             window = win_gen(main_layout, sess_info)
             
+    ## Main Window            
     elif event == "-update_butt-":
         if values['-update_butt-'] in list(statecolors):
             # 2 colors for init_servers and Connect, 1 connected, 2 connected
