@@ -96,7 +96,7 @@ def Main():
         elif "dev_param_update" in data:
             None
             
-        elif "record_start" in data:  #-> "record:FILENAME"
+        elif "record_start" in data:  #-> "record_start:FILENAME" FILENAME = {subj_id}_{task}
             fprint("Starting recording")            
             fname = config.paths['data_out'] + data.split(":")[-1]
             for k in streams.keys():
