@@ -100,7 +100,7 @@ def Main():
             fprint("Starting recording")            
             fname = config.paths['data_out'] + data.split(":")[-1]
             for k in streams.keys():
-                if k[:-1] in ["hiFeed", "Intel", "FLIR"]:
+                if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
                     streams[k].start(fname)
             msg = "ACQ_ready"
             c.send(msg.encode("ascii"))
@@ -110,7 +110,7 @@ def Main():
         elif "record_stop" in data: 
             fprint("Closing recording")    
             for k in streams.keys():
-                if k[:-1] in ["hiFeed", "Intel", "FLIR"]:
+                if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
                     streams[k].stop()
             send_stdout()
             
@@ -129,9 +129,7 @@ def Main():
         elif "time_test" in data:
             msg = f"ping_{time()}"            
             c.send(msg.encode("ascii"))
-            
-        elif "connect_mbient" in data:
-            mbient = connect_mbient()            
+                      
         else:
             fprint("ACQ " + data)
             
