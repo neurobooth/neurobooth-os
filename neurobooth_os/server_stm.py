@@ -23,14 +23,14 @@ def fake_task(**kwarg):
     
 
 
-def run_task(task_funct, s2, cmd, subj_id, task, tech_obs_log_id, send_stdout, task_karg={}):    
-    resp = socket_message(f"record_start:{subj_id}_{task}:{tech_obs_log_id}", "acquisition", wait_data=2)
+def run_task(task_funct, s2, lsl_cmd, subj_id, task, send_stdout, task_karg={}):    
+    resp = socket_message(f"record_start:{subj_id}_{task}", "acquisition", wait_data=2)
     print(resp)
-    s2.sendall(cmd.encode('utf-8') )
+    s2.sendall(lsl_cmd.encode('utf-8') )
     sleep(.5)
     s2.sendall(b"select all\n")
     sleep(.5)
-    s2.sendall(b"start\n")
+    s2.sendall(b"start\n") # LabRecorder start cmd
     sleep(.5)
     res = task_funct(**task_karg)
     s2.sendall(b"stop\n")
@@ -147,8 +147,12 @@ def Main():
                 host_ctr, _ = node_info("control")
                 tech_obs_log_id = meta.make_new_tech_obs_id()
                                 
-                cmd = "filename {root:" + config.paths['data_out'] + "} {template:%p_%b.xdf} {participant:" + subj_id + "_} {task:" + task + "}\n"
-                
+                # Generates filename command for LabRecorder
+                lsl_cmd = ("filename {root:" + config.paths['data_out'] + "}"
+                       "{template:%p_%b.xdf}"
+                       "{participant:" + tech_obs_log_id + "_" + subj_id + "_} "
+                       "{task:" + task + "}\n")
+       
                 task_karg ={"win": win,
                             "path": config.paths['data_out'],
                             "subj_id": subj_id,                            
@@ -167,7 +171,7 @@ def Main():
                         if streams.get('eye_tracker'):
                             streams['eye_tracker'].start(fname)
                         
-                    res = run_task(tsk_fun, s2, cmd, subj_id, task, send_stdout, task_karg)
+                    res = run_task(tsk_fun, s2, lsl_cmd, subj_id, task, send_stdout, task_karg)
                     if streams.get('Eyelink'):                                    
                         streams['Eyelink'].stop()
                     
@@ -177,7 +181,7 @@ def Main():
                     
                 elif task == 'timing_task':
                     fprint(f"Initiating task: {task}:{tech_obs_log_id}") 
-                    run_task(Timing_Test, s2, cmd, subj_id, task, send_stdout, task_karg)
+                    run_task(Timing_Test, s2, lsl_cmd, subj_id, task, send_stdout, task_karg)
                     fprint(f"Finished task: {task}") 
 
                 else:
