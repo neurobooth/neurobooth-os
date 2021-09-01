@@ -80,8 +80,8 @@ def Main():
                 fprint ("Already running low feed video streaming")
             
         elif "prepare" in data:
-            # data = "prepare:collection_id"
-            collection_id = data.split(":")[-1]
+            # data = "prepare:collection_id:str(tech_obs_log_dict)"
+            collection_id = data.split(":")[1]
             if len(streams):
                 fprint("Checking prepared devices")
                 streams = reconnect_streams(streams)
