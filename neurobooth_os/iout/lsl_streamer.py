@@ -64,9 +64,9 @@ def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=5, **kwarg):
             sens = Sensor( mac, dev_name, **kwarg)
             return sens 
         except Exception as e:        
-            # print(f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries {e}")
+            print(f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries {e}")
             tinx += 1
-            time.sleep(.5)
+            time.sleep(1)
             if tinx >= try_nmax:
                 print(f"Failed to connect mbient {dev_name}")
                 break    
