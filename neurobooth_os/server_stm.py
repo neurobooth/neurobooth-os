@@ -149,15 +149,16 @@ def Main():
                                 
                 # Generates filename command for LabRecorder
                 lsl_cmd = ("filename {root:" + config.paths['data_out'] + "}"
-                       "{template:%p_%b.xdf}"
-                       "{participant:" + tech_obs_log_id + "_" + subj_id + "_} "
-                       "{task:" + task + "}\n")
+                           "{template:%p_%b.xdf}"
+                           "{participant:" + tech_obs_log_id + "_" + subj_id + "_} "
+                           "{task:" + task + "}\n")
        
                 task_karg ={"win": win,
                             "path": config.paths['data_out'],
                             "subj_id": subj_id,                            
                             "marker_outlet": streams['marker'],
                             "event_marker": streams['marker']}
+                
                 if streams.get('Eyelink'):
                     task_karg["eye_tracker"] = streams['Eyelink']
                 

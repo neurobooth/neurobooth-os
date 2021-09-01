@@ -25,3 +25,5 @@ cam_inx = {
     "intel2": [2, '036322250240'],
     "intel3": [3, '037322251461']    
     }
+
+path_vids_tasks = r"C:\Users\STM\Dropbox (Partners HealthCare)\Neurobooth Videos for tasks\Videos_to_present"
