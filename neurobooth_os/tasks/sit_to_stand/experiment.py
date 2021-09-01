@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+import os
 import os.path as op
 from psychopy import visual
 from psychopy import prefs
@@ -6,13 +7,17 @@ prefs.hardware['audioLib']=['pyo']
 from psychopy import sound, core, event
 import time
 import neurobooth_os.tasks.utils as utl
-
+from neurobooth_os.tasks.utils import make_win
 
 
 class Sit_to_Stand():
-    def __init__(self, marker_outlet=None, win=None, **kwarg):
+    def __init__(self, path_instruction_video=r"tasks\sit_to_stand\Sit_to_Stand_2021_08_24_v0.2.mp4", marker_outlet=None, win=None, **kwarg):
+        
         
         self.fpath = op.dirname(op.abspath(__file__)).replace("\\", "/")
+        self.pname_inst_vid = op.join(self.fpath, op.basename(path_instruction_video))
+        print("path to instruction: ", self.pname_inst_vid)
+        
         
         if marker_outlet is not None:
             self.with_lsl = True
@@ -22,17 +27,10 @@ class Sit_to_Stand():
             self.with_lsl = False
 
         if win is None:
-            full_screen = False
-            # Monitor resolution
-            SCN_W, SCN_H = (1920, 1040)
+            full_screen = True
 
             # Setup the Window
-            self.win = visual.Window(
-                size=(SCN_W, SCN_H), fullscr=full_screen, screen=1,
-                winType='pyglet', allowGUI=False, allowStencil=False,
-                monitor='testMonitor', color=[0,0,0], colorSpace='rgb',
-                blendMode='avg', useFBO=True,
-                units='height')
+            self.win = make_win(full_screen)
             self.win_temp = True
         else:
             self.win = win
@@ -49,14 +47,8 @@ class Sit_to_Stand():
 
     def run(self):
 
-        welcome = visual.ImageStim(self.win, image=self.fpath + '/NB1.jpg', units='pix')
-        welcome_audio = sound.Sound(self.fpath + '/welcome.wav', secs=-1, stereo=True, hamming=True,
-            name='sustainph_audio_instructions')
-
-        text='For this task, you will do sit-to-stand five times, as quickly as possible\n\nYou will be presented with the instruction video next\n\nPress any button to continue'
-        instructions = utl.create_text_screen(self.win, text)
-        instructions_audio = sound.Sound(self.fpath + '/instructions.wav', secs=-1, stereo=True, hamming=True)
-        instruction_video = visual.MovieStim3(win=self.win, filename=self.fpath + '/instructions.mp4', noAudio=True)
+        instruction_video = visual.MovieStim3(win=self.win, filename=self.pname_inst_vid, noAudio=False)
+        
 
         text='Please practice sit-to-stand one time'
         practice = utl.create_text_screen(self.win, text)
@@ -74,7 +66,6 @@ class Sit_to_Stand():
         # utl.present(self.win, welcome, welcome_audio, 10)
         self.send_marker("Intructions-start_0")
         
-        utl.present(self.win, instructions, instructions_audio, 12)
         utl.play_video(self.win, instruction_video)
         self.send_marker("Intructions-end_1")
 

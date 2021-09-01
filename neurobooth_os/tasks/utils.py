@@ -23,7 +23,7 @@ def make_win(full_screen=True, monitor_width=55, monitor_distance=50):
     customMon.saveMon()
     
     
-    win = visual.Window(mon_size, fullscr=full_screen, monitor=customMon, units='pix', color='white')
+    win = visual.Window(mon_size, fullscr=full_screen, monitor=customMon, units='pix', color=(0,0,0))
     return win
 
 def create_text_screen(win, text):
@@ -63,6 +63,7 @@ def play_video(win, mov):
         mov.draw()
         win.flip()
         if event.getKeys():
+            mov.stop()
             break
 
 
