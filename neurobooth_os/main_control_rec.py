@@ -28,6 +28,7 @@ def prepare_feedback():
     socket_message("scr_stream", "presentation")
     
 def prepare_devices(collection_id="mvp_025"):
+    # prepares devices, collection_id can be just colletion name but also "collection_id:str(tech_obs_log)"
     socket_message(f"prepare:{collection_id}", "acquisition") 
     socket_message(f"prepare:{collection_id}", "presentation") 
 
