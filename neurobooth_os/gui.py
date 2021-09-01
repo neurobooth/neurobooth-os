@@ -80,10 +80,29 @@ plot_elem, done_tasks, inlet_keys = [], [], []
 running_task, start_tasks, session_saved = None, False, False
 dev_prepared = False
 
+   
+def new_tech_log_dict(application_id="neurobooth_os"):
+    tech_obs_log = OrderedDict()
+    tech_obs_log["tech_obs_log_id"] = ""
+    tech_obs_log["subject_id"] = ""
+    tech_obs_log["study_id"] = ""
+    tech_obs_log["tech_obs_id"] = ""
+    tech_obs_log["staff_id"] = ""
+    tech_obs_log["application_id"] = "neurobooth_os"
+    tech_obs_log["site_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    tech_obs_log["event_array"] =[] # maker_name:timestamp
+    tech_obs_log["collection_id"] = ""
+    # tech_obs_log["date_times"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # tech_obs_log_id, subject_id, study_id, tech_obs_id, staff_id, application_id, site_date, event_array, collection_id, date_times
+    return tech_obs_log
+
+tech_obs_log =  new_tech_log_dict()
+
 
 def serv_data_received():
-    # CTR server received data    
-    global stream_ids, inlets
+    # process CTR server received data  
+    global stream_ids, inlets, window
     
     while True:  # while items in queue
         try:
@@ -111,57 +130,27 @@ def serv_data_received():
                 task_inf = re.search("Initiating task: ([A-Za-z_1-9]*):([A-Za-z_1-9]*)", event_feedb)
                 task_id, obs_id = task_inf.groups()
                 window["task_title"].update("Running Task:")
-                window["task_running"].update(task_id, background_color="green")
-                window['Start'].Update(button_color=('black', 'green'))
+                window["task_running"].update(task_id, background_color="red")
+                window['Start'].Update(button_color=('black', 'red'))
                 
             if "Finished task:"  in event_feedb:
                 task_inf = re.search("Finished task: ([A-Za-z_1-9]*)", event_feedb)
                 task_id = task_inf.groups()
-                window["task_running"].update(task_id, background_color="red")
-                window['Start'].Update(button_color=('black', 'red'))
+                window["task_running"].update(task_id, background_color="green")
+                window['Start'].Update(button_color=('black', 'green'))
                 
         except queue.Empty:
             break
 
 
 conn = meta.get_conn()
-log_id = meta.make_new_tech_obs_id()
-   
-tech_obs_log = OrderedDict()
-tech_obs_log["tech_obs_log_id"] = ""
-tech_obs_log["subject_id"] = ""
-tech_obs_log["study_id"] = ""
-tech_obs_log["tech_obs_id"] = ""
-tech_obs_log["staff_id"] = ""
-tech_obs_log["application_id"] = "neurobooth_os"
-tech_obs_log["site_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-tech_obs_log["event_array"] =[] # maker_name:timestamp
-tech_obs_log["collection_name"] = ""
-tech_obs_log["sensor_file_ids"] = "" # intel videos, FLIR, eyetracker, lsls_xdf,
-tech_obs_log["date_times"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
-sensor_file_log = OrderedDict()
-sensor_file_log["sensor_file_id"] = ""
-sensor_file_log["subject_id"] = ""
-sensor_file_log["study_id"] = ""
-sensor_file_log["tech_obs_log_id"] = ""
-sensor_file_log["tech_obs_id"]= ""
- # ["true_temporal_resolution"], 
- # ["true_spatial_resolution"], 
-# sensor_file_log["file_start_time"]= ""
-# sensor_file_log["file_end_time"]= ""
-sensor_file_log["device_id"]= ""
-sensor_file_log["sensor_id"]= ""
-sensor_file_log["collection_id"]= ""
-sensor_file_log["sensor_file_path"]=[]
 
 
 
 statecolors = {"init_servs" : ["green", "yellow"],
                "Connect" :  ["green", "yellow"],
                }
-
+    # tech_obs_log_id,   tech_obs_id, staff_id, application_id, site_date, event_array,  date_times
 event, values = window.read(.1) 
 while True:
     event, values = window.read(.5)
@@ -170,7 +159,9 @@ while True:
     if event == sg.WIN_CLOSED:
         break
     
+    ############################################################
     ## Initial Window
+    ############################################################
     elif event == "study_id":
         print(event, values)
         study_id = values[event]   
@@ -199,12 +190,14 @@ while True:
             subj_id = sess_info['subj_id']
             staff_id = sess_info['staff_id']   
             tech_obs_log["staff_id"] = staff_id
-            tech_obs_log["subj_id"] = subj_id
+            tech_obs_log["subject_id"] = subj_id
             window.close()
             # Open new layout with main window            
             window = win_gen(main_layout, sess_info)
-            
-    ## Main Window            
+       
+    ############################################################
+    ## Main Window  
+    ############################################################          
     elif event == "-update_butt-":
         if values['-update_butt-'] in list(statecolors):
             # 2 colors for init_servers and Connect, 1 connected, 2 connected
@@ -230,7 +223,7 @@ while True:
         window['Connect'].Update(button_color=('black', 'red'))
         event, values = window.read(.1)
                                  
-        ctr_rec.prepare_devices(collection_id) 
+        ctr_rec.prepare_devices(f"{collection_id}:{str(tech_obs_log)}") 
         ctr_rec.initiate_labRec()
         print('Connecting devices')
         serv_data_received()
@@ -241,7 +234,7 @@ while True:
     elif event == 'plot':
         event = "None"
         if len(inlets) == 0:
-            ctr_rec.prepare_devices() 
+            ctr_rec.prepare_devices(collection_id) 
             serv_data_received()
             inlets = update_streams_fromID(stream_ids)
                        

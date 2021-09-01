@@ -118,7 +118,9 @@ def meta_devinfo_tofunct(dev_id_param, dev_id):
     #   dict with keys: "SN":"xx", "sensors": {"sensor_ith":{parameters}}
 
     info = dev_id_param
-    kwarg = { }
+    kwarg = {}
+    kwarg["device_id"] = dev_id
+    kwarg["sensor_ids"] = list(info['sensors'])
     if "Intel" in dev_id:        
         kwarg["camindex"] = [int(dev_id[-1]), info["SN"]]
                
@@ -144,7 +146,7 @@ def meta_devinfo_tofunct(dev_id_param, dev_id):
             elif "gra" in k:
                 kwarg["gyro_hz"]  = int(info['sensors'][k]['temporal_res'])                
 
-    elif "FLIR_blackfly" in dev_id:        
+    elif "FLIR_blackfly" in dev_id:          
         kwarg["camSN"] = info["SN"]
         k, = info['sensors'].keys()
         # TODO test asserting assert(len(list(info['sensors']))==1) raise f"{dev_id} should have only one sensor"

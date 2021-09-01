@@ -24,7 +24,8 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 class VidRec_Flir():        
     def __init__(self, fourcc=cv2.VideoWriter_fourcc(*'MJPG'),
                  sizex=round(1936/2), sizey=round(1216/2), fps=196, 
-                 camSN="20522874", exposure=4500, gain=20, gamma=.6):
+                 camSN="20522874", exposure=4500, gain=20, gamma=.6,
+                 device_id="FLIR_blackfly_1",  sensor_ids=['FLIR_rgb_1']):
         
         self.open = False
         self.serial_num = camSN 
@@ -34,7 +35,9 @@ class VidRec_Flir():
         self.exposure = exposure
         self.gain = gain
         self.gamma = gamma
-        
+        self.device_id = device_id
+        self.sensor_ids = sensor_ids        
+                
         self.get_cam()
         self.setup_cam()
         
@@ -73,8 +76,9 @@ class VidRec_Flir():
         info = StreamInfo(name=streamName, type='videostream', channel_format='int32', channel_count=2,
                           source_id=self.oulet_id)
         
-        info.desc().append_child_value("videoFile", filename)
- 
+        info.desc().append_child_value("filename", filename)
+        info.desc().append_child_value("device_id", self.device_id)
+        info.desc().append_child_value("sensor_ids", str(self.sensor_ids)) 
         info.desc().append_child_value("size_rgb", str(self.frameSize)) 
         info.desc().append_child_value("serial_number", self.serial_num) 
         info.desc().append_child_value("fps_rgb", str(self.fps))
