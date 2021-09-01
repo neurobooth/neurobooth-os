@@ -8,7 +8,8 @@ import wave
 
 
 class MicStream():
-    def __init__(self, CHANNELS=1, RATE=44100,  CHUNK=1024,
+    def __init__(self, CHANNELS=1, RATE=44100,  CHUNK=1024, device_id="Mic_Yeti_1", 
+                 sensor_ids=['Mic_Yeti_sens_1'],
                  FORMAT=pyaudio.paFloat32, save_on_disk=False):
        
         self.CHUNK = CHUNK
@@ -46,6 +47,8 @@ class MicStream():
         
         self.stream_info_audio.desc().append_child_value("fps", str(self.fps))
         self.stream_info_audio.desc().append_child_value("device_name", self.device_name)
+        self.stream_mbient.desc().append_child_value("device_id", device_id)
+        self.stream_mbient.desc().append_child_value("sensor_ids", str(sensor_ids))
         print(f"-OUTLETID-:Audio:{self.oulet_id}")
         
         self.streaming = False

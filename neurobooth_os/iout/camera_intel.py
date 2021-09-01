@@ -29,6 +29,7 @@ def catch_exception(f):
 
 class VidRec_Intel():        
     def __init__(self, size_rgb=(640, 480), size_depth=(640, 360),
+                  device_id="Intel_D455_1",  sensor_ids=['Intel_D455_rgb_1', 'Intel_D455_depth_1'],
                  fps_rgb=60, fps_depth=60, camindex=[3, "SerialNumber"]):
         
         self.open = True
@@ -37,6 +38,8 @@ class VidRec_Intel():
         self.serial_num = camindex[1]
         self.fps = (fps_rgb, fps_depth)                
         self.frameSize = (size_rgb, size_depth) 
+        self.device_id = device_id
+        self.sensor_ids = sensor_ids        
         
         self.config = rs.config()
         self.config.enable_device(self.serial_num)
@@ -65,7 +68,10 @@ class VidRec_Intel():
         self.outlet_id = str(uuid.uuid4())
         info = StreamInfo(name=streamName, type='videostream', channel_format='int32',
                           channel_count=2, source_id=self.outlet_id)
-        info.desc().append_child_value("videoFile", filename)
+        
+        info.desc().append_child_value("device_id", self.device_id)
+        info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
+        info.desc().append_child_value("filename", filename)
         info.desc().append_child_value("size_rgb", str(self.frameSize[0])) 
         info.desc().append_child_value("size_depth", str(self.frameSize[1]))
         info.desc().append_child_value("serial_number", self.serial_num) 

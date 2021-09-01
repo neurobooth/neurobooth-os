@@ -14,11 +14,14 @@ from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLi
 class EyeTracker():
 
     def __init__(self, sample_rate=1000, monitor_width=55, monitor_distance=65, calibration_type="HV5",
-                 win=None, with_lsl=True, ip='192.168.100.15'):
+                 win=None, with_lsl=True, ip='192.168.100.15',  device_id="Eyelink_1",  sensor_ids=['Eyelink_sens_1']):
         self.IP = ip
         self.sample_rate = sample_rate
         self.monitor_width = monitor_width
         self.monitor_distance = monitor_distance
+        self.device_id = device_id
+        self.sensor_ids = sensor_ids        
+        
         self.with_lsl = with_lsl
         mon = monitors.getAllMonitors()[0]
         self.mon_size = monitors.Monitor(mon).getSizePix()
@@ -36,7 +39,8 @@ class EyeTracker():
         self.oulet_id = str(uuid.uuid4())
         self.stream_info = StreamInfo('EyeLink', 'Gaze', 20, self.sample_rate, 'float32', self.oulet_id)
         self.stream_info.desc().append_child_value("fps", str(self.sample_rate))
-        # self.stream_info.desc().append_child_value("device_name", self.device_name)
+        self.stream_info.desc().append_child_value("device_id", self.device_id)
+        self.stream_info.desc().append_child_value("sensor_ids", str(self.sensor_ids)) 
         self.outlet = StreamOutlet(self.stream_info)
         print(f"-OUTLETID-:EyeLink:{self.oulet_id}")
         self.streaming = True
