@@ -34,6 +34,8 @@ def present_msg(elems, win, key_resp="space"):
 class DSC():
 
     def __init__(self, marker_outlet=None, win=None, path ="", subj_id="test", **kwarg):
+        
+        self.sess_log = False
         self.testVersion = 'DSC_simplified_oneProbe_2019'
         self.chosenInput = 'keys'    # input type (taps or keys)
         self.path_out = path
@@ -73,14 +75,14 @@ class DSC():
         self.io.quit()
 
 
-    def send_marker(self, marker, with_lsl, msg=None):
+    def send_marker(self, msg=None):
         # msg format str {word}_{value}
         ts = time.time()
         dt_object = datetime.fromtimestamp(ts)
         ts_meta = dt_object.strftime("%Y-%m-%d %H:%M:%S")
         
-        if with_lsl:            
-            marker.push_sample([f"{msg}:{ts}"])
+        if self.with_lsl:            
+            self.marker.push_sample([f"{msg}:{ts}"])
         if self.sess_log:
            if any([True for m in ["Instruction-start", "Instruction-end",
                                    "Task-start", "Task-end"] if m in msg ]):

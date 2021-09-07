@@ -24,7 +24,7 @@ def fake_task(**kwarg):
 
 
 def run_task(task_funct, s2, lsl_cmd, subj_id, task, send_stdout, task_karg={}):    
-    resp = socket_message(f"record_start:{subj_id}_{task}", "acquisition", wait_data=2)
+    resp = socket_message(f"record_start:{subj_id}_{task}", "acquisition", wait_data=3)
     print(resp)
     s2.sendall(lsl_cmd.encode('utf-8') )
     sleep(.5)
@@ -114,7 +114,7 @@ def Main():
         elif "prepare" in data:
             # data = "prepare:collection_id"
             
-            collection_id = data.split(":")[-1]
+            collection_id = data.split(":")[1]
             task_func_dict = get_task_funcs(collection_id)
             
             if len(streams):
@@ -180,11 +180,6 @@ def Main():
                     if streams.get('Eyelink'):  
                         del streams['Eyelink']
                     
-                elif task == 'timing_task':
-                    fprint(f"Initiating task: {task}:{tech_obs_log_id}") 
-                    run_task(Timing_Test, s2, lsl_cmd, subj_id, task, send_stdout, task_karg)
-                    fprint(f"Finished task: {task}") 
-
                 else:
                     fprint(f"Task not {task} implemented")
                 
