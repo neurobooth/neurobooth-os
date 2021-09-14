@@ -1,5 +1,0 @@
- iout/__pycache__/*
-*.pyc
-secrets.py
-server_pids.*
-neurobooth_os.egg-info*
