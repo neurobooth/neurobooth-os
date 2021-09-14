@@ -5,7 +5,7 @@ import socket
 from neurobooth_os.netcomm.client import socket_message
 
 
-def _get_fprint(node_name):
+def _get_fprint(current_node, target_node='control'):
     """Return function to capture prints for sending to ctr"""
     old_stdout = sys.stdout
     sys.stdout = mystdout = io.StringIO()
@@ -15,7 +15,7 @@ def _get_fprint(node_name):
             msg = mystdout.getvalue()
             if msg == "":
                 return
-            socket_message(f"{node_name}: {msg} ", "control")
+            socket_message(f"{current_node}: {msg} ", node_name=target_node)
             mystdout.truncate(0)
             mystdout.seek(0)
         except Exception as e:
@@ -57,7 +57,6 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
     # Signal event to change init_serv button to green
     fprint ("UPDATOR:-init_servs-")
 
-    streams = {}
     # a forever loop until client wants to exit
     while True:
 
