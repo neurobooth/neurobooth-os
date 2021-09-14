@@ -4,7 +4,7 @@ import pandas as pd
 import sys
 import os
 from collections import OrderedDict
-from time import time, sleep  
+from time import time, sleep
 
 from neurobooth_os import config
 from neurobooth_os.iout.screen_capture import ScreenMirror
@@ -43,7 +43,7 @@ def run_task(task_funct, s2, lsl_cmd, subj_id, task, send_stdout, task_karg={}):
 
 def Main():
 
-    fprint, old_stdout = _get_fprint()
+    fprint, send_stdout, old_stdout = _get_fprint()
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     win = utl.make_win(full_screen=False)
     streams, screen_running = {}, False
@@ -66,7 +66,7 @@ def Main():
 
             collection_id = data.split(":")[1]
             tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
-            
+
             task_func_dict = get_task_funcs(collection_id)
 
             if len(streams):
@@ -83,8 +83,8 @@ def Main():
             fprint ("UPDATOR:-Connect-")
 
         elif "present" in data:   #-> "present:TASKNAME:subj_id"
-            # task_name can be list of task1-task2-task3  
-            tasks = data.split(":")[1].split("-")          
+            # task_name can be list of task1-task2-task3
+            tasks = data.split(":")[1].split("-")
 
 
             subj_id = data.split(":")[2]
