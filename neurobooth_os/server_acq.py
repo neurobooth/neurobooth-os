@@ -15,66 +15,64 @@ os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')
 
 def Main():
 
-        fprint, send_stdout, old_stdout = get_fprint()
+        fprint_flush, old_stdout = get_fprint()
         s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        for data in get_client_messages(s1, fprint, old_stdout):
+        for data in get_client_messages(s1, fprint_flush, old_stdout):
 
             if "vis_stream" in data:
                 if not lowFeed_running:
                     lowFeed = VidRec_Brio(camindex=config.cam_inx["lowFeed"],
                                           doPreview=True)
-                    fprint ("LowFeed running")
+                    fprint_flush ("LowFeed running")
                     lowFeed_running = True
                 else:
-                    fprint(f"-OUTLETID-:Webcam:{lowFeed.preview_outlet_id}")
-                    fprint ("Already running low feed video streaming")
+                    fprint_flush(f"-OUTLETID-:Webcam:{lowFeed.preview_outlet_id}")
+                    fprint_flush ("Already running low feed video streaming")
 
             elif "prepare" in data:
                 # data = "prepare:collection_id:str(tech_obs_log_dict)"
                 collection_id = data.split(":")[1]
                 if len(streams):
-                    fprint("Checking prepared devices")
+                    fprint_flush("Checking prepared devices")
                     streams = reconnect_streams(streams)
                 else:
                     streams = start_lsl_threads("acquisition", collection_id)
 
-                send_stdout()
+                fprint_flush()
                 devs = list(streams.keys())
-                fprint("UPDATOR:-Connect-")
-                send_stdout()
+                fprint_flush("UPDATOR:-Connect-")
 
             elif "dev_param_update" in data:
                 None
 
             elif "record_start" in data:  #-> "record_start:FILENAME" FILENAME = {subj_id}_{task}
-                fprint("Starting recording")
+                fprint_flush("Starting recording")
                 fname = config.paths['data_out'] + data.split(":")[-1]
                 for k in streams.keys():
                     if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
                         streams[k].start(fname)
                 msg = "ACQ_ready"
                 c.send(msg.encode("ascii"))
-                fprint("ready to record")
-                send_stdout()
+                fprint_flush("ready to record")
 
             elif "record_stop" in data:
-                fprint("Closing recording")
+                fprint_flush("Closing recording")
                 for k in streams.keys():
                     if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
                         streams[k].stop()
-                send_stdout()
+                fprint_flush()
 
             elif data in ["close", "shutdown"]:
-                fprint("Closing devices")
+                fprint_flush("Closing devices")
                 streams = close_streams(streams)
-                send_stdout()
+                fprint_flush()
 
                 if "shutdown" in data:
                     if lowFeed_running:
                         lowFeed.close()
                         lowFeed_running = False
-                    fprint("Closing RTD cam")
+                    fprint_flush("Closing RTD cam")
                     break
 
             elif "time_test" in data:
@@ -82,7 +80,7 @@ def Main():
                 c.send(msg.encode("ascii"))
 
             else:
-                fprint("ACQ " + data)
+                fprint_flush("ACQ " + data)
 
     sleep(.5)
     s1.close()
