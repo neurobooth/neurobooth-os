@@ -9,7 +9,12 @@ from neurobooth_os.secrets_info import secrets
 
 
 def socket_message(message, node_name, wait_data=0):
+    """ Send a string message though socket connection to `node_name`.
 
+    Parameters:
+    ----------
+
+    """
     def connect():
         # t0 = time()
         s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
