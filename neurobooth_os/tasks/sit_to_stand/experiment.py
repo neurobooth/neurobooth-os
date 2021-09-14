@@ -70,20 +70,23 @@ class Sit_to_Stand():
         
         while True:
             self.send_marker("Intructions-start_0")
-            
-            utl.play_video(self.win, instruction_video)        
+            utl.play_video(self.win, instruction_video, stop=False)        
             self.send_marker("Intructions-end_1")
             
             text='Please press:\n\tContinue to practice sit-to-stand 5 times' +\
-                "\n\tRepeat to view instructions again"
-            
+                "\n\tRepeat to view instructions again"            
             prepractice = utl.create_text_screen(self.win, text)
             prepractice.draw()
             self.win.flip()
             
             key = event.waitKeys(keyList=['space', 'r'])
             if key == ["space"]:
+                instruction_video.stop()
                 break
+            elif key == ['r']:                
+                self.win.color = [0, 0, 0]
+                self.win.flip()
+                instruction_video.seek(0)
             
 
         self.send_marker("Task-start_0")
