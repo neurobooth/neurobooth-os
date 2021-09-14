@@ -20,7 +20,7 @@ from datetime import datetime
 
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import update_streams_fromID, get_lsl_images, stream_plotter
-from neurobooth_os.netcomm.server_ctr import server_com
+from neurobooth_os.netcomm.server import get_messages_to_ctr
 from neurobooth_os.netcomm.client import socket_message
 from neurobooth_os.layouts import main_layout, win_gen, init_layout
 import neurobooth_os.iout.metadator as meta
@@ -60,8 +60,8 @@ def get_outlet_ids(str_prt, dic_ids):
             print(f"Outlet id bad formatted: {str_prt}")
     return dic_ids
 
-serv_event = queue.Queue(maxsize=20)
-thr = threading.Thread(target=server_com, args=(serv_event,),  daemon=True)
+serv_event = queue.Queue(maxsize=100)
+thr = threading.Thread(target=get_messages_to_ctr, args=(serv_event,),  daemon=True)
 thr.start()
 
 

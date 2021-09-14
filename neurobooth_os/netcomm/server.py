@@ -5,12 +5,15 @@ import socket
 from neurobooth_os.netcomm.client import socket_message
 
 
-def _get_fprint(current_node, target_node='control'):
+def get_fprint(current_node, target_node='control'):
     """Return function to capture prints for sending to ctr"""
     old_stdout = sys.stdout
     sys.stdout = mystdout = io.StringIO()
 
-    def stdout_to_socket():
+    def fprint_flush(print_msg=None):
+        if print_msg:
+            print(print_msg)
+        # flush any messages in stdout to target_node
         try:
             msg = mystdout.getvalue()
             if msg == "":
@@ -21,11 +24,7 @@ def _get_fprint(current_node, target_node='control'):
         except Exception as e:
             print(e)
 
-    def fprint(str_print):
-        print(str_print)
-        stdout_to_socket()
-
-    return fprint, stdout_to_socket, old_stdout
+    return fprint_flush, old_stdout
 
 
 def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
@@ -35,10 +34,12 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
     ----------
     s1 : instance of socket.Socket
         The socket object
+    fprint : callable
+        function for printing, e.g. fprint from `get_fprint`
     port : int
         The port
     host : str
-        The host
+        The host. E.g., STM and ACQ
 
     Returns
     -------
@@ -74,3 +75,32 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
 
         data = data.decode("utf-8")
         yield data
+
+
+def get_messages_to_ctr(qu=None, host="", port=12347):
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("", port))
+    print("Ctr socket binded to port", port)
+
+    s.listen(5)
+    print("socket is listening")
+
+    while True:
+        try:
+            c, addr = s.accept()
+            data = c.recv(1024)
+        except:
+            print("Connection fault, closing ctr server")
+            continue
+
+        data = data.decode("utf-8")
+        print(data)
+
+        if qu is not None:
+            qu.put(data)
+
+        if data == "close":
+            break
+    s.close()
