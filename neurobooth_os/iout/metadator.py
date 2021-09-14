@@ -109,8 +109,6 @@ def get_dev_sn(dev_id, conn):
     if len(sn) == 0:
         return None
     return sn[0]
-    
-
 
 def meta_devinfo_tofunct(dev_id_param, dev_id):
     # Convert SN and sens param from metadata to kwarg for device function
