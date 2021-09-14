@@ -83,7 +83,6 @@ dev_prepared = False
    
 def new_tech_log_dict(application_id="neurobooth_os"):
     tech_obs_log = OrderedDict()
-    tech_obs_log["tech_obs_log_id"] = ""
     tech_obs_log["subject_id"] = ""
     tech_obs_log["study_id"] = ""
     tech_obs_log["tech_obs_id"] = ""
