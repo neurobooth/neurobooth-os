@@ -52,6 +52,7 @@ class EyeTracker():
 
     def connect_tracker(self):
         self.tk = pylink.EyeLink(self.IP)
+        self.tk.setAddress(self.IP)
         # # Open an EDF data file on the Host PC
         # self.tk.openDataFile('ev_test.edf')
 

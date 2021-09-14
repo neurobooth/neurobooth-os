@@ -57,13 +57,16 @@ def present(win, screen, audio, wait_time, win_color=(0, 0, 0), waitKeys=True, f
         event.waitKeys()
     # win.flip()
 
-def play_video(win, mov):
+def play_video(win, mov, stop=True):
     mov.play()
     while mov.status != visual.FINISHED:
         mov.draw()
         win.flip()
         if event.getKeys():
-            mov.stop()
+            if stop:
+                mov.stop()
+            else:
+                mov.pause()
             break
 
 
