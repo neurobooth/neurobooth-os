@@ -43,7 +43,7 @@ def run_task(task_funct, s2, lsl_cmd, subj_id, task, send_stdout, task_karg={}):
 
 def Main():
 
-    fprint, send_stdout, old_stdout = _get_fprint()
+    fprint, send_stdout, old_stdout = _get_fprint("STM")
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     win = utl.make_win(full_screen=False)
     streams, screen_running = {}, False

@@ -10,7 +10,7 @@ def _get_fprint(node_name):
     old_stdout = sys.stdout
     sys.stdout = mystdout = io.StringIO()
 
-    def stdout_to_socket(str_print):
+    def stdout_to_socket():
         try:
             msg = mystdout.getvalue()
             if msg == "":
