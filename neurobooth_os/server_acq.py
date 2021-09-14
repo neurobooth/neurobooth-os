@@ -5,7 +5,7 @@ from time import time, sleep
 from neurobooth_os import config
 
 from neurobooth_os.netcomm.client import socket_message
-from neurobooth_os.netcomm.server import get_client_messages, _get_fprint
+from neurobooth_os.netcomm.server import get_client_messages, get_fprint
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
 
@@ -15,7 +15,7 @@ os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')
 
 def Main():
 
-        fprint, send_stdout, old_stdout = _get_fprint()
+        fprint, send_stdout, old_stdout = get_fprint()
         s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         for data in get_client_messages(s1, fprint, old_stdout):

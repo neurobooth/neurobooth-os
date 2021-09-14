@@ -10,7 +10,7 @@ from neurobooth_os import config
 from neurobooth_os.iout.screen_capture import ScreenMirror
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
 from neurobooth_os.netcomm.client import socket_message, node_info
-from neurobooth_os.netcomm.server import get_client_messages, _get_fprint
+from neurobooth_os.netcomm.server import get_client_messages, get_fprint
 from neurobooth_os.tasks.test_timing.audio_video_test import Timing_Test
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
@@ -43,7 +43,7 @@ def run_task(task_funct, s2, lsl_cmd, subj_id, task, send_stdout, task_karg={}):
 
 def Main():
 
-    fprint, send_stdout, old_stdout = _get_fprint("STM")
+    fprint_flush, old_stdout = get_fprint("STM")
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     win = utl.make_win(full_screen=False)
     streams, screen_running = {}, False
@@ -54,12 +54,11 @@ def Main():
             if not screen_running:
                 screen_feed = ScreenMirror()
                 screen_feed.start()
-                fprint ("Stim screen feed running")
+                fprint_flush ("Stim screen feed running")
                 screen_running = True
             else:
-                fprint(f"-OUTLETID-:Screen:{screen_feed.oulet_id}")
-                fprint ("Already running screen feed")
-            send_stdout()
+                fprint_flush(f"-OUTLETID-:Screen:{screen_feed.oulet_id}")
+                fprint_flush("Already running screen feed")
 
         elif "prepare" in data:
             # data = "prepare:collection_id:str(tech_obs_log_dict)"
@@ -70,22 +69,21 @@ def Main():
             task_func_dict = get_task_funcs(collection_id)
 
             if len(streams):
-                fprint("Checking prepared devices")
+                fprint_flush("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
                 streams = start_lsl_threads("presentation", collection_id, win=win)
-                send_stdout()
+                fprint_flush()
                 streams['mouse'].start()
                 if 'eye_tracker' in streams.keys():
                     streams['eye_tracker'].win = win
-                fprint("Preparing devices")
+                fprint_flush("Preparing devices")
 
-            fprint ("UPDATOR:-Connect-")
+            fprint_flush ("UPDATOR:-Connect-")
 
         elif "present" in data:   #-> "present:TASKNAME:subj_id"
             # task_name can be list of task1-task2-task3
             tasks = data.split(":")[1].split("-")
-
 
             subj_id = data.split(":")[2]
 
@@ -117,37 +115,36 @@ def Main():
                 if task in task_func_dict.keys():
                     tsk_fun = task_func_dict[task]
                     # c.send(msg.encode("ascii"))
-                    fprint(f"Initiating task: {task}:{tech_obs_log_id}")
+                    fprint_flush(f"Initiating task: {task}:{tech_obs_log_id}")
 
                     if task != "pursuit_task_1":
                         fname =  f"{config.paths['data_out']}{subj_id}{task}.edf"
                         if streams.get('eye_tracker'):
                             streams['eye_tracker'].start(fname)
 
-                    res = run_task(tsk_fun, s2, lsl_cmd, subj_id, task, send_stdout, task_karg)
+                    res = run_task(tsk_fun, s2, lsl_cmd, subj_id, task, fprint_flush, task_karg)
                     if streams.get('Eyelink'):
                         streams['Eyelink'].stop()
 
-                    fprint(f"Finished task: {task}")
+                    fprint_flush(f"Finished task: {task}")
                     if streams.get('Eyelink'):
                         del streams['Eyelink']
 
                 else:
-                    fprint(f"Task not {task} implemented")
+                    fprint_flush(f"Task not {task} implemented")
 
             finish_screen(win)
 
         elif data in ["close", "shutdown"]:
             streams = close_streams(streams)
-            fprint("Closing devices")
-            send_stdout()
+            fprint_flush("Closing devices")
 
             if "shutdown" in data:
                 if screen_running:
                     screen_feed.stop()
-                    fprint("Closing screen mirroring")
+                    fprint_flush("Closing screen mirroring")
                     screen_running = False
-                fprint("Closing Stim server")
+                fprint_flush("Closing Stim server")
                 break
 
         elif "time_test" in data:
@@ -158,7 +155,7 @@ def Main():
             mbient = connect_mbient()
 
         else:
-            fprint(data)
+            fprint_flush(data)
 
 
     s1.close()
