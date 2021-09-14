@@ -1,93 +1,77 @@
-import socket 
-
-# import thread module 
-from _thread import *
-import threading 
-from time import time  
+import io
 import sys
+import socket
 
-sys.path.append('/home/adonay/Desktop/projects/neurobooth/Software_arch/neurobooth-eel/io')
-from cameras_stream import run_cams
+from neurobooth_os.netcomm.client import socket_message
 
 
-print_lock = threading.Lock() 
-  
-# thread function 
-def threaded(c): 
-    time_del = 0
-    while True: 
-  
-        # data received from client 
-        data = c.recv(1024) 
-        if not data: 
-            #print('Bye') 
-              
-            # lock released on exit 
-            print_lock.release() 
+def _get_fprint(node_name):
+    """Return function to capture prints for sending to ctr"""
+    old_stdout = sys.stdout
+    sys.stdout = mystdout = io.StringIO()
+
+    def stdout_to_socket(str_print):
+        try:
+            msg = mystdout.getvalue()
+            if msg == "":
+                return
+            socket_message(f"{node_name}: {msg} ", "control")
+            mystdout.truncate(0)
+            mystdout.seek(0)
+        except Exception as e:
+            print(e)
+
+    def fprint(str_print):
+        print(str_print)
+        stdout_to_socket()
+
+    return fprint, stdout_to_socket, old_stdout
+
+
+def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
+    """Create server and get messages from client.
+
+    Parameters
+    ----------
+    s1 : instance of socket.Socket
+        The socket object
+    port : int
+        The port
+    host : str
+        The host
+
+    Returns
+    -------
+    data : str
+        Yields the data.
+    """
+
+    s1.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s1.bind((host, port))
+    print("socket binded to port", port)
+
+    # put the socket into listening mode
+    s1.listen(5)
+    print("socket is listening")
+
+    # Signal event to change init_serv button to green
+    fprint ("UPDATOR:-init_servs-")
+
+    streams = {}
+    # a forever loop until client wants to exit
+    while True:
+
+        # establish connection with client
+        try:
+            c, addr = s1.accept()
+            data = c.recv(1024)
+        except:
+            continue
+
+        if not data:
+            sys.stdout = old_stdout
+            print("Connection fault, closing Stim server")
             break
 
-        # reverse the given string from client 
-        print(data)
-        data = str(data)
-        
-        c_time = float(data.split("_")[-1][:-1])
-        print(f"time diff = {time() - c_time - time_del}")
-
-
-        if "start_preparation" in data:
-            time_del = time() - c_time
-            #c.send(f"Preparation started, t delay is {time_del}".encode('ascii')) 
-            print(f"Preparation started, t delay is {time_del}") 
-            run_cams()
-            print ("Cameras running")
-
-        if "start_recording" in data:
-            #c.send("Starting recording".encode('ascii'))  
-            print("Starting recording")
-
-        if "stop_recording" in data:
-            #c.send("Ending recording".encode('ascii'))  
-            print("Ending recording")
-
-
-        # send back reversed string to client 
-       # c.send(data) 
-
-  
-    # connection closed 
-    c.close() 
-  
-  
-def Main(): 
-    host = "" 
-  
-    # reverse a port on your computer 
-    # in our case it is 12345 but it 
-    # can be anything 
-    port = 12347
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind((host, port)) 
-    print("socket binded to port", port) 
-  
-    # put the socket into listening mode 
-    s.listen(5) 
-    print("socket is listening") 
-  
-    # a forever loop until client wants to exit 
-    while True: 
-  
-        # establish connection with client 
-        c, addr = s.accept() 
-  
-        # lock acquired by client 
-        print_lock.acquire() 
-        print('Connected to :', addr[0], ':', addr[1]) 
-  
-        # Start a new thread and return its identifier 
-        start_new_thread(threaded, (c,)) 
-    s.close() 
-  
-  
-if __name__ == '__main__': 
-    Main() 
+        data = data.decode("utf-8")
+        yield data
