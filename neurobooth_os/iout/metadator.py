@@ -52,11 +52,11 @@ def make_new_tech_obs_id():
     conn = get_conn()
     tech_obs = get_tech_obs_logs(conn)
     if list(tech_obs.index) == []:
-        tech_id = "session_log_1"
+        tech_id = "tech_log_1"
     else:
         tech_id_last = tech_obs.index[-1]
         num = int(tech_id_last.split("_")[-1])
-        tech_id = f"session_log_{num + 1}"
+        tech_id = f"tech_log_{num + 1}"
     return tech_id
     
 

@@ -91,10 +91,10 @@ class DSC():
 
     def my_textbox2(self, text, pos=(0,0), size=(None, None)):
         # xsize = min(len(text), 30)
-        tbx = TextBox2(self.win, pos=pos, color='black', units='deg',lineSpacing=.7,
-                       letterHeight=1.2, text=text, font="Arial", #size=(20, None),
+        tbx = TextBox2(self.win, pos=pos, color='black', units='deg',lineSpacing=.9,
+                       letterHeight=1.1, text=text, font="Arial", #size=(20, None),
                        borderColor=None, fillColor=None, editable=False, alignment='center')
-        return tbx
+        return tbx 
 
 
     def setup(self, win):
@@ -330,9 +330,9 @@ class DSC():
                 [
                     self.my_textbox2("Instructions",(0, 6)),
 
-                    self.my_textbox2("Each <b>symbol</b> has a <b>number</b>",(0, -5)),
+                    self.my_textbox2("Each <b>symbol</b> has a <b>number</b>",(0, -6)),
 
-                    self.my_textbox2('Press [Continue] to continue',(0, -7)),
+                    self.my_textbox2('Press [Continue] to continue',(0, -8)),
 
                     visual.ImageStim(self.win, image=self.fpath+'/DSC/images/key.png', pos=(0, 0), units='deg')
                 ],
