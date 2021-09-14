@@ -3,6 +3,8 @@ import io
 import pandas as pd
 import sys
 import os
+import re
+from collections import OrderedDict
 from time import time, sleep  
 from neurobooth_os import config
 
@@ -112,9 +114,11 @@ def Main():
             send_stdout()
             
         elif "prepare" in data:
-            # data = "prepare:collection_id"
+            # data = "prepare:collection_id:str(tech_obs_log_dict)"
             
             collection_id = data.split(":")[1]
+            tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
+            
             task_func_dict = get_task_funcs(collection_id)
             
             if len(streams):
@@ -132,8 +136,7 @@ def Main():
                             
         elif "present" in data:   #-> "present:TASKNAME:subj_id"
             # task_name can be list of task1-task2-task3  
-            tasks = data.split(":")[1].split("-")
-          
+            tasks = data.split(":")[1].split("-")          
 
             subj_id = data.split(":")[2] 
             
@@ -150,7 +153,7 @@ def Main():
                 # Generates filename command for LabRecorder
                 lsl_cmd = ("filename {root:" + config.paths['data_out'] + "}"
                            "{template:%p_%b.xdf}"
-                           "{participant:" + tech_obs_log_id + "_" + subj_id + "_} "
+                           "{participant:" + subj_id  + "_" + tech_obs_log_id + "_} "
                            "{task:" + task + "}\n")
        
                 task_karg ={"win": win,
