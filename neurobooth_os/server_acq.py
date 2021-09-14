@@ -15,7 +15,7 @@ os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')
 
 def Main():
 
-        fprint, old_stdout = _get_fprint()
+        fprint, send_stdout, old_stdout = _get_fprint()
         s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         for data in get_client_messages(s1, fprint, old_stdout):

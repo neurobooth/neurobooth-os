@@ -10,7 +10,7 @@ def _get_fprint(node_name):
     old_stdout = sys.stdout
     sys.stdout = mystdout = io.StringIO()
 
-    def send_stdout():
+    def stdout_to_socket(str_print):
         try:
             msg = mystdout.getvalue()
             if msg == "":
@@ -23,9 +23,9 @@ def _get_fprint(node_name):
 
     def fprint(str_print):
         print(str_print)
-        send_stdout()
+        stdout_to_socket()
 
-    return fprint, old_stdout
+    return fprint, stdout_to_socket, old_stdout
 
 
 def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
