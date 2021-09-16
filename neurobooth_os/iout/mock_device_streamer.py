@@ -19,14 +19,14 @@ class MockLSLDevice(object):
 
     Parameters
     ----------
+    name : str
+        Name of the LSL outlet stream.
     nchans : int
         Number of channels.
     frames_buffer : int | None
         If not None, data is sent in chunks. Default None
     ch_type : type
         data type of lsl stream
-    name : str
-        Name of the LSL outlet stream.
     stream_type : str
         Type of LSL stream, eg. Experimental
     srate : int
@@ -39,8 +39,8 @@ class MockLSLDevice(object):
         Name of the sensors in the device
     """
 
-    def __init__(self, nchans=3, frames_buffer=None, data_type="float32",
-                 name="mock", stream_type='Experimental', srate=100,
+    def __init__(self, name="mock",nchans=3, frames_buffer=None,
+                 data_type="float32", stream_type='Experimental', srate=100,
                  source_id='', device_id="mock_dev_1", sensor_ids=['mock_sens_1']):
 
         self.nchans = nchans
@@ -54,9 +54,10 @@ class MockLSLDevice(object):
         self.sensor_ids = sensor_ids
 
         self.streaming = False
-        self.createOutlet()
+        self.frame_counter = 0
+        self.create_outlet()
 
-    def createOutlet(self):
+    def create_outlet(self):
 
         if self.oulet_id == '':
             self.oulet_id = str(uuid.uuid4())
@@ -83,7 +84,7 @@ class MockLSLDevice(object):
         self.stream_thread = threading.Thread(target=self.stream, daemon=True)
         # self.process = Process(target=self._initiate_stream, daemon=True)
         self.stream_thread.start()
-        return
+
 
     def stop(self):
         """Stop mock LSL stream."""
@@ -104,6 +105,7 @@ class MockLSLDevice(object):
 
 
     def stream(self):
+        """ Generate data and push smples into outlet stream"""
         self.streaming = True
         print("Streaming data")
         self.frame_counter = 0
