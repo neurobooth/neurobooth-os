@@ -1,0 +1,17 @@
+:orphan:
+
+.. _api_documentation:
+
+=================
+API Documentation
+=================
+
+Tables (:py:mod:`neurobooth_os.netcomm`):
+------------------------------------------------
+
+.. currentmodule:: neurobooth_os.netcomm
+
+.. autosummary::
+   :toctree: generated/
+
+   get_client_messages
