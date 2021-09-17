@@ -1,5 +1,8 @@
- neurobooth_os/iout/__pycache__/*
+neurobooth_os/iout/__pycache__/*
 *.pyc
 neurobooth_os/secrets.py
 neurobooth_os/server_pids.*
 neurobooth_os.egg-info*
+.vscode
+__pycache__
+.ipynb_checkpoints
