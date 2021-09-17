@@ -102,8 +102,26 @@
 <span class="kn">from</span> <span class="nn">neurobooth_os.netcomm.client</span> <span class="kn">import</span> <span class="n">socket_message</span>
 
 
-<span class="k">def</span> <span class="nf">get_fprint</span><span class="p">(</span><span class="n">current_node</span><span class="p">,</span> <span class="n">target_node</span><span class="o">=</span><span class="s1">&#39;control&#39;</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Return function to capture prints for sending to ctr&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="get_fprint"><a class="viewcode-back" href="../../../generated/neurobooth_os.netcomm.get_fprint.html#neurobooth_os.netcomm.get_fprint">[docs]</a><span class="k">def</span> <span class="nf">get_fprint</span><span class="p">(</span><span class="n">current_node</span><span class="p">,</span> <span class="n">target_node</span><span class="o">=</span><span class="s1">&#39;control&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return function to capture prints for sending to target_node.</span>
+
+<span class="sd">    Stdout is re-routed to target_node via socket connection.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    current_node : str</span>
+<span class="sd">        Name of the node to be displayed, e.g. STM or ACQ</span>
+<span class="sd">    target_node : str</span>
+<span class="sd">        PC node name defined in `secrets_info.secrets`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fprint_flush : callable</span>
+<span class="sd">        Print function that send message via socket to target_node.</span>
+<span class="sd">    old_stdout : object</span>
+<span class="sd">        original Stdout before re-routing.</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">old_stdout</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
     <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">mystdout</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
 
@@ -121,11 +139,11 @@
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">fprint_flush</span><span class="p">,</span> <span class="n">old_stdout</span>
+    <span class="k">return</span> <span class="n">fprint_flush</span><span class="p">,</span> <span class="n">old_stdout</span></div>
 
 
 <div class="viewcode-block" id="get_client_messages"><a class="viewcode-back" href="../../../generated/neurobooth_os.netcomm.get_client_messages.html#neurobooth_os.netcomm.get_client_messages">[docs]</a><span class="k">def</span> <span class="nf">get_client_messages</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span> <span class="n">fprint</span><span class="p">,</span> <span class="n">old_stdout</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">12347</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s1">&#39;localhost&#39;</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Create server and get messages from client.</span>
+    <span class="sd">&quot;&quot;&quot;Create socket server and get messages from clients.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>

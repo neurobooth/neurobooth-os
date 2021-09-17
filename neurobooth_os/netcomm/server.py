@@ -6,7 +6,25 @@ from neurobooth_os.netcomm.client import socket_message
 
 
 def get_fprint(current_node, target_node='control'):
-    """Return function to capture prints for sending to ctr"""
+    """Return function to capture prints for sending to target_node.
+
+    Stdout is re-routed to target_node via socket connection.
+    
+    Parameters
+    ----------
+    current_node : str
+        Name of the node to be displayed, e.g. STM or ACQ
+    target_node : str
+        PC node name defined in `secrets_info.secrets`
+
+    Returns
+    -------
+    fprint_flush : callable
+        Print function that send message via socket to target_node.
+    old_stdout : object
+        original Stdout before re-routing.
+    
+    """
     old_stdout = sys.stdout
     sys.stdout = mystdout = io.StringIO()
 
@@ -28,7 +46,7 @@ def get_fprint(current_node, target_node='control'):
 
 
 def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
-    """Create server and get messages from client.
+    """Create socket server and get messages from clients.
 
     Parameters
     ----------

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>neurobooth_os.netcomm.client &#8212; neurobooth-os  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/bootstrap-sphinx.css" />
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="../../../_static/js/jquery-1.12.4.min.js "></script>
+<script type="text/javascript" src="../../../_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="../../../_static/bootstrap-3.4.1/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="../../../_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../../../index.html">
+          neurobooth-os</a>
+        <span class="navbar-text navbar-version pull-left"><b>0.1.dev0</b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href="../../../api.html">API</a></li>
+                <li><a href="https://github.com/neurobooth/neurobooth-os">GitHub</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../../../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"></ul>
+</li>
+              
+                <li class="dropdown">
+  <a role="button"
+     id="dLabelLocalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="#">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"
+      role="menu"
+      aria-labelledby="dLabelLocalToc"></ul>
+</li>
+              
+            
+            
+            
+            
+            
+              <li class="hidden-sm"></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../../../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <h1>Source code for neurobooth_os.netcomm.client</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Import socket module</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">select</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span><span class="p">,</span> <span class="n">sleep</span>
+<span class="c1"># import wmi</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">neurobooth_os.secrets_info</span> <span class="kn">import</span> <span class="n">secrets</span>
+
+
+<span class="k">def</span> <span class="nf">socket_message</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">node_name</span><span class="p">,</span> <span class="n">wait_data</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Send a string message though socket connection to `node_name`.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">connect</span><span class="p">():</span>
+        <span class="c1"># t0 = time()</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span><span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+
+        <span class="c1"># connect to server on local computer</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="n">host</span><span class="p">,</span><span class="n">port</span><span class="p">))</span>
+        <span class="c1"># print(f&quot;* connected {time()- t0}&quot;)</span>
+        <span class="c1"># t0 = time()</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;ascii&#39;</span><span class="p">))</span>
+        <span class="c1"># print(f&quot;sent {time()- t0}&quot;)</span>
+        <span class="c1"># t0 = time()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">wait_data</span><span class="p">:</span>
+           <span class="n">data</span> <span class="o">=</span> <span class="n">wait_socket_data</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+
+        <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="c1"># print(f&quot;closed {time()- t0}&quot;)</span>
+        <span class="k">return</span> <span class="n">data</span>
+
+    <span class="n">host</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">node_info</span><span class="p">(</span><span class="n">node_name</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">connect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span><span class="c1"># TimeoutError:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">node_name</span><span class="si">}</span><span class="s2"> socket connexion timed out, trying to restart server&quot;</span><span class="p">)</span>
+        <span class="n">pid</span> <span class="o">=</span> <span class="n">start_server</span><span class="p">(</span><span class="n">node_name</span><span class="p">)</span>
+        <span class="c1"># print(f&quot;{pid} on server {node_name} created&quot;)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">connect</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">data</span>
+
+
+<span class="k">def</span> <span class="nf">socket_time</span><span class="p">(</span><span class="n">node_name</span><span class="p">,</span> <span class="n">print_flag</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">time_out</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+
+    <span class="n">host</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">node_info</span><span class="p">(</span><span class="n">node_name</span><span class="p">)</span>
+
+    <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;time_test&quot;</span>
+    <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span><span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+    <span class="n">s</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="n">time_out</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># connect to server on local computer</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="n">host</span><span class="p">,</span><span class="n">port</span><span class="p">))</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">node_name</span><span class="si">}</span><span class="s2"> socket connexion timed out, trying to restart server&quot;</span><span class="p">)</span>
+        <span class="n">start_server</span><span class="p">(</span><span class="n">node_name</span><span class="p">)</span>
+        <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span><span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="n">time_out</span><span class="o">*</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="n">host</span><span class="p">,</span><span class="n">port</span><span class="p">))</span>
+
+    <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;ascii&#39;</span><span class="p">))</span>
+    <span class="c1"># messaga received from server</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">wait_socket_data</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="n">t1</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+    <span class="n">time_send</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span> <span class="n">data</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">time_1way</span> <span class="o">=</span> <span class="n">time_send</span> <span class="o">-</span> <span class="n">t0</span>
+    <span class="n">time_2way</span> <span class="o">=</span> <span class="n">t1</span> <span class="o">-</span> <span class="n">t0</span>
+
+    <span class="k">if</span> <span class="n">print_flag</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Return took </span><span class="si">{</span><span class="n">time_2way</span><span class="si">}</span><span class="s2">, sent </span><span class="si">{</span><span class="n">time_1way</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span>  <span class="n">time_2way</span><span class="p">,</span> <span class="n">time_1way</span>
+
+
+<span class="k">def</span> <span class="nf">node_info</span><span class="p">(</span><span class="n">node_name</span><span class="p">):</span>
+    <span class="n">port</span> <span class="o">=</span> <span class="mi">12347</span>
+    <span class="k">if</span> <span class="n">node_name</span> <span class="o">==</span> <span class="s2">&quot;acquisition&quot;</span><span class="p">:</span>
+        <span class="n">host</span> <span class="o">=</span> <span class="s1">&#39;acq&#39;</span>
+    <span class="k">elif</span> <span class="n">node_name</span> <span class="o">==</span> <span class="s2">&quot;presentation&quot;</span><span class="p">:</span>
+         <span class="n">host</span> <span class="o">=</span> <span class="s1">&#39;stm&#39;</span>
+    <span class="k">elif</span> <span class="n">node_name</span> <span class="o">==</span> <span class="s2">&quot;control&quot;</span><span class="p">:</span>
+         <span class="n">host</span> <span class="o">=</span> <span class="s1">&#39;ctr&#39;</span>
+    <span class="k">elif</span> <span class="n">node_name</span> <span class="o">==</span> <span class="s2">&quot;dummy_acq&quot;</span><span class="p">:</span>
+         <span class="n">host</span> <span class="o">=</span> <span class="s1">&#39;localhost&#39;</span>
+         <span class="n">port</span> <span class="o">=</span> <span class="mi">80</span>
+    <span class="k">elif</span> <span class="n">node_name</span> <span class="o">==</span> <span class="s2">&quot;dummy_stm&quot;</span><span class="p">:</span>
+         <span class="n">host</span> <span class="o">=</span> <span class="s1">&#39;localhost&#39;</span>
+         <span class="n">port</span> <span class="o">=</span> <span class="mi">81</span>
+    <span class="k">elif</span> <span class="n">node_name</span> <span class="o">==</span> <span class="s2">&quot;dummy_ctr&quot;</span><span class="p">:</span>
+         <span class="n">host</span> <span class="o">=</span> <span class="s1">&#39;localhost&#39;</span>
+         <span class="n">port</span> <span class="o">=</span> <span class="mi">82</span>
+    <span class="k">return</span> <span class="n">host</span><span class="p">,</span> <span class="n">port</span>
+
+
+<span class="k">def</span> <span class="nf">wait_socket_data</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">wait_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+    <span class="n">tic</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">r</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="n">s</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="n">s</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">r</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">wait_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">tic</span> <span class="o">&gt;</span> <span class="n">wait_time</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Socket timed out&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="s2">&quot;TIMED-OUT_-999&quot;</span>
+
+
+<div class="viewcode-block" id="start_server"><a class="viewcode-back" href="../../../generated/neurobooth_os.netcomm.start_server.html#neurobooth_os.netcomm.start_server">[docs]</a><span class="k">def</span> <span class="nf">start_server</span><span class="p">(</span><span class="n">node_name</span><span class="p">,</span> <span class="n">save_pid_txt</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Makes a network call to run script serv_{node_name}.bat</span>
+
+<span class="sd">    First remote processes are logged, then a scheduled task is created to run</span>
+<span class="sd">    the remote batch file, then task runs, and new python PIDs are captured with</span>
+<span class="sd">    the option to save to save_pid_txt. If saved, when the function is called it</span>
+<span class="sd">    will kill the PIDs in the file. </span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    node_name : str</span>
+<span class="sd">        PC node name defined in `secrets_info.secrets`</span>
+<span class="sd">    save_pid_txt : bool</span>
+<span class="sd">        Option to save PID to file for killing PID in the future.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pid : list</span>
+<span class="sd">        Python process identifiers found in remote computer after server started.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">node_name</span> <span class="ow">in</span> <span class="p">[</span> <span class="s2">&quot;acquisition&quot;</span><span class="p">,</span> <span class="s2">&quot;presentation&quot;</span><span class="p">]:</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">secrets</span><span class="p">[</span><span class="n">node_name</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Not a known node name&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="c1"># Kill any previous server</span>
+    <span class="n">kill_pid_txt</span><span class="p">(</span><span class="n">node_name</span><span class="o">=</span><span class="n">node_name</span><span class="p">)</span>
+
+    <span class="c1"># tic = time()</span>
+    <span class="n">task_cmd</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;tasklist.exe /S </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> /U </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;user&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> /P </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;pass&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="n">task_cmd</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="n">pids_old</span> <span class="o">=</span> <span class="n">get_python_pids</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+    <span class="c1"># print(f&quot;2 - {time() - tic}&quot;)</span>
+
+    <span class="n">cmd_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;SCHTASKS /S </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> /U </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">\</span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;user&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> /P </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;pass&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">cmd_1</span> <span class="o">=</span> <span class="n">cmd_str</span> <span class="o">+</span>  <span class="sa">f</span><span class="s2">&quot; /Create /TN TaskOnEvent /TR </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;bat&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> /SC ONEVENT /EC Application /MO *[System/EventID=777] /f&quot;</span>
+    <span class="n">cmd_2</span> <span class="o">=</span> <span class="n">cmd_str</span> <span class="o">+</span> <span class="s1">&#39; /Run /TN &quot;TaskOnEvent&quot;&#39;</span>
+    <span class="c1"># Cmd1 creates a scheduled task, cmd2 initiates it</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="n">cmd_1</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="n">cmd_2</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+    <span class="n">sleep</span><span class="p">(</span><span class="o">.</span><span class="mi">3</span><span class="p">)</span>
+    <span class="c1"># tic = time()</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="n">task_cmd</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="n">pids_new</span> <span class="o">=</span> <span class="n">get_python_pids</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+    <span class="c1"># print(f&quot;4 - {time() - tic}&quot;)</span>
+
+    <span class="n">pid</span> <span class="o">=</span>  <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pids_new</span> <span class="k">if</span> <span class="n">p</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">pids_old</span> <span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">node_name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2"> server initiated with pid </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">save_pid_txt</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;server_pids.txt&quot;</span><span class="p">,</span><span class="s2">&quot;a&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">|</span><span class="si">{</span><span class="n">node_name</span><span class="si">}</span><span class="s2">|</span><span class="si">{</span><span class="n">time</span><span class="p">()</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pid</span></div>
+
+
+<span class="k">def</span> <span class="nf">get_python_pids</span><span class="p">(</span><span class="n">output_tasklist</span><span class="p">):</span>
+    <span class="c1"># From popen tasklist output</span>
+
+    <span class="n">procs</span> <span class="o">=</span> <span class="n">output_tasklist</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">re_pyth</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;python.exe[\s]*([0-9]*)&quot;</span><span class="p">)</span>
+
+    <span class="n">pyth_pids</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">prc</span> <span class="ow">in</span> <span class="n">procs</span><span class="p">:</span>
+        <span class="n">srch</span> <span class="o">=</span> <span class="n">re_pyth</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">prc</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">srch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pyth_pids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">srch</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">pyth_pids</span>
+
+
+<span class="k">def</span> <span class="nf">kill_remote_pid</span><span class="p">(</span><span class="n">pids</span><span class="p">,</span> <span class="n">node_name</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">node_name</span> <span class="ow">in</span> <span class="p">[</span> <span class="s2">&quot;acquisition&quot;</span><span class="p">,</span> <span class="s2">&quot;presentation&quot;</span><span class="p">]:</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">secrets</span><span class="p">[</span><span class="n">node_name</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Not a known node name&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pids</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span> <span class="n">pids</span> <span class="o">=</span> <span class="p">[</span><span class="n">pids</span><span class="p">]</span>
+
+    <span class="n">cmd</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;taskkill /S </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> /U </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;user&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> /P </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;pass&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> /PID %s&quot;</span>
+    <span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="n">pids</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="n">cmd</span> <span class="o">%</span><span class="n">pid</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+    <span class="k">return</span>
+
+
+<span class="k">def</span> <span class="nf">kill_pid_txt</span><span class="p">(</span><span class="n">txt_name</span><span class="o">=</span><span class="s2">&quot;server_pids.txt&quot;</span><span class="p">,</span> <span class="n">node_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+     <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">txt_name</span><span class="p">):</span>
+        <span class="k">return</span>
+
+     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">txt_name</span><span class="p">,</span><span class="s2">&quot;r+&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+         <span class="n">Lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+
+         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Lines</span><span class="p">):</span>
+             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Closing </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">Lines</span><span class="p">)</span><span class="si">}</span><span class="s2"> remote processes&quot;</span><span class="p">)</span>
+
+         <span class="n">new_lines</span> <span class="o">=</span> <span class="p">[]</span>
+         <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">Lines</span><span class="p">:</span>
+            <span class="n">pid</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">tsmp</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;|&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">node_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">node_name</span> <span class="o">!=</span> <span class="n">node</span><span class="p">:</span>
+                <span class="n">new_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="n">kill_remote_pid</span><span class="p">(</span><span class="nb">eval</span><span class="p">(</span><span class="n">pid</span><span class="p">),</span> <span class="n">node</span><span class="p">)</span>
+
+         <span class="n">f</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_lines</span><span class="p">):</span>
+             <span class="n">f</span><span class="o">.</span><span class="n">writelines</span><span class="p">(</span><span class="n">new_lines</span><span class="p">)</span>
+         <span class="k">else</span><span class="p">:</span>
+             <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+         <span class="n">f</span><span class="o">.</span><span class="n">truncate</span><span class="p">()</span>
+
+</pre></div>
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2021, Neurobooth Developers.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 4.0.1.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>
