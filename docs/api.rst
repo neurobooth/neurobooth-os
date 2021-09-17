@@ -3,15 +3,19 @@
 .. _api_documentation:
 
 ===========================
-Neurobooth-os Documentation
+Neurobooth-OS Documentation
 ===========================
 
-Tables (:py:mod:`neurobooth_os.netcomm`):
-------------------------------------------------
+
+Network Communication :py:mod:`neurobooth_os.netcomm`:
+------------------------------------------------------
 
 .. currentmodule:: neurobooth_os.netcomm
 
 .. autosummary::
    :toctree: generated/
 
+   start_server
    get_client_messages
+   get_fprint
+   

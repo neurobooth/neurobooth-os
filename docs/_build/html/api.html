@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>API Documentation &#8212; neurobooth-os  documentation</title>
+    <title>Neurobooth-OS Documentation &#8212; neurobooth-os  documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/bootstrap-sphinx.css" />
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
@@ -66,8 +66,8 @@
   <ul class="dropdown-menu localtoc"
       role="menu"
       aria-labelledby="dLabelLocalToc"><ul>
-<li><a class="reference internal" href="#">API Documentation</a><ul>
-<li><a class="reference internal" href="#tables-neurobooth-os-netcomm">Tables (<code class="xref py py-mod docutils literal notranslate"><span class="pre">neurobooth_os.netcomm</span></code>):</a></li>
+<li><a class="reference internal" href="#">Neurobooth-OS Documentation</a><ul>
+<li><a class="reference internal" href="#network-communication-neurobooth-os-netcomm">Network Communication <code class="xref py py-mod docutils literal notranslate"><span class="pre">neurobooth_os.netcomm</span></code>:</a></li>
 </ul>
 </li>
 </ul>
@@ -105,18 +105,24 @@
   <div class="row">
     <div class="body col-md-12 content" role="main">
       
-  <section id="api-documentation">
-<span id="id1"></span><h1>API Documentation<a class="headerlink" href="#api-documentation" title="Permalink to this headline">¶</a></h1>
-<section id="tables-neurobooth-os-netcomm">
-<h2>Tables (<code class="xref py py-mod docutils literal notranslate"><span class="pre">neurobooth_os.netcomm</span></code>):<a class="headerlink" href="#tables-neurobooth-os-netcomm" title="Permalink to this headline">¶</a></h2>
+  <section id="neurobooth-os-documentation">
+<span id="api-documentation"></span><h1>Neurobooth-OS Documentation<a class="headerlink" href="#neurobooth-os-documentation" title="Permalink to this headline">¶</a></h1>
+<section id="network-communication-neurobooth-os-netcomm">
+<h2>Network Communication <code class="xref py py-mod docutils literal notranslate"><span class="pre">neurobooth_os.netcomm</span></code>:<a class="headerlink" href="#network-communication-neurobooth-os-netcomm" title="Permalink to this headline">¶</a></h2>
 <table class="longtable docutils align-default">
 <colgroup>
 <col style="width: 10%" />
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/neurobooth_os.netcomm.get_client_messages.html#neurobooth_os.netcomm.get_client_messages" title="neurobooth_os.netcomm.get_client_messages"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_client_messages</span></code></a>(s1, fprint, old_stdout)</p></td>
-<td><p>Create server and get messages from client.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/neurobooth_os.netcomm.start_server.html#neurobooth_os.netcomm.start_server" title="neurobooth_os.netcomm.start_server"><code class="xref py py-obj docutils literal notranslate"><span class="pre">start_server</span></code></a>(node_name[, save_pid_txt])</p></td>
+<td><p>Makes a network call to run script serv_{node_name}.bat</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/neurobooth_os.netcomm.get_client_messages.html#neurobooth_os.netcomm.get_client_messages" title="neurobooth_os.netcomm.get_client_messages"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_client_messages</span></code></a>(s1, fprint, old_stdout)</p></td>
+<td><p>Create socket server and get messages from clients.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/neurobooth_os.netcomm.get_fprint.html#neurobooth_os.netcomm.get_fprint" title="neurobooth_os.netcomm.get_fprint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_fprint</span></code></a>(current_node[, target_node])</p></td>
+<td><p>Return function to capture prints for sending to target_node.</p></td>
 </tr>
 </tbody>
 </table>
