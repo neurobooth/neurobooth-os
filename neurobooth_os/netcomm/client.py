@@ -119,11 +119,24 @@ def wait_socket_data(s, wait_time=None):
 
 
 def start_server(node_name, save_pid_txt=True):
-    """ Makes a network call to run python scripts serv_{node}.py
-        :param node_name: node name pc to connect.
-        :type: str
-        :return: list of pids from created pythons
+    """ Makes a network call to run script serv_{node_name}.bat
 
+    First remote processes are logged, then a scheduled task is created to run
+    the remote batch file, then task runs, and new python PIDs are captured with
+    the option to save to save_pid_txt. If saved, when the function is called it
+    will kill the PIDs in the file. 
+
+    Parameters
+    ----------
+    node_name : str
+        PC node name defined in `secrets_info.secrets`
+    save_pid_txt : bool
+        Option to save PID to file for killing PID in the future.
+
+    Returns
+    -------
+    pid : list
+        Python process identifiers found in remote computer after server started.
     """
 
     if node_name in [ "acquisition", "presentation"]:
