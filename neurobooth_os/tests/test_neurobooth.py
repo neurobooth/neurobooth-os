@@ -11,8 +11,12 @@ dtypes = dict()
 ssh_username = 'mj513'
 
 def create_mock_database():
+    """Create mock database using SSH Tunnel.
 
-    # Create an SSH tunnel
+    Note: You must be on Partners VPN
+    for this to work.
+    """
+
     with SSHTunnelForwarder(
         'neurodoor.nmr.mgh.harvard.edu',
         ssh_username=ssh_username,
@@ -31,14 +35,14 @@ def create_mock_database():
                 table = Table(table_id, conn)
                 table_dfs[table_id] = table.query(f'SELECT * from {table_id}')
                 column_names[table_id] = table.column_names
-                dtypes[table_id] = table.dtypes
+                dtypes[table_id] = table.data_types
 
         with psycopg2.connect(database='mock_neurobooth', user='neuroboother',
                             password='neuroboothrocks', host=tunnel.local_bind_host,
                             port=tunnel.local_bind_port) as conn_mock:
             for table_id in table_ids:
                 create_table(table_id, conn, column_names[table_id],
-                            dtypes[table_id])
+                             dtypes[table_id])
 
 
 def delete_mock_database():
@@ -47,4 +51,3 @@ def delete_mock_database():
 def test_neurobooth():
     """Call function to test neurobooth."""
     create_mock_database()
-
