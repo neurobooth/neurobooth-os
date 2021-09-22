@@ -120,14 +120,14 @@ def serv_data_received():
                 for expr in rout.groups():
                     window.write_event_value('-update_butt-', expr)
             if "Initiating task:" in event_feedb:
-                task_inf = re.search("Initiating task: ([A-Za-z_1-9]*):([A-Za-z_1-9]*)", event_feedb)
+                task_inf = re.search("Initiating task: ([A-Za-z_0-9]*):([A-Za-z_1-9]*)", event_feedb)
                 task_id, obs_id = task_inf.groups()
                 window["task_title"].update("Running Task:")
                 window["task_running"].update(task_id, background_color="red")
                 window['Start'].Update(button_color=('black', 'red'))
 
             if "Finished task:"  in event_feedb:
-                task_inf = re.search("Finished task: ([A-Za-z_1-9]*)", event_feedb)
+                task_inf = re.search("Finished task: ([A-Za-z_0-9]*)", event_feedb)
                 task_id = task_inf.groups()
                 window["task_running"].update(task_id, background_color="green")
                 window['Start'].Update(button_color=('black', 'green'))
