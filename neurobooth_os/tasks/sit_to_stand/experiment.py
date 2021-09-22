@@ -17,6 +17,8 @@ class Sit_to_Stand():
         self.fpath = op.dirname(op.abspath(__file__)).replace("\\", "/")
         self.pname_inst_vid = op.join(self.fpath, op.basename(path_instruction_video))
         self.pname_inst_vid = path_instruction_video
+
+              
                 
         print("path to instruction: ", self.pname_inst_vid)
         
