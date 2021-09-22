@@ -14,7 +14,6 @@ import sys
 class Sit_to_Stand():
     def __init__(self, path_instruction_video=r"\\STM\neurobooth-eel\neurobooth_os\tasks\video_instructions\Videos_to_present\motor_Sit to Stand _2021_09_02_v0.5.mp4", marker_outlet=None, win=None, **kwarg):
         
-        
         self.fpath = op.dirname(op.abspath(__file__)).replace("\\", "/")
         self.pname_inst_vid = op.join(self.fpath, op.basename(path_instruction_video))
         self.pname_inst_vid = path_instruction_video
