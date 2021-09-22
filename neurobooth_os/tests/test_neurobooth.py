@@ -10,7 +10,7 @@ dtypes = dict()
 
 ssh_username = 'mj513'
 
-def create_mock_database():
+def create_mock_database(db_name):
     """Create mock database using SSH Tunnel.
 
     Note: You must be on Partners VPN
@@ -26,8 +26,19 @@ def create_mock_database():
         local_bind_address=('localhost', 6543)) as tunnel:
 
         with psycopg2.connect(database='neurobooth', user='neuroboother',
-                            password='neuroboothrocks', host=tunnel.local_bind_host,
-                            port=tunnel.local_bind_port) as conn:
+                              password='neuroboothrocks', host=tunnel.local_bind_host,
+                              port=tunnel.local_bind_port) as conn:
+
+            # neurobooth database is set with is_template = True
+            # and neuroboother has privileges of CREATE_DB and REPLICATION
+            # for this to work. autocommit=True since CREATE DATABASE
+            # cannot work in transaction block.
+            conn.set_session(autocommit=True)
+            cursor = conn.cursor()
+            cmd = f'CREATE DATABASE {db_name} WITH TEMPLATE neurobooth'
+            cursor.execute(cmd)
+            cursor.close()
+            conn.set_session(autocommit=False)
 
             table_ids = list_tables(conn)
             for table_id in table_ids:
@@ -37,7 +48,7 @@ def create_mock_database():
                 column_names[table_id] = table.column_names
                 dtypes[table_id] = table.data_types
 
-        with psycopg2.connect(database='mock_neurobooth', user='neuroboother',
+        with psycopg2.connect(database=db_name, user='neuroboother',
                             password='neuroboothrocks', host=tunnel.local_bind_host,
                             port=tunnel.local_bind_port) as conn_mock:
             for table_id in table_ids:
@@ -45,9 +56,30 @@ def create_mock_database():
                              dtypes[table_id])
 
 
-def delete_mock_database():
-    pass
+def delete_mock_database(db_name):
+
+    with SSHTunnelForwarder(
+        'neurodoor.nmr.mgh.harvard.edu',
+        ssh_username=ssh_username,
+        ssh_config_file='~/.ssh/config',
+        ssh_pkey='~/.ssh/id_rsa',
+        remote_bind_address=('192.168.100.1', 5432),
+        local_bind_address=('localhost', 6543)) as tunnel:
+
+        with psycopg2.connect(database='neurobooth', user='neuroboother',
+                              password='neuroboothrocks', host=tunnel.local_bind_host,
+                              port=tunnel.local_bind_port) as conn:
+            conn.set_session(autocommit=True)
+            cursor = conn.cursor()
+            cmd = f'DROP DATABASE {db_name}'
+            cursor.execute(cmd)
+            cursor.close()
+            conn.set_session(autocommit=False)
+
 
 def test_neurobooth():
     """Call function to test neurobooth."""
-    create_mock_database()
+    db_name = 'blah'
+    create_mock_database(db_name)
+    delete_mock_database(db_name)
+
