@@ -8,6 +8,12 @@ table_dfs = dict()
 column_names = dict()
 dtypes = dict()
 
+def create_mock_database():
+    pass
+
+def delete_mock_database():
+    pass
+
 # Create an SSH tunnel
 with SSHTunnelForwarder(
     'neurodoor.nmr.mgh.harvard.edu',
@@ -35,3 +41,7 @@ with SSHTunnelForwarder(
         for table_id in table_ids:
             create_table(table_id, conn, column_names[table_id],
                          dtypes[table_id])
+
+def test_neurobooth():
+    """Call function to test neurobooth."""
+    pass
