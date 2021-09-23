@@ -8,30 +8,31 @@ table_dfs = dict()
 column_names = dict()
 dtypes = dict()
 
-# Create an SSH tunnel
-with SSHTunnelForwarder(
-    'neurodoor.nmr.mgh.harvard.edu',
-    ssh_username='an512',
-    ssh_config_file='~/.ssh/config',
-    ssh_pkey='~/.ssh/id_rsa',
-    remote_bind_address=('192.168.100.1', 5432),
-    local_bind_address=('localhost', 6543)) as tunnel:
+ssh_username = 'mj513'
 
-    with psycopg2.connect(database='neurobooth', user='neuroboother',
-                          password='neuroboothrocks', host=tunnel.local_bind_host,
-                          port=tunnel.local_bind_port) as conn:
+def create_mock_database(db_name):
+    """Create mock database using SSH Tunnel.
 
-        table_ids = list_tables(conn)
-        for table_id in table_ids:
-            print(f'Table: {table_id}')
-            table = Table(table_id, conn)
-            table_dfs[table_id] = table.query(f'SELECT * from {table_id}')
-            column_names[table_id] = table.column_names
-            dtypes[table_id] = table.dtypes
+    Note: You must be on Partners VPN
+    for this to work.
+    """
 
-    with psycopg2.connect(database='mock_neurobooth', user='neuroboother',
-                          password='neuroboothrocks', host=tunnel.local_bind_host,
-                          port=tunnel.local_bind_port) as conn_mock:
-        for table_id in table_ids:
-            create_table(table_id, conn, column_names[table_id],
-                         dtypes[table_id])
+    with SSHTunnelForwarder(
+        'neurodoor.nmr.mgh.harvard.edu',
+        ssh_username=ssh_username,
+        ssh_config_file='~/.ssh/config',
+        ssh_pkey='~/.ssh/id_rsa',
+        remote_bind_address=('192.168.100.1', 5432),
+        local_bind_address=('localhost', 6543)) as tunnel:
+
+        with psycopg2.connect(database='mock_neurobooth', user='neuroboother',
+                              password='neuroboothrocks', host=tunnel.local_bind_host,
+                              port=tunnel.local_bind_port) as conn_mock:
+            table_ids = list_tables(conn_mock)
+            for table_id in table_ids:
+                table = Table(table_id, conn_mock)
+                print(table)
+
+def test_neurobooth():
+    """Call function to test neurobooth."""
+    create_mock_database()
