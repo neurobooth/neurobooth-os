@@ -1,8 +1,9 @@
 """
-=====================
+====================
 record mock streams
-=====================
+====================
 Use :func:`~neurobooth_os.iout.mock_device_streamer` to generate mock streams and liesl to record.
+Only works in Windows or Linux using Wine
 """
 # Author: Sheraz Khan <sheraz@khansheraz.com>
 #
@@ -38,9 +39,9 @@ streamargs = [{'name': "mock_lsl"},
               {'name': "mock_mbient"},
               {'name': "mock_camera"},
               {'name': "Marker"}]
-
+recording_folder = "~/labrecordings"
 session = liesl.Session(prefix="VvNn",
-                        streamargs=streamargs, mainfolder="~/labrecordings")
+                        streamargs=streamargs, mainfolder=recording_folder)
 
 # %%
 # Run stream for 1 minutes, send trigger every 10 second and record:
