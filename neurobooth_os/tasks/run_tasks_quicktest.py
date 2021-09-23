@@ -5,7 +5,9 @@ Created on Mon Jul 19 11:20:57 2021
 @author: STM
 """
 import os
+import threading
 from time import time, sleep
+
 from neurobooth_os import config
 from neurobooth_os.tasks.DSC import DSC
 from neurobooth_os.tasks.mouse import mouse_task
@@ -16,7 +18,6 @@ from neurobooth_os.iout.eyelink_tracker import EyeTracker
 from neurobooth_os.tasks.smooth_pursuit.pursuit_task import pursuit
 from neurobooth_os.tasks.utils import make_win
 
-import threading
 os.chdir(r'C:\neurobooth-eel\\')
 
 def run_task(task_funct, task_karg={}):

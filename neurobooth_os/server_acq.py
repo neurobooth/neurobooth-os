@@ -4,10 +4,11 @@ import sys
 from time import time, sleep
 from neurobooth_os import config
 
-from neurobooth_os.netcomm.client import socket_message
-from neurobooth_os.netcomm import get_client_messages, get_fprint
-from neurobooth_os.iout.camera_brio import VidRec_Brio
-from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
+from neurobooth_os.netcomm import (socket_message,
+                                   get_client_messages, get_fprint)
+from neurobooth_os.iout import VidRec_Brio
+from neurobooth_os.iout.lsl_streamer import (start_lsl_threads, close_streams,
+                                             reconnect_streams, connect_mbient)
 
 os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')
 
