@@ -9,4 +9,5 @@ __pycache__
 .ipynb_checkpoints
 
 # PyCharm
+.idea
 .idea/**
