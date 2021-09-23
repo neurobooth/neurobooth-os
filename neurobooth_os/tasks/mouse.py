@@ -3,15 +3,16 @@
 
 from __future__ import absolute_import, division
 
-from psychopy import visual, core, data, event, logging
-from psychopy.constants import NOT_STARTED, STARTED, FINISHED
-from numpy.random import shuffle
-import numpy as np
 import os
 
-from psychopy.hardware import keyboard
-from neurobooth_os.tasks.utils import make_win
+import numpy as np
+from numpy.random import shuffle
 
+from psychopy import visual, core, data, event, logging
+from psychopy.constants import NOT_STARTED, STARTED, FINISHED
+from psychopy.hardware import keyboard
+
+from neurobooth_os.tasks.utils import make_win
 
 
 class mouse_task():

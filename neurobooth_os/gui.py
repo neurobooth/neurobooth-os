@@ -5,23 +5,24 @@ Created on Fri Apr  2 08:01:51 2021
 @author: neurobooth
 """
 
-import PySimpleGUI as sg
-import numpy as np
-import cv2
-import pylsl
 import time
 import re
 import sys
 import threading
-import matplotlib
 import queue
 from collections import OrderedDict
 from datetime import datetime
 
+import numpy as np
+import matplotlib
+
+import cv2
+import pylsl
+import PySimpleGUI as sg
+
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import update_streams_fromID, get_lsl_images, stream_plotter
-from neurobooth_os.netcomm.server import get_messages_to_ctr
-from neurobooth_os.netcomm.client import socket_message
+from neurobooth_os.netcomm import get_messages_to_ctr, socket_message
 from neurobooth_os.layouts import main_layout, win_gen, init_layout
 import neurobooth_os.iout.metadator as meta
 

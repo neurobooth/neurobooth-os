@@ -4,12 +4,11 @@ Created on Fri Jul 30 09:08:53 2021
 
 @author: CTR
 """
-
-from neurobooth_terra import list_tables, create_table, drop_table, Table
-import psycopg2
-import pandas as pd
 import json
 from collections import OrderedDict
+
+import psycopg2
+from neurobooth_terra import list_tables, create_table, drop_table, Table
 
 
 def get_conn():

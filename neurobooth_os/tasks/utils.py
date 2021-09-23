@@ -6,12 +6,14 @@ Created on Tue Jul 20 10:00:23 2021
 """
 
 from __future__ import absolute_import, division
+
+import time
 import os.path as op
+
 from psychopy import visual
 from psychopy import prefs
 prefs.hardware['audioLib']=['pyo']
 from psychopy import sound, core, event, monitors, visual
-import time
 
 
 def make_win(full_screen=True, monitor_width=55, monitor_distance=50):    
@@ -68,14 +70,3 @@ def play_video(win, mov, stop=True):
             else:
                 mov.pause()
             break
-
-
-
-# win = visual.Window(
-#     size=(SCN_W, SCN_H), fullscr=full_screen, screen=0,
-#     winType='pyglet', allowGUI=True, allowStencil=False,
-#     monitor='testMonitor', color=[0,0,0], colorSpace='rgb',
-#     blendMode='avg', useFBO=True, 
-#     units='height')
-
-    

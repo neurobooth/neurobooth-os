@@ -5,11 +5,12 @@ Created on Mon Dec 14 09:00:21 2020
 @author: adona
 """
 import pyxdf
-import matplotlib.pyplot as plt
-import numpy as np
 import cv2
 import pyaudio
 import config
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 def read_vid(cap):
     vid_mat = []    

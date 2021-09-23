@@ -4,9 +4,11 @@ Created on Tue Nov 24 15:41:42 2020
 
 @author: adona
 """
+import time
+
 from neurobooth_os import config
 from neurobooth_os.iout import metadator as meta
-import time
+
 
 def start_lsl_threads(node_name, collection_id="mvp_025", win=None):  
     

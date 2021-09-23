@@ -2,11 +2,14 @@ import os
 import sys
 import threading
 import uuid
-import cv2
-from pylsl import StreamInfo, StreamOutlet
 import time
 import functools
+
+import cv2
+from pylsl import StreamInfo, StreamOutlet
+
 from neurobooth_os.iout import dshowcapture
+
 import warnings
 warnings.filterwarnings('ignore')
 

@@ -8,11 +8,13 @@ Created on Thu Sep 16 12:58:47 2021
 
 import threading
 import uuid
-import numpy as np
 import time
+
+import numpy as np
+
 import pylsl
 from pylsl import StreamInfo, StreamOutlet
-import numpy as np
+
 
 class MockLSLDevice(object):
     """Mock Device that Streams LSL samples.

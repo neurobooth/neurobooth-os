@@ -2,9 +2,9 @@
 import socket
 import select
 from time import time, sleep
-# import wmi
 import re
 import os
+
 from neurobooth_os.secrets_info import secrets
 
 

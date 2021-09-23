@@ -4,16 +4,16 @@ Created on Mon Mar 15 11:40:01 2021
 
 @author: neurobooth
 """
-
-from vidgear.gears import ScreenGear
-import cv2
-# import pyautogui
-import win32gui
-import numpy as np
-from pylsl import StreamInfo, StreamOutlet
 import time
 import threading
 import uuid
+import numpy as np
+
+from vidgear.gears import ScreenGear
+import cv2
+import win32gui
+from pylsl import StreamInfo, StreamOutlet
+
 
 class ScreenMirror():
     def __init__(self, Fps=1, res=(320, 240), options=None, RGB=False, local_plot=False):

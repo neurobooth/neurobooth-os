@@ -1,20 +1,23 @@
 import socket
 import io
-import pandas as pd
 import sys
 import os
 from collections import OrderedDict
 from time import time, sleep
 
+import pandas as pd
+
 from neurobooth_os import config
-from neurobooth_os.iout.screen_capture import ScreenMirror
+from neurobooth_os.iout import ScreenMirror
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
-from neurobooth_os.netcomm.client import socket_message, node_info
-from neurobooth_os.netcomm.server import get_client_messages, get_fprint
+
+from neurobooth_os.netcomm import socket_message, node_info, get_client_messages, get_fprint
+
 from neurobooth_os.tasks.test_timing.audio_video_test import Timing_Test
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
+
 from neurobooth_os.iout import metadator as meta
 
 os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')

@@ -1,6 +1,7 @@
+import uuid
+
 from pynput import mouse
 from pylsl import StreamInfo, StreamOutlet
-import uuid
 
 
 class MouseStream():
