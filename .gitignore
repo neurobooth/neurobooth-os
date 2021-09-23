@@ -4,6 +4,7 @@ neurobooth_os/secrets.py
 neurobooth_os/server_pids.*
 neurobooth_os.egg-info*
 .vscode
+.xml
 
 __pycache__
 .ipynb_checkpoints
