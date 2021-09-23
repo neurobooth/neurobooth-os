@@ -1,12 +1,13 @@
 # usage: python data_fuser.py [mac1] [mac2] ... [mac(n)]
 from __future__ import print_function
+import uuid
 from ctypes import c_void_p, cast, POINTER
-from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings
 from time import sleep
 from threading import Event
 from sys import argv
+
+from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings
 from pylsl import StreamInfo, StreamOutlet, local_clock
-import uuid
 
 
 states = []

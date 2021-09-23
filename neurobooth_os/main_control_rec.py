@@ -10,10 +10,11 @@ import os
 import socket
 import time
 import psutil
+
 import numpy as np
-import config 
-# from realtime.lsl_plotter import stream_plotter
-from netcomm.client import socket_message, socket_time, start_server,  kill_pid_txt
+
+from neurobooth import config
+from neurobooth.netcomm import socket_message, socket_time, start_server, kill_pid_txt
 
 
 def start_servers(nodes=["acquisition", "presentation"]):

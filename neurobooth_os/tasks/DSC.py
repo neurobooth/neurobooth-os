@@ -9,8 +9,10 @@ import random
 import time
 from datetime import datetime
 import os.path as op
+
 import numpy as np
 import pandas as pd
+
 from psychopy import core, visual, event
 from psychopy.visual.textbox2 import TextBox2
 from psychopy import iohub
@@ -27,8 +29,6 @@ def present_msg(elems, win, key_resp="space"):
     # while not event.getKeys(keyList=key_resp):
     #     a = "next"
     #     # print(a)
-
-
 
 
 class DSC():

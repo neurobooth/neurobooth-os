@@ -6,8 +6,10 @@ Created on Fri Apr  2 08:01:51 2021
 """
 
 import PySimpleGUI as sg
-import numpy as np
+
 import cv2
+import numpy as np
+
 import neurobooth_os.iout.metadator as meta
         
 def lay_butt(name, key=None):

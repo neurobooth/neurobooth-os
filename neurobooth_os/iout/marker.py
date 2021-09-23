@@ -1,6 +1,8 @@
-from pylsl import StreamInfo, StreamOutlet
 import time
 import uuid
+
+from pylsl import StreamInfo, StreamOutlet
+
 
 def marker_stream():
     

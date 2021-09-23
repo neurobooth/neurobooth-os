@@ -4,20 +4,20 @@ Created on Wed Jul 14 11:24:43 2021
 
 @author: ACQ
 """
-
-from neurobooth_os.iout.mbient import Sensor
-import pyrealsense2 as rs
+import socket
 from collections import OrderedDict
+
+import pyrealsense2 as rs
 import PySpin
-import neurobooth_os.config as cfg
 import pyaudio
 
+import psycopg2
+from neurobooth_terra import Table
 
+import neurobooth_os.config as cfg
+from neurobooth_os.iout.mbient import Sensor
 
 ############# INSERT ROWS IN DATABASE #############
-
-from neurobooth_terra import Table
-import psycopg2
 
 def insert_to_table(table_id, row_dicts):
     """Insert to table.
@@ -237,9 +237,6 @@ dev_Yeti_info = {
 
 insert_to_table('device', [ dev_Yeti_info])
 
-
-
-import socket
 pc_name = socket.gethostname()
 
 if pc_name == "stm":
@@ -263,16 +260,3 @@ if pc_name == "stm":
     
     
     insert_to_table('device', [ dev_Eyelink_info])
-
-  
-
-    
-    # tk.getTrackerVersion()
-    # tk.getTrackerVersionString()
-   
-    # tk.getEyeUsed()
-    # tk.getCalibrationResult()
-    # tk.getCalibrationMessage()
-    
-  
-  
