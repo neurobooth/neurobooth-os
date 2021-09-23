@@ -1,8 +1,8 @@
 """
-======================
+=====================
 Generate mock streams
-======================
-Use :func:`~eurobooth_os.iout.mock_device_streamer` to generate mock streams.
+=====================
+Use :func:`~neurobooth_os.iout.mock_device_streamer` to generate mock streams.
 """
 # Author: Sheraz Khan <sheraz@khansheraz.com>
 #

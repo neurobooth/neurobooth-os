@@ -1,11 +1,11 @@
 neurobooth_os/iout/__pycache__/*
 *.pyc
-neurobooth_os/secrets.py
+neurobooth_os/secrets_info.py
 neurobooth_os/server_pids.*
 neurobooth_os.egg-info*
 .vscode
 .xml
-
+.pytest_cache
 __pycache__
 .ipynb_checkpoints
 
