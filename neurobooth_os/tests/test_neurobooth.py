@@ -1,3 +1,4 @@
+import uuid
 import psycopg2
 from sshtunnel import SSHTunnelForwarder
 
@@ -49,12 +50,11 @@ def create_mock_database(db_name):
                 dtypes[table_id] = table.data_types
 
         with psycopg2.connect(database=db_name, user='neuroboother',
-                            password='neuroboothrocks', host=tunnel.local_bind_host,
-                            port=tunnel.local_bind_port) as conn_mock:
+                              password='neuroboothrocks', host=tunnel.local_bind_host,
+                              port=tunnel.local_bind_port) as conn_mock:
             for table_id in table_ids:
-                create_table(table_id, conn, column_names[table_id],
-                             dtypes[table_id])
-
+                table = Table(table_id, conn_mock)
+                print(table)
 
 def delete_mock_database(db_name):
 
@@ -79,7 +79,13 @@ def delete_mock_database(db_name):
 
 def test_neurobooth():
     """Call function to test neurobooth."""
-    db_name = 'blah'
-    create_mock_database(db_name)
-    delete_mock_database(db_name)
+    db_name = 'TEST_' + uuid.uuid4().hex.upper()[0:6]  # random name
+    
+    try:
+        create_mock_database(db_name)
+
+    # add test functions here
+    except Exception as e:
+        delete_mock_database(db_name)
+        raise(e)
 
