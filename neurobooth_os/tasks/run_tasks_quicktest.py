@@ -5,8 +5,8 @@ Created on Mon Jul 19 11:20:57 2021
 @author: STM
 """
 import os
-from time import time, sleep  
-import config
+from time import time, sleep
+from neurobooth_os import config
 from neurobooth_os.tasks.DSC import DSC
 from neurobooth_os.tasks.mouse import mouse_task
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
@@ -19,7 +19,7 @@ from neurobooth_os.tasks.utils import make_win
 import threading
 os.chdir(r'C:\neurobooth-eel\\')
 
-def run_task(task_funct, task_karg={}):    
+def run_task(task_funct, task_karg={}):
     res = task_funct(**task_karg)
     return res
 
@@ -62,7 +62,7 @@ print(t1-t0)
 def downl(et):
     et.tk.receiveDataFile(et.fname_temp, et.filename)
     print("done")
-    
+
 x = threading.Thread(target=downl, args=(et,))
 
 t0 = time()
@@ -73,9 +73,9 @@ print(t1-t0)
 
 
 print("after thread")
- 
- 
-task_karg ={"win": win,            
+
+
+task_karg ={"win": win,
             "subj_id": subj_id,
             "marker_outlet": streams['marker'],
             "eye_tracker": et}
@@ -89,15 +89,15 @@ res = run_task(pursuit, task_karg)
 #             "subj_id": subj_id,
 #             "marker_outlet": streams['marker']}
 
-# res = run_task(mouse_task, task_karg)  
-  
+# res = run_task(mouse_task, task_karg)
+
 # task_karg ={"win": win,
 #             "marker_outlet": streams['marker']}
 # res = run_task(DSC, task_karg)
 
 
 # task_karg ={"win": win,
-#              "marker_outlet": streams['marker']}             
+#              "marker_outlet": streams['marker']}
 # run_task(Sit_to_Stand, task_karg)
 
 # finish_screen(win)
