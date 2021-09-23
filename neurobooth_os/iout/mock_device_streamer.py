@@ -10,9 +10,9 @@ import threading
 import uuid
 import numpy as np
 import time
-
+import pylsl
 from pylsl import StreamInfo, StreamOutlet
-
+import numpy as np
 
 class MockLSLDevice(object):
     """Mock Device that Streams LSL samples.
@@ -126,6 +126,31 @@ class MockLSLDevice(object):
 
 
 class MockMbient(MockLSLDevice):
+    """Mock Mbient Device that Streams LSL samples with Mbient child info.
+
+    Parameters
+    ----------
+    name : str
+        Name of the LSL outlet stream.
+    nchans : int
+        Number of channels.
+    frames_buffer : int | None
+        If not None, data is sent in chunks. Default None
+    stream_outlet : bool
+        If true the outlet will be streamed and outlet id will be printed.
+    ch_type : type
+        data type of lsl stream
+    stream_type : str
+        Type of LSL stream, eg. Experimental
+    srate : int
+        sampling rate of the LSL stream
+    source_id : str
+        Str that identifies the LSL stream
+    device_id : str
+        Name of the device
+    sensor_ids : List
+        Name of the sensors in the device
+    """
     def __init__(self, name="Mbient", nchans=7, frames_buffer=None,
                  data_type="float32", stream_type='Experimental', srate=100,
                  source_id='', device_id="mock_dev_1",  stream_outlet=False,
@@ -145,11 +170,40 @@ class MockMbient(MockLSLDevice):
 
 
 class MockCamera(MockLSLDevice):
+    """Mock Camera Recording Device that Streams LSL frame index and timestamp.
+
+    Parameters
+    ----------
+    name : str
+        Name of the LSL outlet stream.
+    nchans : int
+        Number of channels.
+    frames_buffer : int | None
+        If not None, data is sent in chunks. Default None
+    stream_outlet : bool
+        If true the outlet will be streamed and outlet id will be printed.
+    ch_type : type
+        data type of lsl stream
+    stream_type : str
+        Type of LSL stream, eg. Experimental
+    srate : int
+        sampling rate of the LSL stream
+    sizex : int
+        Height of the frame.
+    sizey : int
+        With of the frame.
+    source_id : str
+        Str that identifies the LSL stream
+    device_id : str
+        Name of the device
+    sensor_ids : List
+        Name of the sensors in the device
+    """
     def __init__(self, name="Intel", nchans=2, frames_buffer=None,
                  data_type="float32", stream_type='Experimental', srate=180,
                  sizex=1080, sizey=720,
                  source_id='', device_id="Intel_dev_1", stream_outlet=False,
-                 sensor_ids=['mock_Intel_rgb_1', 'mock_mbient_depth_1']):
+                 sensor_ids=['mock_Intel_rgb_1', 'mock_Intel_depth_1']):
 
         super().__init__(name, nchans, frames_buffer, stream_outlet,
                          data_type, stream_type, srate,
@@ -160,7 +214,8 @@ class MockCamera(MockLSLDevice):
         self.recording = False
 
     def prepare(self, name="temp_video"):
-        self.video_filename = "{}_flir_{}.avi".format(name, time.time())
+        """ Creates stream with child info and sets video filename."""
+        self.video_filename = "{}_flir_{}.bag".format(name, time.time())
         self.info.desc().append_child_value("filename", self.video_filename)
         self.stream_outlet_info()
 
@@ -171,6 +226,7 @@ class MockCamera(MockLSLDevice):
         self.video_thread.start()
 
     def record(self):
+        """ Generate frame data and push frame index into outlet stream."""
         self.recording = True
         self.frame_counter = 0
         print(f"{self.name} recording {self.video_filename}")
@@ -204,20 +260,23 @@ class MockCamera(MockLSLDevice):
 
 
 
-
-
 if __name__ == "__main__":
 
-    dev = MockLSLDevice(nchans=10, srate=100, data_type="float32")
-    with dev:
-        time.sleep(10)
+    from neurobooth_os.iout.marker import marker_stream
 
+    dev_stream = MockLSLDevice(name="mock", nchans=5)
+    with dev_stream:
+        time.sleep(10)
     mbient = MockMbient()
-    with mbient:
-        time.sleep(10)
-
     cam = MockCamera()
-    with cam:
-        time.sleep(10)
+    marker = marker_stream()
 
+    cam.start()
+    dev_stream.start()
+    mbient.start()
 
+    marker.push_sample([f"Stream-mark"])
+
+    cam.stop()
+    dev_stream.stop()
+    mbient.stop()
