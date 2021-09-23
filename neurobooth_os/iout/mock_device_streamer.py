@@ -25,6 +25,8 @@ class MockLSLDevice(object):
         Number of channels.
     frames_buffer : int | None
         If not None, data is sent in chunks. Default None
+    stream_outlet : bool
+        If true the outlet will be streamed and outlet id will be printed.
     ch_type : type
         data type of lsl stream
     stream_type : str
@@ -39,7 +41,7 @@ class MockLSLDevice(object):
         Name of the sensors in the device
     """
 
-    def __init__(self, name="mock",nchans=3, frames_buffer=None,
+    def __init__(self, name="mock", nchans=3, frames_buffer=None, stream_outlet=True,
                  data_type="float32", stream_type='Experimental', srate=100,
                  source_id='', device_id="mock_dev_1", sensor_ids=['mock_sens_1']):
 
@@ -52,6 +54,7 @@ class MockLSLDevice(object):
         self.oulet_id = source_id
         self.device_id = device_id
         self.sensor_ids = sensor_ids
+        self.stream_outlet = stream_outlet
 
         self.streaming = False
         self.frame_counter = 0
@@ -62,21 +65,23 @@ class MockLSLDevice(object):
         if self.oulet_id == '':
             self.oulet_id = str(uuid.uuid4())
 
-        info = StreamInfo(name=self.name,
-                          type=self.stream_type,
-                          channel_count = self.nchans,
-                          nominal_srate = self.srate,
-                          channel_format = self.data_type,
-                          source_id = self.oulet_id)
+        self.info = StreamInfo(name=self.name,
+                              type=self.stream_type,
+                              channel_count=self.nchans,
+                              nominal_srate=self.srate,
+                              channel_format=self.data_type,
+                              source_id=self.oulet_id)
 
         # info.desc().append_child_value("filename", filename)
-        info.desc().append_child_value("device_id", self.device_id)
-        info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
-        info.desc().append_child_value("fps", str(self.srate))
+        self.info.desc().append_child_value("device_id", self.device_id)
+        self.info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
+        self.info.desc().append_child_value("fps", str(self.srate))
+        if self.stream_outlet:
+            self.stream_outlet_info()
 
-        self.outlet = StreamOutlet(info, chunk_size=0, max_buffered=10)
+    def stream_outlet_info(self):
+        self.outlet = StreamOutlet(self.info, chunk_size=0, max_buffered=10)
         print(f"-OUTLETID-:{self.name}:{self.oulet_id}")
-
 
     def start(self):
         """Start mock LSL stream."""
@@ -85,14 +90,12 @@ class MockLSLDevice(object):
         # self.process = Process(target=self._initiate_stream, daemon=True)
         self.stream_thread.start()
 
-
     def stop(self):
         """Stop mock LSL stream."""
         if self.streaming:
             self.streaming = False
             self.stream_thread.join()
             # self.process.terminate()
-
 
     def __enter__(self):
         """Enter the context manager."""
@@ -102,7 +105,6 @@ class MockLSLDevice(object):
     def __exit__(self, type_, value, traceback):
         """Exit the context manager."""
         self.stop()
-
 
     def stream(self):
         """ Generate data and push smples into outlet stream"""
@@ -123,12 +125,99 @@ class MockLSLDevice(object):
               f" in {time.time() - t0 :.3} secs")
 
 
+class MockMbient(MockLSLDevice):
+    def __init__(self, name="Mbient", nchans=7, frames_buffer=None,
+                 data_type="float32", stream_type='Experimental', srate=100,
+                 source_id='', device_id="mock_dev_1",  stream_outlet=False,
+                 sensor_ids=['mock_mbient_acc_1', 'mock_mbient_grad_1']):
+
+        super().__init__(name, nchans, frames_buffer, stream_outlet,
+                         data_type, stream_type, srate,
+                         source_id, device_id, sensor_ids)
+
+        col_names = ["time_stamp", "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z"]
+        self.info.desc().append_child_value("col_names", str(col_names))
+        self.info.desc().append_child_value("device_id", device_id)
+        self.info.desc().append_child_value("sensor_ids", str(sensor_ids))
+
+        self.stream_outlet_info()
+
+
+
+class MockCamera(MockLSLDevice):
+    def __init__(self, name="Intel", nchans=2, frames_buffer=None,
+                 data_type="float32", stream_type='Experimental', srate=180,
+                 sizex=1080, sizey=720,
+                 source_id='', device_id="Intel_dev_1", stream_outlet=False,
+                 sensor_ids=['mock_Intel_rgb_1', 'mock_mbient_depth_1']):
+
+        super().__init__(name, nchans, frames_buffer, stream_outlet,
+                         data_type, stream_type, srate,
+                         source_id, device_id, sensor_ids)
+
+        self.sizex = sizex
+        self.sizey = sizey
+        self.recording = False
+
+    def prepare(self, name="temp_video"):
+        self.video_filename = "{}_flir_{}.avi".format(name, time.time())
+        self.info.desc().append_child_value("filename", self.video_filename)
+        self.stream_outlet_info()
+
+    def start(self, name="temp_video"):
+        """Start camera mock LSL stream."""
+        self.prepare(name)
+        self.video_thread = threading.Thread(target=self.record, daemon=True)
+        self.video_thread.start()
+
+    def record(self):
+        self.recording = True
+        self.frame_counter = 0
+        print(f"{self.name} recording {self.video_filename}")
+
+        stime, t0 = time.time(), time.time()
+        while self.recording:
+            frame = np.empty((self.sizex, self.sizey), dtype=np.uint8)
+            tsmp = pylsl.local_clock()
+
+            try:
+                self.outlet.push_sample([self.frame_counter, tsmp])
+            except:  # "OSError" from C++
+                print(f"Reopening {self.name} stream already closed")
+                self.stream_outlet_info()
+                self.outlet.push_sample([self.frame_counter, tsmp])
+
+            self.frame_counter += 1
+            stime += 1/self.srate
+            tsleep = stime - time.time()
+            if tsleep > 0:
+                time.sleep(tsleep)
+
+        print(f"{self.name} recording ended in {time.time() - t0 :.3} secs"
+              f", total frames captured: {self.frame_counter}")
+
+    def stop(self):
+        """Stop mock LSL stream."""
+        if self.recording:
+            self.recording = False
+            self.video_thread.join()
+
+
+
+
+
 if __name__ == "__main__":
 
     dev = MockLSLDevice(nchans=10, srate=100, data_type="float32")
-    # dev.start()
-    # time.sleep(10)
-    # dev.stop()
     with dev:
         time.sleep(10)
+
+    mbient = MockMbient()
+    with mbient:
+        time.sleep(10)
+
+    cam = MockCamera()
+    with cam:
+        time.sleep(10)
+
 
