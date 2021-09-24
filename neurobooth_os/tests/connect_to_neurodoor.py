@@ -83,11 +83,12 @@ def delete_mock_rows():
             primary_keys = ['study_id', 'collection_id', 'tech_obs_id',
                             'device_id', 'sensor_id', 'stimulus_id']
             for table_id, pk in zip(table_ids, primary_keys):
-                table = Table(table_id)
-                table.delete_rows(f'{pk} = mock_*')
+                table = Table(table_id, conn_mock)
+                table.delete_row(f'{pk} LIKE mock\%')
 
 
 def test_neurobooth():
     """Call function to test neurobooth."""
+    delete_mock_rows()
     create_mock_database()
     delete_mock_rows()
