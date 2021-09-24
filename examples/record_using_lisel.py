@@ -40,7 +40,8 @@ streamargs = [{'name': "mock_lsl"},
               {'name': "mock_camera"},
               {'name': "Marker"}]
 recording_folder = "~/labrecordings"
-session = liesl.Session(prefix="VvNn",
+subject = "demo_subject"
+session = liesl.Session(prefix=subject,
                         streamargs=streamargs, mainfolder=recording_folder)
 
 # %%
