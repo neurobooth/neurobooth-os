@@ -11,4 +11,4 @@ pandas~=1.2.3
 psutil~=5.8.0
 sshtunnel 
 PySimpleGUI
-opencv 
+opencv-python
