@@ -77,7 +77,7 @@ def Main():
             else:
                 streams = start_lsl_threads("presentation", collection_id, win=win)
                 fprint_flush()
-                streams['mouse'].start()
+                
                 if 'eye_tracker' in streams.keys():
                     streams['eye_tracker'].win = win
                 fprint_flush("Preparing devices")
