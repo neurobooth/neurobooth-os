@@ -16,4 +16,4 @@ pytest-cov==2.12.1
 mypy===0.910
 sshtunnel 
 PySimpleGUI
-opencv 
+opencv-python
