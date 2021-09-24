@@ -98,7 +98,7 @@ def Main():
 
             for task in tasks:
                 host_ctr, _ = node_info("control")
-                tech_obs_log_id = meta.make_new_tech_obs_id()
+                tech_obs_log_id = meta._make_new_tech_obs_row()
 
                 # Generates filename command for LabRecorder
                 lsl_cmd = ("filename {root:" + config.paths['data_out'] + "}"
