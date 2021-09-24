@@ -11,10 +11,25 @@ import psycopg2
 from neurobooth_terra import list_tables, create_table, drop_table, Table
 
 
-def get_conn():
-    connect_str = ("dbname='neurobooth' user='neuroboother' host='192.168.100.1' "
-                   "password='neuroboothrocks'")
-    conn = psycopg2.connect(connect_str)
+def get_conn(remote=False):
+
+    if remote:
+        from sshtunnel import SSHTunnelForwarder
+        tunnel = SSHTunnelForwarder(
+            'neurodoor.nmr.mgh.harvard.edu',
+            ssh_username='an512',
+            ssh_config_file='~/.ssh/config',
+            ssh_pkey='~/.ssh/id_rsa',
+            remote_bind_address=('192.168.100.1', 5432),
+            local_bind_address=('localhost', 6543))
+        host = tunnel.local_bind_host
+        port = tunnel.local_bind_port
+    else:
+        host = '192.168.100.1'
+        port = 5432
+    conn = psycopg2.connect(database='neurobooth', user='neuroboother',
+                            password='neuroboothrocks', host=host,
+                            port=port)
     return conn
 
 
@@ -52,18 +67,18 @@ def get_tech_obs_logs(conn):
     tech_obs = table_tech_obs_log.query("SELECT * from tech_obs_log")
     return tech_obs
 
+def make_new_tech_obs_row(conn):
+    table = Table("tech_obs_log", conn=conn)
+    cols = [cx for cx in table.column_names if cx!=table.primary_key]
+    vals = (None, )*len(cols)
+    return table.insert_rows(vals, cols=cols)
 
-def make_new_tech_obs_id():
-    conn = get_conn()
-    tech_obs = get_tech_obs_logs(conn)
-    if list(tech_obs.index) == []:
-        tech_id = "tech_log_1"
-    else:
-        tech_id_last = tech_obs.index[-1]
-        num = int(tech_id_last.split("_")[-1])
-        tech_id = f"tech_log_{num + 1}"
-    return tech_id
 
+def fill_tech_obs_row(tech_obs_id, vals, conn):
+    table = Table("tech_obs_log", conn=conn)
+    cols = [cx for cx in table.column_names if cx!=table.primary_key]   
+    table.update_row(tech_obs_id, vals, cols=cols)
+    
 
 def get_sens_file_logs(conn):
     table_sens_log = Table("sensor_file_log", conn=conn)
