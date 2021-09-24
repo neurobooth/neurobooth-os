@@ -43,9 +43,18 @@ class MockLSLDevice(object):
         Name of the sensors in the device
     """
 
-    def __init__(self, name="mock", nchans=3, frames_buffer=None, stream_outlet=True,
-                 data_type="float32", stream_type='Experimental', srate=100,
-                 source_id='', device_id="mock_dev_1", sensor_ids=['mock_sens_1']):
+    def __init__(
+            self,
+            name="mock",
+            nchans=3,
+            frames_buffer=None,
+            stream_outlet=True,
+            data_type="float32",
+            stream_type='Experimental',
+            srate=100,
+            source_id='',
+            device_id="mock_dev_1",
+            sensor_ids=['mock_sens_1']):
 
         self.nchans = nchans
         self.frames_buffer = frames_buffer
@@ -68,11 +77,11 @@ class MockLSLDevice(object):
             self.oulet_id = str(uuid.uuid4())
 
         self.info = StreamInfo(name=self.name,
-                              type=self.stream_type,
-                              channel_count=self.nchans,
-                              nominal_srate=self.srate,
-                              channel_format=self.data_type,
-                              source_id=self.oulet_id)
+                               type=self.stream_type,
+                               channel_count=self.nchans,
+                               nominal_srate=self.srate,
+                               channel_format=self.data_type,
+                               source_id=self.oulet_id)
 
         # info.desc().append_child_value("filename", filename)
         self.info.desc().append_child_value("device_id", self.device_id)
@@ -118,7 +127,7 @@ class MockLSLDevice(object):
             data = np.empty(self.nchans, dtype=self.data_type)
             self.outlet.push_sample(data)
             self.frame_counter += 1
-            stime += 1/self.srate
+            stime += 1 / self.srate
             tsleep = stime - time.time()
             if tsleep > 0:
                 time.sleep(tsleep)
@@ -153,22 +162,23 @@ class MockMbient(MockLSLDevice):
     sensor_ids : List
         Name of the sensors in the device
     """
+
     def __init__(self, name="Mbient", nchans=7, frames_buffer=None,
                  data_type="float32", stream_type='Experimental', srate=100,
-                 source_id='', device_id="mock_dev_1",  stream_outlet=False,
+                 source_id='', device_id="mock_dev_1", stream_outlet=False,
                  sensor_ids=['mock_mbient_acc_1', 'mock_mbient_grad_1']):
 
         super().__init__(name, nchans, frames_buffer, stream_outlet,
                          data_type, stream_type, srate,
                          source_id, device_id, sensor_ids)
 
-        col_names = ["time_stamp", "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z"]
+        col_names = ["time_stamp", "acc_x", "acc_y",
+                     "acc_z", "gyr_x", "gyr_y", "gyr_z"]
         self.info.desc().append_child_value("col_names", str(col_names))
         self.info.desc().append_child_value("device_id", device_id)
         self.info.desc().append_child_value("sensor_ids", str(sensor_ids))
 
         self.stream_outlet_info()
-
 
 
 class MockCamera(MockLSLDevice):
@@ -201,6 +211,7 @@ class MockCamera(MockLSLDevice):
     sensor_ids : List
         Name of the sensors in the device
     """
+
     def __init__(self, name="Intel", nchans=2, frames_buffer=None,
                  data_type="float32", stream_type='Experimental', srate=180,
                  sizex=1080, sizey=720,
@@ -240,13 +251,13 @@ class MockCamera(MockLSLDevice):
 
             try:
                 self.outlet.push_sample([self.frame_counter, tsmp])
-            except:  # "OSError" from C++
+            except BaseException:  # "OSError" from C++
                 print(f"Reopening {self.name} stream already closed")
                 self.stream_outlet_info()
                 self.outlet.push_sample([self.frame_counter, tsmp])
 
             self.frame_counter += 1
-            stime += 1/self.srate
+            stime += 1 / self.srate
             tsleep = stime - time.time()
             if tsleep > 0:
                 time.sleep(tsleep)
@@ -259,7 +270,6 @@ class MockCamera(MockLSLDevice):
         if self.recording:
             self.recording = False
             self.video_thread.join()
-
 
 
 if __name__ == "__main__":

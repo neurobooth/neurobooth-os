@@ -9,7 +9,7 @@ def get_fprint(current_node, target_node='control'):
     """Return function to capture prints for sending to target_node.
 
     Stdout is re-routed to target_node via socket connection.
-    
+
     Parameters
     ----------
     current_node : str
@@ -23,7 +23,7 @@ def get_fprint(current_node, target_node='control'):
         Print function that send message via socket to target_node.
     old_stdout : object
         original Stdout before re-routing.
-    
+
     """
     old_stdout = sys.stdout
     sys.stdout = mystdout = io.StringIO()
@@ -74,7 +74,7 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
     print("socket is listening")
 
     # Signal event to change init_serv button to green
-    fprint ("UPDATOR:-init_servs-")
+    fprint("UPDATOR:-init_servs-")
 
     # a forever loop until client wants to exit
     while True:
@@ -83,7 +83,7 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
         try:
             c, addr = s1.accept()
             data = c.recv(1024)
-        except:
+        except BaseException:
             continue
 
         if not data:
@@ -109,7 +109,7 @@ def get_messages_to_ctr(qu=None, host="", port=12347):
         try:
             c, addr = s.accept()
             data = c.recv(1024)
-        except:
+        except BaseException:
             print("Connection fault, closing ctr server")
             continue
 

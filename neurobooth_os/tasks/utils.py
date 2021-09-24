@@ -6,27 +6,29 @@ Created on Tue Jul 20 10:00:23 2021
 """
 
 from __future__ import absolute_import, division
+from psychopy import sound, core, event, monitors, visual
 
 import time
 import os.path as op
 
 from psychopy import visual
 from psychopy import prefs
-prefs.hardware['audioLib']=['pyo']
-from psychopy import sound, core, event, monitors, visual
+prefs.hardware['audioLib'] = ['pyo']
 
 
-def make_win(full_screen=True, monitor_width=55, monitor_distance=50):    
+def make_win(full_screen=True, monitor_width=55, monitor_distance=50):
     mon = monitors.getAllMonitors()[0]
-    customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
-    
+    customMon = monitors.Monitor(
+        'demoMon', width=monitor_width, distance=monitor_distance)
+
     mon_size = monitors.Monitor(mon).getSizePix()
     customMon.setSizePix(mon_size)
     customMon.saveMon()
-    
-    
-    win = visual.Window(mon_size, fullscr=full_screen, monitor=customMon, units='pix', color=(0,0,0))
+
+    win = visual.Window(mon_size, fullscr=full_screen,
+                        monitor=customMon, units='pix', color=(0, 0, 0))
     return win
+
 
 def create_text_screen(win, text):
     screen = visual.TextStim(win=win, name='',
@@ -45,7 +47,17 @@ def create_text_screen(win, text):
     return screen
 
 
-def present(win, screen, audio, wait_time, win_color=(0, 0, 0), waitKeys=True, first_screen=False):
+def present(
+        win,
+        screen,
+        audio,
+        wait_time,
+        win_color=(
+            0,
+            0,
+            0),
+    waitKeys=True,
+        first_screen=False):
     win.color = win_color
     if screen is not None:
         screen.draw()
@@ -58,6 +70,7 @@ def present(win, screen, audio, wait_time, win_color=(0, 0, 0), waitKeys=True, f
     if waitKeys:
         event.waitKeys()
     # win.flip()
+
 
 def play_video(win, mov, stop=True):
     mov.play()

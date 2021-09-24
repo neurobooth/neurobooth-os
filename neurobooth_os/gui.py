@@ -26,17 +26,18 @@ from neurobooth_os.netcomm import get_messages_to_ctr, socket_message
 from neurobooth_os.layouts import main_layout, win_gen, init_layout
 import neurobooth_os.iout.metadator as meta
 
+
 def get_session_info(values):
-     session_info = values
-     tasks = get_tasks(values)
-     return session_info, tasks
+    session_info = values
+    tasks = get_tasks(values)
+    return session_info, tasks
 
 
 def get_tasks(values):
-    tasks= []
+    tasks = []
     try:  # a key 0 is entered by some reason
         del values[0]
-    except:
+    except BaseException:
         pass
 
     for key, val in values.items():
@@ -44,8 +45,10 @@ def get_tasks(values):
             tasks.append(key)
     return tasks
 
+
 def task_to_obs(task, obs_list):
-    #match task to obs assuming taskname_task_n, obsname_obs taskname == obsname_obs
+    # match task to obs assuming taskname_task_n, obsname_obs taskname ==
+    # obsname_obs
     for obs in obs_list:
         if task.split("_")[0] in obs:
             obs_id = obs
@@ -53,16 +56,19 @@ def task_to_obs(task, obs_list):
 
 
 def get_outlet_ids(str_prt, dic_ids):
-    # Get outlet ids from ctr server, string format = Srv:-OUTLETID-:name:uuid "
+    # Get outlet ids from ctr server, string format = Srv:-OUTLETID-:name:uuid
+    # "
     if str_prt.split(":")[0] == "-OUTLETID-":
         try:
             dic_ids[str_prt.split(":")[1]] = str_prt.split(":")[2]
-        except:
+        except BaseException:
             print(f"Outlet id bad formatted: {str_prt}")
     return dic_ids
 
+
 serv_event = queue.Queue(maxsize=100)
-thr = threading.Thread(target=get_messages_to_ctr, args=(serv_event,),  daemon=True)
+thr = threading.Thread(target=get_messages_to_ctr,
+                       args=(serv_event,), daemon=True)
 thr.start()
 
 
@@ -84,14 +90,15 @@ def new_tech_log_dict(application_id="neurobooth_os"):
     tech_obs_log["staff_id"] = ""
     tech_obs_log["application_id"] = "neurobooth_os"
     tech_obs_log["site_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    tech_obs_log["event_array"] =[] # maker_name:timestamp
+    tech_obs_log["event_array"] = []  # maker_name:timestamp
     tech_obs_log["collection_id"] = ""
     # tech_obs_log["date_times"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # tech_obs_log_id, subject_id, study_id, tech_obs_id, staff_id, application_id, site_date, event_array, collection_id, date_times
     return tech_obs_log
 
-tech_obs_log =  new_tech_log_dict()
+
+tech_obs_log = new_tech_log_dict()
 
 
 def serv_data_received():
@@ -107,30 +114,34 @@ def serv_data_received():
             # remove server name
             serv_name = event_feedb.split(": ")[0]
             event_feedb = event_feedb.replace("STM: ", "").replace("ACQ: ", "")
-            print(serv_name,":::")
+            print(serv_name, ":::")
             print(event_feedb)
             if "-OUTLETID-" in event_feedb:
                 for prt in event_feedb.split("\n"):
                     stream_ids = get_outlet_ids(prt, stream_ids)
-                if stream_ids_old != stream_ids or ( len(stream_ids) and len(inlets)==0 ):
+                if stream_ids_old != stream_ids or (
+                        len(stream_ids) and len(inlets) == 0):
                     inlets = update_streams_fromID(stream_ids)
 
             if "UPDATOR:" in event_feedb:
-                #UPDATOR:-chars-
-                rout= re.search("UPDATOR:-([A-Za-z_]*)-", event_feedb)
+                # UPDATOR:-chars-
+                rout = re.search("UPDATOR:-([A-Za-z_]*)-", event_feedb)
                 for expr in rout.groups():
                     window.write_event_value('-update_butt-', expr)
             if "Initiating task:" in event_feedb:
-                task_inf = re.search("Initiating task: ([A-Za-z_0-9]*):([A-Za-z_1-9]*)", event_feedb)
+                task_inf = re.search(
+                    "Initiating task: ([A-Za-z_0-9]*):([A-Za-z_1-9]*)", event_feedb)
                 task_id, obs_id = task_inf.groups()
                 window["task_title"].update("Running Task:")
                 window["task_running"].update(task_id, background_color="red")
                 window['Start'].Update(button_color=('black', 'red'))
 
-            if "Finished task:"  in event_feedb:
-                task_inf = re.search("Finished task: ([A-Za-z_0-9]*)", event_feedb)
+            if "Finished task:" in event_feedb:
+                task_inf = re.search(
+                    "Finished task: ([A-Za-z_0-9]*)", event_feedb)
                 task_id = task_inf.groups()
-                window["task_running"].update(task_id, background_color="green")
+                window["task_running"].update(
+                    task_id, background_color="green")
                 window['Start'].Update(button_color=('black', 'green'))
 
         except queue.Empty:
@@ -140,11 +151,10 @@ def serv_data_received():
 conn = meta.get_conn()
 
 
-
-statecolors = {"init_servs" : ["green", "yellow"],
-               "Connect" :  ["green", "yellow"],
+statecolors = {"init_servs": ["green", "yellow"],
+               "Connect": ["green", "yellow"],
                }
-    # tech_obs_log_id,   tech_obs_id, staff_id, application_id, site_date, event_array,  date_times
+# tech_obs_log_id,   tech_obs_id, staff_id, application_id, site_date, event_array,  date_times
 event, values = window.read(.1)
 while True:
     event, values = window.read(.5)
@@ -154,7 +164,7 @@ while True:
         break
 
     ############################################################
-    ## Initial Window
+    # Initial Window
     ############################################################
     elif event == "study_id":
         print(event, values)
@@ -190,14 +200,15 @@ while True:
             window = win_gen(main_layout, sess_info)
 
     ############################################################
-    ## Main Window
+    # Main Window
     ############################################################
     elif event == "-update_butt-":
         if values['-update_butt-'] in list(statecolors):
             # 2 colors for init_servers and Connect, 1 connected, 2 connected
             if len(statecolors[values['-update_butt-']]):
                 color = statecolors[values['-update_butt-']].pop()
-                window[values['-update_butt-']].Update(button_color=('black', color))
+                window[values['-update_butt-']
+                       ].Update(button_color=('black', color))
             continue
         window[values['-update_butt-']].Update(button_color=('black', 'green'))
 
@@ -223,7 +234,6 @@ while True:
         serv_data_received()
         inlets = update_streams_fromID(stream_ids)
         dev_prepared = True
-
 
     elif event == 'plot':
         event = "None"
@@ -253,13 +263,14 @@ while True:
         serv_data_received()
         window['Start'].Update(button_color=('black', 'yellow'))
         if len(tasks):
-            start_tasks= True
-            running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
+            start_tasks = True
+            # task_name can be list of task1-task2-task3
+            running_task = "-".join(tasks)
             ctr_rec.task_presentation(running_task, session_info['subj_id'])
         else:
             print("Start button pressed but no task selected")
 
-    elif event ==  'Shut Down':
+    elif event == 'Shut Down':
         for k in list(inlets.keys()):
             if k in inlets.keys():
                 inlets[k].close_stream()
@@ -278,15 +289,13 @@ while True:
 
     # Get LSL inlets
     if inlet_keys != list(stream_ids):
-        inlet_keys =  list(stream_ids)
+        inlet_keys = list(stream_ids)
         inlet_keys_disp = "\n".join(inlet_keys)
         window['inlet_State'].update(inlet_keys_disp)
     # for k in stream_ids.keys():
     #     if k not in inlet_keys:
     #         inlet_keys.append(k)
     #         for inlet in inlet_keys:
-
-
 
 
 window.close()
