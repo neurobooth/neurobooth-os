@@ -4,7 +4,7 @@ from sshtunnel import SSHTunnelForwarder
 from neurobooth_os.mock import insert_mock_rows, delete_mock_rows
 
 
-def test_neurobooth():
+def test_neurobooth_mock():
     """Call function to test neurobooth."""
 
     ssh_username = 'mj513'
