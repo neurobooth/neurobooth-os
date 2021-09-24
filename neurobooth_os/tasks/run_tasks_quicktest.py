@@ -20,9 +20,11 @@ from neurobooth_os.tasks.utils import make_win
 
 os.chdir(r'C:\neurobooth-eel\\')
 
+
 def run_task(task_funct, task_karg={}):
     res = task_funct(**task_karg)
     return res
+
 
 streams = {}
 streams['marker'] = None
@@ -35,7 +37,6 @@ et.calibrate()
 subj_id = "test"
 
 
-
 et.filename = 'pursuit.edf'
 et.start(filename=et.filename)
 
@@ -46,23 +47,25 @@ et.recording = False
 t0 = time()
 et.tk.stopRecording()
 t1 = time()
-print(t1-t0)
+print(t1 - t0)
 
 et.tk.closeDataFile()
 
 t0 = time()
 et.tk.stopRecording()
 t1 = time()
-print(t1-t0)
+print(t1 - t0)
 
 t0 = time()
 et.stop()
 t1 = time()
-print(t1-t0)
+print(t1 - t0)
+
 
 def downl(et):
     et.tk.receiveDataFile(et.fname_temp, et.filename)
     print("done")
+
 
 x = threading.Thread(target=downl, args=(et,))
 
@@ -70,19 +73,18 @@ t0 = time()
 x = threading.Thread(target=downl, args=(et,))
 x.start()
 t1 = time()
-print(t1-t0)
+print(t1 - t0)
 
 
 print("after thread")
 
 
-task_karg ={"win": win,
-            "subj_id": subj_id,
-            "marker_outlet": streams['marker'],
-            "eye_tracker": et}
+task_karg = {"win": win,
+             "subj_id": subj_id,
+             "marker_outlet": streams['marker'],
+             "eye_tracker": et}
 
 res = run_task(pursuit, task_karg)
-
 
 
 # task_karg ={"win": win,

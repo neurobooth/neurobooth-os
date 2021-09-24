@@ -23,7 +23,7 @@ def server_com(qu=None, host="", port=12347):
         try:
             c, addr = s.accept()
             data = c.recv(1024)
-        except:
+        except BaseException:
             print("Connection fault, closing ctr server")
             continue
 

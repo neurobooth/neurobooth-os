@@ -30,7 +30,7 @@ tk.sendCommand("add_file_preamble_text 'Smooth pursuit demo'")
 tk.setOfflineMode()
 pylink.msecDelay(50)
 
-# Sample rate, 250, 500, 1000, or 2000 (depending on the tracker models, 
+# Sample rate, 250, 500, 1000, or 2000 (depending on the tracker models,
 # not all sample rate options are supported)
 tk.sendCommand('sample_rate 500')
 
@@ -50,7 +50,7 @@ customMon = monitors.Monitor('demoMon', width=55, distance=55)
 
 # Open a PsychoPy window
 win = visual.Window((SCN_W, SCN_H), fullscr=True,
-                    monitor=customMon, units='pix') 
+                    monitor=customMon, units='pix')
 
 
 # Request Pylink to use the PsychoPy window for calibration
@@ -64,9 +64,9 @@ pursuitClock = core.Clock()
 # Parameters for the Sinusoidal movement pattern
 # [amp_x, amp_y, phase_x, phase_y, angular_freq_x, angular_freq_y]
 mov_pars = [
-    [300, 300, pi*3/2, 0, 1/8.0, 1/8.0],
-    [300, 300, pi/2, 0, 1/8.0, 1/8.0]
-    ]
+    [300, 300, pi * 3 / 2, 0, 1 / 8.0, 1 / 8.0],
+    [300, 300, pi / 2, 0, 1 / 8.0, 1 / 8.0]
+]
 
 # Step 6: calibrate the tracker
 calib_prompt = 'Press Enter twice to calibrate the tracker'
@@ -80,6 +80,8 @@ tk.doTrackerSetup()
 print()
 # Step 7: Run through a couple of trials
 # define a function to group the code that will executed on each trial
+
+
 def run_trial(trial_duration, movement_pars):
     """ Run a smooth pursuit trial
 
@@ -103,16 +105,16 @@ def run_trial(trial_duration, movement_pars):
     tk.sendCommand("record_status_message 'Pursuit demo'")
 
     # Drift check/correction, params, x, y, draw_target, allow_setup
-    tar_x = amp_x*sin(phase_x)
-    tar_y = amp_y*sin(phase_y)
+    tar_x = amp_x * sin(phase_x)
+    tar_y = amp_y * sin(phase_y)
     target.pos = (tar_x, tar_y)
     target.draw()
     win.flip()
-    tk.doDriftCorrect(int(tar_x + SCN_W/2.0), int(SCN_H/2.0 - tar_y), 0, 1)
+    tk.doDriftCorrect(int(tar_x + SCN_W / 2.0), int(SCN_H / 2.0 - tar_y), 0, 1)
 
     # Put the tracker in idle mode before we start recording
     # tk.setOfflineMode()
-    
+
     # Start recording
     # params: file_sample, file_event, link_sampe, link_event (1-yes, 0-no)
     tk.startRecording(1, 1, 1, 1)
@@ -128,25 +130,25 @@ def run_trial(trial_duration, movement_pars):
         win.flip()
         flip_time = core.getTime()
         frame += 1
-        if frame == 1: 
+        if frame == 1:
             tk.sendMessage('Movement_onset')
             move_start = core.getTime()
         else:
-            _x = int(tar_x + SCN_W/2.0)
-            _y = int(SCN_H/2.0 - tar_y)
+            _x = int(tar_x + SCN_W / 2.0)
+            _y = int(SCN_H / 2.0 - tar_y)
             tar_msg = f'!V TARGET_POS target {_x}, {_y} 1 0'
             tk.sendMessage(tar_msg)
 
         time_elapsed = flip_time - move_start
 
         # update the target position
-        tar_x = amp_x*sin(2 * pi * freq_x * time_elapsed + phase_x)
-        tar_y = amp_y*sin(2 * pi * freq_y * time_elapsed + phase_y)
+        tar_x = amp_x * sin(2 * pi * freq_x * time_elapsed + phase_x)
+        tar_y = amp_y * sin(2 * pi * freq_y * time_elapsed + phase_y)
 
         # break if the time elapsed exceeds the trial duration
         if time_elapsed > trial_duration:
             break
-    
+
     # clear the window
     win.color = (0, 0, 0)
     win.flip()
@@ -167,6 +169,7 @@ def run_trial(trial_duration, movement_pars):
     # Send a 'TRIAL_RESULT' message to mark the end of the trial
     tk.sendMessage('TRIAL_RESULT')
 
+
 # Run a block of 2 trials, in random order
 test_list = mov_pars[:]
 random.shuffle(test_list)
@@ -175,7 +178,7 @@ for trial in test_list:
 
 # Step 8: Close the EDF data file and put the tracker in idle mode
 tk.setOfflineMode()  # put the tracker in Offline
-pylink.pumpDelay(100)  # wait for 100 ms 
+pylink.pumpDelay(100)  # wait for 100 ms
 tk.closeDataFile()
 
 # Step 9: Download EDF file to a local folder ('edfData')

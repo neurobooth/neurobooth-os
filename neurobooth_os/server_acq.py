@@ -1,4 +1,5 @@
-import socket, os
+import socket
+import os
 import io
 import sys
 from time import time, sleep
@@ -11,7 +12,6 @@ from neurobooth_os.iout.lsl_streamer import (start_lsl_threads, close_streams,
                                              reconnect_streams, connect_mbient)
 
 os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')
-
 
 
 def Main():
@@ -27,11 +27,11 @@ def Main():
             if not lowFeed_running:
                 lowFeed = VidRec_Brio(camindex=config.cam_inx["lowFeed"],
                                       doPreview=True)
-                fprint_flush ("LowFeed running")
+                fprint_flush("LowFeed running")
                 lowFeed_running = True
             else:
                 fprint_flush(f"-OUTLETID-:Webcam:{lowFeed.preview_outlet_id}")
-                fprint_flush ("Already running low feed video streaming")
+                fprint_flush("Already running low feed video streaming")
 
         elif "prepare" in data:
             # data = "prepare:collection_id:str(tech_obs_log_dict)"
@@ -49,7 +49,7 @@ def Main():
         elif "dev_param_update" in data:
             None
 
-        elif "record_start" in data:  #-> "record_start:FILENAME" FILENAME = {subj_id}_{task}
+        elif "record_start" in data:  # -> "record_start:FILENAME" FILENAME = {subj_id}_{task}
             fprint_flush("Starting recording")
             fname = config.paths['data_out'] + data.split(":")[-1]
             for k in streams.keys():
@@ -90,4 +90,3 @@ def Main():
 
 
 Main()
-

@@ -7,15 +7,18 @@ Created on Fri Aug 13 15:07:20 2021
 
 import math
 
+
 def deg2pix(visual_angle, cmdist, pixpercm):
     cmsize = math.tan(math.radians(visual_angle)) * float(cmdist)
     pixels = cmsize * pixpercm
     return pixels
 
+
 def pix2deg(pixels, cmdist, pixpercm):
     cmsize = pixels / pixpercm
-    deg = math.degrees(math.atan(cmsize/cmdist))
+    deg = math.degrees(math.atan(cmsize / cmdist))
     return deg
+
 
 def peak_vel2freq(peak_vel, amplitude_deg):
     # max_vel: sets the peak velocity of the target
@@ -27,7 +30,3 @@ def peak_vel2freq(peak_vel, amplitude_deg):
     # f = peak_vel / 2π*amplitude
     freq = peak_vel / (2 * math.pi * amplitude_deg)
     return freq
-
-
-
-

@@ -15,7 +15,7 @@ with SSHTunnelForwarder(
     ssh_config_file='~/.ssh/config',
     ssh_pkey='~/.ssh/id_rsa',
     remote_bind_address=('192.168.100.1', 5432),
-    local_bind_address=('localhost', 6543)) as tunnel:
+        local_bind_address=('localhost', 6543)) as tunnel:
 
     with psycopg2.connect(database='neurobooth', user='neuroboother',
                           password='neuroboothrocks', host=tunnel.local_bind_host,

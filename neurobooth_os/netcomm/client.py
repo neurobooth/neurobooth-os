@@ -17,10 +17,10 @@ def socket_message(message, node_name, wait_data=0):
     """
     def connect():
         # t0 = time()
-        s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # connect to server on local computer
-        s.connect((host,port))
+        s.connect((host, port))
         # print(f"* connected {time()- t0}")
         # t0 = time()
         s.send(message.encode('ascii'))
@@ -28,7 +28,7 @@ def socket_message(message, node_name, wait_data=0):
         # t0 = time()
         data = None
         if wait_data:
-           data = wait_socket_data(s)
+            data = wait_socket_data(s)
 
         s.close()
         # print(f"closed {time()- t0}")
@@ -38,7 +38,7 @@ def socket_message(message, node_name, wait_data=0):
 
     try:
         data = connect()
-    except:# TimeoutError:
+    except BaseException:  # TimeoutError:
         print(f"{node_name} socket connexion timed out, trying to restart server")
         pid = start_server(node_name)
         # print(f"{pid} on server {node_name} created")
@@ -53,19 +53,19 @@ def socket_time(node_name, print_flag=1, time_out=3):
 
     message = "time_test"
     t0 = time()
-    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(time_out)
 
     try:
         # connect to server on local computer
-        s.connect((host,port))
-    except:
+        s.connect((host, port))
+    except BaseException:
         print(f"{node_name} socket connexion timed out, trying to restart server")
         start_server(node_name)
         t0 = time()
-        s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        s.settimeout(time_out*2)
-        s.connect((host,port))
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(time_out * 2)
+        s.connect((host, port))
 
     s.send(message.encode('ascii'))
     # messaga received from server
@@ -73,14 +73,14 @@ def socket_time(node_name, print_flag=1, time_out=3):
     s.close()
 
     t1 = time()
-    time_send = float( data.split("_")[-1])
+    time_send = float(data.split("_")[-1])
     time_1way = time_send - t0
     time_2way = t1 - t0
 
     if print_flag:
         print(f"Return took {time_2way}, sent {time_1way}")
 
-    return  time_2way, time_1way
+    return time_2way, time_1way
 
 
 def node_info(node_name):
@@ -88,18 +88,18 @@ def node_info(node_name):
     if node_name == "acquisition":
         host = 'acq'
     elif node_name == "presentation":
-         host = 'stm'
+        host = 'stm'
     elif node_name == "control":
-         host = 'ctr'
+        host = 'ctr'
     elif node_name == "dummy_acq":
-         host = 'localhost'
-         port = 80
+        host = 'localhost'
+        port = 80
     elif node_name == "dummy_stm":
-         host = 'localhost'
-         port = 81
+        host = 'localhost'
+        port = 81
     elif node_name == "dummy_ctr":
-         host = 'localhost'
-         port = 82
+        host = 'localhost'
+        port = 82
     return host, port
 
 
@@ -124,7 +124,7 @@ def start_server(node_name, save_pid_txt=True):
     First remote processes are logged, then a scheduled task is created to run
     the remote batch file, then task runs, and new python PIDs are captured with
     the option to save to save_pid_txt. If saved, when the function is called it
-    will kill the PIDs in the file. 
+    will kill the PIDs in the file.
 
     Parameters
     ----------
@@ -139,7 +139,7 @@ def start_server(node_name, save_pid_txt=True):
         Python process identifiers found in remote computer after server started.
     """
 
-    if node_name in [ "acquisition", "presentation"]:
+    if node_name in ["acquisition", "presentation"]:
         s = secrets[node_name]
     else:
         print("Not a known node name")
@@ -153,8 +153,9 @@ def start_server(node_name, save_pid_txt=True):
     pids_old = get_python_pids(out)
     # print(f"2 - {time() - tic}")
 
-    cmd_str = f"SCHTASKS /S {s['name']} /U {s['name']}\{s['user']} /P {s['pass']}"
-    cmd_1 = cmd_str +  f" /Create /TN TaskOnEvent /TR {s['bat']} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
+    cmd_str = f"SCHTASKS /S {s['name']} /U {s['name']}\\{s['user']} /P {s['pass']}"
+    cmd_1 = cmd_str + \
+        f" /Create /TN TaskOnEvent /TR {s['bat']} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
     cmd_2 = cmd_str + ' /Run /TN "TaskOnEvent"'
     # Cmd1 creates a scheduled task, cmd2 initiates it
     out = os.popen(cmd_1).read()
@@ -166,12 +167,12 @@ def start_server(node_name, save_pid_txt=True):
     pids_new = get_python_pids(out)
     # print(f"4 - {time() - tic}")
 
-    pid =  [p for p in pids_new if p not in pids_old ]
+    pid = [p for p in pids_new if p not in pids_old]
     print(f"{node_name.upper()} server initiated with pid {pid}")
 
     if save_pid_txt:
-        with open("server_pids.txt","a") as f:
-            f.write( f"{pid}|{node_name}|{time()}\n")
+        with open("server_pids.txt", "a") as f:
+            f.write(f"{pid}|{node_name}|{time()}\n")
     return pid
 
 
@@ -179,7 +180,7 @@ def get_python_pids(output_tasklist):
     # From popen tasklist output
 
     procs = output_tasklist.split("\n")
-    re_pyth = re.compile("python.exe[\s]*([0-9]*)")
+    re_pyth = re.compile("python.exe[\\s]*([0-9]*)")
 
     pyth_pids = []
     for prc in procs:
@@ -191,44 +192,44 @@ def get_python_pids(output_tasklist):
 
 def kill_remote_pid(pids, node_name):
 
-    if node_name in [ "acquisition", "presentation"]:
+    if node_name in ["acquisition", "presentation"]:
         s = secrets[node_name]
     else:
         print("Not a known node name")
         return None
 
-    if isinstance(pids, str): pids = [pids]
+    if isinstance(pids, str):
+        pids = [pids]
 
     cmd = f"taskkill /S {s['name']} /U {s['user']} /P {s['pass']} /PID %s"
     for pid in pids:
-        out = os.popen(cmd %pid)
+        out = os.popen(cmd % pid)
         print(out.read())
     return
 
 
 def kill_pid_txt(txt_name="server_pids.txt", node_name=None):
 
-     if not os.path.exists(txt_name):
+    if not os.path.exists(txt_name):
         return
 
-     with open(txt_name,"r+") as f:
-         Lines = f.readlines()
+    with open(txt_name, "r+") as f:
+        Lines = f.readlines()
 
-         if len(Lines):
-             print(f"Closing {len(Lines)} remote processes")
+        if len(Lines):
+            print(f"Closing {len(Lines)} remote processes")
 
-         new_lines = []
-         for line in Lines:
+        new_lines = []
+        for line in Lines:
             pid, node, tsmp = line.split("|")
             if node_name is not None and node_name != node:
                 new_lines.append(line)
                 continue
             kill_remote_pid(eval(pid), node)
 
-         f.seek(0)
-         if len(new_lines):
-             f.writelines(new_lines)
-         else:
-             f.write("")
-         f.truncate()
-
+        f.seek(0)
+        if len(new_lines):
+            f.writelines(new_lines)
+        else:
+            f.write("")
+        f.truncate()

@@ -1,12 +1,8 @@
 from psychopy import sound, visual, monitors, core, event
 
 
-
-
-
-
 class Timing_Test():
-    def  __init__(self, win=None, event_marker=None):
+    def __init__(self, win=None, event_marker=None):
         SCN_W, SCN_H = (1920, 1080)
         monitor_width = 55
         monitor_distance = 50
@@ -15,9 +11,8 @@ class Timing_Test():
         customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
         if win is None:
             win = visual.Window((SCN_W, SCN_H), fullscr=full_screen,
-                            monitor=customMon, units='pix')
+                                monitor=customMon, units='pix')
         target = visual.Rect(win, size=[1920, 1080], fillColor='white')
-
 
         # if event_marker is None:
         #     event_marker = marker_stream()
@@ -36,7 +31,6 @@ class Timing_Test():
             win.color = (0, 0, 0)
             win.flip()
 
-
             # keys = event.getKeys(keyList=['escape'])
             # if keys:
             #     win.setMouseVisible(True)
@@ -49,5 +43,3 @@ class Timing_Test():
             #     break
         # win.close()
         # core.quit()
-
-

@@ -15,14 +15,14 @@ It illustrates the following use cases:
 - online postprocessing
 """
 
+
+# Basic parameters for the plotting window
 import numpy as np
 import math
 import pylsl
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 from typing import List
-
-# Basic parameters for the plotting window
 plot_duration = 15  # how many seconds of data to show
 update_interval = 100  # ms between screen updates
 pull_interval = 50  # ms between each pull operation
@@ -30,6 +30,7 @@ pull_interval = 50  # ms between each pull operation
 
 class Inlet:
     """Base class to represent a plottable inlet"""
+
     def __init__(self, info: pylsl.StreamInfo):
         # create an inlet and connect it to the outlet we found earlier.
         # max_buflen is set so data older the plot_duration is discarded
@@ -63,11 +64,16 @@ class DataInlet(Inlet):
         super().__init__(info)
         # calculate the size for our buffer, i.e. two times the displayed data
         bufsize = (2 * math.ceil(info.nominal_srate() * plot_duration), info.channel_count())
-        bufsize = ( 100, info.channel_count())
+        bufsize = (100, info.channel_count())
         self.buffer = np.empty(bufsize, dtype=self.dtypes[info.channel_format()])
         empty = np.array([])
         # create one curve object for each channel/line that will handle displaying the data
-        self.curves = [pg.PlotCurveItem(x=empty, y=empty, autoDownsample=True) for _ in range(self.channel_count)]
+        self.curves = [
+            pg.PlotCurveItem(
+                x=empty,
+                y=empty,
+                autoDownsample=True) for _ in range(
+                self.channel_count)]
         for curve in self.curves:
             plt.addItem(curve)
 
@@ -103,11 +109,12 @@ class DataInlet(Inlet):
                 # replace the old data
                 self.curves[ch_ix].setData(this_x, this_y)
         else:
-            print("no ts samples")    
+            print("no ts samples")
 
 
 class MarkerInlet(Inlet):
     """A MarkerInlet shows events that happen sporadically as vertical lines"""
+
     def __init__(self, info: pylsl.StreamInfo):
         super().__init__(info)
 
@@ -120,7 +127,6 @@ class MarkerInlet(Inlet):
                     plt.addItem(pg.InfiniteLine(ts, angle=90, movable=False, label=string[0]))
 
 
-
 def main():
     # firstly resolve all streams that could be shown
     inlets: List[Inlet] = []
@@ -128,16 +134,15 @@ def main():
     print("looking for streams")
     streams = pylsl.resolve_streams()
 
-    #QtGui.QApplication.setGraphicsSystem('raster')
+    # QtGui.QApplication.setGraphicsSystem('raster')
     app = pg.mkQApp()
     mw = QtGui.QMainWindow()
     mw.setWindowTitle('LSL plotter')
-    mw.resize(800,800)
+    mw.resize(800, 800)
     cw = QtGui.QWidget()
     mw.setCentralWidget(cw)
     l = QtGui.QVBoxLayout()
     cw.setLayout(l)
-
 
     mw.show()
 
@@ -145,7 +150,7 @@ def main():
 
     # iterate over found streams, creating specialized inlet objects that will
     # handle plotting the data
-    for info in streams:          
+    for info in streams:
         if info.type() == 'Markers':
             if info.nominal_srate() != pylsl.IRREGULAR_RATE \
                     or info.channel_format() != pylsl.cf_string:
@@ -154,15 +159,15 @@ def main():
             inlets.append(MarkerInlet(info))
         # elif info.nominal_srate() != pylsl.IRREGULAR_RATE \
         #         and info.channel_format() != pylsl.cf_string:
-            
-        elif info.name()  in [ "Mouse", "Acc"]:
+
+        elif info.name() in ["Mouse", "Acc"]:
             print('Adding data inlet: ' + info.name())
-            
-            name = info.name() 
+
+            name = info.name()
             # store widget in dic for later
-            plttrs[name]= pg.PlotWidget(name=name)
+            plttrs[name] = pg.PlotWidget(name=name)
             l.addWidget(plttrs[name])
-       
+
             inlets.append(DataInlet(info, plttrs[name]))
         else:
             print('Don\'t know what to do with stream ' + info.name())
