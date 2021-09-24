@@ -15,7 +15,7 @@ def marker_stream(name='Marker'):
 
     Returns
     -------
-    stream outlet object
+    outlet_marker : stream outlet object
         return the stream outlet object created by StreamOutlet
     """
 
