@@ -26,14 +26,20 @@ def insert_mock_rows(conn_mock):
     table = Table('collection', conn_mock)
     table.insert_rows([('mock_collection', False, '{mock_obs}', None)])
 
+ 
+  # create mock inst row
+   # parameters_dict =add a parameter json  
     table = Table('stimulus', conn_mock)
-    table.insert_rows([('mock_test_1', 'description', 2, None,
-                        'stream_python',
-                        'tasks.test.mock_test.py::mock_stim()',
-                        None, None)])
+    table.insert_rows([('mock_test_1', 'description', 2, 5,                        
+                        'mock.mock_task.py::simulated_task()', parameters_dict)],
+                        cols=['stimulus_id', 'stimulus_description', 'num_iterations', "duration",
+                         'stimulus_file', 'parameters'])
+
+    # create mock inst row
+   # instruction_id = Table('instruction', conn_mock).insert_rows([(7,)], cols=['instruction_id'])
 
     table = Table('tech_obs_data', conn_mock)
-    table.insert_rows([('mock_obs', None, 'testing', None, None, None,
+    table.insert_rows([('mock_obs', None, 'testing', None, instruction_id, None,
                         'mock_test_1',
                         '{mock_dev_1, mock_mbient_1, mock_Intel_1}',
                         None, None, None, None,
