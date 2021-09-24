@@ -5,8 +5,20 @@ from pylsl import StreamInfo, StreamOutlet
 
 
 def marker_stream(name='Marker'):
-    ''' Create marker stream to be pushed when needed with a string format:
-        "%s_%d_%timestamp" aka code string, number, time'''
+    """Create marker stream to be pushed when needed with a string format:
+        "%s_%d_%timestamp" aka code string, number, time
+
+    Parameters
+    ----------
+    name : str, optional
+        marker stream name, by default 'Marker'
+
+    Returns
+    -------
+    stream outlet object
+        return the stream outlet object created by StreamOutlet
+    """
+
 
     # Setup outlet stream infos
     oulet_id = str(uuid.uuid4())
