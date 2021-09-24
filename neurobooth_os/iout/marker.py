@@ -4,13 +4,13 @@ import uuid
 from pylsl import StreamInfo, StreamOutlet
 
 
-def marker_stream():
+def marker_stream(name='Marker'):
     ''' Create marker stream to be pushed when needed with a string format:
         "%s_%d_%timestamp" aka code string, number, time'''
 
     # Setup outlet stream infos
     oulet_id = str(uuid.uuid4())
-    stream_info_marker = StreamInfo('Marker', 'Markers', 1,
+    stream_info_marker = StreamInfo(name, 'Markers', 1,
                                     channel_format='string', source_id=oulet_id)
 
     # Create outlets
