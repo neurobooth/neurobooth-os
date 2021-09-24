@@ -63,6 +63,8 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
     -------
     data : str
         Yields the data.
+    conn : callable
+        Socket connector for sending back data.
     """
 
     s1.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -81,8 +83,8 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
 
         # establish connection with client
         try:
-            c, addr = s1.accept()
-            data = c.recv(1024)
+            conn, addr = s1.accept()
+            data = conn.recv(1024)
         except:
             continue
 
@@ -92,7 +94,7 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
             break
 
         data = data.decode("utf-8")
-        yield data
+        yield data, conn
 
 
 def get_messages_to_ctr(qu=None, host="", port=12347):

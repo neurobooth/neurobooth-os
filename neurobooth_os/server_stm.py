@@ -51,7 +51,7 @@ def Main():
     win = utl.make_win(full_screen=False)
     streams, screen_running = {}, False
 
-    for data in get_client_messages(s1, fprint, old_stdout):
+    for data, conn in get_client_messages(s1, fprint_flush, old_stdout):
 
         if "scr_stream" in data:
             if not screen_running:
@@ -152,7 +152,7 @@ def Main():
 
         elif "time_test" in data:
             msg = f"ping_{time()}"
-            c.send(msg.encode("ascii"))
+            conn.send(msg.encode("ascii"))
         elif "connect_mbient" in data:
 
             mbient = connect_mbient()
