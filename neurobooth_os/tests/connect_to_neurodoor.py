@@ -10,7 +10,7 @@ dtypes = dict()
 
 ssh_username = 'mj513'
 
-def create_mock_database(db_name):
+def create_mock_database():
     """Create mock database using SSH Tunnel.
 
     Note: You must be on Partners VPN
@@ -31,28 +31,28 @@ def create_mock_database(db_name):
             table_ids = list_tables(conn_mock)
 
             table = Table('study', conn_mock)
-            table.insert_row(('mock_study', 0, 'mock_study', 0, 0, '{mock_collection}', None, None))
+            table.insert_rows(('mock_study', 0, 'mock_study', 0, 0, '{mock_collection}', None, None))
 
             table = Table('collections', conn_mock)
-            table.insert_row(('mock_collection', False, '{mock_obs}', None))
+            table.insert_rows(('mock_collection', False, '{mock_obs}', None))
 
             table = Table('tech_obs_data', conn_mock)
-            table.insert_row(('mock_obs', None, 'testing', None, None, None, 'mock_test_1', '{mock_dev_1, mock_mbient_1, mock_Intel_1}'))
+            table.insert_rows(('mock_obs', None, 'testing', None, None, None, 'mock_test_1', '{mock_dev_1, mock_mbient_1, mock_Intel_1}'))
 
             table = Table('devices')
-            table.insert_row(('mock_dev_1', 0, False, 0, 'mock', 'mock_make', 'neurobooth inc', 0, '{mock_sens_1}'))
-            table.insert_row(('mock_mbient_1', 0, False, 0, 'mock', 'mock_make', 'neurobooth inc', 0, '{mock_mbient_acc_1, mock_mbient_grad_1}'))
-            table.insert_row(('mock_Intel_1', 0, False, 0, 'mock', 'mock_make', 'neurobooth inc', 0, '{mock_Intel_rgb_1, mock_Intel_depth_1}'))
+            table.insert_rows(('mock_dev_1', 0, False, 0, 'mock', 'mock_make', 'neurobooth inc', 0, '{mock_sens_1}'))
+            table.insert_rows(('mock_mbient_1', 0, False, 0, 'mock', 'mock_make', 'neurobooth inc', 0, '{mock_mbient_acc_1, mock_mbient_grad_1}'))
+            table.insert_rows(('mock_Intel_1', 0, False, 0, 'mock', 'mock_make', 'neurobooth inc', 0, '{mock_Intel_rgb_1, mock_Intel_depth_1}'))
 
             table = Table('sensor', conn_mock)
-            table.insert_row(('mock_sens_1', 100, None, None, 'edf', None))
-            table.insert_row(('mock_mbient_acc_1', 100, None, None, 'edf', None))
-            table.insert_row(('mock_mbient_grad_1', 100, None, None, 'edf', None))
-            table.insert_row(('mock_Intel_rgb_1', 180, 1080, 720, 'bag', None))
-            table.insert_row(('mock_Intel_depth_1', 180, 1080, 720, 'bag', None))
+            table.insert_rows(('mock_sens_1', 100, None, None, 'edf', None))
+            table.insert_rows(('mock_mbient_acc_1', 100, None, None, 'edf', None))
+            table.insert_rows(('mock_mbient_grad_1', 100, None, None, 'edf', None))
+            table.insert_rows(('mock_Intel_rgb_1', 180, 1080, 720, 'bag', None))
+            table.insert_rows(('mock_Intel_depth_1', 180, 1080, 720, 'bag', None))
 
             table = Table('stimulus', conn_mock)
-            table.insert_row(('mock_test_1', 'description', 2, None, 'stream_python', 'tasks.test.mock_test.py::mock_stim()',
+            table.insert_rows(('mock_test_1', 'description', 2, None, 'stream_python', 'tasks.test.mock_test.py::mock_stim()',
                               None, None))
 
 
