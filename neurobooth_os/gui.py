@@ -16,8 +16,6 @@ from datetime import datetime
 import numpy as np
 import matplotlib
 
-import cv2
-import pylsl
 import PySimpleGUI as sg
 
 import neurobooth_os.main_control_rec as ctr_rec
@@ -69,7 +67,14 @@ thr = threading.Thread(target=get_messages_to_ctr, args=(serv_event,), daemon=Tr
 thr.start()
 
 
-window = win_gen(init_layout)
+REMOTE=False, 
+DATABASE='neurobooth'
+
+conn = meta.get_conn(remote=REMOTE, database=DATABASE)
+
+window = win_gen(init_layout, conn)
+
+
 
 plttr = stream_plotter()
 
@@ -142,7 +147,7 @@ def serv_data_received():
             break
 
 
-conn = meta.get_conn()
+
 
 
 statecolors = {"init_servs": ["green", "yellow"],
