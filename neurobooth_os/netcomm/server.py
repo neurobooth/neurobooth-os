@@ -88,9 +88,10 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
         except BaseException:
             continue
 
-        if not data:
-            sys.stdout = old_stdout
+        if not data:            
             print("Connection fault, closing Stim server")
+            sys.stdout = old_stdout
+            s1.close()
             break
 
         data = data.decode("utf-8")
