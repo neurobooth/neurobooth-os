@@ -69,15 +69,14 @@ def delete_mock_rows():
         with psycopg2.connect(database='mock_neurobooth', user='neuroboother',
                               password='neuroboothrocks', host=tunnel.local_bind_host,
                               port=tunnel.local_bind_port) as conn_mock:
-            table_ids = ['study', 'collections', 'tech_obs_data']
-            for table_id in table_ids:
-                table = Table('study')
-                table.delete_rows(f'{table.primary_key} = mock_study')
-            
-            table = Table('collections')
-            table.delete_rows('mock_collection')
+            table_ids = ['study', 'collections', 'tech_obs_data', 'devices',
+                         'sensors', 'stimulus']
+            primary_keys = ['study_id', 'collection_id', 'tech_obs_id',
+                            'device_id', 'sensor_id', 'stimulus_id']
+            for table_id, pk in zip(table_ids, primary_keys):
+                table = Table(table_id)
+                table.delete_rows(f'{pk} = mock_*')
 
-            table = Table('tech_obs_data')
 
 def test_neurobooth():
     """Call function to test neurobooth."""
