@@ -156,11 +156,7 @@ class MockMbient(MockLSLDevice):
 
     def __init__(self, name="Mbient", nchans=7, frames_buffer=None,
                  data_type="float32", stream_type='Experimental', srate=100,
-<<<<<<< HEAD
-                 source_id='', device_id="mock_dev_1", stream_outlet=False,
-=======
-                 source_id='', device_id="mock_mbient_1",  stream_outlet=False,
->>>>>>> More
+                 source_id='', device_id="mock_mbient_1", stream_outlet=False,
                  sensor_ids=['mock_mbient_acc_1', 'mock_mbient_grad_1']):
 
         super().__init__(name, nchans, frames_buffer, stream_outlet,
