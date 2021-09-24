@@ -13,8 +13,8 @@ import psutil
 
 import numpy as np
 
-from neurobooth import config
-from neurobooth.netcomm import socket_message, socket_time, start_server, kill_pid_txt
+from neurobooth_os import config
+from neurobooth_os.netcomm import socket_message, socket_time, start_server, kill_pid_txt
 
 
 def start_servers(nodes=["acquisition", "presentation"]):

@@ -23,44 +23,24 @@ def space(n=10):
     return sg.Text(' ' * n)
 
 
-# meta.get_study_ids(meta.get_conn())
-
-def init_layout(exclusion=None, frame_sz=(320, 240)):
-
+def init_layout(conn, exclusion=None, frame_sz=(320, 240)):
+   
     sg.theme('Dark Grey 9')
-    sg.set_options(element_padding=(0, 0))
+    sg.set_options(element_padding=(0, 0),)
     layout = [
-        [
-            sg.Text(
-                'Subject ID:', pad=(
-                    (0, 0), 0), justification='left'), sg.Combo(
-                meta.get_subj_ids(
-                    meta.get_conn()), default_value="test", key='subj_id', size=(
-                    44, 1), background_color='white', text_color='black')], [
-            space()], [
-            sg.Text(
-                'Staff ID:', pad=(
-                    (0, 0), 0), justification='left'), sg.Input(
-                default_text="AN", key='staff_id', size=(
-                    44, 1), background_color='white', text_color='black')], [
-            space()], [
-            sg.T("Study ID"), sg.Combo(
-                meta.get_study_ids(
-                    meta.get_conn()), key='study_id', enable_events=True, size=(
-                    44, 1))], [
-            space()], [
-            sg.T("Collection ID"), sg.Combo(
-                "", key='collection_id', enable_events=True, size=(
-                    44, 1))], [
-            space()], [
-            sg.Text('Task combo: '), sg.Combo(
-                "", size=(
-                    64, 1), key="_tasks_")], [
-            space()], [
-            space(), sg.ReadFormButton(
-                'Save', button_color=(
-                    'white', 'black'), key="_init_sess_save_")], ]
-
+        [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Combo(meta.get_subj_ids(conn), default_value="test", key='subj_id', size=(44, 1), background_color='white', text_color='black')],
+        [space()],
+        [sg.Text('Staff ID:', pad=((0, 0), 0), justification='left'),  sg.Input(default_text="AN", key='staff_id', size=(44, 1), background_color='white', text_color='black')],
+        [space()],
+        [sg.T("Study ID"),  sg.Combo(meta.get_study_ids(conn), key='study_id', enable_events=True, size=(44, 1))],
+        [space()],  
+        [sg.T("Collection ID"),  sg.Combo("", key='collection_id', enable_events=True, size=(44, 1))],
+        [space()],   
+        [sg.Text('Task combo: '), sg.Combo("",  size=(64, 1), key="_tasks_")],
+        [space()],     
+        [space(), sg.ReadFormButton('Save', button_color=('white', 'black'), key="_init_sess_save_")],              
+        ]
+    
     return layout
 
 
@@ -77,7 +57,6 @@ def task_mapping(task_name):
 def main_layout(sess_info, frame_sz=(320, 240)):
     frame_cam = np.ones(frame_sz)
     imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
-    sess_info, = sess_info
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0))
 
@@ -103,9 +82,9 @@ def main_layout(sess_info, frame_sz=(320, 240)):
         [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
                  auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))],
         [space()],
-        # [space()],
-        [space(1), lay_butt('Initiate servers', 'init_servs'),
-         space(5), lay_butt('Display', 'RTD'),
+
+        [space(1), lay_butt('Initiate servers', 'init_servs'),         
+         space(5), lay_butt('Display', 'RTD'), 
          space(5), lay_butt('Connect Devices', 'Connect'),
          space(5), lay_butt('Plot Devices', 'plot'),
          ],
@@ -131,7 +110,7 @@ def main_layout(sess_info, frame_sz=(320, 240)):
 
 def win_gen(layout, *args):
     window = sg.Window("Neurobooth",
-                       layout(args),
+                       layout(*args), 
                        # keep_on_top=True,
                        location=(0, 0),
                        default_element_size=(10, 1),
@@ -143,20 +122,3 @@ def win_gen(layout, *args):
                        default_button_element_size=(12, 1))
     return window
 
-# window = win_gen(init_layout)
-
-
-# inlet_keys = []
-# while True:
-#     event, values = window.read()
-#     print(event, values)
-#     if event == sg.WIN_CLOSED:
-#         break
-#     if event == "_init_sess_save_":
-#         if values["_tasks_"] == "":
-#             sg.PopupError('No task combo')
-#         else:
-#             sess_info = values
-#             window.close()
-#             window = win_gen(main_layout, sess_info)
-# window.close()
