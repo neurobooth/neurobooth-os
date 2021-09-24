@@ -46,6 +46,7 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None):
         from iout.eyelink_tracker import EyeTracker
         
         streams['mouse'] = MouseStream()
+        streams['mouse'].start()
         streams['marker'] =  marker_stream()
         
         for kdev, argsdev in kward_devs_task1.items():            
