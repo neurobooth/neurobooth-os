@@ -67,11 +67,7 @@ def get_tech_obs_logs(conn):
 
 def make_new_tech_obs_row(conn, subject_id):
     table = Table("tech_obs_log", conn=conn)
-    cols = [cx for cx in table.column_names if cx!=table.primary_key]
-    vals = [None]*len(cols)
-    sj_ix = cols.index('subject_id')
-    vals[sj_ix] = subject_id
-    return table.insert_rows([tuple(vals)], cols=cols)
+    return table.insert_rows([(subject_id,)], cols=['subject_id'])
 
 def fill_tech_obs_row(tech_obs_id, vals, conn):
     # tech_obs_id = str
