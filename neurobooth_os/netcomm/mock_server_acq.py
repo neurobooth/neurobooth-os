@@ -50,7 +50,7 @@ def mock_acq_routine(host, port):
             fprint_flush("UPDATOR:-Connect-")
 
         elif "dev_param_update" in data:
-            None
+            pass
 
         elif "record_start" in data:  
         # -> "record_start:FILENAME" FILENAME = {subj_id}_{task}

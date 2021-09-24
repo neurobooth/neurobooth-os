@@ -26,7 +26,7 @@ def run_task(task_funct, s2, lsl_cmd, subj_id, task, task_karg={}):
     task_funct : callable
         Task to run
     s2 : object
-        socket object
+        socket object for connecting local to ctr
     lsl_cmd : str
         command to send though s2.
     subj_id : str
@@ -34,7 +34,7 @@ def run_task(task_funct, s2, lsl_cmd, subj_id, task, task_karg={}):
     task : str
         name of the task
     task_karg : dict, optional
-        Kwarg with task arguments, by default {}
+        Kwarg to pass to task_funct, by default {}
 
     Returns
     -------
@@ -90,7 +90,7 @@ def mock_stm_routine(host, port):
                 fprint_flush()
                 fprint_flush("Preparing devices")
 
-            fprint_flush ("UPDATOR:-Connect-")
+            fprint_flush("UPDATOR:-Connect-")
 
         elif "present" in data:   
             #-> "present:TASKNAME:subj_id"
@@ -104,7 +104,7 @@ def mock_stm_routine(host, port):
 
             for task in tasks:
                 host_ctr, _ = node_info("control")
-                tech_obs_log_id = meta.make_new_tech_obs_row()
+                tech_obs_log_id = meta._make_new_tech_obs_row()
 
                 task_karg ={"path": config.paths['data_out'],
                             "subj_id": subj_id,
@@ -135,6 +135,3 @@ def mock_stm_routine(host, port):
             conn.send(msg.encode("ascii"))
         else:
             fprint_flush(data)
-
-
-   

@@ -11,6 +11,20 @@ import psycopg2
 from neurobooth_terra import list_tables, create_table, drop_table, Table
 
 def get_conn(remote=False, database='neurobooth'):
+    """ Gets connector to the database
+
+    Parameters
+    ----------
+    remote : bool, optional
+        Flag to use SSH tunneling to connect, by default False
+    database : str, optional
+        Name of the database, by default 'neurobooth'
+
+    Returns
+    -------
+    conn : object
+        connector to psycopg database
+    """
     if remote:
         tunnel = SSHTunnelForwarder(
             'neurodoor.nmr.mgh.harvard.edu',
@@ -65,11 +79,11 @@ def get_tech_obs_logs(conn):
     tech_obs = table_tech_obs_log.query("SELECT * from tech_obs_log")
     return tech_obs
 
-def make_new_tech_obs_row(conn, subject_id):
+def _make_new_tech_obs_row(conn, subject_id):
     table = Table("tech_obs_log", conn=conn)
     return table.insert_rows([(subject_id,)], cols=['subject_id'])
 
-def fill_tech_obs_row(tech_obs_id, vals, conn):
+def _fill_tech_obs_row(tech_obs_id, vals, conn):
     # tech_obs_id = str
     # vals = list column values for row
     table = Table("tech_obs_log", conn=conn)
