@@ -6,15 +6,12 @@ Created on Fri Jul 30 09:08:53 2021
 """
 import json
 from collections import OrderedDict
-
+from sshtunnel import SSHTunnelForwarder
 import psycopg2
 from neurobooth_terra import list_tables, create_table, drop_table, Table
 
-
-def get_conn(remote=False):
-
+def get_conn(remote=False, database='neurobooth'):
     if remote:
-        from sshtunnel import SSHTunnelForwarder
         tunnel = SSHTunnelForwarder(
             'neurodoor.nmr.mgh.harvard.edu',
             ssh_username='an512',
@@ -22,12 +19,13 @@ def get_conn(remote=False):
             ssh_pkey='~/.ssh/id_rsa',
             remote_bind_address=('192.168.100.1', 5432),
             local_bind_address=('localhost', 6543))
+        tunnel.start()
         host = tunnel.local_bind_host
         port = tunnel.local_bind_port
     else:
         host = '192.168.100.1'
         port = 5432
-    conn = psycopg2.connect(database='neurobooth', user='neuroboother',
+    conn = psycopg2.connect(database=database, user='neuroboother',
                             password='neuroboothrocks', host=host,
                             port=port)
     return conn
@@ -67,25 +65,26 @@ def get_tech_obs_logs(conn):
     tech_obs = table_tech_obs_log.query("SELECT * from tech_obs_log")
     return tech_obs
 
-def make_new_tech_obs_row(conn):
+def make_new_tech_obs_row(conn, subject_id):
     table = Table("tech_obs_log", conn=conn)
     cols = [cx for cx in table.column_names if cx!=table.primary_key]
-    vals = (None, )*len(cols)
-    return table.insert_rows(vals, cols=cols)
-
+    vals = [None]*len(cols)
+    sj_ix = cols.index('subject_id')
+    vals[sj_ix] = subject_id
+    return table.insert_rows([tuple(vals)], cols=cols)
 
 def fill_tech_obs_row(tech_obs_id, vals, conn):
+    # tech_obs_id = str
+    # vals = list column values for row
     table = Table("tech_obs_log", conn=conn)
     cols = [cx for cx in table.column_names if cx!=table.primary_key]   
-    table.update_row(tech_obs_id, vals, cols=cols)
+    table.update_row(tech_obs_id, tuple(vals), cols=cols)
     
-
 def get_sens_file_logs(conn):
     table_sens_log = Table("sensor_file_log", conn=conn)
     sens_log = table_sens_log.query("SELECT * from sensor_file_log")
     return sens_log
-
-
+ 
 def make_new_sess_log_id():
     conn = get_conn()
     sens_log = get_sens_file_logs(conn)
