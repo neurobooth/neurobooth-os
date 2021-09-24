@@ -12,16 +12,21 @@ import sys
 
 from neurobooth_os import config
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
-
 from neurobooth_os.netcomm import socket_message, node_info, get_client_messages, get_fprint
-
 from neurobooth_os.tasks.task_importer import get_task_funcs
-
 from neurobooth_os.iout import metadator as meta
 
 
 def mock_acq_routine(host, port):
+    """ Mocks the tasks performed by ACQ server
 
+    Parameters
+    ----------
+    host : str
+        host ip of the server.
+    port : int
+        port the server to listen.
+    """
     def print_funct(msg):
         print("Mock STM: ", msg)
     fprint_flush = print_funct
