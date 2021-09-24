@@ -12,16 +12,35 @@ import sys
 
 from neurobooth_os import config
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
-
 from neurobooth_os.netcomm import socket_message, node_info, get_client_messages, get_fprint
-
 from neurobooth_os.tasks.task_importer import get_task_funcs
-
 from neurobooth_os.iout import metadator as meta
 
 
 
-def run_task(task_funct, s2, lsl_cmd, subj_id, task, send_stdout, task_karg={}):
+def run_task(task_funct, s2, lsl_cmd, subj_id, task, task_karg={}):
+    """Runs a task
+
+    Parameters
+    ----------
+    task_funct : callable
+        Task to run
+    s2 : object
+        socket object
+    lsl_cmd : str
+        command to send though s2.
+    subj_id : str
+        name of the subject
+    task : str
+        name of the task
+    task_karg : dict, optional
+        Kwarg with task arguments, by default {}
+
+    Returns
+    -------
+    res : callable
+        Task object
+    """
     resp = socket_message(f"record_start:{subj_id}_{task}", "dummy_acq", wait_data=3)
     print(resp)
     s2.sendall(lsl_cmd.encode('utf-8'))
@@ -37,7 +56,16 @@ def run_task(task_funct, s2, lsl_cmd, subj_id, task, send_stdout, task_karg={}):
     return res
 
 def mock_stm_routine(host, port):
-    
+    """ Mocks the tasks performed by STM server
+
+    Parameters
+    ----------
+    host : str
+        host ip of the server.
+    port : int
+        port the server to listen.
+    """
+
     def print_funct(msg):
         print("Mock STM: ", msg)
     fprint_flush = print_funct
