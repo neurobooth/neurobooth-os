@@ -19,10 +19,12 @@ print(__doc__)
 
 # %%
 # Creating and starting mock streams:
-dev_stream = mocker.MockLSLDevice(name="mock_lsl", nchans=5)
-mbient = mocker.MockMbient(name="mock_mbient")
-cam = mocker.MockCamera(name="mock_camera")
-marker = marker_stream()
+stream_names = {'MockLSLDevice': 'mock_lsl', 'MockMbient': 'mock_mbient',
+                'MockCamera': 'mock_camera', 'marker_stream': 'Marker'}
+dev_stream = mocker.MockLSLDevice(name=stream_names['MockLSLDevice'], nchans=5)
+mbient = mocker.MockMbient(name=stream_names['MockMbient'])
+cam = mocker.MockCamera(name=stream_names['MockCamera'])
+marker = marker_stream(name=stream_names['marker_stream'])
 
 
 # %%
@@ -34,11 +36,7 @@ marker.push_sample(["Stream-mark"])
 
 # %%
 # Setup liesl configuration:
-
-streamargs = [{'name': "mock_lsl"},
-              {'name': "mock_mbient"},
-              {'name': "mock_camera"},
-              {'name': "Marker"}]
+streamargs = [{'name': stream_name} for stream_name in stream_names.values()]
 recording_folder = "~/labrecordings"
 subject = "demo_subject"
 session = liesl.Session(prefix=subject,
