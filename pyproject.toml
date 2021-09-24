@@ -3,7 +3,7 @@ requires = ["setuptools>=42.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
-addopts = "--cov=pywear"
+addopts = "--cov=neurobooth_os"
 testpaths = [
     "neurobooth_os",
 ]
