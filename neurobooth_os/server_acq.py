@@ -21,7 +21,7 @@ def Main():
 
     streams = {}
 
-    for data in get_client_messages(s1, fprint_flush, old_stdout):
+    for data, conn in get_client_messages(s1, fprint_flush, old_stdout):
 
         if "vis_stream" in data:
             if not lowFeed_running:
@@ -56,7 +56,7 @@ def Main():
                 if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
                     streams[k].start(fname)
             msg = "ACQ_ready"
-            c.send(msg.encode("ascii"))
+            conn.send(msg.encode("ascii"))
             fprint_flush("ready to record")
 
         elif "record_stop" in data:
@@ -80,7 +80,7 @@ def Main():
 
         elif "time_test" in data:
             msg = f"ping_{time()}"
-            c.send(msg.encode("ascii"))
+            conn.send(msg.encode("ascii"))
 
         else:
             fprint_flush("ACQ " + data)
