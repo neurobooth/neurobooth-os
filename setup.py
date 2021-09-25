@@ -57,5 +57,8 @@ if __name__ == "__main__":
           install_requires=[
               'pandas'              
           ],
-          packages=find_packages()
+          packages=find_packages(),
+          entry_points = {
+              'console_scripts': ['neurobooth_os = neurobooth_os.gui:main'],
+          }
           )
