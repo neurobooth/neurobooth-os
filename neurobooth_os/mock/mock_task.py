@@ -8,51 +8,58 @@ import os
 import os.path as op
 
 
+class MockTask():
+    """Create mock task.
 
-class simulated_task():
+    Parameters
+    ----------
+    n_trials : int
+        The number of trials.
+    marker_outlet : instance of LSL Outlet
+        The LSL stream sending the markers from STM computer.
+    instruction_text : str
+        The instruction text.
+
+    Attributes
+    ----------
+    with_lsl : bool
+        Should the markers be sent?
+    marker : instance of LSL Outlet.
+        The LSL stream sending the markers.
+    """
     def __init__(
             self,
-            ntrials= 20,
-            marker_outlet=None,
-            win=None, 
             instruction_text,
-            some_json_parameters,
-            **kwarg):
-
-
-
-
+            marker_outlet=None
+        ):
+        
         if marker_outlet is not None:
             self.with_lsl = True
             self.marker = marker_outlet
-            # self.marker.push_sample([f"Streaming_0_{time.time()}"])
         else:
             self.with_lsl = False
-
-        if win is None:
-            full_screen = False
-
-            # Setup the Window
-            self.win = make_win(full_screen)
-            self.win_temp = True
-        else:
-            self.win = win
-            self.win_temp = False
-
-        self.win.color = [0, 0, 0]
-        self.win.flip()
-        self.run()
 
     def send_marker(self, msg=None):
         # msg format str {word}_{value}
         if self.with_lsl:
             self.marker.push_sample([f"{msg}_{time.time()}"])
 
-    def run(self):
+    def run(self, n_trial=20, duration=60, instruction_text=None):
+        """Run the task.
 
+        Parameters
+        ----------
+        n_trials : int
+            The trials
+        duration : float
+            The duration
+        instruction_text : str
+            The path to the instruction file.
+        """
         print(instruction_text)
+ 
         sleep(1)
 
-        for ntrials:
+        for n_trials:
             self.send_marker(self, msg=None)
             sleep(self.duration/self.ntrials)
