@@ -98,7 +98,7 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
         yield data, conn
 
 
-def get_messages_to_ctr(callback=None, host="", port=12347, *args):
+def get_messages_to_ctr(callback=None, host="", port=12347, *callback_args):
     """ Creates socket server and run callback with socket data string.
 
     Parameters
@@ -109,6 +109,8 @@ def get_messages_to_ctr(callback=None, host="", port=12347, *args):
         IP adrress of the socket connexion
     port : int, optional
         Port of the socket, by default 12347
+    callback_args : args
+        Args to pass into callback function
     """
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -130,7 +132,7 @@ def get_messages_to_ctr(callback=None, host="", port=12347, *args):
         # print(data)
 
         if callback is not None:
-            callback(data, *args)
+            callback(data, *callback_args)
 
         if data == "close":
             break

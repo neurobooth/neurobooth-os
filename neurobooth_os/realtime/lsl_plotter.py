@@ -42,31 +42,25 @@ def update_streams():
     return inlets
 
 
-def update_streams_fromID(stream_ids):
-    # stream_ids = dict with streams uuids
+def create_lsl_inlets(stream_ids):
+    """Create LSL inlets on CTR computer.
 
-    streams = []
+    Parameters
+    ----------
+    stream_ids : dict of str
+        The source IDs received from ACQ computer.
+
+    Returns
+    -------
+    dict of StreamInlet
+        The inlet streams.
+    """
+    inlets = {}
     for id_stream in stream_ids.values():
         print("resolving: ", id_stream)
-        streams += pylsl.resolve_byprop("source_id", id_stream, timeout=1)
-
-    inlets = {}
-    for info in streams:
-
-        name = info.name()
-        print("outlet name: ", name)
-        if info.type() == 'Markers':
-            print('(NOT YET) Adding marker inlet: ' + name)
-            # inlets.append(MarkerInlet(info))
-
-        elif info.name() in ["Screen", "Webcam", "Mouse", "Audio", "mbient", "EyeLink"]:
-            print('Adding data inlet: ' + name)
-
-            inlet = pylsl.StreamInlet(info)  # , recover=False)
-            inlets[name] = inlet
-
-        # else:
-        #     print('Don\'t know what to do with stream ' + info.name())
+        stream = pylsl.resolve_byprop("source_id", id_stream, timeout=1)
+        inlet = pylsl.StreamInlet(stream)
+        inlets[stream.name()] = inlet
     return inlets
 
 

@@ -29,3 +29,23 @@ Mock
 
    insert_mock_rows
    delete_mock_rows
+
+LSL
+---
+
+.. currentmodule:: neurobooth_os.lsl_plotter
+
+.. autosummary::
+   :toctree: generated/
+
+create_lsl_inlets
+
+Graphical User Interface
+-------------------------
+
+.. currentmodule:: neurobooth_os.gui
+
+.. autosummary::
+   :toctree: generated/
+
+   gui
