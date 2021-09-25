@@ -98,11 +98,21 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
         yield data, conn
 
 
-def get_messages_to_ctr(qu=None, host="", port=12347):
+def get_messages_to_ctr(callback=None, host="", port=12347, *args):
+    """ Creates socket server and run callback with socket data string.
 
+    Parameters
+    ----------
+    callback : callable
+        Function that processes received socket data, by default None
+    host : str, optional
+        IP adrress of the socket connexion
+    port : int, optional
+        Port of the socket, by default 12347
+    """
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(("", port))
+    s.bind((host, port))
     print("Ctr socket binded to port", port)
 
     s.listen(5)
@@ -113,14 +123,14 @@ def get_messages_to_ctr(qu=None, host="", port=12347):
             c, addr = s.accept()
             data = c.recv(1024)
         except BaseException:
-            print("Connection fault, closing ctr server")
+            print("Connection fault on ctr server")
             continue
 
         data = data.decode("utf-8")
-        print(data)
+        # print(data)
 
-        if qu is not None:
-            qu.put(data)
+        if callback is not None:
+            callback(data, *args)
 
         if data == "close":
             break
