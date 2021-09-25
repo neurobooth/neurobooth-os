@@ -22,13 +22,13 @@ def mock_acq_routine(host, port):
 
     Parameters
     ----------
-    host : str
+    host : str 
         host ip of the server.
     port : int
         port the server to listen.
     """
     def print_funct(msg):
-        print("Mock STM: ", msg)
+        print("Mock STM:::", msg)
     fprint_flush = print_funct
 
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
