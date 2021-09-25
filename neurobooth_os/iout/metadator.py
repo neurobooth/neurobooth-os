@@ -6,6 +6,8 @@ Created on Fri Jul 30 09:08:53 2021
 """
 import json
 from collections import OrderedDict
+from datetime import datetime
+
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
 from neurobooth_terra import list_tables, create_table, drop_table, Table
@@ -73,6 +75,17 @@ def get_tasks(collection_id, conn):
     tasks_ids, = collection_df["tech_obs_array"]
     return tasks_ids
 
+def _new_tech_log_dict(application_id="neurobooth_os"):
+    tech_obs_log = OrderedDict()
+    tech_obs_log["subject_id"] = ""
+    tech_obs_log["study_id"] = ""
+    tech_obs_log["tech_obs_id"] = ""
+    tech_obs_log["staff_id"] = ""
+    tech_obs_log["application_id"] = "neurobooth_os"
+    tech_obs_log["site_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    tech_obs_log["event_array"] = []  # marker_name:timestamp
+    tech_obs_log["collection_id"] = ""
+    return tech_obs_log
 
 def get_tech_obs_logs(conn):
     table_tech_obs_log = Table("tech_obs_log", conn=conn)
