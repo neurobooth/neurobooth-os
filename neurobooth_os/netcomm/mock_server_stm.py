@@ -67,7 +67,7 @@ def mock_stm_routine(host, port):
     """
 
     def print_funct(msg):
-        print("Mock STM: ", msg)
+        print("Mock STM:::", msg)
     fprint_flush = print_funct
     
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -112,12 +112,12 @@ def mock_stm_routine(host, port):
                             "event_marker": streams['marker']}
 
                 if task in task_func_dict.keys():
-                    fprint_flush(f"Initiating task: {task}:{tech_obs_log_id}")
+                    fprint_flush(f"Initiating task:{task}:{tech_obs_log_id}")
 
                     tsk_fun = task_func_dict[task]
                     res = run_task(tsk_fun, s2, subj_id, task, fprint_flush, task_karg)
 
-                    fprint_flush(f"Finished task: {task}")
+                    fprint_flush(f"Finished task:{task}")
 
                 else:
                     fprint_flush(f"Task not {task} implemented")
