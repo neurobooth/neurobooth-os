@@ -37,9 +37,9 @@ def split(fname, tech_obs_log_id=None):
     Parameters
     ----------
     fname : str
-        [description]
+        name of the file to split
     tech_obs_log_id : str, optional
-        [description], by default None
+        task id for the database, by default None
 
     Returns
     -------
