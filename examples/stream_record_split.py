@@ -13,8 +13,9 @@ Only works in Windows or Linux using Wine
 # %%
 import time
 import liesl
-import neurobooth_os.iout.mock_device_streamer as mocker
 from pathlib import Path
+from h5io import read_hdf5
+import neurobooth_os.iout.mock_device_streamer as mocker
 from neurobooth_os.iout.marker import marker_stream
 from neurobooth_os.iout.split_xdf import split
 
@@ -35,7 +36,7 @@ marker = marker_stream(name=stream_names['marker_stream'])
 cam.start()
 dev_stream.start()
 mbient.start()
-marker.push_sample(["Stream-mark"])
+marker.push_sample([f"start_0_{time.time()}"])
 
 # %%
 # Setup liesl configuration:
@@ -52,7 +53,7 @@ session.start_recording(task)
 t_end = time.time() + 60 * 1
 while time.time() < t_end:
     time.sleep(10 - time.time() % 10)
-    marker.push_sample(["Stream-mark"])
+    marker.push_sample([f"start_0_{time.time()}"])
 
 session.stop_recording()
 
@@ -78,3 +79,10 @@ final_fname = str(fname.with_name(base_stem + run_str).with_suffix(".xdf"))
 # %%
 # Split xdf file per sensor
 files = split(final_fname)
+
+
+# %%
+# read first split h5 file
+marker, stream = read_hdf5(files[0])
+
+
