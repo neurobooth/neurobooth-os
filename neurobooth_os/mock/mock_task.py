@@ -13,12 +13,10 @@ class MockTask():
 
     Parameters
     ----------
-    n_trials : int
-        The number of trials.
-    marker_outlet : instance of LSL Outlet
-        The LSL stream sending the markers from STM computer.
     instruction_text : str
         The instruction text.
+    marker_outlet : instance of LSL Outlet
+        The LSL stream sending the markers from STM computer.
 
     Attributes
     ----------
@@ -31,8 +29,10 @@ class MockTask():
             self,
             instruction_text,
             marker_outlet=None
-        ):
+            ):
         
+        self.instruction_text = instruction_text
+
         if marker_outlet is not None:
             self.with_lsl = True
             self.marker = marker_outlet
@@ -40,11 +40,12 @@ class MockTask():
             self.with_lsl = False
 
     def send_marker(self, msg=None):
-        # msg format str {word}_{value}
+        # msg format str {word}_{value}_{timestamp}
         if self.with_lsl:
             self.marker.push_sample([f"{msg}_{time.time()}"])
 
-    def run(self, n_trial=20, duration=60, instruction_text=None):
+    
+    def run(self, n_trial=20, duration=10):
         """Run the task.
 
         Parameters
@@ -56,10 +57,19 @@ class MockTask():
         instruction_text : str
             The path to the instruction file.
         """
-        print(instruction_text)
- 
-        sleep(1)
 
-        for n_trials:
-            self.send_marker(self, msg=None)
-            sleep(self.duration/self.ntrials)
+        # Run mock instructions
+        self.send_marker("Intructions-start_0")
+        print(self.instruction_text)
+        time.sleep(1)
+        self.send_marker("Intructions-end_1")
+       
+       # Run mock trials
+        self.send_marker("Task-start_0")
+        for _ in range(self.n_trials):
+            self.send_marker(msg=f"Trial-start_0")
+            time.sleep(self.duration/self.ntrials)
+            self.send_marker(msg=f"Trial-end_1")
+        self.send_marker("Task-end_1")
+
+        print("Mock task finished!")
