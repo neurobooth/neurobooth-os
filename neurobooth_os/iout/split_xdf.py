@@ -90,9 +90,9 @@ def split(fname, tech_obs_log_id=None):
 
         if tech_obs_log_id is not None:
             for sens_id in sensors_id:
-                vals = [(tech_obs_log_id, temp_res, None, None, start_time, end_time, device_id, sens_id, "{" + head + "}")]
                 cols = ["tech_obs_log_id", "true_temporal_resolution", "true_spatial_resolution", "file_start_time",
                         "file_end_time", "device_id", "sensor_id", 'sensor_file_path']
+                vals = [(tech_obs_log_id, temp_res, None, start_time, end_time, device_id, sens_id, "{" + head + "}")]
                 table_sens_log.insert_rows(vals, cols)
 
     return files
