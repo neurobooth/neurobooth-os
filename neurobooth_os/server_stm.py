@@ -20,7 +20,7 @@ from neurobooth_os.tasks.task_importer import get_task_funcs
 
 from neurobooth_os.iout import metadator as meta
 
-os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')
+# os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')
 print(os.getcwd())
 
 

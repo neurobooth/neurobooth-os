@@ -102,8 +102,8 @@ def _main_layout(sess_info, frame_sz=(320, 240)):
         [_space()],
         [_space()],
 
-        # [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
-        #          auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))],
+        [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
+                 auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))],
         [_space()],
 
         [_space(1), _lay_butt('Initiate servers', 'init_servs'),         

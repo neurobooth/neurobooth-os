@@ -29,8 +29,9 @@ def mock_acq_routine(host, port, conn):
     conn : object
         Connector to the database
     """
-    def print_funct(msg):
-        print("Mock STM:::", msg)
+    def print_funct(msg=None):
+        if msg is not None:
+            print("Mock ACQ:::", msg)
     fprint_flush = print_funct
 
     streams = {}
