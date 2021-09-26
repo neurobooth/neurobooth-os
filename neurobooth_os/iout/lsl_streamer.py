@@ -10,10 +10,31 @@ from neurobooth_os import config
 from neurobooth_os.iout import metadator as meta
 
 
-def start_lsl_threads(node_name, collection_id="mvp_025", win=None):
+def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
+    """ Initiate devices and LSL streams based on databased parameters.
+
+    Parameters
+    ----------
+    node_name : str
+        Name of the server where to start the lsl threads
+    collection_id : str, optional
+        Name of studies collection in the database, by default "mvp_025"
+    win : object, optional
+        Pycharm window, by default None
+    conn : object, optional
+        Connector to the database, by default None
+
+    Returns
+    -------
+    dict of streams
+        Contains the name of the device and device class
+    """
+
+    if conn is None:
+        conn = meta.get_conn()
 
     # Get params from all tasks
-    kwarg_devs = meta.get_coll_dev_kwarg_tasks(collection_id)
+    kwarg_devs = meta.get_coll_dev_kwarg_tasks(collection_id, conn)
     # Get params from first task
     kward_devs_task1 = kwarg_devs[next(iter(kwarg_devs))]
 

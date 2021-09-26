@@ -55,15 +55,17 @@ def run_task(task_funct, s2, lsl_cmd, subj_id, task, task_karg={}):
     sleep(2)
     return res
 
-def mock_stm_routine(host, port):
+def mock_stm_routine(host, port, conn):
     """ Mocks the tasks performed by STM server
 
     Parameters
     ----------
     host : str
-        host ip of the server.
+        host ip of the server
     port : int
-        port the server to listen.
+        port the server to listen
+    conn : object
+        connector to the database
     """
 
     def print_funct(msg):
@@ -72,7 +74,7 @@ def mock_stm_routine(host, port):
     
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
-    for data, conn in get_client_messages(s1, fprint_flush, sys.stdout, port=port, host=host):
+    for data, connx in get_client_messages(s1, fprint_flush, sys.stdout, port=port, host=host):
 
         if "prepare" in data:
             # data = "prepare:collection_id:str(tech_obs_log_dict)"
@@ -80,13 +82,13 @@ def mock_stm_routine(host, port):
             collection_id = data.split(":")[1]
             tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
 
-            task_func_dict = get_task_funcs(collection_id)
+            task_func_dict = get_task_funcs(collection_id, conn)
 
             if len(streams):
                 fprint_flush("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
-                streams = start_lsl_threads("presentation", collection_id)
+                streams = start_lsl_threads("presentation", collection_id, conn=conn)
                 fprint_flush()
                 fprint_flush("Preparing devices")
 
@@ -98,13 +100,9 @@ def mock_stm_routine(host, port):
             tasks = data.split(":")[1].split("-")
             subj_id = data.split(":")[2]
 
-            # Connection to LabRecorder in ctr pc
-            host_ctr, _ = node_info("control")
-            s2 = socket.create_connection((host_ctr, 22345))
-
             for task in tasks:
                 host_ctr, _ = node_info("control")
-                tech_obs_log_id = meta._make_new_tech_obs_row()
+                tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
 
                 task_karg ={"path": config.paths['data_out'],
                             "subj_id": subj_id,
@@ -132,6 +130,6 @@ def mock_stm_routine(host, port):
 
         elif "time_test" in data:
             msg = f"ping_{time()}"
-            conn.send(msg.encode("ascii"))
+            connx.send(msg.encode("ascii"))
         else:
             fprint_flush(data)

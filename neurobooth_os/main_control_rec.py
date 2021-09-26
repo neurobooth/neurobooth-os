@@ -17,53 +17,85 @@ from neurobooth_os import config
 from neurobooth_os.netcomm import socket_message, socket_time, start_server, kill_pid_txt
 
 
-def start_servers(nodes=["acquisition", "presentation"]):
-    kill_pid_txt()
+def _get_nodes(nodes):
     if isinstance(nodes, str):
-        nodes = [nodes]
+        nodes = (nodes)
+    return nodes
+
+
+def start_servers(nodes=("acquisition", "presentation"), remote=False, conn=None):
+    """Start servers
+
+    Parameters
+    ----------
+    nodes : tuple, optional
+        The nodes at which to start server, by default ("acquisition", "presentation")
+    remote : bool, optional
+        If True, start fake servers, by default False
+    conn : callable, mandatory if remote True
+        Connector to the database, used if remote True
+    """
+    if remote:
+        from neurobooth_os.mock import mock_server_stm, mock_server_acq
+        _ = mock_server_acq(conn)
+        _ = mock_server_stm(conn)
+    else:
+        kill_pid_txt()
+        nodes = _get_nodes(nodes)
+        for node in nodes:
+            start_server(node)
+
+
+def prepare_feedback(nodes=("acquisition", "presentation")):
+    nodes = _get_nodes(nodes)
     for node in nodes:
-        start_server(node)
+        if node.starts_with("acq"):
+            msg = "vis_stream"
+        elif node.starts_with("pres"):
+            msg = "scr_stream"
+        else:
+            return
+    socket_message(msg, node)
+    
 
-
-def prepare_feedback():
-    socket_message("vis_stream", "acquisition")
-    socket_message("scr_stream", "presentation")
-
-
-def prepare_devices(collection_id="mvp_025"):
+def prepare_devices(collection_id="mvp_025", nodes=("acquisition", "presentation")):
     # prepares devices, collection_id can be just colletion name but also
     # "collection_id:str(tech_obs_log)"
-    socket_message(f"prepare:{collection_id}", "acquisition")
-    socket_message(f"prepare:{collection_id}", "presentation")
+    nodes = _get_nodes(nodes)
+    for node in nodes:
+        socket_message(f"prepare:{collection_id}", node)
 
 
-def task_presentation(task_name, filename):
+def task_presentation(task_name, filename, node):
     # task_name can be list of task1-task2-task3
-    socket_message(f"present:{task_name}:{filename}", "presentation")
+    socket_message(f"present:{task_name}:{filename}", node)
 
 
-# def make_task_filename(inlets):
+def shut_all(nodes=("acquisition", "presentation")):
+    """Shut all nodes
 
-def task_loop(task_names, subj_id):
-    for task in task_names:
-        filename = f"{subj_id}_{task}"
-        task_presentation(task, filename)
-
-
-def close_all():
-    socket_message("close", "acquisition")
-    socket_message("close", "presentation")
-
-
-def shut_all():
-    socket_message("shutdown", "acquisition")
-    socket_message("shutdown", "presentation")
-    kill_pid_txt()
+    Parameters
+    ----------
+    nodes : tuple | str
+        The node names
+    """
+    nodes = _get_nodes(nodes)
+    for node in nodes:
+        socket_message("shutdown", node)
+    kill_pid_txt()  # TODO only if error
 
 
-def test_lan_delay(n=100):
+def test_lan_delay(n=100, nodes=("acquisition", "presentation")):
+    """Test LAN delay
 
-    nodes = ["acquisition", "presentation"]
+    Parameters
+    ----------
+    n : int
+        The number of iterations
+    nodes : tuple | str
+        The node names
+    """
+    nodes = _get_nodes(nodes)
     times_1w, times_2w = [], []
 
     for node in nodes:
