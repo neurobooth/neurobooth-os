@@ -8,40 +8,44 @@ import os
 from neurobooth_os.secrets_info import secrets
 
 
-def socket_message(message, node_name, wait_data=0):
+def socket_message(message, node_name, wait_data=False):
     """ Send a string message though socket connection to `node_name`.
 
-    Parameters:
+    Parameters
     ----------
+    message : str
+        The message to send.
+    node_name : str
+        The node to send the socket message to
+    wait_data : bool
+        If True, wait for the data.
 
+    Returns
+    -------
+    data : str
+        Returns the data from the node_name.
     """
     def connect():
-        # t0 = time()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # connect to server on local computer
         s.connect((host, port))
-        # print(f"* connected {time()- t0}")
-        # t0 = time()
         s.send(message.encode('ascii'))
-        # print(f"sent {time()- t0}")
-        # t0 = time()
+
         data = None
         if wait_data:
             data = wait_socket_data(s)
 
         s.close()
-        # print(f"closed {time()- t0}")
         return data
 
     host, port = node_info(node_name)
 
     try:
         data = connect()
-    except BaseException:  # TimeoutError:
+    except TimeoutError:
         print(f"{node_name} socket connexion timed out, trying to restart server")
         pid = start_server(node_name)
-        # print(f"{pid} on server {node_name} created")
         data = connect()
 
     return data

@@ -244,11 +244,10 @@ def get_kwarg_task(task_id, conn):
     return dev_kwarg
 
 
-def get_coll_dev_kwarg_tasks(collection_id):
+def _get_coll_dev_kwarg_tasks(collection_id, conn):
     # Get devices kwargs for all the tasks
     # outputs dict with keys = stimulus_id, vals = dict with dev parameters
 
-    conn = get_conn()
     tasks = get_tasks(collection_id, conn)
 
     tasks_kwarg = OrderedDict()
