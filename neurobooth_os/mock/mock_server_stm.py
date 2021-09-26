@@ -9,6 +9,7 @@ import time
 from time import sleep
 import socket
 import sys
+from collections import OrderedDict
 
 from neurobooth_os import config
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
@@ -114,7 +115,7 @@ def mock_stm_routine(host, port, conn):
                     fprint_flush(f"Initiating task:{task}:{tech_obs_log_id}")
 
                     tsk_fun = task_func_dict[task]
-                    res = run_task(tsk_fun, s2, subj_id, task, fprint_flush, task_karg)
+                    res = run_task(tsk_fun, s1, subj_id, task, fprint_flush, task_karg)
 
                     fprint_flush(f"Finished task:{task}")
 
