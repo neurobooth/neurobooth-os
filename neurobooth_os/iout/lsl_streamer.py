@@ -34,7 +34,7 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
         conn = meta.get_conn()
 
     # Get params from all tasks
-    kwarg_devs = meta.get_coll_dev_kwarg_tasks(collection_id, conn)
+    kwarg_devs = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
     # Get params from first task
     kward_devs_task1 = kwarg_devs[next(iter(kwarg_devs))]
 
