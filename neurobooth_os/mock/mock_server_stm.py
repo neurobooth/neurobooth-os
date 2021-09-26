@@ -72,8 +72,8 @@ def mock_stm_routine(host, port, conn):
         print("Mock STM:::", msg)
     fprint_flush = print_funct
     
+    streams = {}
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
     for data, connx in get_client_messages(s1, fprint_flush, sys.stdout, port=port, host=host):
 
         if "prepare" in data:
@@ -129,7 +129,7 @@ def mock_stm_routine(host, port, conn):
                 break
 
         elif "time_test" in data:
-            msg = f"ping_{time()}"
+            msg = f"ping_{time.time()}"
             connx.send(msg.encode("ascii"))
 
         else:
