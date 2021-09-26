@@ -52,6 +52,22 @@ def socket_message(message, node_name, wait_data=False):
 
 
 def socket_time(node_name, print_flag=1, time_out=3):
+    """Computes connextion time from client->server and client->server->client.
+
+    Parameters
+    ----------
+    node_name : str
+        name of the server
+    print_flag : int, optional
+        if True, prints time taken
+    time_out : int, optional
+        Time of seconds waiting to hear from server, by default 3
+
+    Returns
+    -------
+    times floats
+        taken time to server and time to server and back
+    """
 
     host, port = node_info(node_name)
 
@@ -72,7 +88,7 @@ def socket_time(node_name, print_flag=1, time_out=3):
         s.connect((host, port))
 
     s.send(message.encode('ascii'))
-    # messaga received from server
+    # message received from server
     data = wait_socket_data(s, 2)
     s.close()
 

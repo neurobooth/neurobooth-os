@@ -56,16 +56,16 @@ def _process_received_data(serv_data, window):
             window.write_event_value('task_finished', task_id)
 
 
-def gui(database='neurobooth', remote=False):
+def gui(remote=False, database='neurobooth'):
     """Start the Graphical User Interface.
 
     Parameters
     ----------
-    database : str
-        The database name
     remote : bool
         If True, uses ssh_tunnel to connect and database = mock_neurobooth
         to the database. Use False if on site.
+    database : str
+        The database name
     """
 
     nodes = ('acquisition', 'presentation')

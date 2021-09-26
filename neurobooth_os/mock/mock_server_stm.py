@@ -131,5 +131,6 @@ def mock_stm_routine(host, port, conn):
         elif "time_test" in data:
             msg = f"ping_{time()}"
             connx.send(msg.encode("ascii"))
+
         else:
             fprint_flush(data)
