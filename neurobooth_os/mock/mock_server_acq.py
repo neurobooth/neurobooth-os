@@ -17,7 +17,7 @@ from neurobooth_os.tasks.task_importer import get_task_funcs
 from neurobooth_os.iout import metadator as meta
 
 
-def mock_acq_routine(host, port):
+def mock_acq_routine(host, port, conn):
     """ Mocks the tasks performed by ACQ server
 
     Parameters
@@ -26,14 +26,17 @@ def mock_acq_routine(host, port):
         host ip of the server.
     port : int
         port the server to listen.
+    conn : object
+        Connector to the database
     """
     def print_funct(msg):
         print("Mock STM:::", msg)
     fprint_flush = print_funct
 
-    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
-    for data, conn in get_client_messages(s1, fprint_flush, sys.stdout, port=port, host=host):
+    conn = meta.get_conn(True, "mock")
+
+    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)    
+    for data, connx in get_client_messages(s1, fprint_flush, sys.stdout, port=port, host=host):
 
         if "prepare" in data:
             # data = "prepare:collection_id:str(tech_obs_log_dict)"
@@ -43,7 +46,7 @@ def mock_acq_routine(host, port):
                 fprint_flush("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
-                streams = start_lsl_threads("acquisition", collection_id)
+                streams = start_lsl_threads("acquisition", collection_id, conn)
 
             fprint_flush()
             devs = list(streams.keys())
@@ -61,7 +64,7 @@ def mock_acq_routine(host, port):
                 if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
                     streams[k].start(fname)
             msg = "ACQ_ready"
-            conn.send(msg.encode("ascii"))
+            connx.send(msg.encode("ascii"))
             fprint_flush("ready to record")
 
         elif "record_stop" in data:
@@ -81,8 +84,8 @@ def mock_acq_routine(host, port):
                 break
 
         elif "time_test" in data:
-            msg = f"ping_{time()}"
-            conn.send(msg.encode("ascii"))
+            msg = f"ping_{time.time()}"
+            connx.send(msg.encode("ascii"))
 
         else:
             fprint_flush(data)

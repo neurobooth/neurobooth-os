@@ -4,40 +4,30 @@ Created on Tue Sep 14 15:33:40 2021
 
 @author: adona
 """
-import time
+
 from time import sleep
-import socket
-import sys
 import threading
 import queue
 
-from neurobooth_os.netcomm.mock_server_stm import mock_stm_routine
-from neurobooth_os.netcomm.mock_server_acq import mock_acq_routine
-
-from neurobooth_os import config
-from neurobooth_os.iout import ScreenMirror
-from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
-
-from neurobooth_os.netcomm import socket_message, node_info, get_client_messages, get_fprint, get_messages_to_ctr
-
-import neurobooth_os.tasks.utils as utl
-from neurobooth_os.tasks.task_importer import get_task_funcs
-
-from neurobooth_os.iout import metadator as meta
+from neurobooth_os.mock.mock_server_stm import mock_stm_routine
+from neurobooth_os.mock.mock_server_acq import mock_acq_routine
+from neurobooth_os.netcomm import node_info,  get_messages_to_ctr
 
 
-def _make_server_ctr():
+def mock_server_ctr(callback, callback_args):
+    """Make fake control server"""
     host, port = node_info("dummy_ctr")
 
     data_received = queue.Queue()
     server_thread = threading.Thread(target=get_messages_to_ctr,
-                                     args=(data_received, host, port,),
+                                     args=(callback, host, port, callback_args,),
                                      daemon=True)
     server_thread.start()
     return server_thread, data_received
 
 
-def  _make_server_stm():
+def mock_server_stm():
+    """Make fake stm server."""
     host, port = node_info("dummy_stm")
 
     data_received = queue.Queue()
@@ -48,8 +38,9 @@ def  _make_server_stm():
     return server_thread, data_received
 
 
-def  _make_server_acq():
-    host, port = node_info("dummy_stm")
+def mock_server_acq():
+    """Make fake acquisition server"""
+    host, port = node_info("dummy_acq")
 
     data_received = queue.Queue()
     server_thread = threading.Thread(target=mock_acq_routine,

@@ -68,19 +68,22 @@ def gui(database='neurobooth', remote=False):
         to the database. Use False if on site.
     """
 
-    if remote == False:
+    nodes = ('acquisition', 'presentation')
+    if remote:
         database = "mock_neurobooth"
+        nodes = ('dummy_acq', 'dummy_stm')
+
 
     conn = meta.get_conn(remote=remote, database=database)
     window = _win_gen(_init_layout, conn)
 
     # Start a threaded socket server
-    host = ''
-    port = 12347
-    ctr_thr = threading.Thread(target=get_messages_to_ctr,
-                               args=(_process_received_data, host, port, window),
-                               daemon=True)
-    ctr_thr.start()
+    host, port = '', 12347    
+    callback_args = window    
+    server_thread = threading.Thread(target=get_messages_to_ctr,
+                                     args=(_process_received_data, host, port, callback_args,),
+                                     daemon=True)
+    server_thread.start()
 
     plttr = stream_plotter()
     tech_obs_log = meta._new_tech_log_dict()
@@ -132,8 +135,8 @@ def gui(database='neurobooth', remote=False):
         elif event == "init_servs":
             window['init_servs'].Update(button_color=('black', 'red'))
             event, values = window.read(.1)
-            ctr_rec.start_servers()
-            _ = ctr_rec.test_lan_delay(50)
+            ctr_rec.start_servers(nodes=nodes, remote=remote, conn=conn)
+            _ = ctr_rec.test_lan_delay(50, nodes=nodes)
 
         # Real time display (RTD)
         elif event == 'RTD':  # TODO signal when RTD finishes
@@ -146,8 +149,8 @@ def gui(database='neurobooth', remote=False):
             window['Connect'].Update(button_color=('black', 'red'))
             event, values = window.read(.1)
 
-            ctr_rec.prepare_devices(f"{collection_id}:{str(tech_obs_log)}")
-            ctr_rec.initiate_labRec()
+            ctr_rec.prepare_devices(f"{collection_id}:{str(tech_obs_log)}",
+                                    nodes=nodes)
             print('Connecting devices')
 
         # Real-time plotting of inlet data.
@@ -169,14 +172,15 @@ def gui(database='neurobooth', remote=False):
             window['Start'].Update(button_color=('black', 'yellow'))
             if len(tasks):
                 running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
-                ctr_rec.task_presentation(running_task, sess_info['subj_id'])
+                ctr_rec.task_presentation(running_task, sess_info['subj_id'],
+                                          node=nodes[1])
             else:
                 sg.PopupError('No task selected')
 
         # Shut down the other servers and stops plotting
         elif event == 'Shut Down' or sg.WINDOW_CLOSED:
             plttr.stop()
-            ctr_rec.shut_all()
+            ctr_rec.shut_all(nodes=nodes)
             break
 
         ##################################################################################
@@ -242,7 +246,6 @@ def main():
     parser.add_option("-r", "--remote", dest="remote", action="store_true",
                       default=False, help="Access database using remote connection")
     (options, args) = parser.parse_args()
-    print(options.remote)
     gui(remote=options.remote)
 
 if __name__ == '__main__':

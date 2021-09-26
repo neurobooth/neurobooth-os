@@ -9,16 +9,20 @@ import importlib
 import neurobooth_os.iout.metadator as meta
 
 
-def str_fileid_to_eval(stim_file_str):
+def _str_fileid_to_eval(stim_file_str):
     """" Converts string path.to.module.py::function() to callable
 
-    parameters:
+    Parameters
+    ----------
         stim_file_str: str
             string with path to py file :: and function()
-    returns:
+            
+    Returns
+    -------
         task_func: callable
             callable of the function pointed by stim_file_str
     """
+    
     strpars = stim_file_str.split(".py::")
     filepath = "neurobooth_os." + strpars[0]
     func = strpars[1].replace("()", "")
@@ -28,17 +32,21 @@ def str_fileid_to_eval(stim_file_str):
     return task_func
 
 
-def get_task_funcs(collection_id):
-    """" Using collection_id retrieves callable task objects
+def get_task_funcs(collection_id, conn):
+    """Retrieves callable task objects from database using collection_id
 
-    parameters:
-        collection_id: str
-            name of the collection from DB
-    returns:
-        task_func_dict: dict
-            dict containing key task name and value callable task
+    Parameters
+    ----------
+    collection_id : str
+        name of the collection from database
+    conn : object
+        Connector to the database
+
+    Returns
+    -------
+    dict with task functions
+        dict containing key task name and value callable task
     """
-    conn = meta.get_conn()
 
     tasks = meta.get_tasks(collection_id, conn)
 
@@ -46,7 +54,7 @@ def get_task_funcs(collection_id):
     for task_id in tasks:
         task_stim_id, task_dev, task_sens = meta.get_task_param(task_id, conn)
         stim_file, param_file = meta.get_task_stim(task_stim_id, conn)
-        stim_func = str_fileid_to_eval(stim_file)
+        stim_func = _str_fileid_to_eval(stim_file)
         task_func_dict[task_stim_id] = stim_func
 
     conn.close()

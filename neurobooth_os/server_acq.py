@@ -11,7 +11,7 @@ from neurobooth_os.iout import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import (start_lsl_threads, close_streams,
                                              reconnect_streams, connect_mbient)
 
-os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')
+# os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')
 
 
 def Main():
