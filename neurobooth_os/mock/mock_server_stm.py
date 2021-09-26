@@ -68,8 +68,9 @@ def mock_stm_routine(host, port, conn):
         connector to the database
     """
 
-    def print_funct(msg):
-        print("Mock STM:::", msg)
+    def print_funct(msg=None):
+        if msg is not None:
+            print("Mock STM:::", msg)
     fprint_flush = print_funct
     
     streams = {}

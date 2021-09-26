@@ -74,6 +74,18 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
             if 'Eyelink' in kdev:
                 streams['Eyelink'] = EyeTracker(win=win, **argsdev)
 
+    elif node_name == "dummy_acq": 
+        from neurobooth_os import mock
+
+        for kdev, argsdev in kward_devs_task1.items():
+            if "Intel" in kdev:
+                streams[kdev] = mock.MockCamera(**argsdev)
+            elif "Mbient" in kdev:
+                streams[kdev] = mock.MockMbient(**argsdev)
+
+    elif node_name == "dummy_stm":
+        pass
+
     return streams
 
 

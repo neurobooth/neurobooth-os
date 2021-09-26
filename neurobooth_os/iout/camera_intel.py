@@ -26,10 +26,10 @@ def catch_exception(f):
     return func
 
 
-class VidRec_Intel():
+class VidRec_Intel(MockDevice):
     def __init__(self, size_rgb=(640, 480), size_depth=(640, 360),
                  device_id="Intel_D455_1", sensor_ids=['Intel_D455_rgb_1', 'Intel_D455_depth_1'],
-                 fps_rgb=60, fps_depth=60, camindex=[3, "SerialNumber"]):
+                 fps_rgb=60, fps_depth=60, camindex=[3, "SerialNumber"], mock=False):
 
         self.open = True
         self.recording = False
