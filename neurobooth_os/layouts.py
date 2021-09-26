@@ -73,11 +73,16 @@ def task_mapping(task_name):
     return name_present, task_name
 
 
-def _main_layout(sess_info, frame_sz=(320, 240)):
+def _main_layout(sess_info, remote, frame_sz=(320, 240)):
     frame_cam = np.ones(frame_sz)
     imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0))
+    
+    console_output = [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
+                 auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))]
+    if remote:
+        console_output = [_space(3)]
 
     field_tasks = []
     for task in sess_info['_tasks_'].split(", "):
@@ -101,9 +106,7 @@ def _main_layout(sess_info, frame_sz=(320, 240)):
         ] + field_tasks + [
         [_space()],
         [_space()],
-
-        [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
-                 auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))],
+        console_output,
         [_space()],
 
         [_space(1), _lay_butt('Initiate servers', 'init_servs'),         

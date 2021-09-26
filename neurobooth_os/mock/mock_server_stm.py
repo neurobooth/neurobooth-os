@@ -76,7 +76,7 @@ def mock_stm_routine(host, port, conn):
     
     streams = {}
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    for data, connx in get_client_messages(s1, fprint_flush, sys.stdout, port=port, host=host):
+    for data, connx in get_client_messages(s1, fprint_flush, None, port=port, host=host):
 
         if "prepare" in data:
             # data = "prepare:collection_id:str(tech_obs_log_dict)"
