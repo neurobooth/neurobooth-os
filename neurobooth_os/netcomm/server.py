@@ -54,6 +54,8 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
         The socket object
     fprint : callable
         function for printing, e.g. fprint from `get_fprint`
+    old_stdout : object | None
+        the original sys.stdout pipe before re-routing, can be None
     port : int
         The port
     host : str
@@ -90,7 +92,8 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
 
         if not data:            
             print("Connection fault, closing Stim server")
-            sys.stdout = old_stdout
+            if old_stdout is not None:
+                sys.stdout = old_stdout
             s1.close()
             break
 
@@ -130,7 +133,7 @@ def get_messages_to_ctr(callback=None, host="", port=12347, *callback_args):
 
         data = data.decode("utf-8")
         # print(data)
-
+        
         if callback is not None:
             callback(data, *callback_args)
 

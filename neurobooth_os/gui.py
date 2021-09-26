@@ -125,7 +125,7 @@ def gui(remote=False, database='neurobooth'):
                 tech_obs_log["subject_id"] = sess_info['subj_id']
                 window.close()
                 # Open new layout with main window
-                window = _win_gen(_main_layout, sess_info)
+                window = _win_gen(_main_layout, sess_info, remote)
 
         ############################################################
         # Main Window -> Run neurobooth session
