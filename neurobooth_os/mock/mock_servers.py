@@ -26,25 +26,48 @@ def mock_server_ctr(callback, callback_args):
     return server_thread, data_received
 
 
-def mock_server_stm():
-    """Make fake stm server."""
+def mock_server_stm(conn):
+    """Make fake stm server.
+
+    Parameters
+    ----------
+    conn : object
+        Connector to the database
+
+    Returns
+    -------
+    thread instance
+        the instance of the server
+    """
+    
     host, port = node_info("dummy_stm")
 
     data_received = queue.Queue()
     server_thread = threading.Thread(target=mock_stm_routine,
-                                     args=(host, port,),
+                                     args=(host, port, conn,),
                                      daemon=True)
     server_thread.start()
     return server_thread, data_received
 
 
-def mock_server_acq():
-    """Make fake acquisition server"""
+def mock_server_acq(conn):
+    """Make fake acq server.
+
+    Parameters
+    ----------
+    conn : object
+        Connector to the database
+
+    Returns
+    -------
+    thread instance
+        the instance of the server
+    """
     host, port = node_info("dummy_acq")
 
     data_received = queue.Queue()
     server_thread = threading.Thread(target=mock_acq_routine,
-                                     args=(host, port,),
+                                     args=(host, port, conn,),
                                      daemon=True)
     server_thread.start()
     return server_thread, data_received

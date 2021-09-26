@@ -33,8 +33,6 @@ def mock_acq_routine(host, port, conn):
         print("Mock STM:::", msg)
     fprint_flush = print_funct
 
-    conn = meta.get_conn(True, "mock")
-
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)    
     for data, connx in get_client_messages(s1, fprint_flush, sys.stdout, port=port, host=host):
 
