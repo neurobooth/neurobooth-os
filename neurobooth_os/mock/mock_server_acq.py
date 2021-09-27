@@ -46,7 +46,7 @@ def mock_acq_routine(host, port, conn):
                 fprint_flush("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
-                streams = start_lsl_threads("acquisition", collection_id, conn=conn)
+                streams = start_lsl_threads("mock_acq", collection_id, conn=conn)
 
             fprint_flush()
             devs = list(streams.keys())
