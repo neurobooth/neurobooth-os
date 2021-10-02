@@ -1,7 +1,9 @@
 from __future__ import absolute_import, division
+from psychopy import logging
+logging.console.setLevel(logging.CRITICAL)
+
 import neurobooth_os
 import os.path as op
-from neurobooth_os.tasks.utils import make_win
 from neurobooth_os.tasks import utils
 from psychopy import visual
 from psychopy import prefs
@@ -15,7 +17,9 @@ class Sit_to_Stand():
             marker_outlet=None,
             win=None,
             full_screen=False,
-            text_practice=utils.text_practice,
+            text_continue_repeat=utils.text_continue_repeat,
+            text_continue=utils.text_continue,
+            text_practice_screen = utils.text_practice_screen,
             text_task=utils.text_task,
             text_end=utils.text_end):
 
@@ -33,7 +37,7 @@ class Sit_to_Stand():
 
         if win is None:
             # Setup the Window
-            self.win = make_win(self.full_screen)
+            self.win = utils.make_win(self.full_screen)
             self.win_temp = True
         else:
             self.win = win
@@ -43,47 +47,61 @@ class Sit_to_Stand():
         self.instruction_video = visual.MovieStim3(
             win=self.win, filename=self.path_instruction_video, noAudio=False)
 
-
-        self.practice = utils.create_text_screen(self.win, text_practice)
-        self.task = utils.create_text_screen(self.win, text_task)
-        self.end = utils.create_text_screen(self.win, text_end)
+        self.continue_repeat_screen = utils.create_text_screen(self.win, text_continue_repeat)
+        self.continue_screen = utils.create_text_screen(self.win, text_continue)
+        self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
+        self.task_screen = utils.create_text_screen(self.win, text_task)
+        self.end_screen = utils.create_text_screen(self.win, text_end)
 
 
     def send_marker(self, msg=None):
         if self.with_lsl:
             utils.send_marker(self.marker, msg)
 
+    def present_text(self, screen, msg, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=True, first_screen=False):
+        self.send_marker(f"{msg}-start_0")
+        utils.present(self.win, screen, audio=audio, wait_time=wait_time,
+                      win_color=win_color, waitKeys=waitKeys, first_screen=first_screen)
+        self.send_marker(f"{msg}-end_1")
 
-    def instructions(self):
-        while True:
-            self.send_marker("Intructions-start_0")
-            utils.play_video(self.win, self.instruction_video, stop=False)
-            self.send_marker("Intructions-end_1")
+    def present_video(self, video, msg, stop=False):
+        self.send_marker(f"{msg}-start_0")
+        utils.play_video(self.win, video, stop=stop)
+        self.send_marker(f"{msg}-end_1")
 
-            self.send_marker("Practice-Intructions-start_0")
-            utils.present(self.win, self.practice, waitKeys=False)
-            self.send_marker("Practice-Intructions-end_1")
+    def instructions(self, prompt=True):
+        self.present_video(video=self.instruction_video, msg='intructions')
+        self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', waitKeys=False)
+        # Requires user or coordinator input to terminate
+        if prompt:
+            if utils.rewind_video(self.win, self.instruction_video):
+                self.instructions()
 
-            if not utils.rewind_video(self.win, self.instruction_video):
-                break
+    def practice(self, prompt=True):
+        self.present_text(screen=self.practice_screen, msg='practice')
+        self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', waitKeys=False)
+        # Requires user or coordinator input to terminate
+        if prompt:
+            if utils.repeat_advance():
+                self.practice()
 
+    def run(self, prompt=True):
+        self.present_text(screen=self.task_screen, msg='task', audio=None, wait_time=5)
+        self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', waitKeys=False)
+        # Requires user or coordinator input to terminate
+        if prompt:
+            if utils.repeat_advance():
+                self.run()
 
-    def run(self):
-        self.send_marker("Task-start_0")
-        utils.present(self.win, self.task, audio=None, wait_time=5)
-        self.send_marker("Task-end_0")
+    def complete(self):
+        self.present_text(screen=self.end_screen, msg='complete', audio=None, wait_time=2, waitKeys=False)
 
-        self.send_marker("Task-complete_0")
-        utils.present(self.win, self.end, audio=None, wait_time=2, waitKeys=False)
-        self.send_marker("Task-complete_0")
-
-        # Close win if just created for the task
+    # Close win if just created for the task
+    def close(self):
         if self.win_temp:
             self.win.close()
 
 
 if __name__ == "__main__":
-
     sts = Sit_to_Stand()
-    sts.instructions()
-    sts.run()
+    utils.run_task(sts)

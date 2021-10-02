@@ -16,8 +16,10 @@ from psychopy import prefs
 prefs.hardware['audioLib'] = ['pyo']
 
 
-text_practice = 'Please press:\n\tContinue to start the task' + \
-                '\n\tRepeat to view instructions again'
+text_continue_repeat = 'Please press:\n\tContinue to advance' + \
+                '\n\tRepeat to go back'
+text_continue = 'Please press:\n\tContinue to advance'
+text_practice_screen = 'Please practice the task \n\tPress any button when done'
 text_task='Please do the task \n\tPress any button when done'
 text_end='Thank you. You have completed this task'
 
@@ -98,3 +100,29 @@ def rewind_video(win, mov):
         win.flip()
         mov.seek(0)
         return True
+
+def repeat_advance():
+    key = event.waitKeys(keyList=['space', 'r'])
+    if key == ["space"]:
+        return False
+    elif key == ['r']:
+        return True
+
+def advance():
+    key = event.waitKeys(keyList=['space'])
+    if key == ["space"]:
+        return True
+
+def run_task(task):
+    print('starting task')
+    task.instructions()
+    print('starting instructions')
+    task.practice()
+    print('starting task')
+    task.run()
+    print('end screen')
+    task.complete()
+    print('close window')
+    task.close()
+    print('task done')
+
