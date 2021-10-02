@@ -16,9 +16,9 @@ from psychopy import prefs
 prefs.hardware['audioLib'] = ['pyo']
 
 
-text_continue_repeat = 'Please press:\n\tContinue to advance' + \
-                '\n\tRepeat to go back'
-text_continue = 'Please press:\n\tContinue to advance'
+text_continue_repeat = 'Please press:\n\t"Continue" to advance' + \
+                '\n\t"Repeat" to go back'
+text_continue = 'Please press:\n\t"Continue" to advance'
 text_practice_screen = 'Please practice the task \n\tPress any button when done'
 text_task='Please do the task \n\tPress any button when done'
 text_end='Thank you. You have completed this task'
@@ -113,13 +113,13 @@ def advance():
     if key == ["space"]:
         return True
 
-def run_task(task):
+def run_task(task, prompt=True):
     print('starting task')
-    task.instructions()
+    task.instructions(prompt)
     print('starting instructions')
-    task.practice()
+    task.practice(prompt)
     print('starting task')
-    task.run()
+    task.run(prompt)
     print('end screen')
     task.complete()
     print('close window')

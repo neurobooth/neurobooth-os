@@ -58,11 +58,19 @@ class Sit_to_Stand():
         if self.with_lsl:
             utils.send_marker(self.marker, msg)
 
-    def present_text(self, screen, msg, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=True, first_screen=False):
+    def present_text(self, screen, msg, func=None, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=True,
+                     first_screen=False, video_prompt=False, video=None):
         self.send_marker(f"{msg}-start_0")
         utils.present(self.win, screen, audio=audio, wait_time=wait_time,
                       win_color=win_color, waitKeys=waitKeys, first_screen=first_screen)
         self.send_marker(f"{msg}-end_1")
+        if func is not None:
+            if video_prompt and video is not None:
+                if utils.rewind_video(self.win, self.instruction_video):
+                    func()
+            else:
+                if utils.repeat_advance():
+                    func()
 
     def present_video(self, video, msg, stop=False):
         self.send_marker(f"{msg}-start_0")
@@ -71,27 +79,21 @@ class Sit_to_Stand():
 
     def instructions(self, prompt=True):
         self.present_video(video=self.instruction_video, msg='intructions')
-        self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', waitKeys=False)
-        # Requires user or coordinator input to terminate
         if prompt:
-            if utils.rewind_video(self.win, self.instruction_video):
-                self.instructions()
+            self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', func=self.instructions,
+                          waitKeys=False, video_prompt=True, video=self.instruction_video)
 
     def practice(self, prompt=True):
         self.present_text(screen=self.practice_screen, msg='practice')
-        self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', waitKeys=False)
-        # Requires user or coordinator input to terminate
         if prompt:
-            if utils.repeat_advance():
-                self.practice()
+            self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', func=self.practice,
+                          waitKeys=False)
 
     def run(self, prompt=True):
         self.present_text(screen=self.task_screen, msg='task', audio=None, wait_time=5)
-        self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', waitKeys=False)
-        # Requires user or coordinator input to terminate
         if prompt:
-            if utils.repeat_advance():
-                self.run()
+            self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', func=self.run,
+                          waitKeys=False)
 
     def complete(self):
         self.present_text(screen=self.end_screen, msg='complete', audio=None, wait_time=2, waitKeys=False)
@@ -104,4 +106,4 @@ class Sit_to_Stand():
 
 if __name__ == "__main__":
     sts = Sit_to_Stand()
-    utils.run_task(sts)
+    utils.run_task(sts, prompt=True)
