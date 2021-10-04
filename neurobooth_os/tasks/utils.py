@@ -115,13 +115,13 @@ def advance():
 
 def run_task(task, prompt=True):
     print('starting task')
-    task.instructions(prompt)
+    task.present_instructions(prompt)
     print('starting instructions')
-    task.practice(prompt)
+    task.present_practice(prompt)
     print('starting task')
-    task.run(prompt)
+    task.present_task(prompt)
     print('end screen')
-    task.complete()
+    task.present_complete()
     print('close window')
     task.close()
     print('task done')

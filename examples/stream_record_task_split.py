@@ -18,7 +18,7 @@ from h5io import read_hdf5
 import neurobooth_os.mock.mock_device_streamer as mocker
 from neurobooth_os.iout.marker import marker_stream
 from neurobooth_os.iout.split_xdf import split
-from neurobooth_os.tasks import Sit_to_Stand
+from neurobooth_os.tasks import Task
 from neurobooth_os.tasks import utils
 
 print(__doc__)
@@ -55,8 +55,8 @@ session.start_recording(task)
 # %%
 # Run task
 win = utils.make_win(full_screen=False)
-sts = Sit_to_Stand(marker_outlet=marker, win=win)
-utils.run_task(sts)
+base_task = Task(marker_outlet=marker, win=win)
+utils.run_task(base_task)
 
 # %%
 # Stop recording
