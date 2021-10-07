@@ -79,10 +79,11 @@ def _main_layout(sess_info, remote, frame_sz=(320, 240)):
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0))
     
-    console_output = [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
-                 auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))]
     if remote:
         console_output = [_space(3)]
+    else:
+        console_output = [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
+                 auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))]
 
     field_tasks = []
     for task in sess_info['_tasks_'].split(", "):

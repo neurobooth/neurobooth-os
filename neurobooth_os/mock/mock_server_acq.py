@@ -31,7 +31,8 @@ def mock_acq_routine(host, port, conn):
     """
     def print_funct(msg=None):
         if msg is not None:
-            print("Mock ACQ:::", msg)
+            # print("Mock ACQ:::", msg)
+            socket_message(f"Mock ACQ:::: {msg} ", node_name='dummy_ctr')
     fprint_flush = print_funct
 
     streams = {}
