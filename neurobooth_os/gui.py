@@ -13,7 +13,7 @@ import PySimpleGUI as sg
 
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, get_lsl_images, stream_plotter
-from neurobooth_os.netcomm import get_messages_to_ctr
+from neurobooth_os.netcomm import get_messages_to_ctr, node_info
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout
 import neurobooth_os.iout.metadator as meta
 
@@ -68,29 +68,25 @@ def gui(remote=False, database='neurobooth'):
         The database name
     """
 
-    nodes = ('acquisition', 'presentation')
+    
     if remote:
         database = "mock_neurobooth"
         nodes = ('dummy_acq', 'dummy_stm')
+        host_ctr, port_ctr = node_info("dummy_ctr")
+    else:
+        nodes = ('acquisition', 'presentation')
+        host_ctr, port_ctr = node_info("control")
 
 
     conn = meta.get_conn(remote=remote, database=database)
     window = _win_gen(_init_layout, conn)
 
-    # Start a threaded socket server
-    host, port = '', 12347    
-    callback_args = window    
-    server_thread = threading.Thread(target=get_messages_to_ctr,
-                                     args=(_process_received_data, host, port, callback_args,),
-                                     daemon=True)
-    server_thread.start()
-
     plttr = stream_plotter()
     tech_obs_log = meta._new_tech_log_dict()
     stream_ids, inlets = {}, {}
     plot_elem, inlet_keys = [], [],
-    statecolors = {"init_servs": ["green", "yellow"],
-                   "Connect": ["green", "yellow"],
+    statecolors = {"-init_servs-": ["green", "yellow"],
+                   "-Connect-": ["green", "yellow"],
                    }
 
     event, values = window.read(.1)
@@ -125,15 +121,23 @@ def gui(remote=False, database='neurobooth'):
                 tech_obs_log["subject_id"] = sess_info['subj_id']
                 window.close()
                 # Open new layout with main window
-                window = _win_gen(_main_layout, sess_info)
+                window = _win_gen(_main_layout, sess_info, remote)
+
+                # Start a threaded socket CTR server once main window gnerated
+                callback_args = window    
+                server_thread = threading.Thread(target=get_messages_to_ctr,
+                                                args=(_process_received_data, host_ctr, port_ctr,
+                                                callback_args,),
+                                                daemon=True)
+                server_thread.start()
 
         ############################################################
         # Main Window -> Run neurobooth session
         ############################################################
 
         # Start servers on STM, ACQ
-        elif event == "init_servs":
-            window['init_servs'].Update(button_color=('black', 'red'))
+        elif event == "-init_servs-":
+            window['-init_servs-'].Update(button_color=('black', 'red'))
             event, values = window.read(.1)
             ctr_rec.start_servers(nodes=nodes, remote=remote, conn=conn)
             _ = ctr_rec.test_lan_delay(50, nodes=nodes)
@@ -145,8 +149,8 @@ def gui(remote=False, database='neurobooth'):
             time.sleep(1)
 
         # Turn on devices and start LSL outlet stream
-        elif event == 'Connect':
-            window['Connect'].Update(button_color=('black', 'red'))
+        elif event == '-Connect-':
+            window['-Connect-'].Update(button_color=('black', 'red'))
             event, values = window.read(.1)
 
             ctr_rec.prepare_devices(f"{collection_id}:{str(tech_obs_log)}",
@@ -157,7 +161,7 @@ def gui(remote=False, database='neurobooth'):
         elif event == 'plot':
             # if no inlets sent event to prepare devices and make popup error
             if len(inlets) == 0:
-                window.write_event_value('Connect')
+                window.write_event_value('-Connect-')
                 sg.PopupError('No inlet devices detected, preparing. Press plot once prepared')
 
             if plttr.pltotting_ts is True:
@@ -167,6 +171,7 @@ def gui(remote=False, database='neurobooth'):
 
         # Start task presentation.
         elif event == 'Start':
+            print(values)
             tasks = [k for k, v in values.items() if "task" in k and v == True]
                     
             window['Start'].Update(button_color=('black', 'yellow'))
@@ -187,7 +192,7 @@ def gui(remote=False, database='neurobooth'):
         # Thread events from process_received_data -> received messages from other servers
         ##################################################################################
 
-        # Update colors for: init_servs, Connect, Start buttons
+        # Update colors for: -init_servs-, -Connect-, Start buttons
         elif event == "-update_butt-":
             if values['-update_butt-'] in list(statecolors):
                 # 2 colors for init_servers and Connect, 1 connected, 2 connected
@@ -236,7 +241,8 @@ def gui(remote=False, database='neurobooth'):
 
 
     window.close()
-    window['-OUTPUT-'].__del__()
+    if not remote:
+        window['-OUTPUT-'].__del__()
     print("Session terminated")
 
 

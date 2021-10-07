@@ -24,10 +24,10 @@ def insert_mock_rows(conn_mock):
                         '{mock_collection}', None, None)])
 
     table = Table('collection', conn_mock)
-    table.insert_rows([('mock_collection', False, '{mock_obs}', None)])
+    table.insert_rows([('mock_collection', False, '{mock_obs_1}', None)])
 
     table = Table('stimulus', conn_mock)
-    table.insert_rows([('mock_test_1', 'description', 2, 5,                        
+    table.insert_rows([('mock_task_1', 'description', 2, 5,                        
                         'mock.mock_task.py::MockTask()')],
                         cols=['stimulus_id', 'stimulus_description', 'num_iterations', "duration",
                          'stimulus_file'])
@@ -36,7 +36,7 @@ def insert_mock_rows(conn_mock):
         [("mock task, follow the instructions",)], cols=['instruction_text'])
 
     table = Table('tech_obs_data', conn_mock)
-    table.insert_rows([('mock_obs',  instruction_id, 'mock_test_1',
+    table.insert_rows([('mock_obs_1',  instruction_id, 'mock_task_1',
                         '{mock_Mbient_1,mock_Mbient_2, mock_Intel_1}',                        
                         ('{{mock_Mbient_acc_1, mock_Mbient_grad_1},'
                          '{mock_Mbient_acc_1, mock_Mbient_grad_1},'

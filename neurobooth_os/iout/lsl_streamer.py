@@ -31,6 +31,7 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
     """
 
     if conn is None:
+        print("getting conn")
         conn = meta.get_conn()
 
     # Get params from all tasks
@@ -41,7 +42,6 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
     streams = {}
     if node_name == "acquisition":
         from neurobooth_os.iout.microphone import MicStream
-        from neurobooth_os.iout.camera_brio import VidRec_Brio
         from neurobooth_os.iout.camera_intel import VidRec_Intel
         from neurobooth_os.iout.flir_cam import VidRec_Flir
 
@@ -62,9 +62,9 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
                 streams[kdev].start()
 
     elif node_name == "presentation":
-        from iout.marker import marker_stream
-        from iout.mouse_tracker import MouseStream
-        from iout.eyelink_tracker import EyeTracker
+        from neurobooth_os.iout import marker_stream
+        from neurobooth_os.iout.mouse_tracker import MouseStream
+        from neurobooth_os.iout.eyelink_tracker import EyeTracker
 
         streams['mouse'] = MouseStream()
         streams['mouse'].start()
@@ -75,16 +75,17 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
                 streams['Eyelink'] = EyeTracker(win=win, **argsdev)
 
     elif node_name == "dummy_acq": 
-        from neurobooth_os import mock
+        from neurobooth_os.mock import mock_device_streamer as mock_dev
 
         for kdev, argsdev in kward_devs_task1.items():
             if "Intel" in kdev:
-                streams[kdev] = mock.MockCamera(**argsdev)
+                streams[kdev] = mock_dev.MockCamera(**argsdev)
             elif "Mbient" in kdev:
-                streams[kdev] = mock.MockMbient(**argsdev)
+                streams[kdev] = mock_dev.MockMbient(**argsdev)
 
     elif node_name == "dummy_stm":
-        pass
+        from neurobooth_os.iout import marker_stream
+        streams['marker'] = marker_stream()
 
     return streams
 
