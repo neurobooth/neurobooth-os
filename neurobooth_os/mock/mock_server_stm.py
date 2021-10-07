@@ -12,8 +12,8 @@ import sys
 from collections import OrderedDict
 
 from neurobooth_os import config
-from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
-from neurobooth_os.netcomm import socket_message, node_info, get_client_messages, get_fprint
+from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
+from neurobooth_os.netcomm import socket_message, node_info, get_client_messages
 from neurobooth_os.tasks.task_importer import get_task_funcs
 from neurobooth_os.iout import metadator as meta
 
@@ -72,6 +72,7 @@ def mock_stm_routine(host, port, conn):
     def print_funct(msg=None):
         if msg is not None:
             print("Mock STM:::", msg)
+            socket_message(f"Mock STM:::: {msg} ", node_name='dummy_ctr')
     fprint_flush = print_funct
     
     streams = {}

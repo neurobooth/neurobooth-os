@@ -13,7 +13,7 @@ import PySimpleGUI as sg
 
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, get_lsl_images, stream_plotter
-from neurobooth_os.netcomm import get_messages_to_ctr
+from neurobooth_os.netcomm import get_messages_to_ctr, node_info
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout
 import neurobooth_os.iout.metadator as meta
 
@@ -72,16 +72,19 @@ def gui(remote=False, database='neurobooth'):
     if remote:
         database = "mock_neurobooth"
         nodes = ('dummy_acq', 'dummy_stm')
-
+        ctr_host, ctr_port = node_info("dummy_ctr")
+    else:
+        nodes = ('acquisition', 'presentation')
+        ctr_host, ctr_port = node_info('control')
 
     conn = meta.get_conn(remote=remote, database=database)
     window = _win_gen(_init_layout, conn)
 
-    # Start a threaded socket server
-    host, port = '', 12347    
+    # Start a threaded socket server   
     callback_args = window    
     server_thread = threading.Thread(target=get_messages_to_ctr,
-                                     args=(_process_received_data, host, port, callback_args,),
+                                     args=(_process_received_data, ctr_host, ctr_port,
+                                      callback_args,),
                                      daemon=True)
     server_thread.start()
 
@@ -236,7 +239,8 @@ def gui(remote=False, database='neurobooth'):
 
 
     window.close()
-    window['-OUTPUT-'].__del__()
+    if not remote:
+        window['-OUTPUT-'].__del__()
     print("Session terminated")
 
 
