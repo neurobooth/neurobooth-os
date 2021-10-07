@@ -104,6 +104,20 @@ def socket_time(node_name, print_flag=1, time_out=3):
 
 
 def node_info(node_name):
+    """Gets the host and port of the node_name.
+
+    Parameters
+    ----------
+    node_name : str
+        Name of the node from which port and host is retrieved.
+
+    Returns
+    -------
+    host str
+        name of the host
+    port int
+        port number
+    """
     port = 12347
     if node_name == "acquisition":
         host = 'acq'

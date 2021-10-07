@@ -19,21 +19,19 @@ from neurobooth_os.iout import metadator as meta
 
 
 
-def run_task(task_funct, s2, lsl_cmd, subj_id, task, task_karg={}):
+def run_task(task_funct,subj_id, task, fprint_flush, task_karg={}):
     """Runs a task
 
     Parameters
     ----------
     task_funct : callable
         Task to run
-    s2 : object
-        socket object for connecting local to ctr
-    lsl_cmd : str
-        command to send though s2.
     subj_id : str
         name of the subject
     task : str
         name of the task
+    fprint_flush : callable
+        print function
     task_karg : dict, optional
         Kwarg to pass to task_funct, by default {}
 
@@ -42,18 +40,12 @@ def run_task(task_funct, s2, lsl_cmd, subj_id, task, task_karg={}):
     res : callable
         Task object
     """
+    res = task_funct(**task_karg) 
     resp = socket_message(f"record_start:{subj_id}_{task}", "dummy_acq", wait_data=3)
-    print(resp)
-    s2.sendall(lsl_cmd.encode('utf-8'))
+    fprint_flush(resp)
     sleep(.5)
-    s2.sendall(b"select all\n")
-    sleep(.5)
-    s2.sendall(b"start\n")  # LabRecorder start cmd
-    sleep(.5)
-    res = task_funct(**task_karg)
-    s2.sendall(b"stop\n")
-    socket_message("record_stop", "acquisition")
-    sleep(2)
+    res.run()
+    socket_message("record_stop", "dummy_acq")
     return res
 
 def mock_stm_routine(host, port, conn):
@@ -68,10 +60,10 @@ def mock_stm_routine(host, port, conn):
     conn : object
         connector to the database
     """
-
     def print_funct(msg=None):
         if msg is not None:
-            print("Mock STM:::", msg)
+            msg = "Mock STM:::" + msg
+            socket_message(msg, "dummy_ctr")
     fprint_flush = print_funct
     
     streams = {}
@@ -90,7 +82,7 @@ def mock_stm_routine(host, port, conn):
                 fprint_flush("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
-                streams = start_lsl_threads("mock_stm", collection_id, conn=conn)
+                streams = start_lsl_threads("dummy_stm", collection_id, conn=conn)
                 fprint_flush()
                 fprint_flush("Preparing devices")
 
@@ -102,20 +94,19 @@ def mock_stm_routine(host, port, conn):
             tasks = data.split(":")[1].split("-")
             subj_id = data.split(":")[2]
 
-            for task in tasks:
-                host_ctr, _ = node_info("control")
+            for task in tasks:                
                 tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
 
                 task_karg ={"path": config.paths['data_out'],
                             "subj_id": subj_id,
                             "marker_outlet": streams['marker'],
-                            "event_marker": streams['marker']}
+                            "instruction_text": "generic instruction text, not read from DB!"}
 
                 if task in task_func_dict.keys():
                     fprint_flush(f"Initiating task:{task}:{tech_obs_log_id}")
 
                     tsk_fun = task_func_dict[task]
-                    res = run_task(tsk_fun, s1, subj_id, task, fprint_flush, task_karg)
+                    res = run_task(tsk_fun, subj_id, task, fprint_flush, task_karg)
 
                     fprint_flush(f"Finished task:{task}")
 
