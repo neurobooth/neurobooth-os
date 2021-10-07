@@ -31,7 +31,8 @@ def mock_acq_routine(host, port, conn):
     """
     def print_funct(msg=None):
         if msg is not None:
-            print("Mock ACQ:::", msg)
+            msg = "Mock ACQ:::" + msg
+            socket_message(msg, "dummy_ctr")
     fprint_flush = print_funct
 
     streams = {}
@@ -46,7 +47,7 @@ def mock_acq_routine(host, port, conn):
                 fprint_flush("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
-                streams = start_lsl_threads("mock_acq", collection_id, conn=conn)
+                streams = start_lsl_threads("dummy_acq", collection_id, conn=conn)
 
             fprint_flush()
             devs = list(streams.keys())

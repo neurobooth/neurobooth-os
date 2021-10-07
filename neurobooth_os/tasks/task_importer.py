@@ -57,5 +57,4 @@ def get_task_funcs(collection_id, conn):
         stim_func = _str_fileid_to_eval(stim_file)
         task_func_dict[task_stim_id] = stim_func
 
-    conn.close()
     return task_func_dict

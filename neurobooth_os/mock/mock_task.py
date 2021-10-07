@@ -27,9 +27,9 @@ class MockTask():
     """
     def __init__(
             self,
-            instruction_text,
-            marker_outlet=None
-            ):
+            instruction_text="Default intrusctions",
+            marker_outlet=None,
+            **kwarg):
         
         self.instruction_text = instruction_text
 
@@ -45,7 +45,7 @@ class MockTask():
             self.marker.push_sample([f"{msg}_{time.time()}"])
 
     
-    def run(self, n_trial=20, duration=10):
+    def run(self, n_trials=20, duration=10):
         """Run the task.
 
         Parameters
@@ -66,9 +66,9 @@ class MockTask():
        
        # Run mock trials
         self.send_marker("Task-start_0")
-        for _ in range(self.n_trials):
+        for _ in range(n_trials):
             self.send_marker(msg=f"Trial-start_0")
-            time.sleep(self.duration/self.ntrials)
+            time.sleep(duration/n_trials)
             self.send_marker(msg=f"Trial-end_1")
         self.send_marker("Task-end_1")
 

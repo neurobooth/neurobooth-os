@@ -73,7 +73,7 @@ def task_mapping(task_name):
     return name_present, task_name
 
 
-def _main_layout(sess_info, frame_sz=(320, 240)):
+def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
     frame_cam = np.ones(frame_sz)
     imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
     sg.theme('Dark Grey 9')
@@ -83,6 +83,12 @@ def _main_layout(sess_info, frame_sz=(320, 240)):
     for task in sess_info['_tasks_'].split(", "):
         name, key = task_mapping(task)
         field_tasks.append([_space(), sg.Checkbox(name, key=key, size=(44, 1), default=True)])
+
+    if remote:
+        console_output = [_space(3)]
+    else:
+        console_output = [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
+                 auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))]
 
     layout_col1 = [
         [_space(), sg.Text(f'Subject ID: {sess_info["subj_id"]}', pad =(20, 0 ), size=(20, 1), 
@@ -101,14 +107,12 @@ def _main_layout(sess_info, frame_sz=(320, 240)):
         ] + field_tasks + [
         [_space()],
         [_space()],
-
-        [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
-                 auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))],
+        console_output,
         [_space()],
 
-        [_space(1), _lay_butt('Initiate servers', 'init_servs'),         
+        [_space(1), _lay_butt('Initiate servers', '-init_servs-'),         
          _space(5), _lay_butt('Display', 'RTD'), 
-         _space(5), _lay_butt('Connect Devices', 'Connect'),
+         _space(5), _lay_butt('Connect Devices', '-Connect-'),
          _space(5), _lay_butt('Plot Devices', 'plot'),
          ],         
         [_space()],

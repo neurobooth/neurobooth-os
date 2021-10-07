@@ -167,7 +167,20 @@ def meta_devinfo_tofunct(dev_id_param, dev_id):
     kwarg = {}
     kwarg["device_id"] = dev_id
     kwarg["sensor_ids"] = list(info['sensors'])
-    if "Intel" in dev_id:
+
+    if "mock_Mbient" in dev_id:
+        kwarg["name"] = dev_id
+        k = list(info['sensors'])[0]
+        kwarg['srate'] = int(info['sensors'][k]['temporal_res'])
+
+    elif "mock_Intel" in dev_id:
+        kwarg["name"] = dev_id
+        k = list(info['sensors'])[0]
+        kwarg['srate'] = int(info['sensors'][k]['temporal_res'])
+        kwarg['sizex'] = int(info['sensors'][k]['spatial_res_x'])
+        kwarg['sizey'] = int(info['sensors'][k]['spatial_res_y'])
+
+    elif "Intel" in dev_id:
         kwarg["camindex"] = [int(dev_id[-1]), info["SN"]]
 
         for k in info['sensors'].keys():

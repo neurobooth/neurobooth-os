@@ -41,13 +41,12 @@ def mock_server_stm(conn):
     """
     
     host, port = node_info("dummy_stm")
-
-    data_received = queue.Queue()
+    
     server_thread = threading.Thread(target=mock_stm_routine,
                                      args=(host, port, conn,),
                                      daemon=True)
     server_thread.start()
-    return server_thread, data_received
+    return server_thread
 
 
 def mock_server_acq(conn):
@@ -65,9 +64,8 @@ def mock_server_acq(conn):
     """
     host, port = node_info("dummy_acq")
 
-    data_received = queue.Queue()
     server_thread = threading.Thread(target=mock_acq_routine,
                                      args=(host, port, conn,),
                                      daemon=True)
     server_thread.start()
-    return server_thread, data_received
+    return server_thread
