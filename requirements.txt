@@ -12,3 +12,5 @@ psutil~=5.8.0
 sshtunnel 
 PySimpleGUI
 opencv-python
+h5io
+

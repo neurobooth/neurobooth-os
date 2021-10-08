@@ -82,6 +82,7 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
                 streams[kdev] = mock_dev.MockCamera(**argsdev)
             elif "Mbient" in kdev:
                 streams[kdev] = mock_dev.MockMbient(**argsdev)
+                streams[kdev].start()
 
     elif node_name == "dummy_stm":
         from neurobooth_os.iout import marker_stream

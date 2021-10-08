@@ -2,7 +2,7 @@ import io
 import sys
 import socket
 
-from neurobooth_os.netcomm.client import socket_message
+from neurobooth_os.netcomm import socket_message
 
 
 def get_fprint(current_node, target_node='control'):
@@ -43,6 +43,44 @@ def get_fprint(current_node, target_node='control'):
             print(e)
 
     return fprint_flush, old_stdout
+
+
+class NewStdout():
+    def __init__(self, current_node, target_node='control', terminal_print=False):
+        """Class that substitutes stdout pipe, sends message to socket and can print to terminal.
+
+        Parameters
+        ----------
+        current_node : str
+            Name of the current node, will be added in the message: {current_node}:::{msg}
+        target_node : str, optional
+            name of the node to whick send socket message, by default 'control'
+        terminal_print : bool, optional
+            if True the message will be printed in the terminal, by default False
+        """
+
+        self.terminal = sys.stdout
+        self.current_node = current_node
+        self.target_node = target_node
+        self.terminal_print = terminal_print
+
+    def write(self, message):
+        "write message to terminal and socket."
+        # Print in the terminal
+        if self.terminal_print:
+            self.terminal.write(message)
+
+        # send to cocket if message not empty
+        if message not in ["\n", ""]:
+            try:
+                socket_message(f"{self.current_node}:::{message}", node_name=self.target_node)
+            except:
+                self.terminal.write(f"message not send to {self.target_node}")
+
+    def flush(self):
+        # For compatibility, just pass
+        pass
+
 
 
 def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
@@ -125,7 +163,7 @@ def get_messages_to_ctr(callback=None, host="", port=12347, *callback_args):
             c, addr = s.accept()
             data = c.recv(1024)
         except BaseException:
-            print("Connection fault on ctr server")
+            # print("Connection fault on ctr server")
             continue
 
         data = data.decode("utf-8")
