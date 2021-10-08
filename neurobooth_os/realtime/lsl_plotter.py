@@ -57,10 +57,11 @@ def create_lsl_inlets(stream_ids):
     """
     inlets = {}
     for id_stream in stream_ids.values():
-        print("resolving: ", id_stream)
+        # print("resolving: ", id_stream)
         stream = pylsl.resolve_byprop("source_id", id_stream, timeout=1)
-        inlet = pylsl.StreamInlet(stream)
-        inlets[stream.name()] = inlet
+        if stream:
+            inlet = pylsl.StreamInlet(stream[0])
+            inlets[stream[0].name()] = inlet
     return inlets
 
 

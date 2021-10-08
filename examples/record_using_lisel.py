@@ -12,7 +12,7 @@ Only works in Windows or Linux using Wine
 # %%
 import time
 import liesl
-import neurobooth_os.iout.mock_device_streamer as mocker
+import neurobooth_os.mock.mock_device_streamer as mocker
 from neurobooth_os.iout.marker import marker_stream
 
 print(__doc__)

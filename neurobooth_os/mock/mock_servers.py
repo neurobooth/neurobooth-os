@@ -15,15 +15,26 @@ from neurobooth_os.netcomm import node_info,  get_messages_to_ctr
 
 
 def mock_server_ctr(callback, callback_args):
-    """Make fake control server"""
+    """Make fake control server.
+    
+    Parameters
+    ----------
+    callback : callable
+        function to run inside the socket data listening loop
+    callback_args : callable
+        arguments for the callback function
+    
+    Returns
+    -------
+    thread instance
+    """
+    
     host, port = node_info("dummy_ctr")
-
-    data_received = queue.Queue()
     server_thread = threading.Thread(target=get_messages_to_ctr,
                                      args=(callback, host, port, callback_args,),
                                      daemon=True)
     server_thread.start()
-    return server_thread, data_received
+    return server_thread
 
 
 def mock_server_stm(conn):

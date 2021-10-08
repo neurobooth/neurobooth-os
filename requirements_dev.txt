@@ -17,3 +17,4 @@ mypy===0.910
 sshtunnel 
 PySimpleGUI
 opencv-python
+h5io

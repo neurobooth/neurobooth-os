@@ -5,34 +5,47 @@ Created on Tue Sep 14 15:33:40 2021
 @author: adona
 """
 import time
-import socket
-import threading
 import queue
+import sys
 
-from neurobooth_os.netcomm.server import get_fprint
-from neurobooth_os.netcomm.server_ctr import server_com
-from neurobooth_os.netcomm.client import node_info, socket_message
+from neurobooth_os.netcomm import socket_message, NewStdout
 from neurobooth_os.mock import mock_server_ctr
 
 
-def test_server_send_message():
+def test_socket_message_to_ctr():
     """ Test message sent to dummy_ctr """
-    server_thread, data_received = mock_server_ctr()
+
+    data_queue = queue.Queue()
+    def callback(data, data_queue):
+        data_queue.put(data)
+    server_thread = mock_server_ctr(callback, data_queue)
 
     # Test socket_message
-    message = "test_test"
+    message = "test:::test_test"
     socket_message(message=message, node_name="dummy_ctr")
     time.sleep(1.)
-    assert data_received.get(timeout=2) == message
-
-    # Test fprint_flush
-    current_node = 'dummy_client'
-    fprint_flush, old_stdout = get_fprint(current_node, 'dummy_ctr')
-    message = "fprint msg"
-    fprint_flush(message)
-    data_recv = data_received.get(timeout=2)
-    assert data_recv == f'{current_node}: {message}\n '
+    assert data_queue.get(timeout=2) == message
 
     # kill the server_com thread
+    message = "close"
+    socket_message(message=message, node_name="dummy_ctr")
+
+
+def test_stdout_print_to_ctr():
+    """ Test std rerouted to sent message to dummy_ctr """
+
+    data_queue = queue.Queue()
+    def callback(data, data_queue):
+        data_queue.put(data)
+    server_thread = mock_server_ctr(callback, data_queue)
+
+    # Test message is received by dummy_ctr server
+    sys.stdout = NewStdout("STM", target_node="dummy_ctr", terminal_print=False)
+    message = "test_test2"
+    queue_msg = data_queue.get(timeout=1)
+    assert(queue_msg.split(":::")[1] == message)
+    sys.stdout = sys.stdout.terminal
+
+    # kill the server_thread thread
     message = "close"
     socket_message(message=message, node_name="dummy_ctr")
