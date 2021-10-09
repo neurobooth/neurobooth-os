@@ -228,6 +228,9 @@ def gui(remote=False, database='neurobooth'):
             # event values -> f"['{task_id}', '{obs_id}']
             task_id, obs_id = eval(values[event])
 
+            # Start LSL recording
+            session.start_recording(f"{tech_obs_log['subject_id']}_{obs_id}")
+
             window["task_title"].update("Running Task:")
             window["task_running"].update(task_id, background_color="red")
             window['Start'].Update(button_color=('black', 'red'))
@@ -236,6 +239,10 @@ def gui(remote=False, database='neurobooth'):
         # Signal a task ended: stop LSL recording and update gui
         elif event == 'task_finished':
             task_id = values[event]
+            
+            # Stop LSL recording
+            session.stop_recording()
+
             window["task_running"].update(task_id, background_color="green")
             window['Start'].Update(button_color=('black', 'green'))
 
