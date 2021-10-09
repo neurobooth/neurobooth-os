@@ -15,7 +15,7 @@ import time
 import liesl
 from pathlib import Path
 from h5io import read_hdf5
-import neurobooth_os.iout.mock_device_streamer as mocker
+import neurobooth_os.mock.mock_device_streamer as mocker
 from neurobooth_os.iout.marker import marker_stream
 from neurobooth_os.iout.split_xdf import split
 
