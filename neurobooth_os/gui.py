@@ -63,7 +63,7 @@ def _process_received_data(serv_data, window):
         elif "-new_filename-" in data_row:
             # new file created, data_row = "-new_filename-:stream_name:video_filename"
             event, stream_name, filename = data_row.split(":")
-            window.write_event_value(event, f"['{stream_name}', '{filename}']")
+            window.write_event_value(event, f"{stream_name}, {filename}]")
             
 
 def gui(remote=False, database='neurobooth'):
