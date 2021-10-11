@@ -4,13 +4,15 @@ Created on Fri Apr  2 08:01:51 2021
 
 @author: neurobooth
 """
-
-import PySimpleGUI as sg
-
-import cv2
+from datetime import datetime
+import os.path as op
 import numpy as np
 
+import PySimpleGUI as sg
+import cv2
+
 import neurobooth_os.iout.metadator as meta
+import neurobooth_os.config as cfg
 
 
 def _lay_butt(name, key=None):
@@ -101,7 +103,7 @@ def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
         [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left', k="_title_notes_"),
          sg.Multiline(key='notes', default_text='', size=(64, 10)), _space()],
         [_space(), sg.Combo([task_mapping(t)[0] for t in sess_info['_tasks_'].split(", ")],
-         k="_notes_task_"), sg.ReadFormButton('Save', key="_save_notes_")],
+         k="_notes_taskname_"), sg.ReadFormButton('Save', key="_save_notes_")],
         [_space()]
 
         ] + field_tasks + [
@@ -150,3 +152,26 @@ def _win_gen(layout, *args):
                        default_button_element_size=(12, 1))
     return window
 
+def write_task_notes(subject_id, staff_id, task_name, task_notes):
+    """Write task notes.
+    Parameters
+    ----------
+    subject_id : str
+        The subject ID
+    staff_id : str
+        The RC ID
+    task_name : str
+        The task name.
+    task_notes : dict
+        The task notes.
+    """
+
+    fname = f'{cfg.paths["data_out"]}{subject_id}-{task_name}-notes.txt'
+    task_txt = ''
+    if not op.exists(fname):
+        task_txt += f'{subject_id}, {staff_id}\n'
+
+    with open(fname, 'a') as fp:
+        datestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        task_txt += f'[\t{datestamp}]: {task_notes}\n'
+        fp.write(task_txt)
