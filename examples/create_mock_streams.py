@@ -10,8 +10,8 @@ Use :func:`~neurobooth_os.iout.mock_device_streamer` to generate mock streams.
 
 # %%
 import time
-import neurobooth_os.iout.mock_device_streamer as mocker
-from neurobooth_os.iout.marker import marker_stream
+import neurobooth_os.mock.mock_device_streamer as mocker
+from neurobooth_os.iout import marker_stream
 
 print(__doc__)
 

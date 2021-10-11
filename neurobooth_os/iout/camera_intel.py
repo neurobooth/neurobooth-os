@@ -26,10 +26,10 @@ def catch_exception(f):
     return func
 
 
-class VidRec_Intel(MockDevice):
+class VidRec_Intel():
     def __init__(self, size_rgb=(640, 480), size_depth=(640, 360),
                  device_id="Intel_D455_1", sensor_ids=['Intel_D455_rgb_1', 'Intel_D455_depth_1'],
-                 fps_rgb=60, fps_depth=60, camindex=[3, "SerialNumber"], mock=False):
+                 fps_rgb=60, fps_depth=60, camindex=[3, "SerialNumber"]):
 
         self.open = True
         self.recording = False
@@ -48,6 +48,8 @@ class VidRec_Intel(MockDevice):
         self.config.enable_stream(rs.stream.color, self.frameSize[1][0],
                                   self.frameSize[1][1], rs.format.rgb8, self.fps[1])
 
+        self.outlet = self.createOutlet()
+
     @catch_exception
     def start(self, name="temp_video"):
         self.prepare(name)
@@ -59,24 +61,23 @@ class VidRec_Intel(MockDevice):
         self.name = name
         self.video_filename = "{}_intel{}_{}.bag".format(name, self.device_index, time())
         self.config.enable_record_to_file(self.video_filename)
-        self.outlet = self.createOutlet(name)
+        print(f"-new_filename-:{self.streamName}:{self.video_filename}")
 
     @catch_exception
-    def createOutlet(self, filename):
-        streamName = f'IntelFrameIndex_cam{self.device_index}'
+    def createOutlet(self):
+        self.streamName = f'IntelFrameIndex_cam{self.device_index}'
         self.outlet_id = str(uuid.uuid4())
-        info = StreamInfo(name=streamName, type='videostream', channel_format='int32',
+        info = StreamInfo(name=self.streamName, type='videostream', channel_format='int32',
                           channel_count=2, source_id=self.outlet_id)
 
         info.desc().append_child_value("device_id", self.device_id)
         info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
-        info.desc().append_child_value("filename", filename)
         info.desc().append_child_value("size_rgb", str(self.frameSize[0]))
         info.desc().append_child_value("size_depth", str(self.frameSize[1]))
         info.desc().append_child_value("serial_number", self.serial_num)
         info.desc().append_child_value("fps_rgb", str(self.fps[0]))
         info.desc().append_child_value("fps_depth", str(self.fps[1]))
-        print(f"-OUTLETID-:{streamName}:{self.outlet_id}")
+        print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
         return StreamOutlet(info)
 
     @catch_exception

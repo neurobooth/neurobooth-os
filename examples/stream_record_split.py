@@ -17,7 +17,7 @@ from pathlib import Path
 from h5io import read_hdf5
 import neurobooth_os.mock.mock_device_streamer as mocker
 from neurobooth_os.iout.marker import marker_stream
-from neurobooth_os.iout.split_xdf import split
+from neurobooth_os.iout.split_xdf import split_sens_files
 
 print(__doc__)
 
@@ -78,7 +78,7 @@ final_fname = str(fname.with_name(base_stem + run_str).with_suffix(".xdf"))
 
 # %%
 # Split xdf file per sensor
-files = split(final_fname)
+files = split_sens_files(final_fname)
 
 
 # %%
