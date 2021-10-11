@@ -33,7 +33,7 @@ def _str_fileid_to_eval(stim_file_str):
 
 
 def get_task_funcs(collection_id, conn):
-    """Retrieves callable task objects from database using collection_id
+    """Retrieves callable task objects, parameters and infor from database using collection_id
 
     Parameters
     ----------
@@ -44,17 +44,26 @@ def get_task_funcs(collection_id, conn):
 
     Returns
     -------
-    dict with task functions
+    dict with task objects, tech_obs_id, task arguments
         dict containing key task name and value callable task
     """
 
-    tasks = meta.get_tasks(collection_id, conn)
+    tasks_obs = meta.get_tasks(collection_id, conn)
 
     task_func_dict = {}
-    for task_id in tasks:
-        task_stim_id, task_dev, task_sens = meta.get_task_param(task_id, conn)
-        stim_file, param_file = meta.get_task_stim(task_stim_id, conn)
+    for obs_id in tasks_obs:        
+        task_stim_id, task_dev, task_sens, instr_kwargs = meta._get_task_param(obs_id, conn)
+        stim_file, stim_kwargs = meta._get_task_stim(task_stim_id, conn)
+        task_kwargs = {**stim_kwargs, **instr_kwargs}
+
+        # Convert path to class to class inst.
         stim_func = _str_fileid_to_eval(stim_file)
-        task_func_dict[task_stim_id] = stim_func
+
+        task_func_dict[task_stim_id] = {}
+        task_func_dict[task_stim_id]['obj'] = stim_func
+        task_func_dict[task_stim_id]['obs_id'] = obs_id
+        task_func_dict[task_stim_id]['kwargs'] = task_kwargs
+
+
 
     return task_func_dict
