@@ -258,9 +258,7 @@ def gui(remote=False, database='neurobooth'):
             window['Start'].Update(button_color=('black', 'green'))
 
             xdf_fname = get_xdf_name(session, rec_fname)
-            sys.stdout = sys.stdout.terminal
-            xxx
-            split_sens_files(xdf_fname, obs_log_id)
+            split_sens_files(xdf_fname, obs_log_id, conn)
 
         ##################################################################################
         # Conditionals handling inlets for plotting and recording
@@ -272,7 +270,6 @@ def gui(remote=False, database='neurobooth'):
             session = liesl.Session(prefix='',
                                         streamargs=streamargs, mainfolder=cfg.paths["data_out"] )
             print("LSL session with: ", list(inlets))
-
 
         # Plot STM screen or webcam frames
         if any(k for k in inlets.keys() if k in ["Webcam", "Screen"]):
