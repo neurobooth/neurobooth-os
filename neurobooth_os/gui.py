@@ -258,6 +258,7 @@ def gui(remote=False, database='neurobooth'):
             window['Start'].Update(button_color=('black', 'green'))
 
             xdf_fname = get_xdf_name(session, rec_fname)
+            sys.stdout = sys.stdout.terminal
             xxx
             split_sens_files(xdf_fname, obs_log_id)
 
