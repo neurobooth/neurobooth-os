@@ -34,7 +34,7 @@ def compute_clocks_diff():
     return time_offset
 
 
-def split_sens_files(fname, tech_obs_log_id=None):
+def split_sens_files(fname, tech_obs_log_id=None, conn=None):
     """Split xdf file per sensor
 
     Parameters
@@ -42,7 +42,10 @@ def split_sens_files(fname, tech_obs_log_id=None):
     fname : str
         name of the file to split
     tech_obs_log_id : str, optional
-        task id for the database, by default None
+        task id for the database, by default None. If conn not None, it can not be None. 
+    conn : callable
+        Connector to the database, if None does not insert rows, by default None
+
 
     Returns
     -------
@@ -56,8 +59,7 @@ def split_sens_files(fname, tech_obs_log_id=None):
     # Find marker stream to add in to each h5 file
     marker = [d for d in data if d['info']['name'] == ["Marker"]]
 
-    if tech_obs_log_id is not None:
-        conn = meta.get_conn()
+    if conn is not None:
         table_sens_log = Table("sensor_file_log", conn=conn)
 
     files = []
@@ -102,7 +104,20 @@ def split_sens_files(fname, tech_obs_log_id=None):
     return files
 
 def get_xdf_name(session, fname_prefix):
-    
+    """Get with most recent session xdf file name.
+
+    Parameters
+    ----------
+    session : instance of liesl.Session
+        Callable with session.folder path
+    fname_prefix : str
+        Prefix name of the xdf file name
+
+    Returns
+    -------
+    final file name : str
+        File name of the xdf file
+    """
     fname = session.folder / Path(fname_prefix + ".xdf")
     base_stem = fname.stem.split("_R")[0]
     count = 0

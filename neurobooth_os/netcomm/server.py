@@ -75,7 +75,7 @@ class NewStdout():
             try:
                 socket_message(f"{self.current_node}:::{message}", node_name=self.target_node)
             except:
-                self.terminal.write(f"message not send to {self.target_node}")
+                self.terminal.write(f"message {message} not send to {self.target_node}")
 
     def flush(self):
         # For compatibility, just pass

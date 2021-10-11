@@ -247,7 +247,6 @@ def gui(remote=False, database='neurobooth'):
             window["task_running"].update(task_id, background_color="red")
             window['Start'].Update(button_color=('black', 'red'))
 
-
         # Signal a task ended: stop LSL recording and update gui
         elif event == 'task_finished':
             task_id = values[event]
@@ -258,7 +257,8 @@ def gui(remote=False, database='neurobooth'):
             window["task_running"].update(task_id, background_color="green")
             window['Start'].Update(button_color=('black', 'green'))
 
-            xdf_fname = get_xdf_name()
+            xdf_fname = get_xdf_name(session, rec_fname)
+            xxx
             split_sens_files(xdf_fname, obs_log_id)
 
         ##################################################################################
