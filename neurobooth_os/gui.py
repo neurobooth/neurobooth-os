@@ -16,7 +16,7 @@ import liesl
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, get_lsl_images, stream_plotter
 from neurobooth_os.netcomm import get_messages_to_ctr, node_info, NewStdout
-from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout
+from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
 
@@ -118,6 +118,7 @@ def gui(remote=False, database='neurobooth'):
                 sg.PopupError('No task combo')
             else:
                 sess_info = values
+                subject_id, staff_id = sess_info['subj_id'], sess_info['staff_id']
                 tech_obs_log["staff_id"] = sess_info['staff_id']
                 tech_obs_log["subject_id"] = sess_info['subj_id']
                 window.close()
@@ -188,8 +189,17 @@ def gui(remote=False, database='neurobooth'):
             else:
                 sg.PopupError('No task selected')
 
+        # Save notes to a txt
+        elif event == "_save_notes_":
+            if values["_notes_taskname_"] == '':
+                sg.PopupError('Pressed saving notes without task, select one in the dropdown list')
+                continue
+
+            write_task_notes(subject_id, staff_id, values['_notes_taskname_'], values['notes'])
+            window["notes"].Update('')
+
         # Shut down the other servers and stops plotting
-        elif event == 'Shut Down' or sg.WINDOW_CLOSED:
+        elif event == 'Shut Down' or event == sg.WINDOW_CLOSED:
             plttr.stop()
             ctr_rec.shut_all(nodes=nodes)
             break
@@ -229,7 +239,7 @@ def gui(remote=False, database='neurobooth'):
             task_id, obs_id = eval(values[event])
 
             # Start LSL recording
-            session.start_recording(f"{tech_obs_log['subject_id']}_{obs_id}")
+            session.start_recording(f"{subject_id}-{obs_id}")
 
             window["task_title"].update("Running Task:")
             window["task_running"].update(task_id, background_color="red")
