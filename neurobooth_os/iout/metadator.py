@@ -4,6 +4,7 @@ Created on Fri Jul 30 09:08:53 2021
 
 @author: CTR
 """
+import os.path as op
 import json
 from collections import OrderedDict
 from datetime import datetime
@@ -11,6 +12,9 @@ from datetime import datetime
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
 from neurobooth_terra import list_tables, create_table, drop_table, Table
+
+import neurobooth_os
+
 
 def get_conn(remote=False, database='neurobooth'):
     """ Gets connector to the database
@@ -119,25 +123,45 @@ def make_new_sess_log_id():
         sens_id = f"sens_log_{num + 1}"
     return sens_id
 
-
-def get_task_param(task_id, conn):
+def _get_task_param(obs_id, conn):
     table_tech_obs = Table('tech_obs_data', conn=conn)
     tech_obs_df = table_tech_obs.query(
-        f"SELECT * from tech_obs_data WHERE tech_obs_id = '{task_id}'")
+        f"SELECT * from tech_obs_data WHERE tech_obs_id = '{obs_id}'")
     devices_ids, = tech_obs_df["device_id_array"]
     sens_ids, = tech_obs_df["sensor_id_array"]
-
     stimulus_id, = tech_obs_df["stimulus_id"]
-    return stimulus_id, devices_ids, sens_ids
+    instr_id,  =  tech_obs_df["instruction_id"]
+    instr_kwargs = _get_instruct_dic_param(instr_id, conn)
+    return stimulus_id, devices_ids, sens_ids, instr_kwargs
+
+def _get_instruct_dic_param(instruction_id, conn):
+    table = Table('instruction', conn=conn)
+    instr = table.query(f"SELECT * from instruction WHERE instruction_id = '{instruction_id}'")
+    dict_instr = instr.iloc[0].to_dict()
+    #remove unnecessary fields
+    _ = [dict_instr.pop(l) for l in ['is_active', 'date_created', 'version', 'assigned_tech_obs']]
+    return dict_instr
 
 
-def get_task_stim(stimulus_id, conn):
+def _get_task_stim(stimulus_id, conn):
     table_stimulus = Table('stimulus', conn)
     stimulus_df = table_stimulus.query(
         f"SELECT * from stimulus WHERE stimulus_id = '{stimulus_id}'")
     stim_file, = stimulus_df["stimulus_file"]
+
+    taks_kwargs = {"duration": stimulus_df['duration'][0],
+                    'num_iterations':stimulus_df['num_iterations'][0]}
+
+
+    # Load args from jason if any
     stim_fparam, = stimulus_df["parameters_file"]
-    return stim_file, stim_fparam
+    if stim_fparam is not None:
+        dirpath =  op.split(neurobooth_os.__file__)[0]
+        with open(op.join(dirpath, stim_fparam.replace('./', '')), 'rb') as f:
+            parms = json.load(f)
+        taks_kwargs.update(parms)
+
+    return stim_file, taks_kwargs
 
 
 def get_sens_param(sens_id, conn):
@@ -235,7 +259,7 @@ def meta_devinfo_tofunct(dev_id_param, dev_id):
 
 def get_kwarg_task(task_id, conn):
 
-    stim_id, dev_ids, sens_ids = get_task_param(task_id, conn)
+    stim_id, dev_ids, sens_ids, _ = _get_task_param(task_id, conn)
 
     dev_kwarg = {}
     for dev_id, dev_sens_ids in zip(dev_ids, sens_ids):
@@ -265,7 +289,7 @@ def _get_coll_dev_kwarg_tasks(collection_id, conn):
 
     tasks_kwarg = OrderedDict()
     for task in tasks:
-        stim_id, _, _ = get_task_param(task, conn)
+        stim_id, *_ = _get_task_param(task, conn)
         task_kwarg = get_kwarg_task(task, conn)
         tasks_kwarg[stim_id] = task_kwarg
 

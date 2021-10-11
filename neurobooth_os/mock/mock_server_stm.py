@@ -92,25 +92,23 @@ def mock_stm_routine(host, port, conn):
             # task_name can be list of task1-task2-task3
             tasks = data.split(":")[1].split("-")
             subj_id = data.split(":")[2]
-
+            task_karg ={"path": config.paths['data_out'],
+                        "subj_id": subj_id,
+                        "marker_outlet": streams['marker'],
+                        }
             for task in tasks:                
-                tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
+                if task in task_func_dict.keys():                    
+                    obs_id = task_func_dict[task]['obs_id']
+                    tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
+                    print(f"Initiating task:{task}:{obs_id}:{tech_obs_log_id}")
 
-                task_karg ={"path": config.paths['data_out'],
-                            "subj_id": subj_id,
-                            "marker_outlet": streams['marker'],
-                            "instruction_text": "generic instruction text, not read from DB!"}
-
-                if task in task_func_dict.keys():
-                    print(f"Initiating task:{task}:{tech_obs_log_id}")
-
-                    tsk_fun = task_func_dict[task]
-                    res = run_task(tsk_fun, subj_id, task, print, task_karg)
-
+                    tsk_fun = task_func_dict[task]['obj']
+                    this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
+                    res = run_task(tsk_fun, subj_id, task, print, this_task_kwargs)
                     print(f"Finished task:{task}")
 
                 else:
-                    print(f"Task not {task} implemented")
+                    print(f"Task {task} not implemented")
 
         elif data in ["close", "shutdown"]:
             streams = close_streams(streams)

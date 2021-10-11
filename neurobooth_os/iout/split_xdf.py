@@ -11,7 +11,10 @@ import time
 import numpy as np
 import os.path as op
 from datetime import datetime
+from pathlib import Path
+
 from h5io import write_hdf5
+
 from neurobooth_os.iout import metadator as meta
 from neurobooth_terra import Table
 
@@ -31,7 +34,7 @@ def compute_clocks_diff():
     return time_offset
 
 
-def split(fname, tech_obs_log_id=None):
+def split_sens_files(fname, tech_obs_log_id=None):
     """Split xdf file per sensor
 
     Parameters
@@ -90,10 +93,22 @@ def split(fname, tech_obs_log_id=None):
 
         if tech_obs_log_id is not None:
             for sens_id in sensors_id:
-                cols = ["tech_obs_log_id", "true_temporal_resolution", "true_spatial_resolution", "file_start_time",
-                        "file_end_time", "device_id", "sensor_id", 'sensor_file_path']
-                vals = [(tech_obs_log_id, temp_res, None, start_time, end_time, device_id, sens_id, "{" + head + "}")]
+                cols = ["tech_obs_log_id", "true_temporal_resolution", "true_spatial_resolution",
+                 "file_start_time", "file_end_time", "device_id", "sensor_id", 'sensor_file_path']
+                vals = [(tech_obs_log_id, temp_res, None, start_time, end_time, device_id, sens_id,
+                 "{" + head + "}")]
                 table_sens_log.insert_rows(vals, cols)
 
     return files
 
+def get_xdf_name(session, fname_prefix):
+    
+    fname = session.folder / Path(fname_prefix + ".xdf")
+    base_stem = fname.stem.split("_R")[0]
+    count = 0
+    for f in fname.parent.glob(fname.stem + "*.xdf"):
+        base_stem, run_counter = f.stem.split("_R")
+        count = max(int(run_counter), count)
+    run_str = "_R{0:03d}".format(count)
+    final_fname = str(fname.with_name(base_stem + run_str).with_suffix(".xdf"))
+    return final_fname
