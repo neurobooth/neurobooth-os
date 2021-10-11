@@ -205,7 +205,7 @@ class MockCamera(MockLSLDevice):
     def __init__(self, name="Intel", nchans=2, frames_buffer=None,
                  data_type="float32", stream_type='Experimental', srate=180,
                  sizex=1080, sizey=720,
-                 source_id='', device_id="mock_Intel_1", stream_outlet=False,
+                 source_id='', device_id="mock_Intel_1", stream_outlet=True,
                  sensor_ids=['mock_Intel_rgb_1', 'mock_Intel_depth_1']):
 
         super().__init__(name, nchans, frames_buffer, stream_outlet,
@@ -219,8 +219,7 @@ class MockCamera(MockLSLDevice):
     def prepare(self, name="temp_video"):
         """ Creates stream with child info and sets video filename."""
         self.video_filename = "{}_flir_{}.bag".format(name, time.time())
-        self.info.desc().append_child_value("filename", self.video_filename)
-        self.stream_outlet_info()
+        print(f"-new_filename-:{self.name}:{self.video_filename}")
 
     def start(self, name="temp_video"):
         """Start camera mock LSL stream."""

@@ -61,6 +61,12 @@ def split_sens_files(fname, tech_obs_log_id=None, conn=None):
     if conn is not None:
         table_sens_log = Table("sensor_file_log", conn=conn)
 
+    # get video filenames if videofiles marker present
+    videofiles = {}
+    if 'videofiles' in [d['info']['name'][0] for d in data]:
+        # video file marker format is ["streamName, fname.mov"]
+        videofiles = {d[0].split(",")[0] : d[0].split(",")[1] for d in data[0]['time_series']}
+
     files = []
     # Loop over each sensor
     for dev_data in data:
@@ -87,10 +93,9 @@ def split_sens_files(fname, tech_obs_log_id=None, conn=None):
         end_time = datetime.fromtimestamp(end_time).strftime("%Y-%m-%d %H:%M:%S")
         temp_res = 1 / np.median(np.diff(dev_data['time_stamps']))
 
-        if "intel" in name.lower():
-            fname_bag = dev_data['info']['desc'][0]["filename"][0]
-            head = f",{head}, {fname_bag}"
-            print(head)
+        if videofiles.get(name): 
+            head = f",{head}, {videofiles.get(name)}"
+            print(f"Videofile name: {head}")
 
         if tech_obs_log_id is not None:
             for sens_id in sensors_id:
