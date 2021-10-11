@@ -18,6 +18,7 @@ from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, get_lsl_images
 from neurobooth_os.netcomm import get_messages_to_ctr, node_info, NewStdout
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
 import neurobooth_os.iout.metadator as meta
+from neurobooth_os.iout.split_xdf import split_sens_files, get_xdf_name
 import neurobooth_os.config as cfg
 
 def _process_received_data(serv_data, window):
@@ -49,9 +50,9 @@ def _process_received_data(serv_data, window):
             window.write_event_value('-update_butt-', elem)
 
         elif "Initiating task:" in data_row:
-            # Initiating task:task_id:obs_id
-            _, task_id, obs_id = data_row.split(":")
-            window.write_event_value('task_initiated', f"['{task_id}', '{obs_id}']")
+            # Initiating task:task_id:obs_id:tech_obs_log_id
+            _, task_id, obs_id, obs_log_id = data_row.split(":")
+            window.write_event_value('task_initiated', f"['{task_id}', '{obs_id}', '{obs_log_id}']")
 
         elif "Finished task:" in data_row:
             # Finished task: task_id
@@ -109,7 +110,7 @@ def gui(remote=False, database='neurobooth'):
             tasks_obs = meta.get_tasks(collection_id, conn)
             task_list = []
             for task in tasks_obs:
-                task_id, _, _ = meta.get_task_param(task, conn)
+                task_id, *_ = meta._get_task_param(task, conn)
                 task_list.append(task_id)
             window["_tasks_"].update(value=", ".join(task_list))
 
@@ -235,11 +236,12 @@ def gui(remote=False, database='neurobooth'):
 
         # Signal a task started: record LSL data and update gui
         elif event == 'task_initiated':
-            # event values -> f"['{task_id}', '{obs_id}']
-            task_id, obs_id = eval(values[event])
+            # event values -> f"['{task_id}', '{obs_id}', '{tech_obs_log_id}']
+            task_id, obs_id, obs_log_id = eval(values[event])
 
             # Start LSL recording
-            session.start_recording(f"{subject_id}-{obs_id}")
+            rec_fname = f"{subject_id}-{obs_id}"
+            session.start_recording(rec_fname)
 
             window["task_title"].update("Running Task:")
             window["task_running"].update(task_id, background_color="red")
@@ -255,6 +257,9 @@ def gui(remote=False, database='neurobooth'):
 
             window["task_running"].update(task_id, background_color="green")
             window['Start'].Update(button_color=('black', 'green'))
+
+            xdf_fname = get_xdf_name()
+            split_sens_files(xdf_fname, obs_log_id)
 
         ##################################################################################
         # Conditionals handling inlets for plotting and recording
