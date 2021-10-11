@@ -43,6 +43,7 @@ class VidRec_Flir():
         self.setup_cam()
 
         self.image_queue = queue.Queue(0)
+        self.outlet = self.createOutlet()
 
     def get_cam(self):
         self.system = PySpin.System.GetInstance()
@@ -66,17 +67,16 @@ class VidRec_Flir():
         handling_mode.SetIntValue(handling_mode_entry.GetValue())
         # cam.BalanceWhiteAuto.SetValue(0)
 
-    def createOutlet(self, filename):
-        streamName = 'FlirFrameIndex'
+    def createOutlet(self):
+        self.streamName = 'FlirFrameIndex'
         self.oulet_id = str(uuid.uuid4())
         info = StreamInfo(
-            name=streamName,
+            name=self.streamName,
             type='videostream',
             channel_format='int32',
             channel_count=2,
             source_id=self.oulet_id)
 
-        info.desc().append_child_value("filename", filename)
         info.desc().append_child_value("device_id", self.device_id)
         info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
         info.desc().append_child_value("size_rgb", str(self.frameSize))
@@ -87,7 +87,7 @@ class VidRec_Flir():
         info.desc().append_child_value("gamma", str(self.gamma))
 
         # info.desc().append_child_value("device_model_id", self.cam.get_device_name().decode())
-        print(f"-OUTLETID-:{streamName}:{self.oulet_id}")
+        print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
         return StreamOutlet(info)
 
     # function to capture images, convert to numpy, send to queue, and release
@@ -113,7 +113,8 @@ class VidRec_Flir():
         self.video_filename = "{}_flir_{}.avi".format(name, time.time())
         # self.video_out = cv2.VideoWriter(self.video_filename, self.fourcc,
         #                                  self.fps, self.frameSize)
-        self.outlet = self.createOutlet(self.video_filename)
+        print(f"-new_filename-:{self.streamName}:{self.video_filename}")
+
         self.streaming = True
 
         # setup output video file parameters (can try H265 in future for better compression):

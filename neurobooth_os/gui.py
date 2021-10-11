@@ -19,6 +19,7 @@ from neurobooth_os.netcomm import get_messages_to_ctr, node_info, NewStdout
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, get_xdf_name
+from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
 
 def _process_received_data(serv_data, window):
@@ -59,6 +60,11 @@ def _process_received_data(serv_data, window):
             _, task_id = data_row.split(":")
             window.write_event_value('task_finished', task_id)
 
+        elif "-new_filename-" in data_row:
+            # new file created, data_row = "-new_filename-:stream_name:video_filename"
+            event, stream_name, filename = data_row.split(":")
+            window.write_event_value(event, f"['{stream_name}', '{filename}']")
+            
 
 def gui(remote=False, database='neurobooth'):
     """Start the Graphical User Interface.
@@ -161,8 +167,11 @@ def gui(remote=False, database='neurobooth'):
             window['-Connect-'].Update(button_color=('black', 'red'))
             event, values = window.read(.1)
 
-            ctr_rec.prepare_devices(f"{collection_id}:{str(tech_obs_log)}",
-                                    nodes=nodes)
+            ctr_rec.prepare_devices(f"{collection_id}:{str(tech_obs_log)}", nodes=nodes)
+            vidf_mrkr = marker_stream('videofiles')
+            # Create event to capture outlet_id
+            window.write_event_value('-OUTLETID-', f"['{vidf_mrkr.name}', '{vidf_mrkr.outlet_id}']")
+
             print('Connecting devices')
 
         # Real-time plotting of inlet data.
@@ -259,6 +268,10 @@ def gui(remote=False, database='neurobooth'):
 
             xdf_fname = get_xdf_name(session, rec_fname)
             split_sens_files(xdf_fname, obs_log_id, conn)
+
+        # Send a marker string with the name of the new video file created
+        elif event == "-new_filename-":            
+            vidf_mrkr.push_sample(values[event])
 
         ##################################################################################
         # Conditionals handling inlets for plotting and recording

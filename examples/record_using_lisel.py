@@ -20,19 +20,11 @@ print(__doc__)
 # %%
 # Creating and starting mock streams:
 stream_names = {'MockLSLDevice': 'mock_lsl', 'MockMbient': 'mock_mbient',
-                'MockCamera': 'mock_camera', 'marker_stream': 'Marker'}
+                'MockCamera': 'mock_camera', 'marker_stream': 'Marker', 'videofiles': 'videofiles'}
 dev_stream = mocker.MockLSLDevice(name=stream_names['MockLSLDevice'], nchans=5)
 mbient = mocker.MockMbient(name=stream_names['MockMbient'])
 cam = mocker.MockCamera(name=stream_names['MockCamera'])
 marker = marker_stream(name=stream_names['marker_stream'])
-
-
-# %%
-# Start mock streams:
-cam.start()
-dev_stream.start()
-mbient.start()
-marker.push_sample(["Stream-mark"])
 
 # %%
 # Setup liesl configuration:
@@ -41,6 +33,13 @@ recording_folder = "~/labrecordings"
 subject = "demo_subject"
 session = liesl.Session(prefix=subject,
                         streamargs=streamargs, mainfolder=recording_folder)
+
+# %%
+# Start mock streams:
+cam.start()
+dev_stream.start()
+mbient.start()
+marker.push_sample(["Stream-mark"])
 
 # %%
 # Run stream for 1 minutes, send trigger every 10 second and record:
