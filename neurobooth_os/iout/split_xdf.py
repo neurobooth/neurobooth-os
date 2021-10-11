@@ -46,7 +46,6 @@ def split_sens_files(fname, tech_obs_log_id=None, conn=None):
     conn : callable
         Connector to the database, if None does not insert rows, by default None
 
-
     Returns
     -------
     files : list
