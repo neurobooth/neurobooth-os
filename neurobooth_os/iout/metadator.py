@@ -86,7 +86,7 @@ def _new_tech_log_dict(application_id="neurobooth_os"):
     tech_obs_log["tech_obs_id"] = ""
     tech_obs_log["staff_id"] = ""
     tech_obs_log["application_id"] = "neurobooth_os"
-    tech_obs_log["site_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
     tech_obs_log["event_array"] = []  # marker_name:timestamp
     tech_obs_log["collection_id"] = ""
     return tech_obs_log
@@ -100,12 +100,12 @@ def _make_new_tech_obs_row(conn, subject_id):
     table = Table("tech_obs_log", conn=conn)
     return table.insert_rows([(subject_id,)], cols=['subject_id'])
 
-def _fill_tech_obs_row(tech_obs_id, vals, conn):
+def _fill_tech_obs_row(tech_obs_id, dict_vals, conn):
     # tech_obs_id = str
-    # vals = list column values for row
+    # dict_vals = dict with key-vals to fill row
     table = Table("tech_obs_log", conn=conn)
-    cols = [cx for cx in table.column_names if cx!=table.primary_key]   
-    table.update_row(tech_obs_id, tuple(vals), cols=cols)
+    vals = list(dict_vals.values())
+    table.update_row(tech_obs_id, tuple(vals), cols=list(dict_vals))
     
 def get_sens_file_logs(conn):
     table_sens_log = Table("sensor_file_log", conn=conn)

@@ -102,11 +102,17 @@ def mock_stm_routine(host, port, conn):
                     tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
                     print(f"Initiating task:{task}:{obs_id}:{tech_obs_log_id}")
 
+                    # get task, params and run 
                     tsk_fun = task_func_dict[task]['obj']
                     this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
                     res = run_task(tsk_fun, subj_id, task, print, this_task_kwargs)
                     print(f"Finished task:{task}")
 
+                    # Log tech_obs to database
+                    tech_obs_log["tech_obs_id"] = obs_id
+                    tech_obs_log['event_array'] = "event:datestamp"
+                    meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)
+                    
                 else:
                     print(f"Task {task} not implemented")
 
