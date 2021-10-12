@@ -20,7 +20,7 @@ print(__doc__)
 # %%
 # Creating and starting mock streams:
 stream_names = {'MockLSLDevice': 'mock_lsl', 'MockMbient': 'mock_mbient',
-                'MockCamera': 'mock_camera', 'marker_stream': 'Marker', 'videofiles': 'videofiles'}
+                'MockCamera': 'mock_camera', 'marker_stream': 'Marker'}
 dev_stream = mocker.MockLSLDevice(name=stream_names['MockLSLDevice'], nchans=5)
 mbient = mocker.MockMbient(name=stream_names['MockMbient'])
 cam = mocker.MockCamera(name=stream_names['MockCamera'])
