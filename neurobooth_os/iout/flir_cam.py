@@ -4,16 +4,17 @@ Created on Wed May 12 16:13:50 2021
 
 @author: CTR
 """
-
-import PySpin
+import os.path as op
 import matplotlib.pyplot as plt
 import numpy as np
 import queue
 import time
 import os
-import cv2
 import threading
 import uuid
+
+import cv2
+import PySpin
 from pylsl import StreamInfo, StreamOutlet
 import skvideo
 import skvideo.io
@@ -113,7 +114,7 @@ class VidRec_Flir():
         self.video_filename = "{}_flir_{}.avi".format(name, time.time())
         # self.video_out = cv2.VideoWriter(self.video_filename, self.fourcc,
         #                                  self.fps, self.frameSize)
-        print(f"-new_filename-:{self.streamName}:{self.video_filename}")
+        print(f"-new_filename-:{self.streamName}:{op.split(self.video_filename)[-1]}")
 
         self.streaming = True
 
