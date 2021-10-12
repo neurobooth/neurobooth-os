@@ -62,6 +62,7 @@ def _process_received_data(serv_data, window):
 
         elif "-new_filename-" in data_row:
             # new file created, data_row = "-new_filename-:stream_name:video_filename"
+            print(f"catched {data_row}")
             event, stream_name, filename = data_row.split(":")
             window.write_event_value(event, f"{stream_name}, {filename}]")
             
@@ -235,7 +236,8 @@ def gui(remote=False, database='neurobooth'):
         elif event == "-OUTLETID-":
             # event values -> f"['{outlet_name}', '{outlet_id}']
             outlet_name, outlet_id = eval(values[event])
-            # update inlet if new 
+            
+            # update the inlet if new or different source_id
             if stream_ids.get(outlet_name) is None or outlet_id != stream_ids[outlet_name]:
                 stream_ids[outlet_name] = outlet_id
                 new_inlet = create_lsl_inlets({outlet_name: outlet_id})
