@@ -60,8 +60,9 @@ def mock_acq_routine(host, port, conn):
             print("Starting recording")
             fname = config.paths['data_out'] + data.split(":")[-1]
             for k in streams.keys():
-                if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
+                if any([i in k for i in ["hiFeed", "Intel", "FLIR"]]):
                     streams[k].start(fname)
+
             msg = "ACQ_ready"
             connx.send(msg.encode("ascii"))
             print("ready to record")
@@ -69,7 +70,7 @@ def mock_acq_routine(host, port, conn):
         elif "record_stop" in data:
             print("Closing recording")
             for k in streams.keys():
-                if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
+                if any([i in k for i in ["hiFeed", "Intel", "FLIR"]]):
                     streams[k].stop()
 
         elif data in ["close", "shutdown"]:

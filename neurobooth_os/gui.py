@@ -62,6 +62,7 @@ def _process_received_data(serv_data, window):
 
         elif "-new_filename-" in data_row:
             # new file created, data_row = "-new_filename-:stream_name:video_filename"
+            print(f"catched {data_row}")
             event, stream_name, filename = data_row.split(":")
             window.write_event_value(event, f"{stream_name}, {filename}]")
             
@@ -188,7 +189,6 @@ def gui(remote=False, database='neurobooth'):
 
         # Start task presentation.
         elif event == 'Start':
-            print(values)
             tasks = [k for k, v in values.items() if "task" in k and v == True]
                     
             window['Start'].Update(button_color=('black', 'yellow'))
@@ -236,7 +236,6 @@ def gui(remote=False, database='neurobooth'):
         elif event == "-OUTLETID-":
             # event values -> f"['{outlet_name}', '{outlet_id}']
             outlet_name, outlet_id = eval(values[event])
-            print(f"catched {outlet_name} {outlet_id}")
             # update inlet if new or outlet_id new != old   
             if stream_ids.get(outlet_name) is None or outlet_id != stream_ids[outlet_name]:
                 stream_ids[outlet_name] = outlet_id
@@ -271,7 +270,8 @@ def gui(remote=False, database='neurobooth'):
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":            
-            vidf_mrkr.push_sample(values[event])
+            vidf_mrkr.push_sample([values[event]])
+            print(f"pushed videfilename mark {values[event]}")
 
         ##################################################################################
         # Conditionals handling inlets for plotting and recording

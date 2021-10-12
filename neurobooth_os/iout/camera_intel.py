@@ -4,17 +4,18 @@ Created on Mon Mar 29 10:46:13 2021
 
 @author: adonay
 """
-
-import pyrealsense2 as rs
+import os.path as op
 from time import sleep as tsleep
 from time import time
 import threading
 import uuid
-from pylsl import StreamInfo, StreamOutlet
 import functools
 import warnings
-warnings.filterwarnings('ignore')
 
+import pyrealsense2 as rs
+from pylsl import StreamInfo, StreamOutlet
+
+warnings.filterwarnings('ignore')
 
 def catch_exception(f):
     @functools.wraps(f)
@@ -61,7 +62,7 @@ class VidRec_Intel():
         self.name = name
         self.video_filename = "{}_intel{}_{}.bag".format(name, self.device_index, time())
         self.config.enable_record_to_file(self.video_filename)
-        print(f"-new_filename-:{self.streamName}:{self.video_filename}")
+        print(f"-new_filename-:{self.streamName}:{op.split(self.video_filename)[-1]}")
 
     @catch_exception
     def createOutlet(self):

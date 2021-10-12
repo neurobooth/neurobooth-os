@@ -6,6 +6,7 @@ Created on Thu Sep 16 12:58:47 2021
 @author: adonay
 """
 
+import os.path as op
 import threading
 import uuid
 import time
@@ -219,7 +220,7 @@ class MockCamera(MockLSLDevice):
     def prepare(self, name="temp_video"):
         """ Creates stream with child info and sets video filename."""
         self.video_filename = "{}_flir_{}.bag".format(name, time.time())
-        print(f"-new_filename-:{self.name}:{self.video_filename}")
+        print(f"-new_filename-:{self.name}:{op.split(self.video_filename)[-1]}")
 
     def start(self, name="temp_video"):
         """Start camera mock LSL stream."""
@@ -240,7 +241,7 @@ class MockCamera(MockLSLDevice):
 
             try:
                 self.outlet.push_sample([self.frame_counter, tsmp])
-            except BaseException:  # "OSError" from C++
+            except BaseException:
                 print(f"Reopening {self.name} stream already closed")
                 self.stream_outlet_info()
                 self.outlet.push_sample([self.frame_counter, tsmp])
