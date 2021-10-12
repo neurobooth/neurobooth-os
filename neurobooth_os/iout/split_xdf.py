@@ -64,14 +64,16 @@ def split_sens_files(fname, tech_obs_log_id=None, conn=None):
     # get video filenames if videofiles marker present
     videofiles = {}
     if 'videofiles' in [d['info']['name'][0] for d in data]:
+        vid_data = [v for v in data if data[0]['info']['name'] == ['videofiles']]
         # video file marker format is ["streamName, fname.mov"]
-        videofiles = {d[0].split(",")[0] : d[0].split(",")[1] for d in data[0]['time_series']}
+        videofiles = {d[0].split(",")[0] : d[0].split(",")[1] for d in vid_data[0]['time_series'] 
+                        if d[0]!= ''}
 
     files = []
     # Loop over each sensor
     for dev_data in data:
         name = dev_data['info']['name'][0]
-        if name == "Marker":
+        if name in ["Marker", "videofiles"]:
             continue
 
         device_id = dev_data['info']['desc'][0]["device_id"][0]
@@ -94,7 +96,7 @@ def split_sens_files(fname, tech_obs_log_id=None, conn=None):
         temp_res = 1 / np.median(np.diff(dev_data['time_stamps']))
 
         if videofiles.get(name): 
-            head = f",{head}, {videofiles.get(name)}"
+            head = f"{head}, {videofiles.get(name)}"
             print(f"Videofile name: {head}")
 
         if tech_obs_log_id is not None:
