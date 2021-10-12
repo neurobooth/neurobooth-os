@@ -62,7 +62,6 @@ def _process_received_data(serv_data, window):
 
         elif "-new_filename-" in data_row:
             # new file created, data_row = "-new_filename-:stream_name:video_filename"
-            print(f"catched {data_row}")
             event, stream_name, filename = data_row.split(":")
             window.write_event_value(event, f"{stream_name}, {filename}]")
             
@@ -236,11 +235,11 @@ def gui(remote=False, database='neurobooth'):
         elif event == "-OUTLETID-":
             # event values -> f"['{outlet_name}', '{outlet_id}']
             outlet_name, outlet_id = eval(values[event])
-            # update inlet if new or outlet_id new != old   
+            # update inlet if new 
             if stream_ids.get(outlet_name) is None or outlet_id != stream_ids[outlet_name]:
                 stream_ids[outlet_name] = outlet_id
-                inlets = create_lsl_inlets(stream_ids)  # TODO update only new outid
-                # print(f"catched inlets {inlets}")
+                new_inlet = create_lsl_inlets({outlet_name: outlet_id})
+                inlets.update(new_inlet)
 
         # Signal a task started: record LSL data and update gui
         elif event == 'task_initiated':
@@ -291,10 +290,9 @@ def gui(remote=False, database='neurobooth'):
                 window[elem[0]].update(data=elem[1])
 
         # Print LSL inlet names in GUI
-        if inlet_keys != list(stream_ids):
-            inlet_keys = list(stream_ids)
-            inlet_keys_disp = "\n".join(inlet_keys)
-            window['inlet_State'].update(inlet_keys_disp)
+        if inlet_keys != list(inlets):
+            inlet_keys = list(inlets)
+            window['inlet_State'].update("\n".join(inlet_keys))
 
     window.close()
     if remote:
