@@ -8,7 +8,7 @@ from time import time, sleep
 import pandas as pd
 
 from neurobooth_os import config
-from neurobooth_os.iout import ScreenMirror
+from neurobooth_os.iout.screen_capture import ScreenMirror
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
 
 from neurobooth_os.netcomm import socket_message, node_info, get_client_messages, NewStdout
