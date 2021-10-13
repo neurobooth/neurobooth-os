@@ -97,25 +97,25 @@ def mock_stm_routine(host, port, conn):
                         "marker_outlet": streams['marker'],
                         }
             for task in tasks:                
-                if task in task_func_dict.keys():                    
-                    obs_id = task_func_dict[task]['obs_id']
-                    tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
-                    print(f"Initiating task:{task}:{obs_id}:{tech_obs_log_id}")
-                    sleep(1)
-
-                    # get task, params and run 
-                    tsk_fun = task_func_dict[task]['obj']
-                    this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
-                    res = run_task(tsk_fun, subj_id, task, print, this_task_kwargs)
-                    print(f"Finished task:{task}")
-
-                    # Log tech_obs to database
-                    tech_obs_log["tech_obs_id"] = obs_id
-                    tech_obs_log['event_array'] = "event:datestamp"
-                    meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)
-                    
-                else:
+                if task not in task_func_dict.keys():
                     print(f"Task {task} not implemented")
+                    continue
+              
+                obs_id = task_func_dict[task]['obs_id']
+                tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
+                print(f"Initiating task:{task}:{obs_id}:{tech_obs_log_id}")
+                sleep(1)
+
+                # get task, params and run 
+                tsk_fun = task_func_dict[task]['obj']
+                this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
+                res = run_task(tsk_fun, subj_id, task, print, this_task_kwargs)
+                print(f"Finished task:{task}")
+
+                # Log tech_obs to database
+                tech_obs_log["tech_obs_id"] = obs_id
+                tech_obs_log['event_array'] = "event:datestamp"
+                meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)
 
         elif data in ["close", "shutdown"]:
             streams = close_streams(streams)
