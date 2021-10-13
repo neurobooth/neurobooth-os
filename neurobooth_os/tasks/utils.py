@@ -6,7 +6,7 @@ Created on Tue Jul 20 10:00:23 2021
 """
 
 from __future__ import absolute_import, division
-from psychopy import sound, core, event, monitors, visual
+from psychopy import sound, core, event, monitors, visual, monitors
 
 import time
 import os.path as op
@@ -15,6 +15,17 @@ from psychopy import visual
 from psychopy import prefs
 prefs.hardware['audioLib'] = ['pyo']
 
+
+text_continue_repeat = 'Please press:\n\t"Continue" to advance' + \
+                '\n\t"Repeat" to go back'
+text_continue = 'Please press:\n\t"Continue" to advance'
+text_practice_screen = 'Please practice the task \n\tPress any button when done'
+text_task='Please do the task \n\tPress any button when done'
+text_end='Thank you. You have completed this task'
+
+
+def send_marker(marker, msg):
+    marker.push_sample([f"{msg}_{time.time()}"])
 
 def make_win(full_screen=True, monitor_width=55, monitor_distance=50):
     mon = monitors.getAllMonitors()[0]
@@ -53,7 +64,7 @@ def create_text_screen(win, text):
     return screen
 
 
-def present(win, screen, audio, wait_time, win_color=(0, 0, 0), waitKeys=True, first_screen=False):
+def present(win, screen, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=True, first_screen=False):
     win.color = win_color
     if screen is not None:
         screen.draw()
@@ -65,7 +76,6 @@ def present(win, screen, audio, wait_time, win_color=(0, 0, 0), waitKeys=True, f
     core.wait(wait_time)
     if waitKeys:
         event.waitKeys()
-    # win.flip()
 
 
 def play_video(win, mov, stop=True):
@@ -79,3 +89,40 @@ def play_video(win, mov, stop=True):
             else:
                 mov.pause()
             break
+
+def rewind_video(win, mov):
+    key = event.waitKeys(keyList=['space', 'r'])
+    if key == ["space"]:
+        mov.stop()
+        return False
+    elif key == ['r']:
+        win.color = [0, 0, 0]
+        win.flip()
+        mov.seek(0)
+        return True
+
+def repeat_advance():
+    key = event.waitKeys(keyList=['space', 'r'])
+    if key == ["space"]:
+        return False
+    elif key == ['r']:
+        return True
+
+def advance():
+    key = event.waitKeys(keyList=['space'])
+    if key == ["space"]:
+        return True
+
+def run_task(task, prompt=True):
+    print('starting task')
+    task.present_instructions(prompt)
+    print('starting instructions')
+    task.present_practice(prompt)
+    print('starting task')
+    task.present_task(prompt)
+    print('end screen')
+    task.present_complete()
+    print('close window')
+    task.close()
+    print('task done')
+
