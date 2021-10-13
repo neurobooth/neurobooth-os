@@ -1,8 +1,8 @@
 from neurobooth_os.tasks import utils
-from neurobooth_os.tasks import Task
+from neurobooth_os.tasks import Base_Task
 
 
-class SitToStand(Task):
+class SitToStand(Base_Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
