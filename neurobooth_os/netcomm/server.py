@@ -70,12 +70,12 @@ class NewStdout():
         if self.terminal_print:
             self.terminal.write(message)
 
-        # send to cocket if message not empty
+        # send to socket if message not empty
         if message not in ["\n", ""]:
             try:
                 socket_message(f"{self.current_node}:::{message}", node_name=self.target_node)
             except:
-                self.terminal.write(f"message {message} not send to {self.target_node}")
+                self.terminal.write(f"message {message} not sent to {self.target_node}")
 
     def flush(self):
         # For compatibility, just pass
@@ -83,15 +83,13 @@ class NewStdout():
 
 
 
-def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
+def get_client_messages(s1, port=12347, host='localhost'):
     """Create socket server and get messages from clients.
 
     Parameters
     ----------
     s1 : instance of socket.Socket
         The socket object
-    fprint : callable
-        function for printing, e.g. fprint from `get_fprint`
     port : int
         The port
     host : str
@@ -114,7 +112,7 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
     print("socket is listening")
 
     # Signal event to change init_serv button to green
-    fprint("UPDATOR:-init_servs-")
+    print("UPDATOR:-init_servs-")
 
     # a forever loop until client wants to exit
     while True:
@@ -128,8 +126,6 @@ def get_client_messages(s1, fprint, old_stdout, port=12347, host='localhost'):
 
         if not data:            
             print("Connection fault, closing Stim server")
-            sys.stdout = old_stdout
-            s1.close()
             break
 
         data = data.decode("utf-8")
