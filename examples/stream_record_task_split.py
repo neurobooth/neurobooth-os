@@ -13,13 +13,17 @@ Only works in Windows or Linux using Wine
 # %%
 import time
 import liesl
+import warnings
 from pathlib import Path
 from h5io import read_hdf5
 import neurobooth_os.mock.mock_device_streamer as mocker
 from neurobooth_os.iout.marker import marker_stream
 from neurobooth_os.iout.split_xdf import split
-from neurobooth_os.tasks import Task
+from neurobooth_os.tasks import SitToStand
 from neurobooth_os.tasks import utils
+
+
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 print(__doc__)
 
@@ -55,8 +59,16 @@ session.start_recording(task)
 # %%
 # Run task
 win = utils.make_win(full_screen=False)
-base_task = Task(marker_outlet=marker, win=win)
+# From database
+video_path = 'F:\\vid.mp4'
+text_practice = 'Please practice "Sit to Stand" ONE time \n\tPress any button when done'
+text_task='Please do "Sit to Stand" FIVE times \n\tPress any button when done'
+
+#Values from database to the task
+base_task = SitToStand(marker_outlet=marker, win=win, path_instruction_video=video_path,
+                       text_practice_screen=text_practice, text_task=text_task)
 utils.run_task(base_task)
+win.close()
 
 # %%
 # Stop recording

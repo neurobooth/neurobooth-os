@@ -3,8 +3,8 @@ from neurobooth_os.tasks import Task
 
 
 class SitToStand(Task):
-    def __init__(self, *args):
-        super().__init__(*args)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
 if __name__ == "__main__":
