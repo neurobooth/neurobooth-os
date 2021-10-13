@@ -66,13 +66,13 @@ class pursuit():
         if not eye_tracker.calibrated:
             eye_tracker.calibrate()
 
-        self.task_setup()
+        self._task_setup()
 
         self.et.start(self.filename)
         self.run()
         # self.et.stop()
 
-    def task_setup(self):
+    def _task_setup(self):
         # prepare the pursuit target, the clock and the movement parameters
         self.win.color = [0, 0, 0]
         self.win.flip()
