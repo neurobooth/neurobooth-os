@@ -116,7 +116,7 @@ class MockLSLDevice(object):
         self.frame_counter = 0
         stime, t0 = time.time(), time.time()
         while self.streaming:
-            data = np.empty(self.nchans, dtype=self.data_type)
+            data = np.random.randn(self.nchans).astype(self.data_type)
             self.outlet.push_sample(data)
             self.frame_counter += 1
             stime += 1 / self.srate
