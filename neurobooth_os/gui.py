@@ -155,6 +155,7 @@ def gui(remote=False, database='neurobooth'):
             window['-init_servs-'].Update(button_color=('black', 'red'))
             event, values = window.read(.1)
             ctr_rec.start_servers(nodes=nodes, remote=remote, conn=conn)
+            time.sleep(1)
             _ = ctr_rec.test_lan_delay(50, nodes=nodes)
 
         # Real time display (RTD)
