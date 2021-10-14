@@ -7,6 +7,7 @@ from time import time, sleep
 
 import pandas as pd
 
+import neurobooth_os
 from neurobooth_os import config
 from neurobooth_os.iout.screen_capture import ScreenMirror
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
@@ -60,6 +61,7 @@ def run_task(task_funct,subj_id, task, print, task_karg={}):
 
 
 def Main():
+    os.chdir(neurobooth_os.__path__[0])
 
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
