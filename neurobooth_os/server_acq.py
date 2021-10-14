@@ -12,7 +12,7 @@ from neurobooth_os.iout.lsl_streamer import (start_lsl_threads, close_streams,
 
 def Main():
 
-    sys.stdout = NewStdout("ACQ",  target_node="control", terminal_print=False)
+    sys.stdout = NewStdout("ACQ",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     streams = {}

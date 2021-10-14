@@ -61,7 +61,7 @@ def run_task(task_funct,subj_id, task, print, task_karg={}):
 
 def Main():
 
-    sys.stdout = NewStdout("STM",  target_node="control", terminal_print=False)
+    sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     win = utl.make_win(full_screen=False)
     streams, screen_running = {}, False
