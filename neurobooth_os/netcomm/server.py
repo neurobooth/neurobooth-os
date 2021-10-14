@@ -83,7 +83,7 @@ class NewStdout():
 
 
 
-def get_client_messages(s1, port=12347, host='localhost'):
+def get_client_messages(s1, port=12347, host=''):
     """Create socket server and get messages from clients.
 
     Parameters
@@ -93,7 +93,7 @@ def get_client_messages(s1, port=12347, host='localhost'):
     port : int
         The port
     host : str
-        The host. E.g., STM and ACQ
+        The socket address, '' for local host. Default ''
 
     Returns
     -------
