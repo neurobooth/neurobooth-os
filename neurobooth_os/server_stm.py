@@ -64,9 +64,11 @@ def Main():
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     win = utl.make_win(full_screen=False)
+    conn = meta.get_conn()
+
     streams, screen_running = {}, False
 
-    for data, conn in get_client_messages(s1):
+    for data, connx in get_client_messages(s1):
 
         if "scr_stream" in data:
             if not screen_running:
@@ -152,7 +154,7 @@ def Main():
 
         elif "time_test" in data:
             msg = f"ping_{time()}"
-            conn.send(msg.encode("ascii"))
+            connx.send(msg.encode("ascii"))
 
         else:
             print(data)
