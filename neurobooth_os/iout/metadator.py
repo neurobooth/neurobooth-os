@@ -135,6 +135,8 @@ def _get_task_param(obs_id, conn):
     return stimulus_id, devices_ids, sens_ids, instr_kwargs
 
 def _get_instruct_dic_param(instruction_id, conn):
+    if instruction_id is None:
+        return {}
     table = Table('instruction', conn=conn)
     instr = table.query(f"SELECT * from instruction WHERE instruction_id = '{instruction_id}'")
     dict_instr = instr.iloc[0].to_dict()

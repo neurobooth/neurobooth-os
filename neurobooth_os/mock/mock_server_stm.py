@@ -101,7 +101,7 @@ def mock_stm_routine(host, port, conn):
                     obs_id = task_func_dict[task]['obs_id']
                     tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
                     print(f"Initiating task:{task}:{obs_id}:{tech_obs_log_id}")
-                    sleep(.5)
+                    sleep(1)
 
                     # get task, params and run 
                     tsk_fun = task_func_dict[task]['obj']
