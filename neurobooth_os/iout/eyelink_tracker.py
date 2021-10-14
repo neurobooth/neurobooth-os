@@ -58,7 +58,7 @@ class EyeTracker():
         self.stream_info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
         self.outlet = StreamOutlet(self.stream_info)
         print(f"-OUTLETID-:EyeLink:{self.oulet_id}")
-        self.streaming = True
+        self.streaming = False
         self.calibrated = False
         self.recording = False
         self.paused = True
