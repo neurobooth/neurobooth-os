@@ -54,8 +54,11 @@ def run_task(task_funct,subj_id, task, print, task_karg={}):
     resp = socket_message(f"record_start:{subj_id}_{task}", "acquisition", wait_data=3)
     print(resp)
     sleep(.5)
-    res = task_funct(**task_karg) 
-    res.run()
+    res = task_funct(**task_karg)
+    try:  
+        res.run(**task_karg)
+    except AttributeError:
+        print('Task class not updated with base class')
     socket_message("record_stop", "acquisition")
     return res
 
