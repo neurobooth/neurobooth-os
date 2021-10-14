@@ -6,4 +6,4 @@ Created on Tue Jul 20 10:24:54 2021
 """
 
 from neurobooth_os.tasks.task import Task
-from neurobooth_os.tasks.s2s.task_s2s import SitToStand
+from neurobooth_os.tasks.sit_to_stand.task_s2s import SitToStand
