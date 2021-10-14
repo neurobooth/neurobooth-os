@@ -84,7 +84,7 @@ def Main():
             collection_id = data.split(":")[1]
             tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
 
-            task_func_dict = get_task_funcs(collection_id)
+            task_func_dict = get_task_funcs(collection_id, conn)
 
             if len(streams):
                 print("Checking prepared devices")
