@@ -49,9 +49,9 @@ def start_servers(nodes=("acquisition", "presentation"), remote=False, conn=None
 def prepare_feedback(nodes=("acquisition", "presentation")):
     nodes = _get_nodes(nodes)
     for node in nodes:
-        if node.starts_with("acq"):
+        if node.startswith("acq"):
             msg = "vis_stream"
-        elif node.starts_with("pres"):
+        elif node.startswith("pres"):
             msg = "scr_stream"
         else:
             return
