@@ -3,6 +3,7 @@ import os
 import sys
 from time import time, sleep
 
+import neurobooth_os
 from neurobooth_os import config
 from neurobooth_os.netcomm import (socket_message, NewStdout, get_client_messages)
 from neurobooth_os.iout.camera_brio import VidRec_Brio
@@ -11,6 +12,7 @@ from neurobooth_os.iout.lsl_streamer import (start_lsl_threads, close_streams,
 
 
 def Main():
+    os.chdir(neurobooth_os.__path__[0])
 
     sys.stdout = NewStdout("ACQ",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
