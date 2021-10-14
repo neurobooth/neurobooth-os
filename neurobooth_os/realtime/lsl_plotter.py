@@ -107,11 +107,12 @@ class stream_plotter():
             self.pltotting_ts = False
 
     def stop(self):
-        self.pltotting_ts = False
-        self.thread_ts.join()
+        if self.pltotting_ts:
+            self.pltotting_ts = False
+            self.thread_ts.join()
+            print("Closed plotting windows")
         self.inlets = {}
-        print("Closed plotting windows")
-
+        
     def update_ts(self):
         self.inlets_plt = [v for v in list(self.inlets) 
                             if any([i in v for i in ['Mouse', "mbient", "Audio"]])]
