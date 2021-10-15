@@ -21,46 +21,6 @@ from neurobooth_os.tasks.task_importer import get_task_funcs
 
 from neurobooth_os.iout import metadator as meta
 
-# os.chdir(r'C:\neurobooth-eel\neurobooth_os\\')
-print(os.getcwd())
-
-
-def fake_task(**kwarg):
-    sleep(10)
-
-
-def run_task(task_funct,subj_id, task, print, task_karg={}):
-    """Runs a task
-
-    Parameters
-    ----------
-    task_funct : callable
-        Task to run
-    subj_id : str
-        name of the subject
-    task : str
-        name of the task
-    print : callable
-        print function
-    task_karg : dict, optional
-        Kwarg to pass to task_funct, by default {}
-
-    Returns
-    -------
-    res : callable
-        Task object
-    """
-
-    resp = socket_message(f"record_start:{subj_id}_{task}", "acquisition", wait_data=3)
-    print(resp)
-    sleep(.5)
-    res = task_funct(**task_karg)
-    try:  
-        res.run(**task_karg)
-    except AttributeError:
-        print('Task class not updated with base class')
-    socket_message("record_stop", "acquisition")
-    return res
 
 
 def Main():
@@ -105,6 +65,7 @@ def Main():
 
         elif "present" in data:  # -> "present:TASKNAME:subj_id"
             # task_name can be list of task1-task2-task3
+            
             tasks, subj_id = data.split(":")[1:]
             task_karg ={"win": win,
                         "path": config.paths['data_out'],
