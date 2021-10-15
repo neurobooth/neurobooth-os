@@ -92,6 +92,7 @@ def Main():
             tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
 
             task_func_dict = get_task_funcs(collection_id, conn)
+            task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
 
             if len(streams):
                 print("Checking prepared devices")
@@ -104,8 +105,7 @@ def Main():
 
         elif "present" in data:  # -> "present:TASKNAME:subj_id"
             # task_name can be list of task1-task2-task3
-            tasks = data.split(":")[1].split("-")
-            subj_id = data.split(":")[2]
+            tasks, subj_id = data.split(":")[1:]
             task_karg ={"win": win,
                         "path": config.paths['data_out'],
                         "subj_id": subj_id,
@@ -115,34 +115,51 @@ def Main():
                     task_karg["eye_tracker"] = streams['Eyelink']
                 
             win = welcome_screen(with_audio=True, win=win)
-            for task in tasks:
+
+            for task in tasks.split("-"):
                 if task not in task_func_dict.keys():
                     print(f"Task {task} not implemented")
                     continue
                 
-                obs_id = task_func_dict[task]['obs_id']
+                t_obs_id = task_func_dict[task]['t_obs_id']
                 tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
-                print(f"Initiating task:{task}:{obs_id}:{tech_obs_log_id}")
+                # Signal CTR to start LSL rec
+                print(f"Initiating task:{task}:{t_obs_id}:{tech_obs_log_id}")
                 sleep(1)
 
-                if task != "pursuit_task_1":
+                # Start eyetracker if device in tech_obs 
+                if streams.get('eye_tracker') and \
+                            'Eyelink' in list(task_devs_kw[task]):
                     fname = f"{config.paths['data_out']}{subj_id}{task}.edf"
-                    if streams.get('eye_tracker'):
-                        streams['eye_tracker'].start(fname)
+                    streams['eye_tracker'].start(fname)
                             
-                # get task, params and run 
+                # get task and params
                 tsk_fun = task_func_dict[task]['obj']
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
-                res = run_task(tsk_fun, subj_id, task, print, this_task_kwargs)
+
+                # Start/Stop rec in ACQ and run task
+                resp = socket_message(f"record_start:{subj_id}_{task}:{task}",
+                                     "acquisition", wait_data=3)
+                print(resp)
+                sleep(.5)
+                res = tsk_fun(**this_task_kwargs)
+                if hasattr(res, 'run'):
+                    res.run(**this_task_kwargs)
+                else:
+                    print('Task class not updated with base class')
+                socket_message("record_stop", "acquisition")
+
                 print(f"Finished task:{task}")
 
                 # Log tech_obs to database
-                tech_obs_log["tech_obs_id"] = obs_id
-                tech_obs_log['event_array'] = "event:datestamp"
+                tech_obs_log["tech_obs_id"] = t_obs_id
+                tech_obs_log['event_array'] = "event:datestamp" # TODO: res should be event arrays
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
                 
-                if streams.get('Eyelink'):
+                if streams.get('eye_tracker') and \
+                            'Eyelink' in list(task_devs_kw[task]):
                     streams['Eyelink'].stop()
+
             finish_screen(win)
 
         elif data in ["close", "shutdown"]:

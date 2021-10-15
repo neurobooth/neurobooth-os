@@ -9,17 +9,18 @@ from neurobooth_os.netcomm import (socket_message, NewStdout, get_client_message
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import (start_lsl_threads, close_streams,
                                              reconnect_streams, connect_mbient)
-
+import neurobooth_os.iout.metadator as meta
 
 def Main():
     os.chdir(neurobooth_os.__path__[0])
 
     sys.stdout = NewStdout("ACQ",  target_node="control", terminal_print=True)
+    conn = meta.get_conn()
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     streams = {}
     lowFeed_running = False
-    for data, conn in get_client_messages(s1):
+    for data, connx in get_client_messages(s1):
 
         if "vis_stream" in data:
             if not lowFeed_running:
@@ -34,6 +35,7 @@ def Main():
         elif "prepare" in data:
             # data = "prepare:collection_id:str(tech_obs_log_dict)"
             collection_id = data.split(":")[1]
+            task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
             if len(streams):
                 print("Checking prepared devices")
                 streams = reconnect_streams(streams)
@@ -47,15 +49,16 @@ def Main():
             None
 
         elif "record_start" in data:  
-            # "record_start:FILENAME" FILENAME = {subj_id}_{task}
+            # "record_start:filename:task_id" FILENAME = {subj_id}_{task}
             print("Starting recording")
-            fname = config.paths['data_out'] + data.split(":")[-1]
+            filename, task = data.split(":")[1:]
+            fname = config.paths['data_out'] + filename
             for k in streams.keys():
-                if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
-                    streams[k].start(fname)
-            msg = "ACQ_ready"
-            conn.send(msg.encode("ascii"))
-            print("ready to record")
+                if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]: 
+                    if task_devs_kw[task].get(k):
+                        streams[k].start(fname)
+            msg = "ACQ_devices_ready"
+            connx.send(msg.encode("ascii"))
 
         elif "record_stop" in data:
             print("Closing recording")
@@ -71,12 +74,12 @@ def Main():
                 if lowFeed_running:
                     lowFeed.close()
                     lowFeed_running = False
-                print("Closing RTD cam")
+                    print("Closing RTD cam")
                 break
 
         elif "time_test" in data:
             msg = f"ping_{time()}"
-            conn.send(msg.encode("ascii"))
+            connx.send(msg.encode("ascii"))
 
         else:
             print(data)
