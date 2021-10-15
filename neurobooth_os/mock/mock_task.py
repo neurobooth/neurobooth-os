@@ -27,7 +27,7 @@ class MockTask():
     """
     def __init__(
             self,
-            instruction_text="Default intrusctions",
+            instruction_text="Default instructions",
             marker_outlet=None,
             **kwarg):
         
