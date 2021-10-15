@@ -61,7 +61,7 @@ def get_task_funcs(collection_id, conn):
 
         task_func_dict[task_stim_id] = {}
         task_func_dict[task_stim_id]['obj'] = stim_func
-        task_func_dict[task_stim_id]['obs_id'] = obs_id
+        task_func_dict[task_stim_id]['t_obs_id'] = obs_id
         task_func_dict[task_stim_id]['kwargs'] = task_kwargs
 
 
