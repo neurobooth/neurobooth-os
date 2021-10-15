@@ -246,11 +246,11 @@ def gui(remote=False, database='neurobooth'):
 
         # Signal a task started: record LSL data and update gui
         elif event == 'task_initiated':
-            # event values -> f"['{task_id}', '{obs_id}', '{tech_obs_log_id}']
-            task_id, obs_id, obs_log_id = eval(values[event])
-
+            # event values -> f"['{task_id}', '{t_obs_id}', '{tech_obs_log_id}']
+            task_id, t_obs_id, obs_log_id = eval(values[event])
+            print(f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}")
             # Start LSL recording
-            rec_fname = f"{subject_id}-{obs_id}"
+            rec_fname = f"{subject_id}-{t_obs_id}"
             session.start_recording(rec_fname)
 
             window["task_title"].update("Running Task:")
@@ -268,7 +268,7 @@ def gui(remote=False, database='neurobooth'):
             window['Start'].Update(button_color=('black', 'green'))
 
             xdf_fname = get_xdf_name(session, rec_fname)
-            split_sens_files(xdf_fname, obs_log_id, conn)
+            split_sens_files(xdf_fname, obs_log_id, t_obs_id, conn)
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":            
