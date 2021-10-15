@@ -5,13 +5,17 @@ from pylsl import StreamInfo, StreamOutlet
 
 
 class MouseStream():
-    def __init__(self):
+    def __init__(self, device_id="Mouse", sensor_ids=["Mouse"]):
 
         self.oulet_id = str(uuid.uuid4())
-        info_stream = StreamInfo(name='Mouse', type='mouse', channel_count=3,
+        info_stream = StreamInfo(name='Mouse', type='mouse', channel_count=3,                                 
                                  channel_format='int32', source_id=self.oulet_id)
 
         self.info_stream = info_stream
+        
+        self.info_stream.desc().append_child_value("device_id", device_id)
+        self.info_stream.desc().append_child_value("sensor_ids", str(sensor_ids))
+        
         self.outlet = StreamOutlet(info_stream)
         print(f"-OUTLETID-:Mouse:{self.oulet_id}")
         self.streaming = False
@@ -47,9 +51,8 @@ class MouseStream():
         self.listener = mouse.Listener(on_move=on_move, on_click=on_click)
 
     def stop(self):
-        self.streaming = False
-        try:
+        if self.streaming:
+            self.streaming = False
             self.listener.stop()
             print("Mouse capture stopped")
-        except AttributeError:
-            print("Mouse capture never started")
+
