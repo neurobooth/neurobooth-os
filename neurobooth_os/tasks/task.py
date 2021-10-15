@@ -112,6 +112,19 @@ class Task():
         if self.win_temp:
             self.win.close()
 
+    def run(task, prompt=True):
+        print('starting task')
+        task.present_instructions(prompt)
+        print('starting instructions')
+        task.present_practice(prompt)
+        print('starting task')
+        task.present_task(prompt)
+        print('end screen')
+        task.present_complete()
+        print('close window')
+        task.close()
+        print('task done')
+
 
 if __name__ == "__main__":
     task = Task()
