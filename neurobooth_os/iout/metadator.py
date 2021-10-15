@@ -253,6 +253,8 @@ def meta_devinfo_tofunct(dev_id_param, dev_id):
        # f"{dev_id} should have only one sensor"
         k, = info['sensors'].keys()
         kwarg["sample_rate"] = int(info['sensors'][k]['temporal_res'])
+    elif "Mouse" in dev_id:
+        return kwarg
     else:
         print(f"Device id parameters not found for {dev_id} in meta_devinfo_tofunct")
 
@@ -287,10 +289,10 @@ def _get_coll_dev_kwarg_tasks(collection_id, conn):
     # Get devices kwargs for all the tasks
     # outputs dict with keys = stimulus_id, vals = dict with dev parameters
 
-    tasks = get_tasks(collection_id, conn)
+    tech_obs = get_tasks(collection_id, conn)
 
     tasks_kwarg = OrderedDict()
-    for task in tasks:
+    for task in tech_obs:
         stim_id, *_ = _get_task_param(task, conn)
         task_kwarg = get_kwarg_task(task, conn)
         tasks_kwarg[stim_id] = task_kwarg
