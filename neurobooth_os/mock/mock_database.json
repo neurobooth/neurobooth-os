@@ -1,0 +1,96 @@
+{
+    "study":{
+        "study_id":"mock_study",
+        "study_title":"mock_study",
+        "collection_ids": "{mock_collection}"
+    },
+
+    "collection":{
+        "collection_id":"mock_collection",
+        "tech_obs_array": "{mock_obs_1}"
+
+    },
+
+    "stimulus":{
+        "stimulus_id":"mock_task_1",
+        "stimulus_description":"description", 
+        "num_iterations":2, 
+        "duration":5, 
+        "stimulus_file":"mock.mock_task.py::MockTask()" 
+    },
+
+    "instruction":{
+        "10":{
+            "instruction_id": 10,
+            "instruction_text": "mock task, follow the instructions"
+        }
+    },
+
+    "tech_obs_data":{
+        "mock_obs_1": {
+            "tech_obs_id":"mock_obs_1",
+            "instruction_id":10, 
+            "stimulus_id":"mock_task_1", 
+            "device_id_array":"{mock_Mbient_1,mock_Mbient_2, mock_Intel_1}",
+            "sensor_id_array":"{{mock_Mbient_acc_1, mock_Mbient_grad_1},{mock_Mbient_acc_1, mock_Mbient_grad_1},{mock_Intel_rgb_1, mock_Intel_depth_1}}"
+        }
+    },
+
+    "device":{
+        "mock_dev_1":{
+            "device_id":"mock_dev_1",  
+            "device_name":"mock_dev",
+            "sensor_id_array":"{mock_sens_1}"
+        },
+        "mock_Mbient_1":{
+            "device_id":"mock_Mbient_1",  
+            "device_name":"mock_Mbient",
+            "sensor_id_array":"{mock_Mbient_acc_1, mock_Mbient_grad_1}"
+        },
+        "mock_Mbient_2":{
+            "device_id":"mock_Mbient_2",  
+            "device_name":"mock_Mbient",
+            "sensor_id_array":"{mock_Mbient_acc_1, mock_Mbient_grad_1}"
+        },
+        "mock_Intel_1":{
+            "device_id":"mock_Intel_1",  
+            "device_name":"mock_Intel",
+            "sensor_id_array":"{mock_Intel_rgb_1, mock_Intel_depth_1}"
+        }
+    },
+
+    "sensor": {
+        "mock_sens_1": {
+            "sensor_id":"mock_sens_1",
+            "temporal_res":100,
+            "file_type": "edf"
+        },
+        "mock_Mbient_acc_1": {
+            "sensor_id":"mock_Mbient_acc_1",
+            "temporal_res":100,
+            "file_type": "edf"
+        },
+        "mock_Mbient_grad_1": {
+            "sensor_id":"mock_Mbient_grad_1",
+            "temporal_res":100,
+            "file_type": "edf"
+        },
+        "mock_Intel_rgb_1": {
+            "sensor_id":"mock_Intel_rgb_1",
+            "temporal_res":"180",
+            "spatial_res_x":"1080",
+            "spatial_res_y":720,
+            "file_type": "bag"
+        },
+
+        "mock_Intel_depth_1": {
+            "sensor_id":"mock_Intel_depth_1",
+            "temporal_res":"180",
+            "spatial_res_x":"1080",
+            "spatial_res_y":720,
+            "file_type": "bag"
+        }
+    }
+
+}
+
