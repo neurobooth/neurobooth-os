@@ -67,13 +67,14 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
         from neurobooth_os.iout.mouse_tracker import MouseStream
         from neurobooth_os.iout.eyelink_tracker import EyeTracker
 
-        streams['mouse'] = MouseStream()
-        streams['mouse'].start()
         streams['marker'] = marker_stream()
 
         for kdev, argsdev in kwarg_alldevs.items():
             if 'Eyelink' in kdev:
                 streams['Eyelink'] = EyeTracker(win=win, **argsdev)
+            elif 'Mouse' in kdev:
+                streams['mouse'] = MouseStream(**argsdev)
+                streams['mouse'].start()
 
     elif node_name == "dummy_acq": 
         from neurobooth_os.mock import mock_device_streamer as mock_dev

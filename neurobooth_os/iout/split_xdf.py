@@ -62,7 +62,6 @@ def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None):
 
     if conn is not None:
         table_sens_log = Table("sensor_file_log", conn=conn)
-        tech_obs_dev = Table("te")
         _, devices_ids, _, _ = meta._get_task_param(tech_obs_id, conn)
     # get video filenames if videofiles marker present
     videofiles = {}
@@ -79,14 +78,14 @@ def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None):
         if name in ["Marker", "videofiles"]:
             continue
 
-        # Only log and split devices in tech_obs DB
-        if name not in devices_ids:
-            print(f"Skipping {name} not in tech obs device list: {devices_ids}")
-            continue
-
         device_id = dev_data['info']['desc'][0]["device_id"][0]
         sensors_id = eval(dev_data['info']['desc'][0]["sensor_ids"][0])
 
+        # Only log and split devices in tech_obs DB
+        if tech_obs_id is not None and device_id not in devices_ids:
+            print(f"Skipping {name} not in tech obs device list: {devices_ids}")
+            continue
+        
         sensors = "-".join(sensors_id)
         data_sens = [marker, dev_data]
         head, ext = op.splitext(fname)
