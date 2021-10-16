@@ -30,7 +30,8 @@ class Task():
             text_continue=utils.text_continue,
             text_practice_screen = utils.text_practice_screen,
             text_task=utils.text_task,
-            text_end=utils.text_end):
+            text_end=utils.text_end,
+            **kwargs):
 
         self.path_instruction_video = path_instruction_video
         self.full_screen = full_screen
@@ -112,7 +113,7 @@ class Task():
         if self.win_temp:
             self.win.close()
 
-    def run(task, prompt=True):
+    def run(task, prompt=True, **kwargs):
         print('starting task')
         task.present_instructions(prompt)
         print('starting instructions')
