@@ -36,8 +36,10 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
 
     # Get params from all tasks
     kwarg_devs = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
-    # Get params from first task
-    kward_devs_task1 = kwarg_devs[next(iter(kwarg_devs))]
+    # Get all device params from session
+    kwarg_alldevs = {}
+    for dc in kwarg_devs.values():
+        kwarg_alldevs.update(dc)
 
     streams = {}
     if node_name == "acquisition":
@@ -45,8 +47,7 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
         from neurobooth_os.iout.camera_intel import VidRec_Intel
         from neurobooth_os.iout.flir_cam import VidRec_Flir
 
-        # streams['micro'] = MicStream()
-        for kdev, argsdev in kward_devs_task1.items():
+        for kdev, argsdev in kwarg_alldevs.items():
             if "Intel" in kdev:
                 streams[kdev] = VidRec_Intel(**argsdev)
             elif "Mbient" in kdev:
@@ -68,7 +69,7 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
 
         streams['marker'] = marker_stream()
 
-        for kdev, argsdev in kward_devs_task1.items():
+        for kdev, argsdev in kwarg_alldevs.items():
             if 'Eyelink' in kdev:
                 streams['Eyelink'] = EyeTracker(win=win, **argsdev)
             elif 'Mouse' in kdev:
@@ -78,7 +79,7 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
     elif node_name == "dummy_acq": 
         from neurobooth_os.mock import mock_device_streamer as mock_dev
 
-        for kdev, argsdev in kward_devs_task1.items():
+        for kdev, argsdev in kwarg_alldevs.items():
             if "Intel" in kdev:
                 streams[kdev] = mock_dev.MockCamera(**argsdev)
             elif "Mbient" in kdev:
