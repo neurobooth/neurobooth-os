@@ -29,26 +29,22 @@ def mock_acq_routine(host, port, conn):
     conn : object
         Connector to the database
     """
-    def print_funct(msg=None):
-        if msg is not None:
-            msg = "Mock ACQ:::" + msg
-            socket_message(msg, "dummy_ctr")
 
     streams = {}
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)    
-    for data, connx in get_client_messages(s1, print, sys.stdout, port=port, host=host):
+    for data, connx in get_client_messages(s1, port=port, host=host):
 
         if "prepare" in data:
             # data = "prepare:collection_id:str(tech_obs_log_dict)"
 
             collection_id = data.split(":")[1]
+            task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
             if len(streams):
                 print("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
                 streams = start_lsl_threads("dummy_acq", collection_id, conn=conn)
 
-            devs = list(streams.keys())
             print("UPDATOR:-Connect-")
 
         elif "dev_param_update" in data:
@@ -58,14 +54,14 @@ def mock_acq_routine(host, port, conn):
         # -> "record_start:FILENAME" FILENAME = {subj_id}_{task}
 
             print("Starting recording")
-            fname = config.paths['data_out'] + data.split(":")[-1]
+            filename, task = data.split(":")[1:]
+            fname = config.paths['data_out'] + filename
             for k in streams.keys():
-                if any([i in k for i in ["hiFeed", "Intel", "FLIR"]]):
-                    streams[k].start(fname)
-
-            msg = "ACQ_ready"
+                if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]: 
+                    if task_devs_kw[task].get(k):
+                        streams[k].start(fname)
+            msg = "ACQ_devices_ready"
             connx.send(msg.encode("ascii"))
-            print("ready to record")
 
         elif "record_stop" in data:
             print("Closing recording")
