@@ -104,10 +104,7 @@ def Main():
                 print(resp)
                 sleep(.5)
                 res = tsk_fun(**this_task_kwargs)
-                if hasattr(res, 'run'):
-                    res.run(**this_task_kwargs)
-                else:
-                    print('Task class not updated with base class')
+                if hasattr(res, 'run'):  res.run(**this_task_kwargs)
                 socket_message("record_stop", "acquisition")
 
                 print(f"Finished task:{task}")
