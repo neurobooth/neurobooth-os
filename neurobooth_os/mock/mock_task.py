@@ -27,7 +27,7 @@ class MockTask():
     """
     def __init__(
             self,
-            instruction_text="Default instructions",
+            instruction_text="Default instructions, not from DB",
             marker_outlet=None,
             **kwarg):
         
@@ -44,8 +44,7 @@ class MockTask():
         if self.with_lsl:
             self.marker.push_sample([f"{msg}_{time.time()}"])
 
-    
-    def run(self, n_trials=20, duration=10):
+    def run(self, n_trials=20, duration=10, **kwarg):
         """Run the task.
 
         Parameters
@@ -59,17 +58,26 @@ class MockTask():
         """
 
         # Run mock instructions
+        print("\n\n\n")
         self.send_marker("Intructions-start_0")
-        print(self.instruction_text)
+        print("\n\t",self.instruction_text)
         time.sleep(1)
         self.send_marker("Intructions-end_1")
        
-       # Run mock trials
+        # Run mock trials
+        print("\n\n\n")
         self.send_marker("Task-start_0")
+        print("\n\tTask-start_0")
         for _ in range(n_trials):
-            self.send_marker(msg=f"Trial-start_0")
+            msg=f"Trial-start_0"
+            self.send_marker(msg)
+            print("\n\t", msg)
             time.sleep(duration/n_trials)
-            self.send_marker(msg=f"Trial-end_1")
+            msg=f"Trial-start_1"
+            self.send_marker(msg)
+            print("\n\t",msg)
+        msg = "Task-end_1"
         self.send_marker("Task-end_1")
+        print("\n\t",msg)
 
-        print("Mock task finished!")
+        print("\n\t","Mock task finished!")
