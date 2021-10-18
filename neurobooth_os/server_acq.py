@@ -5,7 +5,7 @@ from time import time, sleep
 
 import neurobooth_os
 from neurobooth_os import config
-from neurobooth_os.netcomm import (socket_message, NewStdout, get_client_messages)
+from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import (start_lsl_threads, close_streams,
                                              reconnect_streams, connect_mbient)
