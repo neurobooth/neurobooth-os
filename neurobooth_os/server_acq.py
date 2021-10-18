@@ -24,7 +24,7 @@ def Main():
 
         if "vis_stream" in data:
             if not lowFeed_running:
-                lowFeed = VidRec_Brio(camindex=config.cam_inx["lowFeed"],
+                lowFeed = VidRec_Brio(camindex=config.paths["cam_inx_lowfeed"],
                                       doPreview=True)
                 print("LowFeed running")
                 lowFeed_running = True
