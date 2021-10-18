@@ -11,10 +11,10 @@ from datetime import datetime
 
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
-from neurobooth_terra import list_tables, create_table, drop_table, Table
+from neurobooth_terra import  Table
 
 import neurobooth_os
-
+from neurobooth_os.secrets_info import secrets
 
 def get_conn(remote=False, database='neurobooth'):
     """ Gets connector to the database
@@ -34,7 +34,7 @@ def get_conn(remote=False, database='neurobooth'):
     if remote:
         tunnel = SSHTunnelForwarder(
             'neurodoor.nmr.mgh.harvard.edu',
-            ssh_username='an512',
+            ssh_username=secrets['database']['remote_username'],
             ssh_config_file='~/.ssh/config',
             ssh_pkey='~/.ssh/id_rsa',
             remote_bind_address=('192.168.100.1', 5432),
@@ -45,8 +45,10 @@ def get_conn(remote=False, database='neurobooth'):
     else:
         host = '192.168.100.1'
         port = 5432
-    conn = psycopg2.connect(database=database, user='neuroboother',
-                            password='neuroboothrocks', host=host,
+    conn = psycopg2.connect(database=database, 
+                            user=secrets['database']['user'],
+                            password=secrets['database']['pass'],
+                             host=host,
                             port=port)
     return conn
 
