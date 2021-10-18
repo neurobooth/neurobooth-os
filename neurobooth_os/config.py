@@ -15,10 +15,10 @@ if not op.exists(fname):
         "data_out": r"C:\neurobooth\neurobooth_data\\",
         'nas': r'Z:\session_data\\',
         'video_tasks' : r"C:\\Users\\STM\\Dropbox (Partners HealthCare)\\Neurobooth Videos for tasks\\Videos_to_present",
-        'cam_inx_lowfeed' : [0]
+        'cam_inx_lowfeed' : 0
         }
     with open(fname, "w+") as f:
-        json.dump(paths, f)
+        json.dump(paths, f, ensure_ascii=False, indent=4)
 
 with open(fname, 'r') as f:
     paths = json.load(f)

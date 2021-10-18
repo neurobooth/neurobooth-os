@@ -7,6 +7,7 @@ import neurobooth_os
 from neurobooth_os import config
 from neurobooth_os.iout.screen_capture import ScreenMirror
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
+from neurobooth_os.iout import metadator as meta
 
 from neurobooth_os.netcomm import socket_message, node_info, get_client_messages, NewStdout
 
@@ -15,7 +16,7 @@ from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_s
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
 
-from neurobooth_os.iout import metadator as meta
+
 
 
 

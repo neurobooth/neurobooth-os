@@ -34,7 +34,7 @@ if not op.exists(fname):
             }
         }
     with open(fname, "w+") as f:
-        json.dump(secrets, f)
+        json.dump(secrets, f, ensure_ascii=False, indent=4)
 
 with open(fname, 'r') as f:
     secrets = json.load(f)
