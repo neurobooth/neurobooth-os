@@ -16,6 +16,7 @@ from neurobooth_terra import Table
 
 import neurobooth_os.config as cfg
 from neurobooth_os.iout.mbient import Sensor
+from neurobooth_os.iout.metadator import get_conn
 
 ############# INSERT ROWS IN DATABASE #############
 
@@ -30,10 +31,8 @@ def insert_to_table(table_id, row_dicts):
     row_dicts : list of dict
         The rows to insert
     """
-    connect_str = ("dbname='neurobooth' user='neuroboother' host='192.168.100.1' "
-                   "password='neuroboothrocks'")
 
-    conn = psycopg2.connect(connect_str)
+    conn = get_conn()
 
     table = Table(table_id, conn=conn)
     cols = table.column_names
