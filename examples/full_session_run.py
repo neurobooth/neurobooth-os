@@ -42,7 +42,8 @@ def threaded_signals(window, event, values, subject_id, statecolors=None, stream
                 #Signal start LSL session if both servers devices are ready:
                 if values['-update_butt-'] == "-Connect-" and color == "green":
                     window.write_event_value('start_lsl_session', 'none')
-                    threaded_signals(event, values, statecolors)
+                    threaded_signals(window, event, values, subject_id, statecolors, stream_ids,
+                                    inlets, out)
 
     # Create LSL inlet stream
     elif event == "-OUTLETID-":
@@ -163,8 +164,9 @@ if len(tasks):
 else:
     sg.PopupError('No task selected')
 
-for event, values in  wind_gen(window, nodes, timeout=3):
-    out = threaded_signals(window, event, values, subj_id, statecolors, stream_ids, inlets, out)
+for task in tasks:
+    for event, values in  wind_gen(window, nodes, timeout=10):
+        out = threaded_signals(window, event, values, subj_id, statecolors, stream_ids, inlets, out)
 
 # Close
 window.write_event_value('Shut Down', "close")

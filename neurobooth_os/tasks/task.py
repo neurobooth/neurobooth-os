@@ -7,22 +7,25 @@ Author: Sheraz Khan <sheraz@khansheraz.com>
 License: BSD-3-Clause
 """
 
+import os.path as op
+
 from __future__ import absolute_import, division
 from psychopy import logging
 logging.console.setLevel(logging.CRITICAL)
 
-import neurobooth_os
-import os.path as op
-from neurobooth_os.tasks import utils
 from psychopy import visual
 from psychopy import prefs
 prefs.hardware['audioLib'] = ['pyo']
+
+import neurobooth_os
+from neurobooth_os.tasks import utils
+import neurobooth_os.config as cfg
 
 
 class Task():
     def __init__(
             self,
-            path_instruction_video=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'),
+            instruction_file=op.join('tasks', 'assets', 'test.mp4'),
             marker_outlet=None,
             win=None,
             full_screen=False,
@@ -33,7 +36,7 @@ class Task():
             text_end=utils.text_end,
             **kwargs):
 
-        self.path_instruction_video = path_instruction_video
+        self.path_instruction_video = op.join(cfg.paths['video_tasks'], instruction_file)
         self.full_screen = full_screen
 
         print("path to instruction video: ", self.path_instruction_video)
@@ -113,17 +116,17 @@ class Task():
         if self.win_temp:
             self.win.close()
 
-    def run(task, prompt=True, **kwargs):
+    def run(self, prompt=True, **kwargs):
         print('starting task')
-        task.present_instructions(prompt)
+        self.present_instructions(prompt)
         print('starting instructions')
-        task.present_practice(prompt)
+        self.present_practice(prompt)
         print('starting task')
-        task.present_task(prompt)
+        self.present_task(prompt)
         print('end screen')
-        task.present_complete()
+        self.present_complete()
         print('close window')
-        task.close()
+        self.close()
         print('task done')
 
 
