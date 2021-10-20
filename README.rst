@@ -23,10 +23,10 @@ and it should not give any error messages.
 Setup
 -----
 
-It requires a postgreSQL database running on a server. Currently, as specified in 
+It requires a postgreSQL database running on a server. Connection is established with the function
+`neurobooth_os.iout.metadator.get_conn()`. Currently, as specified in 
 `~/.neurobooth_os_secrets` the local IP is 192.168.100.1, and remotely it connects to 
-`neurodoor.nmr.mgh.harvard.edu` using the private key in '~/.ssh/id_rsa' as specified in
-`neurobooth_os.iout.metadator`.
+`neurodoor.nmr.mgh.harvard.edu` using the private key in '~/.ssh/id_rsa'.
 
 To setup a private key, first activate the VPN (partner's virtual private network), then run in
 the terminal: 
