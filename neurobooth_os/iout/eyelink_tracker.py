@@ -8,7 +8,7 @@ import uuid
 from pylsl import StreamInfo, StreamOutlet
 import threading
 import neurobooth_os.config as config
-from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
+from neurobooth_os.iout.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 
 class EyeTracker():
@@ -23,13 +23,15 @@ class EyeTracker():
             with_lsl=True,
             ip='192.168.100.15',
             device_id="Eyelink_1",
-            sensor_ids=['Eyelink_sens_1']):
+            sensor_ids=['Eyelink_sens_1'],
+            mock=False):
         self.IP = ip
         self.sample_rate = sample_rate
         self.monitor_width = monitor_width
         self.monitor_distance = monitor_distance
         self.device_id = device_id
         self.sensor_ids = sensor_ids
+        self.mock = mock
 
         self.with_lsl = with_lsl
         mon = monitors.getAllMonitors()[0]
@@ -64,9 +66,14 @@ class EyeTracker():
         self.paused = True
         self.connect_tracker()
 
+
     def connect_tracker(self):
+        if self.mock:
+            self.IP = None
+
         self.tk = pylink.EyeLink(self.IP)
-        self.tk.setAddress(self.IP)
+        if self.IP is not None:
+            self.tk.setAddress(self.IP)
         # # Open an EDF data file on the Host PC
         # self.tk.openDataFile('ev_test.edf')
 
@@ -95,12 +102,12 @@ class EyeTracker():
         calib_msg = visual.TextStim(self.win, text=calib_prompt, color='white', units='pix')
         calib_msg.draw()
         self.win.flip()
+        if not self.mock:
+            graphics = EyeLinkCoreGraphicsPsychoPy(self.tk, self.win)
+            pylink.openGraphicsEx(graphics)
 
-        graphics = EyeLinkCoreGraphicsPsychoPy(self.tk, self.win)
-        pylink.openGraphicsEx(graphics)
-
-        # Calibrate the tracker
-        self.tk.doTrackerSetup()
+            # Calibrate the tracker
+            self.tk.doTrackerSetup()
         self.calibrated = True
 
         prompt = 'Calibration finished'
@@ -168,8 +175,9 @@ class EyeTracker():
 
             time.sleep(.001)
 
-        self.tk.stopRecording()
-        self.tk.closeDataFile()
+        if not self.mock:
+            self.tk.stopRecording()
+            self.tk.closeDataFile()
         print(f"et stop {time.time()}")
 
         # print(f"saving {self.fname_temp} EDF file to disk as {self.filename}")
@@ -182,18 +190,46 @@ class EyeTracker():
         if self.streaming:
 
             t0 = time.time()
-            self.stream_thread.join()
+            if not self.mock:
+                self.stream_thread.join()
             print(f"join took {time.time() - t0}")
             print("Eyelink stoped recording, downaloading edf")
             t0 = time.time()
-            self.tk.receiveDataFile(self.fname_temp, f'{config.paths["data_out"]}{self.filename}')
+            if not self.mock:
+                self.tk.receiveDataFile(self.fname_temp, f'{config.paths["data_out"]}{self.filename}')
             print(f"took {time.time() - t0}")
             self.streaming = False
 
     def close(self):
         if self.recording:
             self.stop()
-        self.tk.close()
+        if not self.mock:
+            self.tk.close()
+
+
+# Creates a mock object to be used if tracker doesn't connect for debug purposes
+_method_list = [fn_name for fn_name in dir(EyeTracker)
+                if callable(getattr(EyeTracker, fn_name)) and not fn_name.startswith("__")]
+
+
+def _mock_func(*args, **kwargs):
+    pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # info = pylsl.stream_info("EyeLink", "Gaze", 9, 100, pylsl.cf_float32, "eyelink-" + socket.gethostname());
 # outlet = pylsl.stream_outlet(info)

@@ -18,9 +18,11 @@ from pathlib import Path
 from h5io import read_hdf5
 import neurobooth_os.mock.mock_device_streamer as mocker
 from neurobooth_os.iout.marker import marker_stream
-from neurobooth_os.iout.split_xdf import split
+from neurobooth_os.iout.split_xdf import get_xdf_name, split_sens_files
 from neurobooth_os.tasks import SitToStand
 from neurobooth_os.tasks import utils
+from neurobooth_os.iout.eyelink_tracker import EyeTracker
+from neurobooth_os.layouts import write_task_notes
 
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -35,6 +37,7 @@ dev_stream = mocker.MockLSLDevice(name=stream_names['MockLSLDevice'], nchans=5)
 mbient = mocker.MockMbient(name=stream_names['MockMbient'])
 cam = mocker.MockCamera(name=stream_names['MockCamera'])
 marker = marker_stream(name=stream_names['marker_stream'])
+
 
 
 # %%
@@ -59,15 +62,20 @@ session.start_recording(task)
 # %%
 # Run task
 win = utils.make_win(full_screen=False)
+eyetracker = EyeTracker(mock=True, win=win)
 # From database
 video_path = 'F:\\vid.mp4'
 text_practice = 'Please practice "Sit to Stand" ONE time \n\tPress any button when done'
 text_task='Please do "Sit to Stand" FIVE times \n\tPress any button when done'
 
 #Values from database to the task
+eyetracker.calibrate()
+eyetracker.record()
 base_task = SitToStand(marker_outlet=marker, win=win, path_instruction_video=video_path,
                        text_practice_screen=text_practice, text_task=text_task)
 utils.run_task(base_task)
+eyetracker.stop()
+eyetracker.close()
 win.close()
 
 # %%
@@ -83,23 +91,16 @@ mbient.stop()
 
 # %%
 # getting recorded filename to split
-fname = session.folder / Path(task + ".xdf")
-base_stem = fname.stem.split("_R")[0]
-count = 0
-for f in fname.parent.glob(fname.stem + "*.xdf"):
-    base_stem, run_counter = f.stem.split("_R")
-    count = max(int(run_counter), count)
-run_str = "_R{0:03d}".format(count)
-final_fname = str(fname.with_name(base_stem + run_str).with_suffix(".xdf"))
-
+final_fname = get_xdf_name(session, task)
 
 # %%
 # Split xdf file per sensor
-files = split(final_fname)
+files = split_sens_files(final_fname)
 
 
 # %%
 # read first split h5 file
 marker, stream = read_hdf5(files[0])
+write_task_notes(subject_id, staff_id, task_name, task_notes)
 
 

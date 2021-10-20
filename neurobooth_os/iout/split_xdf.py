@@ -80,7 +80,8 @@ def split_sens_files(fname, tech_obs_log_id=None, conn=None):
         sensors_id = eval(dev_data['info']['desc'][0]["sensor_ids"][0])
 
         sensors = "-".join(sensors_id)
-        data_sens = [marker, dev_data]
+        #data_sens = [marker, dev_data]
+        data_sens = [dev_data]
         head, ext = op.splitext(fname)
         fname_full = f"{head}-{device_id}-{sensors}.hdf5"
         write_hdf5(fname_full, data_sens, overwrite=True)
@@ -106,6 +107,15 @@ def split_sens_files(fname, tech_obs_log_id=None, conn=None):
                 vals = [(tech_obs_log_id, temp_res, None, start_time, end_time, device_id, sens_id,
                  "{" + head + "}")]
                 table_sens_log.insert_rows(vals, cols)
+    # data_sens = [marker, dev_data]
+    data_sens = [marker]
+    head, ext = op.splitext(fname)
+    device_id= 'marker'
+    name = 'marker'
+    fname_full = f"{head}-{device_id}.hdf5"
+    write_hdf5(fname_full, data_sens, overwrite=True)
+    print(f"Saving stream {name} to {fname_full}")
+    files.append(fname_full)
 
     return files
 
