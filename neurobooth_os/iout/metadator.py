@@ -33,7 +33,7 @@ def get_conn(remote=False, database='neurobooth'):
     """
     if remote:
         tunnel = SSHTunnelForwarder(
-            'neurodoor.nmr.mgh.harvard.edu',
+            secrets['database']['remote_address'],
             ssh_username=secrets['database']['remote_username'],
             ssh_config_file='~/.ssh/config',
             ssh_pkey='~/.ssh/id_rsa',

@@ -30,7 +30,8 @@ if not op.exists(fname):
             'user':'neuroboother',
             'pass': "",
             'host':'192.168.100.1',
-            'remote_username': 'ab123'
+            'remote_username': 'ab123',
+            'remote_address' : 'neurodoor.nmr.mgh.harvard.edu'
             }
         }
     with open(fname, "w+") as f:
