@@ -18,4 +18,4 @@ class SitToStand(Task):
 
 if __name__ == "__main__":
     sts = SitToStand()
-    utils.run_task(sts, prompt=True)
+    sts.run(prompt=True)
