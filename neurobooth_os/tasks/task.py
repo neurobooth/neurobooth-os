@@ -7,11 +7,10 @@ Author: Sheraz Khan <sheraz@khansheraz.com>
 License: BSD-3-Clause
 """
 
-import os.path as op
-
 from __future__ import absolute_import, division
 from psychopy import logging
 logging.console.setLevel(logging.CRITICAL)
+import os.path as op
 
 from psychopy import visual
 from psychopy import prefs
