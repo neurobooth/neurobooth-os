@@ -132,4 +132,4 @@ class Task():
 
 if __name__ == "__main__":
     task = Task()
-    utils.run_task(task, prompt=True)
+    task.run()
