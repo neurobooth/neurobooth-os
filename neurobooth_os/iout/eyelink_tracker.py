@@ -23,7 +23,8 @@ class EyeTracker():
             with_lsl=True,
             ip='192.168.100.15',
             device_id="Eyelink_1",
-            sensor_ids=['Eyelink_sens_1']):
+            sensor_ids=['Eyelink_sens_1'],
+            mock=False):
         
         self.IP = ip
         self.sample_rate = sample_rate
@@ -31,6 +32,7 @@ class EyeTracker():
         self.monitor_distance = monitor_distance
         self.device_id = device_id
         self.sensor_ids = sensor_ids
+        self.mock = mock
 
         self.with_lsl = with_lsl
         mon = monitors.getAllMonitors()[0]
@@ -66,8 +68,11 @@ class EyeTracker():
         self.connect_tracker()
 
     def connect_tracker(self):
+        if self.mock:
+            self.IP = None
         self.tk = pylink.EyeLink(self.IP)
-        self.tk.setAddress(self.IP)
+        if self.IP is not None:
+            self.tk.setAddress(self.IP)
         # # Open an EDF data file on the Host PC
         # self.tk.openDataFile('ev_test.edf')
 
