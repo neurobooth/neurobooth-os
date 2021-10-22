@@ -25,12 +25,9 @@ from neurobooth_os.iout.eyelink_tracker import EyeTracker
 from neurobooth_os.layouts import  write_task_notes
 from neurobooth_os.tasks.task_importer import get_task_funcs
 
-
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 print(__doc__)
-
-
 
 # %%
 # Input Parameters for the database
@@ -39,7 +36,6 @@ study_id = 'PD_01'
 collection_id = 'Hard_v1'
 staff_id = 'khan'
 mock = True
-
 
 # %%
 # read database
@@ -50,6 +46,7 @@ mock = True
 
 #for task, param in tasks.items():
 #    task
+
 # %%
 # Creating and starting mock streams: read stream_names from database
 stream_names = {'MockLSLDevice': 'mock_lsl', 'MockMbient': 'mock_mbient',

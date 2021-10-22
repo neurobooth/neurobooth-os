@@ -102,6 +102,9 @@ class EyeTracker():
         calib_msg.draw()
         self.win.flip()
 
+        if self.mock:
+            return None
+
         graphics = EyeLinkCoreGraphicsPsychoPy(self.tk, self.win)
         pylink.openGraphicsEx(graphics)
 
@@ -125,10 +128,10 @@ class EyeTracker():
         self.tk.startRecording(1, 1, 1, 1)
         print("Eyetracker recording")
         self.recording = True
-        self.stream_thread = threading.Thread(target=self.record)
+        self.stream_thread = threading.Thread(target=self._record)
         self.stream_thread.start()
 
-    def record(self):
+    def _record(self):
         import time
         print("Eyetracker LSL recording")
         self.paused = False
@@ -200,6 +203,9 @@ class EyeTracker():
         if self.recording:
             self.stop()
         self.tk.close()
+        if self.win_temp == True:
+            self.win.close()
+
 
 # info = pylsl.stream_info("EyeLink", "Gaze", 9, 100, pylsl.cf_float32, "eyelink-" + socket.gethostname());
 # outlet = pylsl.stream_outlet(info)

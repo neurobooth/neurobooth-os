@@ -24,7 +24,7 @@ import neurobooth_os.config as cfg
 class Task():
     def __init__(
             self,
-            instruction_file=op.join('tasks', 'assets', 'test.mp4'),
+            instruction_file=None,
             marker_outlet=None,
             win=None,
             full_screen=False,
@@ -35,7 +35,14 @@ class Task():
             text_end=utils.text_end,
             **kwargs):
 
-        self.path_instruction_video = op.join(cfg.paths['video_tasks'], instruction_file)
+        
+        if instruction_file is None:
+            self.path_instruction_video = op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4')
+            print()
+        else:
+            # All hardcoded paths SHOULD pass to the class
+            self.path_instruction_video = op.join(cfg.paths['video_tasks'], instruction_file)
+
         self.full_screen = full_screen
 
         print("path to instruction video: ", self.path_instruction_video)

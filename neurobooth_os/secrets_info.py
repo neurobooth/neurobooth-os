@@ -28,9 +28,9 @@ if not op.exists(fname):
         'database':{
             "dbname" : 'neurobooth',
             'user':'neuroboother',
-            'pass': "",
+            'pass': "neuroboothrocks",
             'host':'192.168.100.1',
-            'remote_username': 'ab123',
+            'remote_username': 'sheraz',
             'remote_address' : 'neurodoor.nmr.mgh.harvard.edu'
             }
         }
