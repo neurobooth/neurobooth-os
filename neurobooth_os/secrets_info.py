@@ -23,7 +23,7 @@ if not op.exists(fname):
             'name': 'stm',
             'user': 'STM',
             'pass': "",
-            "bat" : op.join(pakg_path, 'serv_acq.bat')
+            "bat" : op.join(pakg_path, 'server_stm.bat')
             },
         'database':{
             "dbname" : 'neurobooth',

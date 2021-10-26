@@ -90,7 +90,7 @@ class pursuit():
 
         ]
 
-    def run(self):
+    def run(self, **kwarg):
 
         # Run a block of 2 trials, in random order
         test_list = self.mov_pars
