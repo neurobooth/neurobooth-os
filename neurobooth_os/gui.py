@@ -32,7 +32,7 @@ def _process_received_data(serv_data, window):
     window : object
         PySimpleGui window object
     """
-
+    # print(serv_data)
     # Split server name and data
     serv_name, serv_data = serv_data.split(":::")
     # print(serv_name, ":::")
@@ -62,7 +62,6 @@ def _process_received_data(serv_data, window):
 
         elif "-new_filename-" in data_row:
             # new file created, data_row = "-new_filename-:stream_name:video_filename"
-            print(f"catched {data_row}")
             event, stream_name, filename = data_row.split(":")
             window.write_event_value(event, f"{stream_name}, {filename}]")
             
@@ -155,8 +154,6 @@ def gui(remote=False, database='neurobooth'):
             window['-init_servs-'].Update(button_color=('black', 'red'))
             event, values = window.read(.1)
             ctr_rec.start_servers(nodes=nodes, remote=remote, conn=conn)
-            time.sleep(1)
-            _ = ctr_rec.test_lan_delay(50, nodes=nodes)
 
         # Real time display (RTD)
         elif event == 'RTD':  # TODO signal when RTD finishes
@@ -230,6 +227,9 @@ def gui(remote=False, database='neurobooth'):
                     #Signal start LSL session if both servers devices are ready:
                     if values['-update_butt-'] == "-Connect-" and color == "green":
                         window.write_event_value('start_lsl_session', 'none')
+                    # If servers started, test land delay
+                    elif values['-update_butt-'] == "-init_servs-" and color == "green":
+                        _ = ctr_rec.test_lan_delay(50, nodes=nodes)
                 continue
             window[values['-update_butt-']].Update(button_color=('black', 'green'))
 
@@ -273,7 +273,7 @@ def gui(remote=False, database='neurobooth'):
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":            
             vidf_mrkr.push_sample([values[event]])
-            print(f"pushed videfilename mark {values[event]}")
+            print(f"videfilename mark {values[event]}")
 
         ##################################################################################
         # Conditionals handling inlets for plotting and recording
