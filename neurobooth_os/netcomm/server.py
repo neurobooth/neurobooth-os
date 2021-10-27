@@ -163,8 +163,7 @@ def get_messages_to_ctr(callback=None, host="", port=12347, *callback_args):
             continue
 
         data = data.decode("utf-8")
-        # print(data)
-
+        print(data)
         if callback is not None:
             callback(data, *callback_args)
 

@@ -91,7 +91,7 @@ def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
     else:
         console_output = [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
                  auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))]
-    console_output = [_space(3)]
+    # console_output = [_space(3)]
     layout_col1 = [
         [_space(), sg.Text(f'Subject ID: {sess_info["subj_id"]}', pad =(20, 0 ), size=(20, 1), 
          font=("Arial", 12, "bold"), text_color="black", background_color="white", k="_sbj_id_"),
