@@ -74,7 +74,9 @@ def Main():
                     task_karg["eye_tracker"] = streams['Eyelink']
                 
             win = welcome_screen(with_audio=True, win=win)
-
+            # When win is created, stdout pipe is reset
+            sys.stdout = sys.stdout.terminal
+            
             for task in tasks.split("-"):
                 if task not in task_func_dict.keys():
                     print(f"Task {task} not implemented")
@@ -89,7 +91,7 @@ def Main():
                 # Start eyetracker if device in tech_obs 
                 if streams.get('eye_tracker') and \
                             'Eyelink' in list(task_devs_kw[task]):
-                    fname = f"{config.paths['data_out']}{subj_id}{task}.edf"
+                    fname = f"{config.paths['data_out']}{subj_id}_{task}.edf"
                     streams['eye_tracker'].start(fname)
                             
                 # get task and params
