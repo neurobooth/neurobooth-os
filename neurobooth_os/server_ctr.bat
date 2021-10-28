@@ -1,4 +1,3 @@
 call  C:\Users\CTR\anaconda3\Scripts\activate.bat C:\Users\CTR\anaconda3\envs\neurobooth
-call start python C:\neurobooth-eel\neurobooth_os\gui.py
-
-  
+call start/W ipython -i C:\neurobooth-eel\neurobooth_os\gui.py
+robocopy  /MOVE  C:\neurobooth\neurobooth_data Z:\session_data
