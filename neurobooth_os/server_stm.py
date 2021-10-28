@@ -75,7 +75,7 @@ def Main():
                 
             win = welcome_screen(with_audio=True, win=win)
             # When win is created, stdout pipe is reset
-            sys.stdout = sys.stdout.terminal
+            sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
             
             for task in tasks.split("-"):
                 if task not in task_func_dict.keys():
