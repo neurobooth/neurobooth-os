@@ -91,7 +91,7 @@ def Main():
                 # Start eyetracker if device in tech_obs 
                 if streams.get('Eyelink') and \
                             any('Eyelink' in d for d in list(task_devs_kw[task])):
-                    fname = f"{config.paths['data_out']}{subj_id}_{task}.edf"
+                    fname = f"{config.paths['data_out']}{subj_id}_{t_obs_id}.edf"
                     streams['Eyelink'].start(fname)
                             
                 # get task and params
@@ -99,7 +99,7 @@ def Main():
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
 
                 # Start/Stop rec in ACQ and run task
-                resp = socket_message(f"record_start:{subj_id}_{task}:{task}",
+                resp = socket_message(f"record_start:{subj_id}_{t_obs_id}:{task}",
                                      "acquisition", wait_data=3)
                 print(resp)
                 sleep(.5)
