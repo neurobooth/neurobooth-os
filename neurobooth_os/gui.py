@@ -154,6 +154,7 @@ def gui(remote=False, database='neurobooth'):
             window['-init_servs-'].Update(button_color=('black', 'red'))
             event, values = window.read(.1)
             ctr_rec.start_servers(nodes=nodes, remote=remote, conn=conn)
+            time.sleep(1)
 
         # Real time display (RTD)
         elif event == 'RTD':  # TODO signal when RTD finishes
