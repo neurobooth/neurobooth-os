@@ -89,10 +89,10 @@ def Main():
                 sleep(1)
 
                 # Start eyetracker if device in tech_obs 
-                if streams.get('eye_tracker') and \
+                if streams.get('Eyelink') and \
                             'Eyelink' in list(task_devs_kw[task]):
                     fname = f"{config.paths['data_out']}{subj_id}_{task}.edf"
-                    streams['eye_tracker'].start(fname)
+                    streams['Eyelink'].start(fname)
                             
                 # get task and params
                 tsk_fun = task_func_dict[task]['obj']
@@ -114,7 +114,7 @@ def Main():
                 tech_obs_log['event_array'] = "event:datestamp" # TODO: res should be event arrays
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
                 
-                if streams.get('eye_tracker') and \
+                if streams.get('Eyelink') and \
                             'Eyelink' in list(task_devs_kw[task]):
                     streams['Eyelink'].stop()
 

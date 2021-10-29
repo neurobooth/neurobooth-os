@@ -80,7 +80,7 @@ class VidRec_Flir():
 
         info.desc().append_child_value("device_id", self.device_id)
         info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
-        info.desc().append_child_value("size_rgb", str(self.frameSize))
+        # info.desc().append_child_value("size_rgb", str(self.frameSize))
         info.desc().append_child_value("serial_number", self.serial_num)
         info.desc().append_child_value("fps_rgb", str(self.fps))
         info.desc().append_child_value("exposure", str(self.exposure))
