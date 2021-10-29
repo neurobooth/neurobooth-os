@@ -49,7 +49,7 @@ def Main():
             None
 
         elif "record_start" in data:  
-            # "record_start:filename:task_id" FILENAME = {subj_id}_{task}
+            # "record_start:filename:task_id" FILENAME = {subj_id}_{obs_id}
             print("Starting recording")
             filename, task = data.split(":")[1:]
             fname = config.paths['data_out'] + filename
