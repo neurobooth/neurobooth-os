@@ -39,7 +39,8 @@ class VidRec_Flir():
         self.gamma = gamma
         self.device_id = device_id
         self.sensor_ids = sensor_ids
-
+        self.recording = False
+        
         self.get_cam()
         self.setup_cam()
 
