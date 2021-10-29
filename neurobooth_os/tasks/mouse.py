@@ -34,7 +34,7 @@ class mouse_task():
         print(expInfo)
         # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
         filename = self.path + os.sep + \
-            u'data/%s_%s_%s' % (expInfo['participant'], expName, expInfo['date'])
+            u'%s_%s_%s' % (expInfo['participant'], expName, expInfo['date'])
 
         # An ExperimentHandler isn't essential but helps with data saving
         thisExp = data.ExperimentHandler(name=expName, version='',
@@ -218,7 +218,6 @@ class mouse_task():
 
                 if mouse.status == STARTED:  # only update if started and not finished!
                     x, y = mouse.getPos()
-                    print(x, y, mouse.mouseClock.getTime())
                     buttons = mouse.getPressed()
                     if buttons != prevButtonState:  # button state changed?
                         prevButtonState = buttons
