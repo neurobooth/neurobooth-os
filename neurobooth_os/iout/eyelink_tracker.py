@@ -170,23 +170,15 @@ class EyeTracker():
                 self.outlet.push_sample(values)
                 old_sample = smp
 
-            time.sleep(.001)
+            time.sleep(.0005)
 
         self.tk.stopRecording()
         self.tk.closeDataFile()
 
-        # print(f"saving {self.fname_temp} EDF file to disk as {self.filename}")
-        # self.tk.receiveDataFile(self.fname_temp, f'{config.paths["data_out"]}{self.filename}')
-        # print("saving EDF file to disk DONE")
-
     def stop(self):
         self.recording = False
-        print(f"stopping streaming {time.time()}")
         if self.streaming:
-
-            t0 = time.time()
             self.stream_thread.join()
-            print(f"join took {time.time() - t0}")
             print("Eyelink stoped recording, downaloading edf")
             self.tk.receiveDataFile(self.fname_temp, self.filename)
             self.streaming = False
