@@ -56,7 +56,7 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
                     del streams[kdev]
                 else:
                     streams[kdev].start()
-            elif "FLIR " in kdev:
+            elif "FLIR" in kdev:
                 streams[kdev] = VidRec_Flir(**argsdev)
             elif "Mic_Yeti" in kdev:
                 streams[kdev] = MicStream(**argsdev)

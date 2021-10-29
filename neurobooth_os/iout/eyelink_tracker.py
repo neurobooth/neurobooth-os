@@ -1,12 +1,12 @@
-import os
-import numpy as np
-import pylink
-import psychopy
-from psychopy import visual, core, event, monitors
+import os.path as op
 import time
 import uuid
-from pylsl import StreamInfo, StreamOutlet
 import threading
+
+import pylink
+from psychopy import visual, monitors
+from pylsl import StreamInfo, StreamOutlet
+
 import neurobooth_os.config as config
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
@@ -31,7 +31,7 @@ class EyeTracker():
         self.monitor_distance = monitor_distance
         self.device_id = device_id
         self.sensor_ids = sensor_ids
-
+        self.streamName = "EyeLink"
         self.with_lsl = with_lsl
         mon = monitors.getAllMonitors()[0]
         self.mon_size = monitors.Monitor(mon).getSizePix()
@@ -58,7 +58,8 @@ class EyeTracker():
         self.stream_info.desc().append_child_value("device_id", self.device_id)
         self.stream_info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
         self.outlet = StreamOutlet(self.stream_info)
-        print(f"-OUTLETID-:EyeLink:{self.oulet_id}")
+        
+        print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
         self.streaming = False
         self.calibrated = False
         self.recording = False
@@ -67,7 +68,8 @@ class EyeTracker():
 
     def connect_tracker(self):
         self.tk = pylink.EyeLink(self.IP)
-        self.tk.setAddress(self.IP)
+        if self.IP is not None:
+            self.tk.setAddress(self.IP)
         # # Open an EDF data file on the Host PC
         # self.tk.openDataFile('ev_test.edf')
 
@@ -110,7 +112,8 @@ class EyeTracker():
         self.win.flip()
 
     def start(self, filename="TEST.EDF"):
-        self.filename = filename
+        self.filename = filename        
+        print(f"-new_filename-:{self.streamName}:{op.split(filename)[-1]}")
         self.fname_temp = "name8chr.edf"
         self.tk.openDataFile(self.fname_temp)
         # self.outlet = StreamOutlet(self.stream_info)
@@ -171,7 +174,6 @@ class EyeTracker():
 
         self.tk.stopRecording()
         self.tk.closeDataFile()
-        print(f"et stop {time.time()}")
 
         # print(f"saving {self.fname_temp} EDF file to disk as {self.filename}")
         # self.tk.receiveDataFile(self.fname_temp, f'{config.paths["data_out"]}{self.filename}')
@@ -186,9 +188,7 @@ class EyeTracker():
             self.stream_thread.join()
             print(f"join took {time.time() - t0}")
             print("Eyelink stoped recording, downaloading edf")
-            t0 = time.time()
-            self.tk.receiveDataFile(self.fname_temp, f'{config.paths["data_out"]}{self.filename}')
-            print(f"took {time.time() - t0}")
+            self.tk.receiveDataFile(self.fname_temp, self.filename)
             self.streaming = False
 
     def close(self):
