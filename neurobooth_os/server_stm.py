@@ -90,7 +90,7 @@ def Main():
 
                 # Start eyetracker if device in tech_obs 
                 if streams.get('Eyelink') and \
-                            'Eyelink' in list(task_devs_kw[task]):
+                            any('Eyelink' in d for d in list(task_devs_kw[task])):
                     fname = f"{config.paths['data_out']}{subj_id}_{task}.edf"
                     streams['Eyelink'].start(fname)
                             
@@ -115,7 +115,7 @@ def Main():
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
                 
                 if streams.get('Eyelink') and \
-                            'Eyelink' in list(task_devs_kw[task]):
+                            any('Eyelink' in d for d in list(task_devs_kw[task])):
                     streams['Eyelink'].stop()
 
             finish_screen(win)
