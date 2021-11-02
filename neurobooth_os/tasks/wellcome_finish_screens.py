@@ -4,7 +4,9 @@ Created on Tue Jul 20 10:00:03 2021
 
 @author: STM
 """
+import os.path as op
 
+import neurobooth_os
 import neurobooth_os.tasks.utils as utl
 from psychopy import sound, visual, event
 from psychopy.visual.textbox2 import TextBox2
@@ -24,9 +26,11 @@ def welcome_screen(with_audio=True, win=None):
     if win is None:
         win = utl.make_win(full_screen=False)
 
-    welcome = visual.ImageStim(win, image='./tasks/NB1.jpg', units='pix')
+    fname = op.join(neurobooth_os.__path__[0], 'tasks/assets/NB1.jpg')
+    welcome = visual.ImageStim(win, image=fname, units='pix')
     if with_audio:
-        welcome_audio = sound.Sound('./tasks/welcome.wav', secs=-1, stereo=True, hamming=True,
+        fname = op.join(neurobooth_os.__path__[0], 'tasks/assets/welcome.wav')
+        welcome_audio = sound.Sound(fname, secs=-1, stereo=True, hamming=True,
                                     name='welcome_instructions')
     else:
         welcome_audio = None
@@ -37,8 +41,8 @@ def welcome_screen(with_audio=True, win=None):
 
 
 def finish_screen(win):
-
-    finish = visual.ImageStim(win, './tasks/NB2.jpg', units='pix')
+    fname = op.join(neurobooth_os.__path__[0], 'tasks/assets/NB2.jpg')
+    finish = visual.ImageStim(win, fname, units='pix')
     utl.present(win, finish, None, 2)
     win.close()
     return win
