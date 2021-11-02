@@ -3,6 +3,7 @@ import sys
 import os
 from time import time, sleep
 from collections import OrderedDict
+import datetime
 
 import neurobooth_os
 from neurobooth_os import config
@@ -114,6 +115,7 @@ def Main():
                 # Log tech_obs to database
                 tech_obs_log["tech_obs_id"] = t_obs_id
                 tech_obs_log['event_array'] = "event:datestamp" # TODO: res should be event arrays
+                tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
                 
                 if streams.get('Eyelink') and \
