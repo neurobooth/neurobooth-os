@@ -12,6 +12,7 @@ from psychopy import logging
 logging.console.setLevel(logging.CRITICAL)
 import os.path as op
 import datetime
+import time
 
 from psychopy import visual
 from psychopy import prefs
@@ -69,7 +70,7 @@ class Task():
 
     def send_marker(self, msg=None, add_event=False):
         if self.with_lsl:
-            utils.send_marker(self.marker, msg)
+            self.marker.push_sample([f"{msg}_{time.time()}"])
         if add_event:
             self.add_event(msg)
 

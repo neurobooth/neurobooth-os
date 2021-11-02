@@ -16,13 +16,8 @@ class Calibrate(Task_Eyetracker):
         super().__init__(**kwargs)
 
     def run(self, prompt=True, **kwargs):
-            print('starting task')
-            print('starting instructions')
             self.present_instructions(prompt)
-            
-            print('starting task')
-            self.eye_tracker.calibrate()            
-           
+            self.eye_tracker.calibrate()
             self.present_complete()
 
 
