@@ -129,6 +129,44 @@ class Task():
         print('task done')
 
 
+class Task_Eyetracker(Task):
+    def __init__(self, eyetracker=None, **kwargs):
+        super().__init__(**kwargs)
+
+        self.eytracker = eyetracker
+
+    def sendMessage(self, msg):
+        if self.eytracker is not None:
+            self.eye_tracker.tk.sendMessage(msg)
+        
+    def setOfflineMode(self):
+        if self.eytracker is not None:
+            self.eye_tracker.tk.setOfflineMode() 
+
+    def sendCommand(self ,msg):
+        if self.eytracker is not None:
+            self.eye_tracker.tk.sendCommand(msg)
+    
+    def doDriftCorrect(self, vals):
+        # vals : int, position target in screen
+        if self.eytracker is not None:
+            self.eye_tracker.tk.doDriftCorrect(vals, 0, 1)
+
+    def gaze_contingency():
+        # move task 
+        pass
+
+
+
+class Task_Dynamic_Stim(Task_Eyetracker):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def run():
+        # marker for each trial number
+        pass
+
+
 if __name__ == "__main__":
     task = Task()
     task.run()
