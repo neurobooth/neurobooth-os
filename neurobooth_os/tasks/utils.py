@@ -62,8 +62,8 @@ def create_text_screen(win, text):
     return screen
 
 
-def create_image_screen(win, path_image):
-    screen = visual.ImageStim( win, image=path_image, pos=(0,0),units='deg')
+def create_image_screen(win, path_image, pos=(0,0)):
+    screen = visual.ImageStim(win, image=path_image, pos=pos,units='deg')
     return screen
 
 
