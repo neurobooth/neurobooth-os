@@ -11,6 +11,7 @@ from __future__ import absolute_import, division
 from psychopy import logging
 logging.console.setLevel(logging.CRITICAL)
 import os.path as op
+import datetime
 
 from psychopy import visual
 from psychopy import prefs
@@ -37,7 +38,7 @@ class Task():
 
         self.path_instruction_video = op.join(cfg.paths['video_tasks'], instruction_file)
         self.full_screen = full_screen
-
+        self.events = []
         print("path to instruction video: ", self.path_instruction_video)
 
         if marker_outlet is not None:
@@ -66,16 +67,21 @@ class Task():
         self.end_screen = utils.create_text_screen(self.win, text_end)
 
 
-    def send_marker(self, msg=None):
+    def send_marker(self, msg=None, add_event=False):
         if self.with_lsl:
             utils.send_marker(self.marker, msg)
+        if add_event:
+            self.add_event(msg)
+
+    def add_event(self, event_name):
+        self.events.append( f'{event_name}:{datetime.now().strftime("%H:%M:%S")}')
 
     def present_text(self, screen, msg, func=None, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=True,
                      first_screen=False, video_prompt=False, video=None):
-        self.send_marker(f"{msg}-start_0")
+        self.send_marker(f"{msg}-start_0", True)
         utils.present(self.win, screen, audio=audio, wait_time=wait_time,
                       win_color=win_color, waitKeys=waitKeys, first_screen=first_screen)
-        self.send_marker(f"{msg}-end_1")
+        self.send_marker(f"{msg}-end_1", True)
         if func is not None:
             if video_prompt and video is not None:
                 if utils.rewind_video(self.win, self.instruction_video):
@@ -85,9 +91,9 @@ class Task():
                     func()
 
     def present_video(self, video, msg, stop=False):
-        self.send_marker(f"{msg}_start")
+        self.send_marker(f"{msg}_start", True)
         utils.play_video(self.win, video, stop=stop)
-        self.send_marker(f"{msg}_end")
+        self.send_marker(f"{msg}_end", True)
 
     def present_instructions(self, prompt=True):
         self.present_video(video=self.instruction_video, msg='intructions')
@@ -116,40 +122,36 @@ class Task():
             self.win.close()
 
     def run(self, prompt=True, **kwargs):
-        print('starting task')
         self.present_instructions(prompt)
-        print('starting instructions')
         self.present_practice(prompt)
-        print('starting task')
         self.present_task(prompt)
-        print('end screen')
         self.present_complete()
-        print('close window')
         self.close()
-        print('task done')
+        return self.events
+
 
 
 class Task_Eyetracker(Task):
-    def __init__(self, eyetracker=None, **kwargs):
+    def __init__(self, eye_tracker=None, **kwargs):
         super().__init__(**kwargs)
 
-        self.eytracker = eyetracker
+        self.eye_tracker = eye_tracker
 
     def sendMessage(self, msg):
-        if self.eytracker is not None:
+        if self.eye_tracker is not None:
             self.eye_tracker.tk.sendMessage(msg)
         
     def setOfflineMode(self):
-        if self.eytracker is not None:
+        if self.eye_tracker is not None:
             self.eye_tracker.tk.setOfflineMode() 
 
     def sendCommand(self ,msg):
-        if self.eytracker is not None:
+        if self.eye_tracker is not None:
             self.eye_tracker.tk.sendCommand(msg)
     
     def doDriftCorrect(self, vals):
         # vals : int, position target in screen
-        if self.eytracker is not None:
+        if self.eye_tracker is not None:
             self.eye_tracker.tk.doDriftCorrect(vals, 0, 1)
 
     def gaze_contingency():
