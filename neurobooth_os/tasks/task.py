@@ -14,7 +14,7 @@ import os.path as op
 import datetime
 import time
 
-from psychopy import visual
+from psychopy import visual, monitors
 from psychopy import prefs
 prefs.hardware['audioLib'] = ['pyo']
 
@@ -133,10 +133,22 @@ class Task():
 
 
 class Task_Eyetracker(Task):
-    def __init__(self, eye_tracker=None, **kwargs):
+    def __init__(self, eye_tracker=None, monitor_width=55, subj_screendist_cm=75,  **kwargs):
         super().__init__(**kwargs)
 
         self.eye_tracker = eye_tracker
+
+        mon = monitors.getAllMonitors()[0]
+        mon_size = monitors.Monitor(mon).getSizePix()
+        self.SCN_W, self.SCN_H = mon_size
+        self.monitor_width = monitor_width
+        self.pixpercm = mon_size[0] / self.monitor_width
+        self.subj_screendist_cm = subj_screendist_cm
+
+        # prepare the pursuit target, the clock and the movement parameters
+        self.win.color = [0, 0, 0]
+        self.win.flip()
+        self.target = visual.GratingStim(self.win, tex=None, mask='circle', size=25)
 
     def sendMessage(self, msg):
         if self.eye_tracker is not None:
@@ -144,8 +156,14 @@ class Task_Eyetracker(Task):
         
     def setOfflineMode(self):
         if self.eye_tracker is not None:
+            self.eye_tracker.paused = True
             self.eye_tracker.tk.setOfflineMode() 
 
+    def startRecording(self):
+        if self.eye_tracker is not None:            
+            self.eye_tracker.tk.startRecording(1,1,1,1) 
+            self.eye_tracker.paused = False
+    
     def sendCommand(self ,msg):
         if self.eye_tracker is not None:
             self.eye_tracker.tk.sendCommand(msg)
