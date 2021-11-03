@@ -1,93 +1,10 @@
-import time
-from psychopy import core
-from neurobooth_os.iout import eyelinker
+from neurobooth_os.iout.eyelink_tracker import EyeTracker
 from neurobooth_os.tasks import utils
 
-
 win = utils.make_win(full_screen=False)
-
-
-# Will attempt to default to MockEyeLinker if no tracker connected
-tracker = eyelinker.EyeLinker(win, 'test.edf', 'BOTH', mock=True)
-
-# initialize
-tracker.initialize_graphics()
-tracker.open_edf()
-tracker.initialize_tracker()
-tracker.send_tracking_settings()
-print('Initalization tests passed...')
-time.sleep(1)
-win.flip()
-
-# most basic functionality
-tracker.display_eyetracking_instructions()
-tracker.setup_tracker()  # forced setup
-tracker.calibrate()  # choice given
-tracker.send_status('Recording...')
-tracker.send_message('TRIALID 1')
-tracker.start_recording()
-time.sleep(2)
-tracker.stop_recording()
-print('Basic functionality tests passed...')
-time.sleep(1)
-
-
-# decorator test
-@tracker.record
-def my_trial():
-    time.sleep(2)
-
-
-my_trial()
-print('Decorator test passed.')
-time.sleep(1)
-
-# real time data
-left_eye_gaze, right_eye_gaze = tracker.gaze_data
-print(left_eye_gaze)
-print(right_eye_gaze)
-
-left_eye_pupil, right_eye_pupil = tracker.pupil_size
-print(left_eye_pupil)
-print(right_eye_pupil)
-print('Real time tests passed...')
-time.sleep(1)
-
-# continuous real time data
-real_time_data = []
-tracker.start_recording()
-
-print('Continuous data start time:')
-start_time = core.getTime()
-print(start_time)
-
-while core.getTime() < start_time + 1:  # seconds
-    real_time_data.append(tracker.gaze_data)
-    core.wait(0.01)  # Get a sample every 10 ms
-
-print('Continuous data end time:')
-print(core.getTime())
-
-tracker.stop_recording()
-
-print('Number of samples:')
-print(len(real_time_data))
-
-print('Continuous data head:')
-print(real_time_data[:10])
-
-# test drift correct
-tracker.drift_correct()
-print('Drift correct tests passed...')
-time.sleep(1)
-
-# clean up
-tracker.close_edf()
-tracker.transfer_edf()
-tracker.close_connection()
-print('\nClean up tests passed...')
-
-time.sleep(1)
-print('All tests passed.')
-
+eye_tracker = EyeTracker(mock=True, win=win)
+eye_tracker.calibrate()
+eye_tracker.start()
+eye_tracker.stop()
+eye_tracker.close()
 win.close()

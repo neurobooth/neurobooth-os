@@ -40,10 +40,8 @@ def make_win(full_screen=True, monitor_width=55, monitor_distance=50):
         fullscr=full_screen,
         monitor=customMon,
         units='pix',
-        color=(
-            0,
-            0,
-            0))
+        color=(0, 0, 0)
+        )
     return win
 
 
@@ -61,6 +59,11 @@ def create_text_screen(win, text):
                              languageStyle='LTR',
                              depth=0.0,
                              units='height')
+    return screen
+
+
+def create_image_screen(win, path_image, pos=(0,0)):
+    screen = visual.ImageStim(win, image=path_image, pos=pos,units='deg')
     return screen
 
 

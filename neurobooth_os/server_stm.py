@@ -92,6 +92,8 @@ def Main():
                 # Start eyetracker if device in tech_obs 
                 if streams.get('Eyelink') and \
                             any('Eyelink' in d for d in list(task_devs_kw[task])):
+                    if not streams['Eyelink'].calibrated:
+                        streams['Eyelink'].calibrate()
                     fname = f"{config.paths['data_out']}{subj_id}_{t_obs_id}.edf"
                     streams['Eyelink'].start(fname)
                             
