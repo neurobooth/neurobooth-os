@@ -4,6 +4,8 @@ import select
 from time import time, sleep
 import re
 import os
+import pandas as pd
+from io import StringIO
 
 from neurobooth_os.secrets_info import secrets
 
@@ -181,26 +183,39 @@ def start_server(node_name, save_pid_txt=True):
     # Kill any previous server
     kill_pid_txt(node_name=node_name)
 
-    # tic = time()
+    # get list of python processes
     task_cmd = f"tasklist.exe /S {s['name']} /U {s['user']} /P {s['pass']}"
     out = os.popen(task_cmd).read()
     pids_old = get_python_pids(out)
-    # print(f"2 - {time() - tic}")
 
+    # Get list of scheduled tasks and run TaskOnEvent if not running 
+    cmd_out = f"SCHTASKS /query /fo CSV /nh /S {s['name']} /U {s['name']}\\{s['user']} /P {s['pass']}"
+    out = os.popen(cmd_out).read().replace('\\', "")
+    df = pd.read_csv(StringIO(out), sep=",", index_col=0, names = ['date', 'status'])
+    
+    task_name = 'TaskOnEvent1'
+    while True:
+        if task_name in out:
+            # if task already running add n+1 to task name
+            if df.loc[task_name, 'status'] == 'Running':
+                tsk_inx = int(task_name[-1]) + 1
+                task_name =  task_name[:-1] + str(tsk_inx)
+                print(f"Creating new scheduled task: {task_name} in server {node_name}")
+                continue
+        break
+        
+    # Run scheduled task cmd1 creates a scheduled task, cmd2 initiates it
     cmd_str = f"SCHTASKS /S {s['name']} /U {s['name']}\\{s['user']} /P {s['pass']}"
     cmd_1 = cmd_str + \
-        f" /Create /TN TaskOnEvent /TR {s['bat']} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
-    cmd_2 = cmd_str + ' /Run /TN "TaskOnEvent"'
-    # Cmd1 creates a scheduled task, cmd2 initiates it
+        f" /Create /TN {task_name} /TR {s['bat']} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
+    cmd_2 = cmd_str + f' /Run /TN {task_name}'
     out = os.popen(cmd_1).read()
     out = os.popen(cmd_2).read()
 
     sleep(.3)
-    # tic = time()
     out = os.popen(task_cmd).read()
     pids_new = get_python_pids(out)
-    # print(f"4 - {time() - tic}")
-
+    
     pid = [p for p in pids_new if p not in pids_old]
     print(f"{node_name.upper()} server initiated with pid {pid}")
 
