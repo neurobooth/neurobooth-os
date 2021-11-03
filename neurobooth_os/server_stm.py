@@ -3,7 +3,7 @@ import sys
 import os
 from time import time, sleep
 from collections import OrderedDict
-import datetime
+from datetime import datetime
 
 import neurobooth_os
 from neurobooth_os import config
