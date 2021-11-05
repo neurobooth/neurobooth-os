@@ -72,7 +72,7 @@ def get_lsl_images(inlets, frame_sz=(320, 240)):
         if ts == [] or ts is None:
             continue
 
-        if nm not in ["Screen", "Webcam"]:
+        if nm not in [ "Webcam"]:
             continue
 
         if nm == "Screen":
