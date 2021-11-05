@@ -11,7 +11,7 @@ from __future__ import absolute_import, division
 from psychopy import logging
 logging.console.setLevel(logging.CRITICAL)
 import os.path as op
-import datetime
+from datetime import datetime
 import time
 
 from psychopy import visual, monitors
@@ -139,10 +139,10 @@ class Task_Eyetracker(Task):
         self.eye_tracker = eye_tracker
 
         mon = monitors.getAllMonitors()[0]
-        mon_size = monitors.Monitor(mon).getSizePix()
-        self.SCN_W, self.SCN_H = mon_size
+        self.mon_size = monitors.Monitor(mon).getSizePix()
+        self.SCN_W, self.SCN_H = self.mon_size
         self.monitor_width = monitor_width
-        self.pixpercm = mon_size[0] / self.monitor_width
+        self.pixpercm = self.mon_size[0] / self.monitor_width
         self.subj_screendist_cm = subj_screendist_cm
 
         # prepare the pursuit target, the clock and the movement parameters
@@ -160,7 +160,8 @@ class Task_Eyetracker(Task):
             self.eye_tracker.tk.setOfflineMode() 
 
     def startRecording(self):
-        if self.eye_tracker is not None:            
+        if self.eye_tracker is not None:       
+            # params: file_sample, file_event, link_sampe, link_event (1-yes, 0-no)
             self.eye_tracker.tk.startRecording(1,1,1,1) 
             self.eye_tracker.paused = False
     
@@ -171,7 +172,7 @@ class Task_Eyetracker(Task):
     def doDriftCorrect(self, vals):
         # vals : int, position target in screen
         if self.eye_tracker is not None:
-            self.eye_tracker.tk.doDriftCorrect(vals, 0, 1)
+            self.eye_tracker.tk.doDriftCorrect(*vals)
 
     def gaze_contingency():
         # move task 
