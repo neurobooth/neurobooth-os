@@ -13,7 +13,6 @@ from neurobooth_os.iout import metadator as meta
 
 from neurobooth_os.netcomm import socket_message, node_info, get_client_messages, NewStdout
 
-from neurobooth_os.tasks.test_timing.audio_video_test import Timing_Test
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
@@ -82,6 +81,16 @@ def Main():
                 if task not in task_func_dict.keys():
                     print(f"Task {task} not implemented")
                     continue
+
+                # get task and params
+                tsk_fun = task_func_dict[task]['obj']
+                this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
+                
+                # Do not record if calibration or intro instructions"
+                if 'calibration_task' in task or "intro_" in task:
+                      res = tsk_fun(**this_task_kwargs)
+                      res.run(**this_task_kwargs)
+                      continue                    
                 
                 t_obs_id = task_func_dict[task]['t_obs_id']
                 tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
@@ -97,11 +106,8 @@ def Main():
                     fname = f"{config.paths['data_out']}{subj_id}_{t_obs_id}.edf"
                     streams['Eyelink'].start(fname)
                             
-                # get task and params
-                tsk_fun = task_func_dict[task]['obj']
-                this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
 
-                # Start/Stop rec in ACQ and run task
+                # Start rec in ACQ and run task
                 resp = socket_message(f"record_start:{subj_id}_{t_obs_id}:{task}",
                                      "acquisition", wait_data=3)
                 print(resp)
