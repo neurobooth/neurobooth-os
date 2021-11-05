@@ -15,7 +15,7 @@ states = []
 
 class Sensor:
     def __init__(self, mac, dev_name="mbient", device_id="mbient",
-                 sensor_ids=["acc", "gyro"], acc_hz=100, gyro_hz=100, buzz_time_sec=2):
+                 sensor_ids=["acc", "gyro"], acc_hz=100, gyro_hz=100, buzz_time_sec=0):
 
         self.mac = mac
         self.dev_name = dev_name
@@ -135,8 +135,9 @@ class Sensor:
         libmetawear.mbl_mw_gyro_bmi160_enable_rotation_sampling(self.device.board)
 
         # Vibrate for 7 secs and then start aqc
-        libmetawear.mbl_mw_haptic_start_motor(self.device.board, 100.0, self.buzz_time)
-        sleep(self.buzz_time / 1000)
+        if self.buzz_time:
+            libmetawear.mbl_mw_haptic_start_motor(self.device.board, 100.0, self.buzz_time)
+            sleep(self.buzz_time / 1000)
 
         # print ("Acquisition started")
         self.streaming = True
