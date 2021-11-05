@@ -111,7 +111,7 @@ class Task():
     def present_task(self, prompt=True):
         self.present_text(screen=self.task_screen, msg='task', audio=None, wait_time=5)
         if prompt:
-            self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', func=self.present_task,
+            self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat-task', func=self.present_instructions,
                           waitKeys=False)
 
     def present_complete(self):
@@ -179,7 +179,6 @@ class Task_Eyetracker(Task):
         pass
 
 
-
 class Task_Dynamic_Stim(Task_Eyetracker):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -187,6 +186,14 @@ class Task_Dynamic_Stim(Task_Eyetracker):
     def run():
         # marker for each trial number
         pass
+
+
+class Introduction_Task(Task):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    def run(self):        
+        self.present_instructions(prompt=False)
 
 
 if __name__ == "__main__":
