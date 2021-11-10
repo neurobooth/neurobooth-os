@@ -74,18 +74,36 @@ def task_mapping(task_name):
         name_present = task_name
     return name_present, task_name
 
-
+def _make_tasks_checkbox(task_list):
+    """ makes task checkboxes in 3 columns.
+    
+    Task_list : str
+        list of tasks,e.g. task1, task2,task3
+        """
+        
+    tasks = task_list.split(", ")
+    nxcol = int(np.ceil(len(tasks)/3))
+    task_chunks = [tasks[i:i+nxcol] for i in range(0, (len(tasks)), nxcol)]
+    
+    field_tasks = []
+    for chunk in task_chunks:
+        task_col = []
+        for task in chunk:
+            name, key = task_mapping(task)
+            # task_col.extend([_space(), sg.Checkbox(name, key=key, size=(44, 1), default=True)])
+            task_col.extend([sg.Checkbox(name, key=key, size=(24, 1), default=True)])            
+        field_tasks.append([_space()] + task_col)
+    return field_tasks
+    
+    
 def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
     frame_cam = np.ones(frame_sz)
     imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0))
 
-    field_tasks = []
-    for task in sess_info['_tasks_'].split(", "):
-        name, key = task_mapping(task)
-        field_tasks.append([_space(), sg.Checkbox(name, key=key, size=(44, 1), default=True)])
-
+    field_tasks = _make_tasks_checkbox(sess_info['_tasks_'])
+   
     if remote:
         console_output = [_space(3)]
     else:
@@ -142,6 +160,7 @@ def _win_gen(layout, *args):
     window = sg.Window("Neurobooth",
                        layout(*args), 
                        # keep_on_top=True,
+                       resizable=True,
                        location=(0, 0),
                        default_element_size=(10, 1),
                        text_justification='l',
