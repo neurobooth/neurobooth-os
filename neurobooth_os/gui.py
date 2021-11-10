@@ -9,6 +9,7 @@ import sys
 import time
 import threading
 from optparse import OptionParser
+from datetime import datetime
 
 import PySimpleGUI as sg
 import liesl
@@ -128,6 +129,8 @@ def gui(remote=False, database='neurobooth'):
                 subject_id, staff_id = sess_info['subj_id'], sess_info['staff_id']
                 tech_obs_log["staff_id"] = sess_info['staff_id']
                 tech_obs_log["subject_id"] = sess_info['subj_id']
+                tech_obs_log["study_id-date"] = f'{study_id}_{datetime.now().strftime("%Y-%m-%d")}'
+
                 window.close()
                 # Open new layout with main window
                 window = _win_gen(_main_layout, sess_info, remote)
@@ -251,7 +254,7 @@ def gui(remote=False, database='neurobooth'):
             task_id, t_obs_id, obs_log_id = eval(values[event])
             print(f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}")
             # Start LSL recording
-            rec_fname = f"{subject_id}-{t_obs_id}"
+            rec_fname = f"{tech_obs_log["study_id-date"]}-{t_obs_id}"
             session.start_recording(rec_fname)
 
             window["task_title"].update("Running Task:")
