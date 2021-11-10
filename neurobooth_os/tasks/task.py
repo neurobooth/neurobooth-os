@@ -16,17 +16,16 @@ import time
 
 from psychopy import visual, monitors
 from psychopy import prefs
-prefs.hardware['audioLib'] = ['pyo']
+#prefs.hardware['audioLib'] = ['pyo']
 
 import neurobooth_os
 from neurobooth_os.tasks import utils
-import neurobooth_os.config as cfg
 
 
 class Task():
     def __init__(
             self,
-            instruction_file=op.join('tasks', 'assets', 'test.mp4'),
+            instruction_file=None,
             marker_outlet=None,
             win=None,
             full_screen=False,
@@ -37,7 +36,9 @@ class Task():
             text_end=utils.text_end,
             **kwargs):
 
-        self.path_instruction_video = op.join(cfg.paths['video_tasks'], instruction_file)
+
+        #self.path_instruction_video = op.join(cfg.paths['video_tasks'], instruction_file)
+        self.path_instruction_video = instruction_file
         self.full_screen = full_screen
         self.events = []
         print("path to instruction video: ", self.path_instruction_video)
@@ -198,6 +199,5 @@ class Introduction_Task(Task):
 
 if __name__ == "__main__":
 
-    task = Task(instruction_file=r'C:\neurobooth-eel\neurobooth_os\tasks\assets\test.mp4')
+    task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
     task.run()
-

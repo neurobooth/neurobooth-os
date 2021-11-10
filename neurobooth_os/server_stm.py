@@ -18,9 +18,6 @@ import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
 
 
-
-
-
 def Main():
     os.chdir(neurobooth_os.__path__[0])
 
