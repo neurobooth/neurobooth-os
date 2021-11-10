@@ -254,7 +254,7 @@ def gui(remote=False, database='neurobooth'):
             task_id, t_obs_id, obs_log_id = eval(values[event])
             print(f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}")
             # Start LSL recording
-            rec_fname = f"{tech_obs_log["study_id-date"]}-{t_obs_id}"
+            rec_fname = f"{tech_obs_log['study_id-date']}-{t_obs_id}"
             session.start_recording(rec_fname)
 
             window["task_title"].update("Running Task:")
