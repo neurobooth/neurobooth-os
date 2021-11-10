@@ -5,16 +5,16 @@ Created on Wed Nov 03 08:00:23 2021
 @author: adonay
 """
 from math import sin, pi
-
+import os.path as op
 from psychopy import core 
 import pylink
-
+import neurobooth_os
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
 from neurobooth_os.tasks.task import Task_Eyetracker
 
 
 class Pursuit(Task_Eyetracker):
-    def __init__(self, amplitude_deg=30, peak_velocity_deg=30, start_phase_deg=270,  ntrials=5, **kwargs):    
+    def __init__(self, amplitude_deg=30, peak_velocity_deg=30, start_phase_deg=0,  ntrials=5, **kwargs):    
     # amplitude_deg=30, peak_velocity_deg=33.3, **kwargs):
 
         super().__init__(**kwargs)
@@ -26,15 +26,11 @@ class Pursuit(Task_Eyetracker):
         # [amp_x, amp_y, phase_x, phase_y, angular_freq_x, angular_freq_y]
         self.mov_pars = [self.amplitude_pixel / 2, 0, deg2rad(start_phase_deg), 0, self.angular_freq, self.angular_freq]
 
-
-
-
     def run(self, **kwargs):
         self.present_instructions(True)        
         self.run_trial(self.mov_pars)
         self.present_complete()
         self.close()
-
                                               
     def run_trial(self, movement_pars):
         """ Run a smooth pursuit trial
@@ -122,5 +118,5 @@ class Pursuit(Task_Eyetracker):
         self.sendMessage('TRIAL_RESULT')
 
 if __name__ == "__main__":
-    task = Pursuit(instruction_file=r'C:\neurobooth-eel\neurobooth_os\tasks\assets\test.mp4')
+    task = Pursuit(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
     task.run()
