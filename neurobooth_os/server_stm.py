@@ -48,6 +48,7 @@ def Main():
 
             collection_id = data.split(":")[1]
             tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
+            study_id_date = tech_obs_log["study_id-date"]
 
             task_func_dict = get_task_funcs(collection_id, conn)
             task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
@@ -67,7 +68,7 @@ def Main():
             tasks, subj_id = data.split(":")[1:]
             task_karg ={"win": win,
                         "path": config.paths['data_out'],
-                        "subj_id": subj_id,
+                        "subj_id": study_id_date,
                         "marker_outlet": streams['marker'],
                         }
             if streams.get('Eyelink'):
@@ -103,12 +104,12 @@ def Main():
                             any('Eyelink' in d for d in list(task_devs_kw[task])):
                     if not streams['Eyelink'].calibrated:
                         streams['Eyelink'].calibrate()
-                    fname = f"{config.paths['data_out']}{subj_id}_{t_obs_id}.edf"
+                    fname = f"{config.paths['data_out']}{study_id_date}_{t_obs_id}.edf"
                     streams['Eyelink'].start(fname)
                             
 
                 # Start rec in ACQ and run task
-                resp = socket_message(f"record_start:{subj_id}_{t_obs_id}:{task}",
+                resp = socket_message(f"record_start:{study_id_date}_{t_obs_id}:{task}",
                                      "acquisition", wait_data=3)
                 print(resp)
                 sleep(.5)

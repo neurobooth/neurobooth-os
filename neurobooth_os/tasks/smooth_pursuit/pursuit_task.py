@@ -4,18 +4,17 @@ Created on Wed Nov 03 08:00:23 2021
 
 @author: adonay
 """
-import random
 from math import sin, pi
 
 from psychopy import core 
 import pylink
 
-from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq
+from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
 from neurobooth_os.tasks.task import Task_Eyetracker
 
 
-class pursuit(Task_Eyetracker):
-    def __init__(self, amplitude_deg, peak_velocity_deg,  **kwargs):    
+class Pursuit(Task_Eyetracker):
+    def __init__(self, amplitude_deg=30, peak_velocity_deg=30, start_phase_deg=270,  ntrials=5, **kwargs):    
     # amplitude_deg=30, peak_velocity_deg=33.3, **kwargs):
 
         super().__init__(**kwargs)
@@ -23,32 +22,21 @@ class pursuit(Task_Eyetracker):
         self.peak_velocity_deg = peak_velocity_deg
         self.amplitude_pixel = deg2pix(self.amplitude_deg, self.subj_screendist_cm, self.pixpercm)
         self.angular_freq = peak_vel2freq(self.peak_velocity_deg, self.peak_velocity_deg)
-
-        self._task_setup()
-
-    def _task_setup(self):
-        # Parameters for the Sinusoidal movement pattern
+        self.ntrials = ntrials
         # [amp_x, amp_y, phase_x, phase_y, angular_freq_x, angular_freq_y]
-        self.mov_pars = [
-            [self.amplitude_pixel / 2, 0, 0, 0, self.angular_freq, self.angular_freq],
-            [self.amplitude_pixel / 2, 0, 0, 0, self.angular_freq, self.angular_freq],
-            [self.amplitude_pixel / 2, 0, 0, 0, self.angular_freq, self.angular_freq],
-            [self.amplitude_pixel / 2, 0, 0, 0, self.angular_freq, self.angular_freq]
-        ]
+        self.mov_pars = [self.amplitude_pixel / 2, 0, deg2rad(start_phase_deg), 0, self.angular_freq, self.angular_freq]
+
+
+
 
     def run(self, **kwargs):
-        self.present_instructions(True)
-        # Run a block of 2 trials, in random order
-        test_list = self.mov_pars
-        random.shuffle(test_list)
-        for trial in test_list:
-            self.run_trial(8.0, trial)
-
+        self.present_instructions(True)        
+        self.run_trial(self.mov_pars)
         self.present_complete()
         self.close()
 
-
-    def run_trial(self, trial_duration, movement_pars):
+                                              
+    def run_trial(self, movement_pars):
         """ Run a smooth pursuit trial
 
         trial_duration: the duration of the pursuit movement
@@ -109,7 +97,7 @@ class pursuit(Task_Eyetracker):
             tar_y = amp_y * sin(2 * pi * freq_y * time_elapsed + phase_y)
 
             # break if the time elapsed exceeds the trial duration
-            if time_elapsed > trial_duration:
+            if time_elapsed > self.ntrials * (1/freq_x):
                 break
 
         # clear the window
@@ -128,7 +116,11 @@ class pursuit(Task_Eyetracker):
         self.sendMessage(f"!V TRIAL_VAR phase_y {phase_y:.2f}")
         self.sendMessage(f"!V TRIAL_VAR freq_x {freq_x:.2f}")
         self.sendMessage(f"!V TRIAL_VAR freq_y {freq_y:.2f}")
-        self.sendMessage(f"!V TRIAL_VAR duration {trial_duration:.2f}")
+        self.sendMessage(f"!V TRIAL_VAR ntrials {self.ntrials:.2f}")
 
         # Send a 'TRIAL_RESULT' message to mark the end of the trial
         self.sendMessage('TRIAL_RESULT')
+
+if __name__ == "__main__":
+    task = Pursuit(instruction_file=r'C:\neurobooth-eel\neurobooth_os\tasks\assets\test.mp4')
+    task.run()

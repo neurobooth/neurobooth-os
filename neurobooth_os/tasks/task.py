@@ -192,10 +192,12 @@ class Introduction_Task(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
-    def run(self):        
+    def run(self, **kwargs):        
         self.present_instructions(prompt=False)
 
 
 if __name__ == "__main__":
-    task = Task()
+
+    task = Task(instruction_file=r'C:\neurobooth-eel\neurobooth_os\tasks\assets\test.mp4')
     task.run()
+
