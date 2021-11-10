@@ -128,7 +128,7 @@ def gui(remote=False, database='neurobooth'):
                 sess_info = values
                 subject_id, staff_id = sess_info['subj_id'], sess_info['staff_id']
                 tech_obs_log["staff_id"] = sess_info['staff_id']
-                tech_obs_log["subject_id"] = sess_info['subj_id']
+                tech_obs_log["subject_id"] = sess_info['subject_id']
                 tech_obs_log["study_id-date"] = f'{study_id}_{datetime.now().strftime("%Y-%m-%d")}'
 
                 window.close()
