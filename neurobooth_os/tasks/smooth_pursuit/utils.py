@@ -30,3 +30,11 @@ def peak_vel2freq(peak_vel, amplitude_deg):
     # f = peak_vel / 2π*amplitude
     freq = peak_vel / (2 * math.pi * amplitude_deg)
     return freq
+
+def deg2rad(deg):
+    rad = deg * (math.pi/180)
+    return rad
+
+def rad2deg(rad):
+    deg = rad * (180/math.pi)
+    return deg
