@@ -15,14 +15,21 @@ import numpy as np
 
 
 class Saccade(Task_Eyetracker):
-    def __init__(self, amplitude_deg=30, direction='horizontal',  ntrials=10, **kwargs):    
+    def __init__(self, amplitude_deg=30, direction='horizontal',  wait_center =1, Wait_offset=1,
+                jitter_percent=0.5, pointer_size_deg=0.7 , trial_sign=[-1, -1, 1, -1, 1, -1, 1, 1, -1, -1, 1, 1], **kwargs):    
     # amplitude_deg=30, peak_velocity_deg=33.3, **kwargs):
 
         super().__init__(**kwargs)
         self.amplitude_deg = amplitude_deg
         self.direction = direction
         self.amplitude_pixel = deg2pix(self.amplitude_deg, self.subj_screendist_cm, self.pixpercm)
-        self.ntrials = ntrials
+        self.trial_sign = trial_sign
+        self.ntrials = len(trial_sign)
+        self.wait_center = wait_center
+        self.wait_offset = Wait_offset
+        self.jitter_percent = jitter_percent
+        self.pointer_size_deg = pointer_size_deg
+        self.pointer_size_pixel = deg2pix(self.pointer_size_deg, self.subj_screendist_cm, self.pixpercm)
         # [-amp_x, amp_y]
         if direction == 'horizontal':
             self.movement_pars = [self.amplitude_pixel / 2, 0]
@@ -43,6 +50,8 @@ class Saccade(Task_Eyetracker):
 
         # Parse the movement pattern parameters
         amp_x, amp_y = self.movement_pars
+        tar_x = amp_x
+        tar_y = amp_y
 
         # Take the tracker offline
         self.setOfflineMode()
@@ -54,13 +63,15 @@ class Saccade(Task_Eyetracker):
         self.sendCommand("record_status_message 'Pursuit task'")
 
         # Drift check/correction, params, x, y, draw_target, allow_setup
-        tar_x = amp_x
-        tar_y = amp_y
-        self.target.pos = (tar_x, tar_y)
+
+        self.target.pos = (0, 0)
+        self.target.size = self.pointer_size_pixel
         self.target.draw()
         self.win.flip()
-        self.doDriftCorrect([int(tar_x + self.mon_size[0] / 2.0),
-                               int(self.mon_size[1] / 2.0 - tar_y), 0, 1])
+        self.doDriftCorrect([int(0 + self.mon_size[0] / 2.0),
+                               int(self.mon_size[1] / 2.0 - 0), 0, 1])
+        self.win.color = (0, 0, 0)
+        self.win.flip()
  
         # Start recording
         self.startRecording()
@@ -71,7 +82,17 @@ class Saccade(Task_Eyetracker):
         # Send a message to mark movement onset
         frame = 0
         for index in range(self.ntrials):
+
+            self.target.pos = (0, 0)
+            self.target.size = self.pointer_size_pixel
+            self.target.draw()
+            self.win.flip()
+            tar_msg = f'!V TARGET_POS Center {0}, {0} 1 0'
+            self.sendMessage(tar_msg)
+            core.wait(self.wait_center + self.jitter_percent*self.wait_center*np.random.random(1)[0])
+
             self.target.pos = (tar_x, tar_y)
+            self.target.size = self.pointer_size_pixel
             self.target.draw()
             self.win.flip()
             flip_time = core.getTime()
@@ -89,15 +110,11 @@ class Saccade(Task_Eyetracker):
 
             # update the target position
             
-            if index%2:
-                sign = -1
-            else:
-                sign = 1
 
-            tar_x = sign * amp_x 
-            tar_y = sign * amp_y 
+            tar_x = self.trial_sign[index] * amp_x 
+            tar_y = self.trial_sign[index] * amp_y 
 
-            core.wait(1 + np.random.random(1)[0])
+            core.wait(self.wait_offset + self.jitter_percent*self.wait_offset*np.random.random(1)[0])
         # clear the window
 
         self.win.color = (0, 0, 0)
