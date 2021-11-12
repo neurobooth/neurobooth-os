@@ -139,3 +139,4 @@ if __name__ == "__main__":
     task.run(prompt=False)
     task = Saccade(direction='vertical', amplitude_deg=15)
     task.run(prompt=False)
+
