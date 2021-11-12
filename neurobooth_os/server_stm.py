@@ -40,7 +40,7 @@ def Main():
                 print("Stim screen feed running")
                 screen_running = True
             else:
-                print(f"-OUTLETID-:Screen:{screen_feed.oulet_id}")
+                print(f"-OUTLETID-:Screen:{screen_feed.outlet_id}")
                 print("Already running screen feed")
 
         elif "prepare" in data:
