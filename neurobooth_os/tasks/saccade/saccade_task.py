@@ -38,8 +38,8 @@ class Saccade(Task_Eyetracker):
         else:
             raise ValueError("Only horizontal and vertical saccade is supported")
 
-    def run(self, **kwargs):
-        self.present_instructions(True)        
+    def run(self, prompt=True):
+        self.present_instructions(prompt)        
         self.run_trials()
         self.present_complete()
         self.close()
@@ -135,8 +135,8 @@ class Saccade(Task_Eyetracker):
 
 if __name__ == "__main__":
     
-    task = Saccade(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
-    task.run()
-    task = Saccade(direction='vertical', amplitude_deg=15, instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
-    task.run()
+    task = Saccade()
+    task.run(prompt=False)
+    task = Saccade(direction='vertical', amplitude_deg=15)
+    task.run(prompt=False)
 
