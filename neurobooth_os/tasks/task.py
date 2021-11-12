@@ -203,4 +203,4 @@ class Introduction_Task(Task):
 if __name__ == "__main__":
 
     task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
-    task.run()
+    task.run() 
