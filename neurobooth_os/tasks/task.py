@@ -58,9 +58,11 @@ class Task():
             self.win = win
             self.win_temp = False
 
-
-        self.instruction_video = visual.MovieStim3(
-            win=self.win, filename=self.path_instruction_video, noAudio=False)
+        if self.path_instruction_video is not None:
+            self.instruction_video = visual.MovieStim3(
+                win=self.win, filename=self.path_instruction_video, noAudio=False)
+        else:
+            self.instruction_video = None
 
         self.continue_repeat_screen = utils.create_text_screen(self.win, text_continue_repeat)
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
@@ -94,7 +96,8 @@ class Task():
 
     def present_video(self, video, msg, stop=False):
         self.send_marker(f"{msg}_start", True)
-        utils.play_video(self.win, video, stop=stop)
+        if video is not None:
+            utils.play_video(self.win, video, stop=stop)
         self.send_marker(f"{msg}_end", True)
 
     def present_instructions(self, prompt=True):
