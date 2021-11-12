@@ -139,3 +139,4 @@ if __name__ == "__main__":
     task.run()
     task = Saccade(direction='vertical', amplitude_deg=15, instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
     task.run()
+
