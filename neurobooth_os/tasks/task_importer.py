@@ -5,9 +5,10 @@ Created on Tue Aug 10 10:33:10 2021
 @author: STM
 """
 import importlib
+import os.path as op
 
 import neurobooth_os.iout.metadator as meta
-
+import neurobooth_os.config as cfg
 
 def _str_fileid_to_eval(stim_file_str):
     """" Converts string path.to.module.py::function() to callable
@@ -53,6 +54,8 @@ def get_task_funcs(collection_id, conn):
     task_func_dict = {}
     for obs_id in tasks_obs:        
         task_stim_id, task_dev, task_sens, instr_kwargs = meta._get_task_param(obs_id, conn)
+        if instr_kwargs.get('instruction_file') is not None:
+            instr_kwargs['instruction_file'] =  op.join(cfg.paths['video_tasks'], instr_kwargs['instruction_file'])
         stim_file, stim_kwargs = meta._get_task_stim(task_stim_id, conn)
         task_kwargs = {**stim_kwargs, **instr_kwargs}
 
@@ -63,7 +66,5 @@ def get_task_funcs(collection_id, conn):
         task_func_dict[task_stim_id]['obj'] = stim_func
         task_func_dict[task_stim_id]['t_obs_id'] = obs_id
         task_func_dict[task_stim_id]['kwargs'] = task_kwargs
-
-
 
     return task_func_dict

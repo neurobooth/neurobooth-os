@@ -74,7 +74,7 @@ def Main():
             if streams.get('Eyelink'):
                     task_karg["eye_tracker"] = streams['Eyelink']
                 
-            win = welcome_screen(with_audio=True, win=win)
+            win = welcome_screen(with_audio=False, win=win)
             # When win is created, stdout pipe is reset
             sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
             
