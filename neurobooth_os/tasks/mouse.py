@@ -17,7 +17,7 @@ from neurobooth_os.tasks.utils import make_win
 
 class mouse_task():
 
-    def __init__(self, marker_outlet=None, win=None, path="", subj_id="test", n_trials=3, **kwarg):
+    def __init__(self, marker_outlet=None, win=None, path="", subj_id="test", n_trials=30, **kwarg):
         self.subj_id = subj_id
         self.marker_outlet = marker_outlet
         self.win = win
@@ -85,7 +85,7 @@ class mouse_task():
         text = visual.TextStim(
             win=win,
             name='text',
-            text='You will see series of red dots\n\nYour task is to click on the red dot\n\nPress any button to Continue',
+            text='You will see series of white dots\n\nYour task is to click on the white dot\n\nPress any button to Continue',
             font='Arial',
             units='height',
             pos=(
