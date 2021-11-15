@@ -16,17 +16,16 @@ import time
 
 from psychopy import visual, monitors
 from psychopy import prefs
-prefs.hardware['audioLib'] = ['pyo']
+#prefs.hardware['audioLib'] = ['pyo']
 
 import neurobooth_os
 from neurobooth_os.tasks import utils
-import neurobooth_os.config as cfg
 
 
 class Task():
     def __init__(
             self,
-            instruction_file=op.join('tasks', 'assets', 'test.mp4'),
+            instruction_file=None,
             marker_outlet=None,
             win=None,
             full_screen=False,
@@ -37,7 +36,9 @@ class Task():
             text_end=utils.text_end,
             **kwargs):
 
-        self.path_instruction_video = op.join(cfg.paths['video_tasks'], instruction_file)
+
+        #self.path_instruction_video = op.join(cfg.paths['video_tasks'], instruction_file)
+        self.path_instruction_video = instruction_file
         self.full_screen = full_screen
         self.events = []
         print("path to instruction video: ", self.path_instruction_video)
@@ -57,9 +58,11 @@ class Task():
             self.win = win
             self.win_temp = False
 
-
-        self.instruction_video = visual.MovieStim3(
-            win=self.win, filename=self.path_instruction_video, noAudio=False)
+        if self.path_instruction_video is not None:
+            self.instruction_video = visual.MovieStim3(
+                win=self.win, filename=self.path_instruction_video, noAudio=False)
+        else:
+            self.instruction_video = None
 
         self.continue_repeat_screen = utils.create_text_screen(self.win, text_continue_repeat)
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
@@ -93,7 +96,8 @@ class Task():
 
     def present_video(self, video, msg, stop=False):
         self.send_marker(f"{msg}_start", True)
-        utils.play_video(self.win, video, stop=stop)
+        if video is not None:
+            utils.play_video(self.win, video, stop=stop)
         self.send_marker(f"{msg}_end", True)
 
     def present_instructions(self, prompt=True):
@@ -198,6 +202,6 @@ class Introduction_Task(Task):
 
 if __name__ == "__main__":
 
-    task = Task(instruction_file=r'C:\neurobooth-eel\neurobooth_os\tasks\assets\test.mp4')
-    task.run()
-
+    # task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
+    task = Task(instruction_file='C:\\Users\\STM\\Dropbox (Partners HealthCare)\\Neurobooth Videos for tasks\\Videos_to_present\oculomotor_calibration_2021_09_28_v0.5.mp4')
+    task.run() 

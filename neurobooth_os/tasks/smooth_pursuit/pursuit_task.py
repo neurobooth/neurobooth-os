@@ -4,17 +4,18 @@ Created on Wed Nov 03 08:00:23 2021
 
 @author: adonay
 """
+import numpy as np
 from math import sin, pi
-
+import os.path as op
 from psychopy import core 
 import pylink
-
+import neurobooth_os
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
 from neurobooth_os.tasks.task import Task_Eyetracker
 
 
 class Pursuit(Task_Eyetracker):
-    def __init__(self, amplitude_deg=30, peak_velocity_deg=30, start_phase_deg=270,  ntrials=5, **kwargs):    
+    def __init__(self, amplitude_deg=30, peak_velocity_deg=30, start_phase_deg=0,  ntrials=5, **kwargs):    
     # amplitude_deg=30, peak_velocity_deg=33.3, **kwargs):
 
         super().__init__(**kwargs)
@@ -26,15 +27,11 @@ class Pursuit(Task_Eyetracker):
         # [amp_x, amp_y, phase_x, phase_y, angular_freq_x, angular_freq_y]
         self.mov_pars = [self.amplitude_pixel / 2, 0, deg2rad(start_phase_deg), 0, self.angular_freq, self.angular_freq]
 
-
-
-
-    def run(self, **kwargs):
-        self.present_instructions(True)        
+    def run(self, prompt=True, **kwargs):
+        self.present_instructions(prompt)        
         self.run_trial(self.mov_pars)
         self.present_complete()
         self.close()
-
                                               
     def run_trial(self, movement_pars):
         """ Run a smooth pursuit trial
@@ -75,7 +72,9 @@ class Pursuit(Task_Eyetracker):
 
         # Send a message to mark movement onset
         frame = 0
+        time_array = []
         while True:
+            core.wait(1/240.)
             self.target.pos = (tar_x, tar_y)
             self.target.draw()
             self.win.flip()
@@ -91,6 +90,8 @@ class Pursuit(Task_Eyetracker):
                 self.sendMessage(tar_msg)
 
             time_elapsed = flip_time - move_start
+            time_array.append(flip_time)
+
 
             # update the target position
             tar_x = amp_x * sin(2 * pi * freq_x * time_elapsed + phase_x)
@@ -98,6 +99,14 @@ class Pursuit(Task_Eyetracker):
 
             # break if the time elapsed exceeds the trial duration
             if time_elapsed > self.ntrials * (1/freq_x):
+                print(frame)
+                time_array = np.array(time_array)
+                time_array = np.diff(time_array)
+                print(np.mean(time_array)*1000)
+                print(np.median(time_array)*1000)
+                print(np.std(time_array)*1000)
+                print(np.max(time_array)*1000)
+                print(np.min(time_array)*1000)
                 break
 
         # clear the window
@@ -122,5 +131,5 @@ class Pursuit(Task_Eyetracker):
         self.sendMessage('TRIAL_RESULT')
 
 if __name__ == "__main__":
-    task = Pursuit(instruction_file=r'C:\neurobooth-eel\neurobooth_os\tasks\assets\test.mp4')
-    task.run()
+    task = Pursuit(full_screen=True)
+    task.run(prompt=False)
