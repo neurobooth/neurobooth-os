@@ -50,6 +50,9 @@ def Main():
             tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
             study_id_date = tech_obs_log["study_id-date"]
 
+            # delete subj_date as not present in DB
+            del tech_obs_log["study_id-date"]
+
             task_func_dict = get_task_funcs(collection_id, conn)
             task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
 
@@ -76,7 +79,8 @@ def Main():
                 
             win = welcome_screen(with_audio=False, win=win)
             # When win is created, stdout pipe is reset
-            sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
+            if not hasattr(sys.stdout, 'terminal'):
+                sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
             
             for task in tasks.split("-"):
                 if task not in task_func_dict.keys():
@@ -123,6 +127,7 @@ def Main():
                 tech_obs_log["tech_obs_id"] = t_obs_id
                 tech_obs_log['event_array'] = "event:datestamp" # TODO: res should be event arrays
                 tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
+
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
                 
                 if streams.get('Eyelink') and \
