@@ -135,7 +135,7 @@ class EyeTracker():
         while self.recording:
             if self.paused:
                 time.sleep(.1)
-                print("eyetracker sleeping")
+                # print("eyetracker sleeping")
                 continue
 
             smp = self.tk.getNewestSample()
