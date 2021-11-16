@@ -81,7 +81,7 @@ def present(win, screen, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=
         event.waitKeys()
 
 
-def play_video(win, mov, wait_time=1, stop=True):
+def play_video(win, mov, wait_time=2, stop=True):
     mov.play()
     while mov.status != visual.FINISHED:
         mov.draw()
