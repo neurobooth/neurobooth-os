@@ -14,11 +14,15 @@ $ pip install -e git+https://github.com/neurobooth/neurobooth-os.git#egg=neurobo
 
 and it will install neurobooth-os along with the dependencies which are not already installed.
 
-To check if everything worked fine, you can do:
+To check if everything worked fine, you can do::
 
 $ python -c 'import neurobooth_os'
 
 and it should not give any error messages.
+
+Install Pylink running::
+
+$ pip install --index-url=https://pypi.sr-support.com sr-research-pylink
 
 Setup
 -----
@@ -29,17 +33,18 @@ It requires a postgreSQL database running on a server. Connection is established
 `neurodoor.nmr.mgh.harvard.edu` using the private key in '~/.ssh/id_rsa'.
 
 To setup a private key, first activate the VPN (partner's virtual private network), then run in
-the terminal: 
-```
-ssh-keygen
-ssh-copy-id userID@neurodoor.nmr.mgh.harvard.edu
-```
+the terminal::
 
-Next, set up secrets and configuration files. In a python session, run:
-```
-    import neurobooth_os.secrets_info
-    import neurobooth_os.config
-```
+$ ssh-keygen
+$ ssh-copy-id userID@neurodoor.nmr.mgh.harvard.edu
+
+
+Next, set up secrets and configuration files. In a python session, run::
+
+$ import neurobooth_os.secrets_info
+$ import neurobooth_os.config
+
+
 This will generate `~/.neurobooth_os_secrets` and `~/.neurobooth_os_config`.
 Edit them with your info and path to folders. 
 
