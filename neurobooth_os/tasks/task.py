@@ -120,11 +120,12 @@ class Task():
 
     def present_complete(self):
         self.present_text(screen=self.end_screen, msg='complete', audio=None, wait_time=2, waitKeys=False)
-
-        # Close win if just created for the task
-        def close(self):
-            if self.win_temp:
-                self.win.close()
+        self.close()
+        
+    # Close win if just created for the task
+    def close(self):
+        if self.win_temp:
+            self.win.close()
 
     def run(self, prompt=True, **kwargs):
         self.present_instructions(prompt)
