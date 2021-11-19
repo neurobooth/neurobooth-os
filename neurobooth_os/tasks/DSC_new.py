@@ -119,7 +119,7 @@ class DSC(Task):
 
                 message = [
                     visual.ImageStim(self.win, image=frame["source"], pos=(0, 6), units='deg'),
-                    visual.ImageStim(self.win, image=op.join(self.rootdir, 'DSC/images/key.png'), pos=(0, 0), units='deg'),
+                    visual.ImageStim(self.win, image=op.join(self.rootdir, 'images/key.png'), pos=(0, 0), units='deg'),
                     self.my_textbox2(f"You should press **{frame['digit']}** on the <b>keyboard</b> " +
                                      "when you see this symbol", (0, -7)),
                     self.my_textbox2('Press continue', (0, -10)),
@@ -144,7 +144,7 @@ class DSC(Task):
                     "message": "",
                     "symbol": symbol,
                     "digit": digit,
-                    "source": op.join(self.rootdir, f'images/{symbol}.gif')
+                    "source": op.join(self.rootdir, f'images/{symbol}.png')
                 })
 
     def nextTrial(self):
@@ -268,23 +268,21 @@ class DSC(Task):
 
     def setFrameSequence(self):
         testMessage = {
-            "begin": [visual.ImageStim(self.win, image=op.join(self.rootdir, 'intro.jpg'), pos=(0, 0), units='deg')],
+            "begin": [visual.ImageStim(self.win, image=op.join(self.rootdir, 'intro.png'), pos=(0, 0), units='deg')],
 
             "practice": [
-                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_1.jpg'), pos=(0, 0), units='deg')],
-                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_2.jpg'), pos=(0, 6), units='deg'),],
-                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'images/2.gif'), pos=(0, 6), units='deg'),
-                  visual.ImageStim(self.win, image= op.join(self.rootdir, 'images/keySmall.png'), pos=(0, 0), units='deg'),
-                  self.my_textbox2("Let's practice a few symbols.", (0, -6))
-                ]
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'inst_1.png'), pos=(0, 0), units='deg')],
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'inst_2.png'), pos=(0, 0), units='deg'),],
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'inst_3.png'), pos=(0, 0), units='deg')]
             ],
             "test": [
-                visual.ImageStim(self.win, image=op.join(self.rootdir, 'practice_end.jpg'), pos=(0, 0), units='deg'),
+                visual.ImageStim(self.win, image=op.join(self.rootdir, 'inst_end.png'), pos=(0, 0), units='deg'),
             ]
         }
 
         # type of frame to display
         frameType = ["begin",
+                     "message",
                      "message",
                      "message",
                      "practice",
@@ -297,16 +295,17 @@ class DSC(Task):
         frameMessage = [testMessage["begin"],
                         testMessage["practice"][0],
                         testMessage["practice"][1],
+                        testMessage["practice"][2],
                         "",
                         "",
                         "",
                         testMessage["test"], ""]
 
         # symbol to display
-        frameSymbol = [0, 0, 0, 1, 3, 5, 0, 4]
+        frameSymbol = [0, 0, 0, 0, 1, 3, 5, 0, 4]
 
         # corresponding digit
-        frameDigit = [0, 0, 0, 1, 3, 2, 0, 1]
+        frameDigit = [0, 0, 0, 0, 1, 3, 2, 0, 1]
 
         # push all components into the frames chain
         for i in range(len(frameType)):
@@ -316,24 +315,23 @@ class DSC(Task):
                     "message": frameMessage[i],
                     "symbol": frameSymbol[i],
                     "digit": frameDigit[i],
-                    "source":  op.join(self.rootdir, f'images/{frameSymbol[i]}.gif')
+                    "source":  op.join(self.rootdir, f'images/{frameSymbol[i]}.png')
                 })
 
 
 if __name__ == "__main__":
     from psychopy import sound, core, event, monitors, visual, monitors
 
-    monitor_width=55 
-    monitor_distance=50
-    mon = monitors.getAllMonitors()[0]
-    customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
+    # monitor_width=55 
+    # monitor_distance=50
+    # mon = monitors.getAllMonitors()[0]
+    # customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
     win = visual.Window(
     [1920, 1080],   
-    fullscr=False,  
-    monitor=customMon,
+    fullscr=False, 
     units='pix',    
     color=(0, 0, 0) 
     )
 
-    dsc = DSC(win=win)
+    dsc = DSC()
     dsc.run() 
