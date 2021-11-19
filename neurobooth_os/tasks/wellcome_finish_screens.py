@@ -44,5 +44,5 @@ def finish_screen(win):
     fname = op.join(neurobooth_os.__path__[0], 'tasks/assets/NB2.jpg')
     finish = visual.ImageStim(win, fname, units='pix')
     utl.present(win, finish, None, 2)
-    win.close()
+    # win.close()
     return win
