@@ -69,7 +69,7 @@ class Task():
         self.press_inst_screen = visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/inst_end_task.png'),
                                                 pos=(0, 0), units='deg')
         self.press_task_screen = visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/task_end.png'),
-                                                pos=(0, 0), units='deg'),
+                                                pos=(0, 0), units='deg')
 
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
@@ -145,6 +145,19 @@ class Task_No_Practice(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
+    def run(self, prompt=True, **kwargs):
+        self.present_instructions(prompt)
+        self.present_task(prompt)
+        self.present_complete()
+
+
+class Task_countdown(Task):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    def present_task(duration):
+        pass
+
     def run(self, prompt=True, **kwargs):
         self.present_instructions(prompt)
         self.present_task(prompt)
