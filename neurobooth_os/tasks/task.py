@@ -64,7 +64,13 @@ class Task():
         else:
             self.instruction_video = None
 
-        self.continue_repeat_screen = utils.create_text_screen(self.win, text_continue_repeat)
+        self.root_pckg = neurobooth_os.__path__[0]
+
+        self.press_inst_screen = visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/inst_end_task.png'),
+                                                pos=(0, 0), units='deg')
+        self.press_task_screen = visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/task_end.png'),
+                                                pos=(0, 0), units='deg'),
+
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
@@ -103,19 +109,19 @@ class Task():
     def present_instructions(self, prompt=True):
         self.present_video(video=self.instruction_video, msg='intructions')
         if prompt:
-            self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', func=self.present_instructions,
+            self.present_text(screen=self.press_inst_screen, msg='inst-continue-repeat', func=self.present_instructions,
                           waitKeys=False, video_prompt=True, video=self.instruction_video)
 
     def present_practice(self, prompt=True):
         self.present_text(screen=self.practice_screen, msg='practice')
         if prompt:
-            self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', func=self.present_practice,
+            self.present_text(screen=self.press_inst_screen, msg='pract-continue-repeat', func=self.present_practice,
                           waitKeys=False)
 
     def present_task(self, prompt=True):
         self.present_text(screen=self.task_screen, msg='task', audio=None, wait_time=5)
         if prompt:
-            self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat-task', func=self.present_instructions,
+            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
                           waitKeys=False)
 
     def present_complete(self):
@@ -129,7 +135,7 @@ class Task():
 
     def run(self, prompt=True, **kwargs):
         self.present_instructions(prompt)
-        self.present_practice(prompt)
+        # self.present_practice(prompt)
         self.present_task(prompt)
         self.present_complete()
         return self.events
