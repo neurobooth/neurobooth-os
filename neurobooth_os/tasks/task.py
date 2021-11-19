@@ -14,7 +14,7 @@ import os.path as op
 from datetime import datetime
 import time
 
-from psychopy import visual, monitors
+from psychopy import visual, monitors, core
 from psychopy import prefs
 #prefs.hardware['audioLib'] = ['pyo']
 
@@ -155,8 +155,11 @@ class Task_countdown(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
-    def present_task(duration):
-        pass
+    def present_task(self, duration, prompt=True):
+        self.present_text(screen=self.task_screen, msg='task', audio=None, wait_time=duration+1, waitKeys=False)
+        if prompt:
+            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
+                          waitKeys=False)
 
     def run(self, prompt=True, **kwargs):
         self.present_instructions(prompt)
