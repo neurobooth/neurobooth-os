@@ -38,7 +38,7 @@ def present_msg(elems, win, key_resp="space"):
 
 
 class DSC(Task):
-    def __init__(self, path="", subj_id="test", duration=90, **kwargs):
+    def __init__(self, path="", subj_id="test", duration=10, **kwargs):
         super().__init__(**kwargs)
    
         self.testVersion = 'DSC_simplified_oneProbe_2019'
@@ -118,10 +118,10 @@ class DSC(Task):
                 self.frameSequence.insert(0, frame)
 
                 message = [
-                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 6), units='deg'),
+                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 8), units='deg'),
                     visual.ImageStim(self.win, image=op.join(self.rootdir, 'images/key.png'), pos=(0, 0), units='deg'),
                     self.my_textbox2(f"You should press **{frame['digit']}** on the <b>keyboard</b> " +
-                                     "when you see this symbol", (0, -7)),
+                                     "when you see this symbol", (0, -8)),
                     self.my_textbox2('Press continue', (0, -10)),
                 ]
 
@@ -162,7 +162,7 @@ class DSC(Task):
             else:
 
                 stim = [
-                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 6), units='deg'),
+                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 8), units='deg'),
                     visual.ImageStim(self.win, image= op.join(self.rootdir, 'images/key.png'),
                                     pos=(0, 0), units='deg'),
                     ]
@@ -191,7 +191,7 @@ class DSC(Task):
                 countDown = core.CountdownTimer()
                 countDown.add(self.tmbUI["timeout"])
 
-                kpos = [-2.2, 0, 2.2]
+                kpos = [-2.4, 0, 2.4]
                 trialClock = core.Clock()
                 timed_out = True
                 while countDown.getTime() > 0:
@@ -207,7 +207,7 @@ class DSC(Task):
                         
                         rec_xpos = kpos[int(key[0][0]) - 1]
                         stim.append(
-                            visual.Rect(self.win, units='deg', lineColor='red',pos=(rec_xpos, -2.6), size=(2.5, 2.5),
+                            visual.Rect(self.win, units='deg', lineColor='red',pos=(rec_xpos, -2.9), size=(2.5, 2.5),
                                         lineWidth=4))
 
                         _ = self.keyboard.getReleases()
