@@ -71,7 +71,7 @@ class Task():
         self.press_task_screen = visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/task_end.png'),
                                                 pos=(0, 0), units='deg')
         self.countdown_video = visual.MovieStim3(win=self.win, filename= op.join(neurobooth_os.__path__[0], 'tasks',
-                                                                  'assets', 'countdown_2021_11_19.mp4'), noAudio=False)
+                                                                  'assets', 'countdown_2021_11_22.mp4'), noAudio=False)
         
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
@@ -140,10 +140,10 @@ class Task():
         if self.win_temp:
             self.win.close()
 
-    def run(self, prompt=True, **kwargs):
+    def run(self, prompt=True, duration=3, **kwargs):
         self.present_instructions(prompt)
         # self.present_practice(prompt)
-        self.present_task(prompt)
+        self.present_task(duration, prompt, **kwargs)
         self.present_complete()
         return self.events
 
