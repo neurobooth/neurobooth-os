@@ -35,7 +35,7 @@ def _process_received_data(serv_data, window):
     """
     # print(serv_data)
     # Split server name and data
-    serv_name, serv_data = serv_data.split(":::")
+    serv_data = serv_data.split(":::")[-1]
     # print(serv_name, ":::")
     for data_row in serv_data.split("\n"):
         # print("\t " , data_row)
@@ -138,7 +138,7 @@ def gui(remote=False, database='neurobooth'):
                 # Start a threaded socket CTR server once main window generated
                 callback_args = window    
                 server_thread = threading.Thread(target=get_messages_to_ctr,
-                                                args=(_process_received_data, host_ctr, port_ctr,
+                                                args=(_process_received_data, remote, host_ctr, port_ctr,
                                                 callback_args,),
                                                 daemon=True)
                 server_thread.start()
@@ -147,7 +147,7 @@ def gui(remote=False, database='neurobooth'):
                 if remote:
                     time.sleep(.1)
                     sys.stdout = NewStdout("mock",  target_node="dummy_ctr", terminal_print=True)
-
+            
         ############################################################
         # Main Window -> Run neurobooth session
         ############################################################
