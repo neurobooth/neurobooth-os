@@ -14,7 +14,7 @@ import os.path as op
 from datetime import datetime
 import time
 
-from psychopy import visual, monitors
+from psychopy import visual, monitors, sound, core
 from psychopy import prefs
 #prefs.hardware['audioLib'] = ['pyo']
 
@@ -70,7 +70,9 @@ class Task():
                                                 pos=(0, 0), units='deg')
         self.press_task_screen = visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/task_end.png'),
                                                 pos=(0, 0), units='deg')
-
+        self.countdown_video = visual.MovieStim3(win=self.win, filename= op.join(neurobooth_os.__path__[0], 'tasks',
+                                                                  'assets', 'countdown_2021_11_22.mp4'), noAudio=False)
+        
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
@@ -100,6 +102,11 @@ class Task():
                 if utils.repeat_advance():
                     func()
 
+    def countdown_task(self):
+        utils.play_video(self.win, self.countdown_video, stop=False)
+        mySound = sound.Sound(1000, 0.2)
+        core.wait_time(.2)
+        
     def present_video(self, video, msg, stop=False):
         self.send_marker(f"{msg}_start", True)
         if video is not None:
@@ -119,7 +126,8 @@ class Task():
                           waitKeys=False)
 
     def present_task(self, prompt=True):
-        self.present_text(screen=self.task_screen, msg='task', audio=None, wait_time=5)
+        self.countdown_task()
+        self.present_text(screen=self.task_screen, msg='task', audio=None, wait_time=3)
         if prompt:
             self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
                           waitKeys=False)
@@ -133,10 +141,10 @@ class Task():
         if self.win_temp:
             self.win.close()
 
-    def run(self, prompt=True, **kwargs):
+    def run(self, prompt=True, duration=3, **kwargs):
         self.present_instructions(prompt)
         # self.present_practice(prompt)
-        self.present_task(prompt)
+        self.present_task(duration, prompt, **kwargs)
         self.present_complete()
         return self.events
 
