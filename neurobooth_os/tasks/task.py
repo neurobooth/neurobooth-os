@@ -125,7 +125,7 @@ class Task():
             self.present_text(screen=self.press_inst_screen, msg='pract-continue-repeat', func=self.present_practice,
                           waitKeys=False)
 
-    def present_task(self, prompt=True):
+    def present_task(self, prompt=True, **kwargs):
         self.countdown_task()
         self.present_text(screen=self.task_screen, msg='task', audio=None, wait_time=3)
         if prompt:
@@ -163,13 +163,14 @@ class Task_countdown(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
-    def present_task(duration):
-        pass
-
-    def run(self, prompt=True, **kwargs):
-        self.present_instructions(prompt)
-        self.present_task(prompt)
-        self.present_complete()
+    def present_task(self, duration, prompt, **kwargs):
+        self.countdown_task()
+        self.win.flip()
+        core.wait(duration+2)
+        
+        if prompt:
+            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
+                          waitKeys=False)
 
 
 class Task_Eyetracker(Task):
