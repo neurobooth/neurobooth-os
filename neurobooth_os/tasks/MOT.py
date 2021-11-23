@@ -270,340 +270,337 @@ def HideTargets():
 
 
 
-        clickHandler = function (e)
+def clickHandler():
+
+    # this handler listens for clicks on the targets
+    # reveals correct and incorrect clicks
+    # stops listening after numTargets clicks
+    # gives feedback and paces the trial presentation
+
+    i
+    
+    mouse = event.Mouse(win=win)
+    # retrieve the identity of this dot
+    index = this.data("index")
+
+    # increment the clicks counter
+    clicks++;
+
+    # mark correct as green
+    if index < numTargets:
+    
+        happy[index].attr({"x": circle[index].attr("cx")-mycircle.r,
+                           "y": circle[index].attr("cy")-mycircle.r})
+        happy[index].node.style.display = "block"
+        circle[index].node.style.display = "none"
+        #circle[index].attr({fill: "chartreuse"});
+
+        # check they are not clicking on an already clicked target
+        if targets[index] === 0:        
+            targets[index] = 1
+            targetClicks++
+
+            if (frame.type === "test"):            
+                # update the score
+                score++
+                getID("textRight").innerHTML = "Score "+score
+    
+    # mark wrong as red
+    else
+    
+        sad[index].attr({"x": circle[index].attr("cx")-mycircle.r,
+                         "y": circle[index].attr("cy")-mycircle.r})
+        sad[index].node.style.display = "block"
+        circle[index].node.style.display = "none"
+    
+
+    # check if we got enough clicks
+    if clicks === numTargets:
+    
+        rt = timestamp
+        timestamp = now()
+        rt = timestamp - rt
+
+        # clear the click timeout trap
+        clearTimeout(timeoutRef)
+
+        # disable the click handlers
+        for(i = 0; i < numCircles; i++) circle[i].unclick()
+
+        # push this trial in the results record
+        results.append(
         {
-            # this handler listens for clicks on the targets
-            # reveals correct and incorrect clicks
-            # stops listening after numTargets clicks
-            # gives feedback and paces the trial presentation
+            "type": frame.type, # one of practice or test
+            "hits": targetClicks,
+            "rt": rt.round(2),
+            "numTargets": numTargets,
+            "numdots": numCircles,
+            "speed": mycircle.speed,
+            "noise": mycircle.noise,
+            "duration": trueDuration.round(2),
+            "state": e.type,
+            'seed': frame.message
+        });
 
-            i;
+        
+        if(frame.type === "test")
+        {
+            # update total
+            total += numTargets
 
-            # retrieve the identity of this dot
-            index = this.data("index");
+            # start a new trial
+            setTimeout(function () {nextTrial();}, 1500)
+        }
+        else if(frame.type === "practice")
+        {
+            msg = "<br><br><br><br>You got " + targetClicks +
+                      " of " + numTargets +
+                      " dots correct.<br><br><br>"
 
-            # increment the clicks counter
-            clicks++;
+            # deal with practice errors
+            if(targetClicks < numTargets) :
+            
+                # we allow repeating practice trials 2 times
+                if(practiceErr < 2) :
+                
+                    # rewind the trials chain by one
+                    frameSequence.unshift(frame);
 
-            # mark correct as green
-            if(index < numTargets)
+                    msg = "<br><br>Let's try again.<br><br>"+
+                          "When the movement stops,<br>"+
+                          "click the " + numTargets +
+                          " dots that flashed.<br><br><br>";
+
+                    practiceErr++;
+                
+            
+            else practiceErr = 0;
+
+            # give feedback
+            setTimeout(function ()
             {
-                happy[index].attr({"x": circle[index].attr("cx")-mycircle.r,
-                                   "y": circle[index].attr("cy")-mycircle.r});
-                happy[index].node.style.display = "block";
-                circle[index].node.style.display = "none";
-                #circle[index].attr({fill: "chartreuse"});
+                showAlert(msg,
+                          "Press continue",
+                          function ()
+                          {
+                              showFrame("null");
+                              nextTrial();
+                          });
+            }, 500);
+        }
+    }
 
-                # check they are not clicking on an already clicked target
-                if(targets[index] === 0)
+    
+    
+def showMovingDots():
+    
+    motionTimer = 0
+    motionIterations = 0
+    
+    # clear the canvas and feedback text
+    if(paper) paper.clear();
+    getID("textMiddle").innerHTML = "";
+    
+    # show the stimulus DIV and hide all others
+    showFrame("canvasContainer","feedback");
+    
+    # set the random seed for each trial
+    Math.seedrandom(frame.message);
+    
+    # initialize the dots
+    setup();
+    
+    if(frame.type === "test")
+    {
+        # update and show the trial counter and score
+        if(trialCount === 6 || demo === "true") trialCount = 0;
+        trialCount++;
+        getID("textLeft").innerHTML = trialCount + ' of 6';
+        getID("textRight").innerHTML = 'Score ' + score;
+    }
+    
+    # then set the motion scheduler
+    function update()
+    {
+        # get a timestamp for the beginning of the motion
+        if(!motionTimer) trueDuration = now();
+    
+        # increment the frame counter
+        motionTimer++;
+    
+        # animate
+        moveCircles();
+    
+        # exit the animation when we have reached the required duration
+        if(motionTimer === motionIterations)
+        {
+            # compute real duration
+            trueDuration = now() - trueDuration;
+    
+            # show the cursor again
+            showCursor("canvasContainer");
+    
+            if (frame.type === "practice" ||
+                frame.type === "test")
+            {
+                # start recording clicks
+                for (j = 0; j < numCircles; j++)
+                    circle[j].click(clickHandler);
+    
+                # set a timeout trap
+                timeoutRef = setTimeout(function ()
                 {
-                    targets[index] = 1;
-                    targetClicks++;
-
-                    if (frame.type === "test")
+                    # remove the click handlers
+                    for(k = 0; k < numCircles; k++)
+                        circle[k].unclick(clickHandler);
+    
+                    results.push(
                     {
-                        # update the score
-                        score++;
-                        getID("textRight").innerHTML = "Score "+score;
-                    }
-                }
-            }
-            # mark wrong as red
-            else
-            {
-                sad[index].attr({"x": circle[index].attr("cx")-mycircle.r,
-                                 "y": circle[index].attr("cy")-mycircle.r});
-                sad[index].node.style.display = "block";
-                circle[index].node.style.display = "none";
-            }
-
-            # check if we got enough clicks
-            if(clicks === numTargets)
-            {
-                rt = timestamp;
+                        type: frame.type, # practice or test
+                        hits: 0, # number of correct target clicks
+                        rt: 0, # rt for this trial
+                        numTargets: numTargets, # # of target dots
+                        numdots: numCircles, # # of total dots
+                        speed: mycircle.speed, # dot speed pixels/frame
+                        noise: mycircle.noise, # +-deg added randomly to direction
+                        duration: trueDuration.round(2), # total ms of animation
+                        state: 'timeout', # click or timeout
+                        seed: frame.message # random generator seed for this trial
+                    });
+    
+                    # if we are debugging, log the results
+                    if(debug === 'true') logResults();
+    
+                    if(frame.type === "test" && trialCount > 0)
+                        trialCount--;
+                    frameSequence.unshift(frame);
+    
+                    showAlert("<br><br>You took too long to respond!<br><br>" +
+                              "Remember:<br>once the movement stops,<br>" +
+                              "click the dots that flashed.<br><br><br>",
+                              "Click here to retry",
+                              function ()
+                              {
+                                  showFrame("null");
+                                  nextTrial();
+                              });
+    
+                }, clickTimeout);
+    
+                # initialize the clicks counter
+                clicks = targetClicks = 0;
+    
+                # get a timestamp to calculate RT
                 timestamp = now();
-                rt = timestamp - rt;
-
-                # clear the click timeout trap
-                clearTimeout(timeoutRef);
-
-                # disable the click handlers
-                for(i = 0; i < numCircles; i++) circle[i].unclick();
-
-                # push this trial in the results record
-                results.push(
-                {
-                    type: frame.type, # one of practice or test
-                    hits: targetClicks,
-                    rt: rt.round(2),
-                    numTargets: numTargets,
-                    numdots: numCircles,
-                    speed: mycircle.speed,
-                    noise: mycircle.noise,
-                    duration: trueDuration.round(2),
-                    state: e.type,
-                    seed: frame.message
-                });
-
-                # if we are debugging, log the results
-                if(debug === 'true') logResults();
-
-                if(frame.type === "test")
-                {
-                    # update total
-                    total += numTargets;
-
-                    # start a new trial
-                    setTimeout(function () {nextTrial();}, 1500);
-                }
-                else if(frame.type === "practice")
-                {
-                    msg = "<br><br><br><br>You got " + targetClicks +
-                              " of " + numTargets +
-                              " dots correct.<br><br><br>";
-
-                    # deal with practice errors
-                    if(targetClicks < numTargets)
-                    {
-                        # we allow repeating practice trials 2 times
-                        if(practiceErr < 2)
-                        {
-                            # rewind the trials chain by one
-                            frameSequence.unshift(frame);
-
-                            msg = "<br><br>Let's try again.<br><br>"+
-                                  "When the movement stops,<br>"+
-                                  "click the " + numTargets +
-                                  " dots that flashed.<br><br><br>";
-
-                            practiceErr++;
-                        }
-                    }
-                    else practiceErr = 0;
-
-                    # give feedback
-                    setTimeout(function ()
-                    {
-                        showAlert(msg,
-                                  "Click here to continue",
-                                  function ()
-                                  {
-                                      showFrame("null");
-                                      nextTrial();
-                                  });
-                    }, 500);
-                }
+    
+                if (frame.type === "practice")
+                    getID("textMiddle").innerHTML = "Click the " +
+                                                    numTargets +
+                                                    " dots that flashed!";
+    
+                else if (frame.type === "test")
+                    getID("textMiddle").innerHTML = "Click " + numTargets +
+                                                    " dots"
             }
-        };
-
-        function showMovingDots()
-        {
-            motionTimer = 0, motionIterations = 0;
-
-            # clear the canvas and feedback text
-            if(paper) paper.clear();
-            getID("textMiddle").innerHTML = "";
-
-            # show the stimulus DIV and hide all others
-            showFrame("canvasContainer","feedback");
-
-            # set the random seed for each trial
-            Math.seedrandom(frame.message);
-
-            # initialize the dots
-            setup();
-
-            if(frame.type === "test")
+            else setTimeout(function ()
             {
-                # update and show the trial counter and score
-                if(trialCount === 6 || demo === "true") trialCount = 0;
-                trialCount++;
-                getID("textLeft").innerHTML = trialCount + ' of 6';
-                getID("textRight").innerHTML = 'Score ' + score;
-            }
+                nextTrial();
+            }, 1500);
+        }
+        else requestAnimationFrame(update);
+    }
+    
+    chainTimeouts(
+    function(){hideCursor("canvasContainer");},500,
+    function(){requestAnimationFrame(ShowTargets);},100,
+    function(){requestAnimationFrame(HideTargets);},100,
+    function(){requestAnimationFrame(ShowTargets);},100,
+    function(){requestAnimationFrame(HideTargets);},100,
+    function(){requestAnimationFrame(ShowTargets);},100,
+    function(){requestAnimationFrame(HideTargets);},100,
+    function(){requestAnimationFrame(ShowTargets);},100,
+    function(){requestAnimationFrame(HideTargets);},100,
+    function(){requestAnimationFrame(ShowTargets);},100,
+    function(){requestAnimationFrame(HideTargets);},1500,
+    function ()
+    {
+        motionTimer = 0;
+        motionIterations = Math.floor(duration/1000*60);
+    
+        requestAnimationFrame(update);
+    });
+        
 
-            # then set the motion scheduler
-            function update()
-            {
-                # get a timestamp for the beginning of the motion
-                if(!motionTimer) trueDuration = now();
+def nextTrial():
 
-                # increment the frame counter
-                motionTimer++;
+    for (i = 0; i < numTargets; i++) targets[i] = 0;
 
-                # animate
-                moveCircles();
-
-                # exit the animation when we have reached the required duration
-                if(motionTimer === motionIterations)
-                {
-                    # compute real duration
-                    trueDuration = now() - trueDuration;
-
-                    # show the cursor again
-                    showCursor("canvasContainer");
-
-                    if (frame.type === "practice" ||
-                        frame.type === "test")
-                    {
-                        # start recording clicks
-                        for (j = 0; j < numCircles; j++)
-                            circle[j].click(clickHandler);
-
-                        # set a timeout trap
-                        timeoutRef = setTimeout(function ()
-                        {
-                            # remove the click handlers
-                            for(k = 0; k < numCircles; k++)
-                                circle[k].unclick(clickHandler);
-
-                            results.push(
-                            {
-                                type: frame.type, # practice or test
-                                hits: 0, # number of correct target clicks
-                                rt: 0, # rt for this trial
-                                numTargets: numTargets, # # of target dots
-                                numdots: numCircles, # # of total dots
-                                speed: mycircle.speed, # dot speed pixels/frame
-                                noise: mycircle.noise, # +-deg added randomly to direction
-                                duration: trueDuration.round(2), # total ms of animation
-                                state: 'timeout', # click or timeout
-                                seed: frame.message # random generator seed for this trial
-                            });
-
-                            # if we are debugging, log the results
-                            if(debug === 'true') logResults();
-
-                            if(frame.type === "test" && trialCount > 0)
-                                trialCount--;
-                            frameSequence.unshift(frame);
-
-                            showAlert("<br><br>You took too long to respond!<br><br>" +
-                                      "Remember:<br>once the movement stops,<br>" +
-                                      "click the dots that flashed.<br><br><br>",
-                                      "Click here to retry",
-                                      function ()
-                                      {
-                                          showFrame("null");
-                                          nextTrial();
-                                      });
-
-                        }, clickTimeout);
-
-                        # initialize the clicks counter
-                        clicks = targetClicks = 0;
-
-                        # get a timestamp to calculate RT
-                        timestamp = now();
-
-                        if (frame.type === "practice")
-                            getID("textMiddle").innerHTML = "Click the " +
-                                                            numTargets +
-                                                            " dots that flashed!";
-
-                        else if (frame.type === "test")
-                            getID("textMiddle").innerHTML = "Click " + numTargets +
-                                                            " dots"
-                    }
-                    else setTimeout(function ()
-                    {
-                        nextTrial();
-                    }, 1500);
-                }
-                else requestAnimationFrame(update);
-            }
-
-            chainTimeouts(
-            function(){hideCursor("canvasContainer");},500,
-            function(){requestAnimationFrame(ShowTargets);},100,
-            function(){requestAnimationFrame(HideTargets);},100,
-            function(){requestAnimationFrame(ShowTargets);},100,
-            function(){requestAnimationFrame(HideTargets);},100,
-            function(){requestAnimationFrame(ShowTargets);},100,
-            function(){requestAnimationFrame(HideTargets);},100,
-            function(){requestAnimationFrame(ShowTargets);},100,
-            function(){requestAnimationFrame(HideTargets);},100,
-            function(){requestAnimationFrame(ShowTargets);},100,
-            function(){requestAnimationFrame(HideTargets);},1500,
+    # read the frame sequence one frame at a time
+    if(frame = frameSequence.shift())
+    {
+        # check if it's the startup frame
+        if (frame.type === "begin")
+            showAlert(frame.message,
+            "Click here for instructions",
             function ()
             {
-                motionTimer = 0;
-                motionIterations = Math.floor(duration/1000*60);
-
-                requestAnimationFrame(update);
+                nextTrial();
             });
-        }
-
-        function nextTrial()
+        # else if it's a message frame, show it
+        else if (frame.type === "message")
+            showAlert(frame.message,
+            "Click here to continue",
+            function ()
+            {
+                showFrame("null");
+                nextTrial();
+            });
+        # else show the animation
+        else
         {
-            for(i = 0; i < numTargets; i++) targets[i] = 0;
+            numCircles=frame.n_circles;
+            numTargets=frame.n_targets;
+            mycircle.speed=frame.speed;
+            duration=frame.duration;
 
-            # read the frame sequence one frame at a time
-            if(frame = frameSequence.shift())
-            {
-                # check if it's the startup frame
-                if (frame.type === "begin")
-                    showAlert(frame.message,
-                    "Click here for instructions",
-                    function ()
-                    {
-                        nextTrial();
-                    });
-                # else if it's a message frame, show it
-                else if (frame.type === "message")
-                    showAlert(frame.message,
-                    "Click here to continue",
-                    function ()
-                    {
-                        showFrame("null");
-                        nextTrial();
-                    });
-                # else show the animation
-                else
-                {
-                    numCircles=frame.n_circles;
-                    numTargets=frame.n_targets;
-                    mycircle.speed=frame.speed;
-                    duration=frame.duration;
-
-                    showMovingDots();
-                }
-            }
-            # else the sequence is empty, we are done!
-            else
-            {
-                outcomes.score = score;
-                outcomes.correct = (score / total).round(3);
-                outcomes.rtTotal = results.filter(function( obj )
-                                                 {return obj.type !== 'practice' &&
-                                                         obj.state !== 'timeout';})
-                                          .pluck("rt").sum().round(1);
-                outcomes.frametime = frametime;
-
-                if(debug === "true")
-                console.log("Score is " + score + " out of " + total);
-
-                # we either save locally or to the server
-                if(showresults === "true" || autosave === 'true' || filename)
-                {
-                    showAlert("<br><br>Your score is " + score + ".<br>" +
-                              "<br>The test is over.<br>" +
-                              "Thank you for participating!<br><br>",
-                              "",
-                              null);
-
-                    setTimeout(function()
-                    {
-                        if(filename === false) filename = "MOTresults.csv";
-                        tmbSubmitToFile(results,filename,autosave);
-                    },2000);
-                }
-                else
-                {
-                    tmbSubmitToServer(results,score,outcomes,'/run.php');
-                }
-            }
+            showMovingDots();
         }
+    }
+    # else the sequence is empty, we are done!
+    else
+    {
+        outcomes.score = score;
+        outcomes.correct = (score / total).round(3);
+        outcomes.rtTotal = results.filter(function( obj )
+                                         {return obj.type !== 'practice' &&
+                                                 obj.state !== 'timeout';})
+                                  .pluck("rt").sum().round(1);
+        outcomes.frametime = frametime;
+
+        if(debug === "true")
+        console.log("Score is " + score + " out of " + total);
+
+        # we either save locally or to the server
+        if(showresults === "true" || autosave === 'true' || filename)
+        {
+            showAlert("<br><br>Your score is " + score + ".<br>" +
+                      "<br>The test is over.<br>" +
+                      "Thank you for participating!<br><br>",
+                      "",
+                      null);
+
+            setTimeout(function()
+            {
+                if(filename === false) filename = "MOTresults.csv";
+                tmbSubmitToFile(results,filename,autosave);
+            },2000);
+        }
+        else
+        {
+            tmbSubmitToServer(results,score,outcomes,'/run.php');
+        }
+    }
+
 
 def setFrameSequence():
     testMessage ={            
