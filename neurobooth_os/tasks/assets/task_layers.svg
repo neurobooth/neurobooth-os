@@ -16,9 +16,9 @@
    id="SVGRoot"
    sodipodi:docname="task_layers.svg"
    inkscape:version="1.0.2 (1.0.2+r75+1)"
-   inkscape:export-filename="/home/adonay/Desktop/projects/neurobooth/neurobooth-eel/neurobooth_os/tasks/assets/inst_end_task.png"
-   inkscape:export-xdpi="96"
-   inkscape:export-ydpi="96">
+   inkscape:export-filename="/home/adonay/Desktop/projects/neurobooth/neurobooth-eel/neurobooth_os/tasks/assets/task_end.png"
+   inkscape:export-xdpi="95.955513"
+   inkscape:export-ydpi="95.955513">
   <defs
      id="defs1426">
     <linearGradient
@@ -66,7 +66,7 @@
      inkscape:cx="867.16086"
      inkscape:cy="732.32789"
      inkscape:document-units="px"
-     inkscape:current-layer="g2718"
+     inkscape:current-layer="layer11"
      inkscape:document-rotation="0"
      showgrid="false"
      inkscape:window-width="1920"
@@ -127,7 +127,7 @@
      inkscape:groupmode="layer"
      id="g2718"
      inkscape:label="task_complete"
-     style="display:inline">
+     style="display:none">
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:53.3333px;line-height:1.25;font-family:sans-serif;text-align:center;text-anchor:middle;display:inline;mix-blend-mode:normal;fill:#000000;fill-opacity:1;stroke:none"
@@ -191,7 +191,7 @@
      inkscape:groupmode="layer"
      id="layer9"
      inkscape:label="task_end"
-     style="display:none">
+     style="display:inline">
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;font-family:sans-serif;display:inline;mix-blend-mode:normal;fill:#000000;fill-opacity:1;stroke:none"
@@ -252,7 +252,7 @@
      inkscape:groupmode="layer"
      id="layer4"
      inkscape:label="button"
-     style="display:none">
+     style="display:inline">
     <text
        xml:space="preserve"
        id="text2572"
@@ -262,7 +262,7 @@
        id="text2578"
        style="font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;font-family:sans-serif;white-space:pre;shape-inside:url(#rect2580);fill:#000000;fill-opacity:1;stroke:none;" />
     <circle
-       style="display:inline;opacity:0.997;fill:#e93c1e;fill-opacity:1;stroke:#000000;stroke-width:1.12059;stroke-linecap:square;stroke-opacity:0.976471"
+       style="display:inline;opacity:0.997;fill:#e93c1e;fill-opacity:0.89999998;stroke:#000000;stroke-width:1.12059;stroke-linecap:square;stroke-opacity:0.976471"
        id="path3454-4"
        cx="1262.8325"
        cy="685.95679"
