@@ -76,7 +76,8 @@ class Task():
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
-        self.end_screen = utils.create_text_screen(self.win, text_end)
+        self.end_screen = visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/task_complete.png'),
+                                                pos=(0, 0), units='deg')
 
 
     def send_marker(self, msg=None, add_event=False):
@@ -103,8 +104,9 @@ class Task():
                     func()
 
     def countdown_task(self):
-        utils.play_video(self.win, self.countdown_video, stop=False)
         mySound = sound.Sound(1000, 0.2)
+        utils.play_video(self.win, self.countdown_video, stop=False)
+        mySound.play()
         core.wait_time(.2)
         
     def present_video(self, video, msg, stop=False):
