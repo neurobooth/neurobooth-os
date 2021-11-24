@@ -81,13 +81,15 @@ def present(win, screen, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=
         event.waitKeys()
 
 
-def play_video(win, mov, wait_time=0, stop=True):
+def play_video(win, mov, wait_time=1, stop=True):
     clock  = core.Clock()
     mov.play()
     while mov.status != visual.FINISHED:
         mov.draw()
         win.flip()
-        if clock.getTime() > wait_time and event.getKeys():
+        if event.getKeys():
+            if clock.getTime() < wait_time:
+                continue
             if stop:
                 mov.stop()
             else:
