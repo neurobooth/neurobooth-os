@@ -20,7 +20,7 @@ class Fixation_Target(Task_Eyetracker):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
-    def present_task(self, duration, prompt=True, target_pos=(0,0)):
+    def present_task(self, duration, prompt=True, target_pos=(0,0), **kwargs):
         self.countdown_task()
         self.target.pos = target_pos       
         self.present_text(screen=self.target, msg='task', audio=None, wait_time=duration, waitKeys=False)

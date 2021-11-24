@@ -105,7 +105,7 @@ class Task():
     def countdown_task(self):
         utils.play_video(self.win, self.countdown_video, stop=False)
         mySound = sound.Sound(1000, 0.2)
-        core.wait_time(.2)
+        core.wait(.2)
         
     def present_video(self, video, msg, stop=False):
         self.send_marker(f"{msg}_start", True)
@@ -125,7 +125,7 @@ class Task():
             self.present_text(screen=self.press_inst_screen, msg='pract-continue-repeat', func=self.present_practice,
                           waitKeys=False)
 
-    def present_task(self, prompt=True, **kwargs):
+    def present_task(self, prompt=True, duration=3, **kwargs):
         self.countdown_task()
         self.present_text(screen=self.task_screen, msg='task', audio=None, wait_time=3)
         if prompt:
@@ -144,7 +144,7 @@ class Task():
     def run(self, prompt=True, duration=3, **kwargs):
         self.present_instructions(prompt)
         # self.present_practice(prompt)
-        self.present_task(duration, prompt, **kwargs)
+        self.present_task(prompt, duration, **kwargs)
         self.present_complete()
         return self.events
 
@@ -163,7 +163,7 @@ class Task_countdown(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
-    def present_task(self, duration, prompt, **kwargs):
+    def present_task(self, prompt, duration=3, **kwargs):
         self.countdown_task()
         self.win.flip()
         core.wait(duration+2)
