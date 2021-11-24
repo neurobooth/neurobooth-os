@@ -133,7 +133,7 @@ class Task():
                           waitKeys=False)
 
     def present_complete(self):
-        self.present_text(screen=self.end_screen, msg='complete', audio=None, wait_time=2, waitKeys=False)
+        self.present_text(screen=self.end_screen, msg='complete', audio=None, wait_time=0, waitKeys=False)
         self.close()
         
     # Close win if just created for the task
