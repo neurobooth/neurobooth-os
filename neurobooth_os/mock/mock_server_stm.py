@@ -10,6 +10,7 @@ from time import sleep
 import socket
 import sys
 from collections import OrderedDict
+from datetime import datetime
 
 from neurobooth_os import config
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
@@ -41,6 +42,10 @@ def mock_stm_routine(host, port, conn):
 
             collection_id = data.split(":")[1]
             tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
+            study_id_date = tech_obs_log["study_id-date"]
+
+            # delete subj_date as not present in DB
+            del tech_obs_log["study_id-date"]
 
             task_func_dict = get_task_funcs(collection_id, conn)
             task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
@@ -59,7 +64,7 @@ def mock_stm_routine(host, port, conn):
             # task_name can be list of task1-task2-task3
             tasks, subj_id = data.split(":")[1:]
             task_karg ={"path": config.paths['data_out'],
-                        "subj_id": subj_id,
+                        "subj_id": study_id_date,
                         "marker_outlet": streams['marker'],
                         }
 
@@ -78,7 +83,7 @@ def mock_stm_routine(host, port, conn):
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
 
                  # Start/Stop rec in ACQ and run task
-                resp = socket_message(f"record_start:{subj_id}_{task}:{task}",
+                resp = socket_message(f"record_start:{study_id_date}_{task}:{task}",
                                      "dummy_acq", wait_data=3)
                 print(resp)
                 sleep(.5)
@@ -91,6 +96,7 @@ def mock_stm_routine(host, port, conn):
                 # Log tech_obs to database
                 tech_obs_log["tech_obs_id"] = t_obs_id
                 tech_obs_log['event_array'] = "event:datestamp"
+                tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)
 
         elif data in ["close", "shutdown"]:
