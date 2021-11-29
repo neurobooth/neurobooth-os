@@ -29,15 +29,15 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0),)
     layout = [
-        [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Combo(meta.get_subj_ids(conn), default_value="test", key='subj_id', size=(44, 1), background_color='white', text_color='black')],
+        [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Combo(meta.get_subj_ids(conn), readonly=True, key='subj_id', size=(44, 1), background_color='white', text_color='black')],
         [_space()],
         [sg.Text('Staff ID:', pad=((0, 0), 0), justification='left'),  sg.Input(default_text="AN", key='staff_id', size=(44, 1), background_color='white', text_color='black')],
         [_space()],
-        [sg.T("Study ID"),  sg.Combo(meta.get_study_ids(conn), key='study_id', enable_events=True, size=(44, 1))],
+        [sg.T("Study ID"),  sg.Combo(meta.get_study_ids(conn), key='study_id', enable_events=True, size=(44, 1), readonly=True)],
         [_space()],  
-        [sg.T("Collection ID"),  sg.Combo("", key='collection_id', enable_events=True, size=(44, 1))],
+        [sg.T("Collection ID"),  sg.Combo("", key='collection_id', enable_events=True, size=(44, 1), readonly=True)],
         [_space()],   
-        [sg.Text('Task combo: '), sg.Combo("",  size=(64, 1), key="_tasks_")],
+        [sg.Text('Task combo: '), sg.Combo("",  size=(64, 1), key="_tasks_", readonly=True)],
         [_space()],     
         [_space(), sg.ReadFormButton('Save', button_color=('white', 'black'), key="_init_sess_save_")],              
         ]
