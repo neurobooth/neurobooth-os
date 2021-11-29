@@ -55,29 +55,28 @@ def get_conn(remote=False, database='neurobooth'):
 
 def get_subj_ids(conn):
     table_subject = Table('subject', conn=conn)
-    subjects_df = table_subject.query('SELECT * from subject')
+    subjects_df = table_subject.query()
     subject_ids = subjects_df.index.values.tolist()  # for autocomplete
     return subject_ids
 
 
 def get_study_ids(conn):
     table_study = Table('study', conn=conn)
-    studies_df = table_study.query('SELECT * from study')
+    studies_df = table_study.query()
     study_ids = studies_df.index.values.tolist()
     return study_ids
 
 
 def get_collection_ids(study_id, conn):
     table_study = Table('study', conn=conn)
-    studies_df = table_study.query('SELECT * from study')
+    studies_df = table_study.query()
     collection_ids = studies_df.loc[study_id, "collection_ids"]
     return collection_ids
 
 
 def get_tasks(collection_id, conn):
     table_collection = Table('collection', conn=conn)
-    collection_df = table_collection.query(
-        f"SELECT * from collection WHERE collection_id = '{collection_id}'")
+    collection_df = table_collection.query(where=collection_id)
     tasks_ids, = collection_df["tech_obs_array"]
     return tasks_ids
 
@@ -95,7 +94,7 @@ def _new_tech_log_dict(application_id="neurobooth_os"):
 
 def get_tech_obs_logs(conn):
     table_tech_obs_log = Table("tech_obs_log", conn=conn)
-    tech_obs = table_tech_obs_log.query("SELECT * from tech_obs_log")
+    tech_obs = table_tech_obs_log.query()
     return tech_obs
 
 def _make_new_tech_obs_row(conn, subject_id):
@@ -111,7 +110,7 @@ def _fill_tech_obs_row(tech_obs_id, dict_vals, conn):
     
 def get_sens_file_logs(conn):
     table_sens_log = Table("sensor_file_log", conn=conn)
-    sens_log = table_sens_log.query("SELECT * from sensor_file_log")
+    sens_log = table_sens_log.query()
     return sens_log
  
 def make_new_sess_log_id():
