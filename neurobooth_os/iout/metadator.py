@@ -137,6 +137,10 @@ def _get_task_stim(stimulus_id, conn):
     taks_kwargs = {"duration": stimulus_df['duration'][0],
                     'num_iterations':stimulus_df['num_iterations'][0]}
 
+    if not stimulus_df['parameters'].isnull().all():
+        params = stimulus_df['parameters'].values[0]
+        taks_kwargs.update(params)
+
     # Load args from jason if any
     stim_fparam, = stimulus_df["parameters_file"]
     if stim_fparam is not None:

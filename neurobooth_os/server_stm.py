@@ -116,15 +116,16 @@ def Main():
                                      "acquisition", wait_data=3)
                 print(resp)
                 sleep(.5)
+                events = None
                 res = tsk_fun(**this_task_kwargs)
-                if hasattr(res, 'run'):  res.run(**this_task_kwargs)
+                if hasattr(res, 'run'):  events = res.run(**this_task_kwargs)
                 socket_message("record_stop", "acquisition")
 
                 print(f"Finished task:{task}")
 
                 # Log tech_obs to database
                 tech_obs_log["tech_obs_id"] = t_obs_id
-                tech_obs_log['event_array'] = "event:datestamp" # TODO: res should be event arrays
+                tech_obs_log['event_array'] = str(events) if events is not None else "event:datestamp"
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
                 
                 if streams.get('Eyelink') and \
