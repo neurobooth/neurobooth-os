@@ -97,7 +97,7 @@ def Main():
                 t_obs_id = task_func_dict[task]['t_obs_id']
                 tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
                 tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
-                tsk_strt_time = datetime.now().strftime("%Hh_%Mm_%Ss")
+                tsk_strt_time = datetime.now().strftime("%Hh-%Mm-%Ss")
 
                 # Signal CTR to start LSL rec
                 print(f"Initiating task:{task}:{t_obs_id}:{tech_obs_log_id}:{tsk_strt_time}")
