@@ -20,7 +20,7 @@ import neurobooth_os.tasks.utils as utl
 
 # %%
 # Define parameters
-subj_id = "test_nogui"
+subj_id = "test"
 collection_id = "mvp_030" 
 use_instruction_videos = False  # False if instruction videos not available
 
@@ -47,17 +47,19 @@ streams['Eyelink'].calibrated = True
 # %%
 # Select task
 print(list(task_func_dict))
-task = 'fixation_no_targ_task_1'
+tasks =  ['pursuit_task_1', 'fixation_no_targ_task_1', 'saccades_vertical_task_1', 'sit_to_stand_task_1', 'ahhh_task_1']
 
 # %%
-# Get task and params
-tsk_fun = task_func_dict[task]['obj']
-if not use_instruction_videos:
-    task_func_dict[task]['kwargs']['instruction_file'] = op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4')
-this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
+# Loop over each task and present it
 
-# %%
-# Run task
-res = tsk_fun(**this_task_kwargs)
-res.run(**this_task_kwargs)
+for task in tasks:
+    # Get task and params
+    tsk_fun = task_func_dict[task]['obj']
+    if not use_instruction_videos:
+        task_func_dict[task]['kwargs']['instruction_file'] = op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4')
+    this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
+
+    # Run task
+    res = tsk_fun(**this_task_kwargs)
+    res.run(**this_task_kwargs)
 
