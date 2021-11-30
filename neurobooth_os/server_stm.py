@@ -96,8 +96,11 @@ def Main():
                 
                 t_obs_id = task_func_dict[task]['t_obs_id']
                 tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
+                tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
+                tsk_strt_time = datetime.now().strftime("%Hh_%Mm_%Ss")
+
                 # Signal CTR to start LSL rec
-                print(f"Initiating task:{task}:{t_obs_id}:{tech_obs_log_id}")
+                print(f"Initiating task:{task}:{t_obs_id}:{tech_obs_log_id}:{tsk_strt_time}")
                 sleep(1)
 
                 # Start eyetracker if device in tech_obs 
@@ -107,10 +110,9 @@ def Main():
                         streams['Eyelink'].calibrate()
                     fname = f"{config.paths['data_out']}{study_id_date}_{t_obs_id}.edf"
                     streams['Eyelink'].start(fname)
-                            
 
                 # Start rec in ACQ and run task
-                resp = socket_message(f"record_start:{study_id_date}_{t_obs_id}:{task}",
+                resp = socket_message(f"record_start:{study_id_date}_{tsk_strt_time}_{t_obs_id}:{task}",
                                      "acquisition", wait_data=3)
                 print(resp)
                 sleep(.5)
@@ -123,8 +125,6 @@ def Main():
                 # Log tech_obs to database
                 tech_obs_log["tech_obs_id"] = t_obs_id
                 tech_obs_log['event_array'] = "event:datestamp" # TODO: res should be event arrays
-                tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
-
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
                 
                 if streams.get('Eyelink') and \
