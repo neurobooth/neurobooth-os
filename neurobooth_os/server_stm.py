@@ -108,11 +108,11 @@ def Main():
                             any('Eyelink' in d for d in list(task_devs_kw[task])):
                     if not streams['Eyelink'].calibrated:
                         streams['Eyelink'].calibrate()
-                    fname = f"{config.paths['data_out']}{study_id_date}_{t_obs_id}.edf"
+                    fname = f"{config.paths['data_out']}{study_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
                     streams['Eyelink'].start(fname)
 
                 # Start rec in ACQ and run task
-                resp = socket_message(f"record_start:{study_id_date}_{tsk_strt_time}_{t_obs_id}:{task}",
+                resp = socket_message(f"record_start:{config.paths['data_out']}{study_id_date}_{tsk_strt_time}_{t_obs_id}:{task}",
                                      "acquisition", wait_data=3)
                 print(resp)
                 sleep(.5)
