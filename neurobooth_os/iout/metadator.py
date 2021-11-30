@@ -80,6 +80,7 @@ def get_tasks(collection_id, conn):
     tasks_ids, = collection_df["tech_obs_array"]
     return tasks_ids
 
+
 def _new_tech_log_dict(application_id="neurobooth_os"):
     tech_obs_log = OrderedDict()
     tech_obs_log["subject_id"] = ""
@@ -92,14 +93,11 @@ def _new_tech_log_dict(application_id="neurobooth_os"):
     tech_obs_log["collection_id"] = ""
     return tech_obs_log
 
-def get_tech_obs_logs(conn):
-    table_tech_obs_log = Table("tech_obs_log", conn=conn)
-    tech_obs = table_tech_obs_log.query()
-    return tech_obs
 
 def _make_new_tech_obs_row(conn, subject_id):
     table = Table("tech_obs_log", conn=conn)
     return table.insert_rows([(subject_id,)], cols=['subject_id'])
+
 
 def _fill_tech_obs_row(tech_obs_id, dict_vals, conn):
     # tech_obs_id = str
@@ -107,22 +105,7 @@ def _fill_tech_obs_row(tech_obs_id, dict_vals, conn):
     table = Table("tech_obs_log", conn=conn)
     vals = list(dict_vals.values())
     table.update_row(tech_obs_id, tuple(vals), cols=list(dict_vals))
-    
-def get_sens_file_logs(conn):
-    table_sens_log = Table("sensor_file_log", conn=conn)
-    sens_log = table_sens_log.query()
-    return sens_log
- 
-def make_new_sess_log_id():
-    conn = get_conn()
-    sens_log = get_sens_file_logs(conn)
-    if list(sens_log.index) == []:
-        sens_id = "sens_log_1"
-    else:
-        sens_id_last = sens_log.index[-1]
-        num = int(sens_id_last.split("_")[-1])
-        sens_id = f"sens_log_{num + 1}"
-    return sens_id
+
 
 def _get_task_param(obs_id, conn):
     table_tech_obs = Table('tech_obs_data', conn=conn)
@@ -133,6 +116,7 @@ def _get_task_param(obs_id, conn):
     instr_id,  =  tech_obs_df["instruction_id"]
     instr_kwargs = _get_instruct_dic_param(instr_id, conn)
     return stimulus_id, devices_ids, sens_ids, instr_kwargs
+
 
 def _get_instruct_dic_param(instruction_id, conn):
     if instruction_id is None:
@@ -152,7 +136,6 @@ def _get_task_stim(stimulus_id, conn):
 
     taks_kwargs = {"duration": stimulus_df['duration'][0],
                     'num_iterations':stimulus_df['num_iterations'][0]}
-
 
     # Load args from jason if any
     stim_fparam, = stimulus_df["parameters_file"]
@@ -261,7 +244,6 @@ def meta_devinfo_tofunct(dev_id_param, dev_id):
 def get_kwarg_task(task_id, conn):
 
     stim_id, dev_ids, sens_ids, _ = _get_task_param(task_id, conn)
-
     dev_kwarg = {}
     for dev_id, dev_sens_ids in zip(dev_ids, sens_ids):
         # TODO test that dev_sens_ids are from correct dev_id, eg. dev_sens_ids =
