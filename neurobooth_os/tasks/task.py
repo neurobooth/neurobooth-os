@@ -87,15 +87,15 @@ class Task():
             self.add_event(msg)
 
     def add_event(self, event_name):
-        self.events.append( f'{event_name}:{datetime.now().strftime("%H:%M:%S")}')
+        self.events.append(f'{event_name}:{datetime.now().strftime("%H:%M:%S")}')
 
     def present_text(self, screen, msg, func=None, func_kwargs={}, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=True,
                      first_screen=False):
 
-        self.send_marker(f"{msg}-start", True)
+        self.send_marker(f"{msg}_start", True)
         utils.present(self.win, screen, audio=audio, wait_time=wait_time,
                       win_color=win_color, waitKeys=waitKeys, first_screen=first_screen)
-        self.send_marker(f"{msg}-end", True)
+        self.send_marker(f"{msg}_end", True)
 
         if func is not None:
             if utils.repeat_advance():
