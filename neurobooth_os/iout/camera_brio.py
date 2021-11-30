@@ -144,7 +144,7 @@ class VidRec_Brio():
 
     @catch_exception
     def prepare(self, name="temp_video"):
-        self.video_filename = "{}_brio{}_{}.avi".format(name, self.device_index, time.time())
+        self.video_filename = "{}_brio{}.avi".format(name, self.device_index)
         self.video_out = cv2.VideoWriter(self.video_filename, self.fourcc, self.fps, self.frameSize)
         self.outlet = self.createOutlet(self.video_filename)
         self.streaming = True
