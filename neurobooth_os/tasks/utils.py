@@ -83,6 +83,10 @@ def present(win, screen, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=
 
 def play_video(win, mov, wait_time=1, stop=True):
     clock  = core.Clock()
+    if mov.status == visual.FINISHED:
+        win.flip()
+        mov.seek(0)
+
     mov.play()
     while mov.status != visual.FINISHED:
         mov.draw()
