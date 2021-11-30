@@ -170,11 +170,11 @@ def gui(remote=False, database='neurobooth'):
             window['-Connect-'].Update(button_color=('black', 'red'))
             event, values = window.read(.1)
 
-            ctr_rec.prepare_devices(f"{collection_id}:{str(tech_obs_log)}", nodes=nodes)
             vidf_mrkr = marker_stream('videofiles')
             # Create event to capture outlet_id
             window.write_event_value('-OUTLETID-', f"['{vidf_mrkr.name}', '{vidf_mrkr.outlet_id}']")
 
+            ctr_rec.prepare_devices(f"{collection_id}:{str(tech_obs_log)}", nodes=nodes)
             print('Connecting devices')
 
         # Real-time plotting of inlet data.
