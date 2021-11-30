@@ -60,7 +60,7 @@ class VidRec_Intel():
     @catch_exception
     def prepare(self, name):
         self.name = name
-        self.video_filename = "{}_intel{}_{}.bag".format(name, self.device_index, time())
+        self.video_filename = "{}_intel{}.bag".format(name, self.device_index)
         self.config.enable_record_to_file(self.video_filename)
         print(f"-new_filename-:{self.streamName}:{op.split(self.video_filename)[-1]}")
 
@@ -92,7 +92,7 @@ class VidRec_Intel():
             self.n = frame.get_frame_number()
             try:
                 self.outlet.push_sample([self.frame_counter, self.n])
-            except BaseException:  # "OSError" from C++
+            except BaseException:
                 print("Reopening intel stream already closed")
                 self.outlet = self.createOutlet(self.name)
                 self.outlet.push_sample([self.frame_counter, self.n])
@@ -106,8 +106,6 @@ class VidRec_Intel():
     def stop(self):
         if self.recording:
             self.recording = False
-
-#            self.outlet.__del__()
 
     @catch_exception
     def close(self):

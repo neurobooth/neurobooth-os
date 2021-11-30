@@ -112,7 +112,7 @@ class VidRec_Flir():
         self.cam.BeginAcquisition()
         im = self.cam.GetNextImage(1000)
         self.frameSize = (im.GetWidth(), im.GetHeight())
-        self.video_filename = "{}_flir_{}.avi".format(name, time.time())
+        self.video_filename = "{}_flir.avi".format(name)
         # self.video_out = cv2.VideoWriter(self.video_filename, self.fourcc,
         #                                  self.fps, self.frameSize)
         print(f"-new_filename-:{self.streamName}:{op.split(self.video_filename)[-1]}")

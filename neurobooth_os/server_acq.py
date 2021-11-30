@@ -51,8 +51,7 @@ def Main():
         elif "record_start" in data:  
             # "record_start:filename:task_id" FILENAME = {subj_id}_{obs_id}
             print("Starting recording")
-            filename, task = data.split(":")[1:]
-            fname = config.paths['data_out'] + filename
+            fname, task = data.split(":")[1:]            
             for k in streams.keys():
                 if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]: 
                     if task_devs_kw[task].get(k):

@@ -93,7 +93,7 @@ def mock_stm_routine(host, port, conn):
                 sleep(1)
 
                  # Start/Stop rec in ACQ and run task
-                resp = socket_message(f"record_start:{study_id_date}_{tsk_strt_time}_{task}:{task}",
+                resp = socket_message(f"record_start:{config.paths['data_out']}{study_id_date}_{tsk_strt_time}_{task}:{task}",
                                      "dummy_acq", wait_data=3)
                 print(resp)
                 sleep(.5)
