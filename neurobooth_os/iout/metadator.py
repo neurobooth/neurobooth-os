@@ -76,7 +76,7 @@ def get_collection_ids(study_id, conn):
 
 def get_tasks(collection_id, conn):
     table_collection = Table('collection', conn=conn)
-    collection_df = table_collection.query(where=collection_id)
+    collection_df = table_collection.query(where=f"collection_id = '{collection_id}'")
     tasks_ids, = collection_df["tech_obs_array"]
     return tasks_ids
 
@@ -126,8 +126,7 @@ def make_new_sess_log_id():
 
 def _get_task_param(obs_id, conn):
     table_tech_obs = Table('tech_obs_data', conn=conn)
-    tech_obs_df = table_tech_obs.query(
-        f"SELECT * from tech_obs_data WHERE tech_obs_id = '{obs_id}'")
+    tech_obs_df = table_tech_obs.query(where=f"tech_obs_id = '{obs_id}'")
     devices_ids, = tech_obs_df["device_id_array"]
     sens_ids, = tech_obs_df["sensor_id_array"]
     stimulus_id, = tech_obs_df["stimulus_id"]
@@ -139,7 +138,7 @@ def _get_instruct_dic_param(instruction_id, conn):
     if instruction_id is None:
         return {}
     table = Table('instruction', conn=conn)
-    instr = table.query(f"SELECT * from instruction WHERE instruction_id = '{instruction_id}'")
+    instr = table.query(where=f"instruction_id = '{instruction_id}'")
     dict_instr = instr.iloc[0].to_dict()
     #remove unnecessary fields
     _ = [dict_instr.pop(l) for l in ['is_active', 'date_created', 'version', 'assigned_tech_obs']]
@@ -148,8 +147,7 @@ def _get_instruct_dic_param(instruction_id, conn):
 
 def _get_task_stim(stimulus_id, conn):
     table_stimulus = Table('stimulus', conn)
-    stimulus_df = table_stimulus.query(
-        f"SELECT * from stimulus WHERE stimulus_id = '{stimulus_id}'")
+    stimulus_df = table_stimulus.query(where=f"stimulus_id = '{stimulus_id}'")
     stim_file, = stimulus_df["stimulus_file"]
 
     taks_kwargs = {"duration": stimulus_df['duration'][0],
@@ -169,16 +167,14 @@ def _get_task_stim(stimulus_id, conn):
 
 def get_sens_param(sens_id, conn):
     table_sens = Table('sensor', conn=conn)
-    tech_obs_df = table_sens.query(
-        f"SELECT * from sensor WHERE sensor_id = '{sens_id}'")
+    tech_obs_df = table_sens.query(where=f"sensor_id = '{sens_id}'")
     param = tech_obs_df.iloc[0].to_dict()
     return param
 
 
 def get_dev_sn(dev_id, conn):
     table_sens = Table('device', conn=conn)
-    device_df = table_sens.query(
-        f"SELECT * from device WHERE device_id = '{dev_id}'")
+    device_df = table_sens.query(where=f"device_id = '{dev_id}'")
     sn = device_df["device_sn"]
     if len(sn) == 0:
         return None
