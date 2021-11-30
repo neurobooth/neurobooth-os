@@ -47,7 +47,7 @@ streams['Eyelink'].calibrated = True
 # %%
 # Select task
 print(list(task_func_dict))
-task = 'pursuit_task_1'
+task = 'fixation_no_targ_task_1'
 
 # %%
 # Get task and params
