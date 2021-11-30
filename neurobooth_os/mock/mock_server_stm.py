@@ -72,18 +72,28 @@ def mock_stm_routine(host, port, conn):
                 if task not in task_func_dict.keys():
                     print(f"Task {task} not implemented")
                     continue
-              
-                t_obs_id = task_func_dict[task]['t_obs_id']
-                tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
-                print(f"Initiating task:{task}:{t_obs_id}:{tech_obs_log_id}")
-                sleep(1)
-
-                # get task, params and run 
+  
+                # get task and params
                 tsk_fun = task_func_dict[task]['obj']
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
+                
+                # Do not record if calibration or intro instructions"
+                if 'calibration_task' in task or "intro_" in task:
+                      res = tsk_fun(**this_task_kwargs)
+                      res.run(**this_task_kwargs)
+                      continue                    
+                
+                t_obs_id = task_func_dict[task]['t_obs_id']
+                tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
+                tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
+                tsk_strt_time = datetime.now().strftime("%Hh_%Mm_%Ss")
+
+                # Signal CTR to start LSL rec
+                print(f"Initiating task:{task}:{t_obs_id}:{tech_obs_log_id}:{tsk_strt_time}")
+                sleep(1)
 
                  # Start/Stop rec in ACQ and run task
-                resp = socket_message(f"record_start:{study_id_date}_{task}:{task}",
+                resp = socket_message(f"record_start:{study_id_date}_{tsk_strt_time}_{task}:{task}",
                                      "dummy_acq", wait_data=3)
                 print(resp)
                 sleep(.5)
@@ -96,7 +106,6 @@ def mock_stm_routine(host, port, conn):
                 # Log tech_obs to database
                 tech_obs_log["tech_obs_id"] = t_obs_id
                 tech_obs_log['event_array'] = "event:datestamp"
-                tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)
 
         elif data in ["close", "shutdown"]:

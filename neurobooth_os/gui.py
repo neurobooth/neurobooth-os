@@ -52,9 +52,9 @@ def _process_received_data(serv_data, window):
             window.write_event_value('-update_butt-', elem)
 
         elif "Initiating task:" in data_row:
-            # Initiating task:task_id:obs_id:tech_obs_log_id
-            _, task_id, obs_id, obs_log_id = data_row.split(":")
-            window.write_event_value('task_initiated', f"['{task_id}', '{obs_id}', '{obs_log_id}']")
+            # Initiating task:task_id:obs_id:tech_obs_log_id:tsk_strt_time
+            _, task_id, obs_id, obs_log_id, tsk_strt_time = data_row.split(":")
+            window.write_event_value('task_initiated', f"['{task_id}', '{obs_id}', '{obs_log_id}', '{tsk_strt_time}']")
 
         elif "Finished task:" in data_row:
             # Finished task: task_id
@@ -250,11 +250,11 @@ def gui(remote=False, database='neurobooth'):
 
         # Signal a task started: record LSL data and update gui
         elif event == 'task_initiated':
-            # event values -> f"['{task_id}', '{t_obs_id}', '{tech_obs_log_id}']
-            task_id, t_obs_id, obs_log_id = eval(values[event])
+            # event values -> f"['{task_id}', '{t_obs_id}', '{tech_obs_log_id}, '{tsk_strt_time}']
+            task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
             print(f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}")
             # Start LSL recording
-            rec_fname = f"{tech_obs_log['study_id-date']}_{t_obs_id}"
+            rec_fname = f"{tech_obs_log['study_id-date']}_{tsk_strt_time}_{t_obs_id}"
             session.start_recording(rec_fname)
 
             window["task_title"].update("Running Task:")
