@@ -82,8 +82,7 @@ def _make_tasks_checkbox(task_list):
         """
         
     tasks = task_list.split(", ")
-    nxcol = int(np.ceil(len(tasks)/3))
-    task_chunks = [tasks[i:i+nxcol] for i in range(0, (len(tasks)), nxcol)]
+    task_chunks = [tasks[i:i+3] for i in range(0, (len(tasks)), 3)]
     
     field_tasks = []
     for chunk in task_chunks:
