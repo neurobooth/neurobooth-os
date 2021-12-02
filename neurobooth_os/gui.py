@@ -97,7 +97,7 @@ def gui(remote=False, database='neurobooth'):
     statecolors = {"-init_servs-": ["green", "yellow"],
                    "-Connect-": ["green", "yellow"],
                    }
-
+    steps = []  # keep track of steps done
     event, values = window.read(.1)
     while True:
         event, values = window.read(.5)
@@ -198,9 +198,21 @@ def gui(remote=False, database='neurobooth'):
                 running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
                 ctr_rec.task_presentation(running_task, sess_info['subj_id'],
                                           node=nodes[1])
+                steps.append("task_started")
             else:
-                sg.PopupError('No task selected')
+                sg.PopupErro('No task selected')
 
+        elif event == "Pause tasks":
+            if "task_started" not in steps:
+                sg.PopupError('Tasks not started')
+            else:
+                ctr_rec.message_presentation("pause tasks", nodes)
+                resp = sg.Popup('The next task will be paused', custom_text=('Continue tasks', 'Stop tasks'))
+                if resp == 'Continue tasks':
+                    ctr_rec.message_presentation("unpause tasks", nodes)
+                elif resp == 'Stop tasks':
+                    ctr_rec.message_presentation("stop tasks", nodes)
+                    
         # Save notes to a txt
         elif event == "_save_notes_":
             if values["_notes_taskname_"] == '':
