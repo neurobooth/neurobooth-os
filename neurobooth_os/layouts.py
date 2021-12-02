@@ -138,7 +138,7 @@ def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
 
         [_space(5), _lay_butt('Terminate servers', 'Shut Down'),
          _space(5), sg.ReadFormButton('Start', button_color=('white', 'black')),
-         _space(5), _lay_butt('Test Comm', 'Test_network')
+         _space(5), _lay_butt('Pause', 'Pause tasks'),
          ]]
 
     layout_col2 = [[sg.Image(data=imgbytes, key='Webcam', size=frame_sz)],

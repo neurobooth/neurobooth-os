@@ -16,6 +16,7 @@ from neurobooth_os import config
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
 from neurobooth_os.netcomm import socket_message, get_client_messages
 from neurobooth_os.tasks.task_importer import get_task_funcs
+from neurobooth_os.tasks.utils import get_data_timeout
 from neurobooth_os.iout import metadator as meta
 
 
@@ -103,11 +104,27 @@ def mock_stm_routine(host, port, conn):
                 socket_message("record_stop", "dummy_acq")
 
                 print(f"Finished task:{task}")
-
+                
                 # Log tech_obs to database
                 tech_obs_log["tech_obs_id"] = t_obs_id
                 tech_obs_log['event_array'] = str(events) if events is not None else "event:datestamp"
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)
+                
+                # Check if pause requested, unpause or stop
+                data = get_data_timeout(s1, .1)
+                if data == "pause tasks":
+                    print("Session Paused")
+                    
+                    conn, _ = s1.accept()
+                    data = conn.recv(1024)
+                    data = data.decode("utf-8")
+                    
+                    if data == "unpause tasks":
+                        continue                    
+                    elif data == "stop tasks":
+                        break
+                    else:
+                        print("While paused received another message")
 
         elif data in ["close", "shutdown"]:
             streams = close_streams(streams)

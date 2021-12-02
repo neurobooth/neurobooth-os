@@ -8,10 +8,10 @@ from datetime import datetime
 import neurobooth_os
 from neurobooth_os import config
 from neurobooth_os.iout.screen_capture import ScreenMirror
-from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
+from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
 from neurobooth_os.iout import metadator as meta
 
-from neurobooth_os.netcomm import socket_message, node_info, get_client_messages, NewStdout
+from neurobooth_os.netcomm import socket_message, get_client_messages, NewStdout, get_data_timeout
 
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
@@ -128,10 +128,26 @@ def Main():
                 tech_obs_log['event_array'] = str(events) if events is not None else "event:datestamp"
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
                 
-                if streams.get('Eyelink') and \
-                            any('Eyelink' in d for d in list(task_devs_kw[task])):
+                if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
                     streams['Eyelink'].stop()
-
+                
+                # Check if pause requested, unpause or stop
+                data = get_data_timeout(s1, .1)
+                if data == "pause tasks":
+                    pause_screen = utl.create_text_screen(win, text="Session Paused")
+                    utl.present(win, pause_screen, waitKeys=False)
+                    
+                    conn, _ = s1.accept()
+                    data = conn.recv(1024)
+                    data = data.decode("utf-8")
+                    
+                    if data == "unpause tasks":
+                        continue                    
+                    elif data == "stop tasks":
+                        break
+                    else:
+                        print("While paused received another message")
+                    
             finish_screen(win)
 
         elif data in ["close", "shutdown"]:
