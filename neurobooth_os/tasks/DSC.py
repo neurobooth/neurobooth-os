@@ -1,24 +1,33 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar  9 14:55:50 2021
+Created on Tue Nov 16 14:07:20 2021
 
-@author: adonay
+@author: Adonay Nunes
 """
+
+import os.path as op
 import random
 import time
 from datetime import datetime
-import os.path as op
-
 import numpy as np
 import pandas as pd
 
-from psychopy import core, visual, event
-from psychopy.visual.textbox2 import TextBox2
-from psychopy import iohub
+from psychopy import core, visual, event, iohub
 from psychopy.iohub import launchHubServer
+from psychopy.visual.textbox2 import TextBox2
 
-from neurobooth_os.tasks.utils import make_win
+import neurobooth_os
+from neurobooth_os.tasks import utils
+from neurobooth_os.tasks import Task
+
+
+def my_textbox2(win, text, pos=(0, 0), size=(None, None)):
+     
+    tbx = TextBox2(win, pos=pos, color='black', units='pix', lineSpacing=.9,
+                    letterHeight=20, text=text, font="Arial",  # size=(20, None),
+                    borderColor=None, fillColor=None, editable=False, alignment='center')
+    return tbx
+    
 
 
 def present_msg(elems, win, key_resp="space"):
@@ -26,31 +35,25 @@ def present_msg(elems, win, key_resp="space"):
         e.draw()
     win.flip()
     event.waitKeys(keyList=key_resp)
-    # while not event.getKeys(keyList=key_resp):
-    #     a = "next"
-    #     # print(a)
 
 
-class DSC():
-
-    def __init__(self, marker_outlet=None, win=None, path="", subj_id="test", **kwarg):
-
-        self.sess_log = False
+class DSC(Task):
+    def __init__(self, path="", subj_id="test", duration=10, **kwargs):
+        super().__init__(**kwargs)
+   
         self.testVersion = 'DSC_simplified_oneProbe_2019'
-        self.chosenInput = 'keys'    # input type (taps or keys)
         self.path_out = path
         self.subj_id = subj_id
         self.frameSequence = []
         self.tmbUI = dict.fromkeys(["response", "symbol", "digit", "message",
                                     "status", "rt", "downTimestamp", ])
-        self.showresults = True  # URL parameter: if they want to show results in a popup window
+        
         self.results = []  # array to store trials details and responses
-        self.outcomes = {}             # # object containing outcome variables
+        self.outcomes = {}  # object containing outcome variables
         self.testStart = 0  # start timestamp of the test
-        self.demo = False  # URL parameter: run in demo mode
-        self.filename = "fname.csv"  # filename for data
-        self.fpath = op.dirname(op.abspath(__file__)).replace("\\", "/")
-        self.tot_time = 90
+        self.rootdir = op.join(neurobooth_os.__path__[0], 'tasks', 'DSC')
+        self.tot_time = duration
+        self.showresults = True
 
         try:
             self.io = launchHubServer()
@@ -61,33 +64,15 @@ class DSC():
 
         self.keyboard = self.io.devices.keyboard
 
-        if marker_outlet is not None:
-            self.with_lsl = True
-            self.marker = marker_outlet
-            # self.marker.push_sample([f"Streaming_0_{time.time()}"])
-        else:
-            self.with_lsl = False
+        self.setup(self.win)
 
-        self.setup(win)
+
+    def run(self, **kwargs):
         self.nextTrial()
         self.io.quit()
 
-    def send_marker(self, msg=None):
-        # msg format str {word}_{value}
-        ts = time.time()
-        dt_object = datetime.fromtimestamp(ts)
-        ts_meta = dt_object.strftime("%Y-%m-%d %H:%M:%S")
-
-        if self.with_lsl:
-            self.marker.push_sample([f"{msg}:{ts}"])
-        if self.sess_log:
-            if any([True for m in ["Instruction-start", "Instruction-end",
-                                   "Task-start", "Task-end"] if m in msg]):
-                # marker_list.append(...)
-                pass
 
     def my_textbox2(self, text, pos=(0, 0), size=(None, None)):
-        # xsize = min(len(text), 30)
         tbx = TextBox2(self.win, pos=pos, color='black', units='deg', lineSpacing=.9,
                        letterHeight=1.1, text=text, font="Arial",  # size=(20, None),
                        borderColor=None, fillColor=None, editable=False, alignment='center')
@@ -96,19 +81,8 @@ class DSC():
     def setup(self, win):
 
         self.tmbUI["UIevents"] = ['keys']
-#        self.tmbUI["UIkeys"] = [keyToCode('1'),keyToCode('2'),keyToCode('3')]
-
         self.tmbUI['UIelements'] = ['resp1', 'resp2', 'resp3']
         self.tmbUI['highlight'] = "red"
-
-        # create psychopy window
-        if win is None:
-            print("*No win provided")
-            self.win = make_win()
-            self.win_temp = True
-        else:
-            self.win = win
-            self.win_temp = False
 
         self.win.color = "white"
         self.win.flip()
@@ -124,7 +98,6 @@ class DSC():
         # store the results
         if frame["type"] == "practice" or (frame["type"] == "test" and
                                            self.tmbUI["status"] != "timeout"):
-
             self.results.append({
                 "type": frame["type"],  # one of practice or test
                 "symbol": frame["symbol"],  # symbol index
@@ -138,21 +111,18 @@ class DSC():
 
         if frame["type"] == "practice":
 
-            # on practice trials, if the input event returns a timeout
-            # or the response is not correct,
-            # stop the sequence and advise the participant
+            # on practice trials, stop sequence and advise participant if input timeout or not correct
             if self.tmbUI["status"] == "timeout" or not correct:
                 print(f"corr: {correct}, status: {self.tmbUI['status']}")
-                # rewind the frame sequence by one frame,
-                # so that the same frame is displayed again
+                # rewind frame sequence by one frame, so same frame is displayed again
                 self.frameSequence.insert(0, frame)
 
                 message = [
-                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 6), units='deg'),
-                    visual.ImageStim(self.win, image=self.fpath + '/DSC/images/key.png', pos=(0, 0), units='deg'),
-                    self.my_textbox2(f"You should press <b>{frame['digit']}</b> on the <b>keyboard</b> " +
-                                     "when you see this symbol", (0, -7)),
-                    self.my_textbox2('Press [continue] ', (0, -10)),
+                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 8), units='deg'),
+                    visual.ImageStim(self.win, image=op.join(self.rootdir, 'images/key.png'), pos=(0, 0), units='deg'),
+                    self.my_textbox2(f"You should press **{frame['digit']}** on the <b>keyboard</b> " +
+                                     "when you see this symbol", (0, -8)),
+                    self.my_textbox2('Press continue', (0, -10)),
                 ]
 
                 present_msg(message, self.win)
@@ -160,7 +130,6 @@ class DSC():
         elif frame["type"] == "test":
 
             if self.tmbUI["status"] != "timeout":
-                # print(f"making frame, status {self.tmbUI['status']}")
                 # choose a symbol randomly, but avoid 1-back repetitions
                 while True:
                     symbol = random.randint(1, 6)
@@ -175,7 +144,7 @@ class DSC():
                     "message": "",
                     "symbol": symbol,
                     "digit": digit,
-                    "source": self.fpath + f'/DSC/images/{symbol}.gif'
+                    "source": op.join(self.rootdir, f'images/{symbol}.png')
                 })
 
     def nextTrial(self):
@@ -187,63 +156,42 @@ class DSC():
 
             # check if it's the startup frame
             if frame["type"] in ["begin", "message"]:
-
                 present_msg(frame["message"], self.win)
 
             # deal with practice and test frames
             else:
 
                 stim = [
-                    visual.ImageStim(
-                        self.win,
-                        image=frame["source"],
-                        pos=(
-                            0,
-                            6),
-                        units='deg'),
-                    visual.ImageStim(
-                        self.win,
-                        image=self.fpath +
-                        '/DSC/images/key.png',
-                        pos=(
-                            0,
-                            0),
-                        units='deg'),
-                ]
+                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 8), units='deg'),
+                    visual.ImageStim(self.win, image= op.join(self.rootdir, 'images/key.png'),
+                                    pos=(0, 0), units='deg'),
+                    ]
 
                 # set response timeout:
                 # - for practice trials -> a fixed interval
-                # - for test trials -> what's left of 90 seconds since start,
-                #                      with a minimum of 150 ms
+                # - for test trials -> what's left of self.duration seconds since start, with a minimum of 150 ms
                 if frame["type"] == "practice":
                     self.tmbUI["timeout"] = 50
                 else:
-
-                    if not self.testStart:
+                    if self.testStart == 0:
                         self.testStart = time.time()
 
-                    if self.demo == 'true':
-                        self.tmbUI["timeout"] = 100 - (time.time() - self.testStart)
-
-                    else:
-                        self.tmbUI["timeout"] = self.tot_time - (time.time() - self.testStart)
-
+                    self.tmbUI["timeout"] = self.tot_time - (time.time() - self.testStart)
                     if self.tmbUI["timeout"] < .150:
                         self.tmbUI["timeout"] = .150
-                        # print("Timeout small, turned to .150")
 
                 for s in stim:
                     s.draw()
                 self.win.flip()
 
-                self.send_marker("Trial-start_0")
+                self.send_marker("Trial-start")
                 trialClock = core.Clock()
                 countDown = core.CountdownTimer().add(self.tmbUI["timeout"])
 
                 countDown = core.CountdownTimer()
                 countDown.add(self.tmbUI["timeout"])
 
-                kpos = [-2.2, 0, 2.2]
+                kpos = [-2.4, 0, 2.4]
                 trialClock = core.Clock()
                 timed_out = True
                 while countDown.getTime() > 0:
@@ -256,11 +204,10 @@ class DSC():
                         self.tmbUI["downTimestamp"] = key[0][1]
                         self.tmbUI["status"] = "Ontime"
                         timed_out = False
-                        self.send_marker("Trial-res_1")
+                        
                         rec_xpos = kpos[int(key[0][0]) - 1]
                         stim.append(
-                            visual.Rect(self.win, units='deg', lineColor='red',
-                                        pos=(rec_xpos, -2.6), size=(2.5, 2.5),
+                            visual.Rect(self.win, units='deg', lineColor='red',pos=(rec_xpos, -2.9), size=(2.5, 2.5),
                                         lineWidth=4))
 
                         _ = self.keyboard.getReleases()
@@ -268,17 +215,16 @@ class DSC():
                             ss.draw()
                         self.win.flip()
                         response_events = self.keyboard.waitForReleases()
+                        self.send_marker("Trial-res_1")
                         break
 
                 if timed_out:
                     print("timed out")
                     self.tmbUI["status"] = "timeout"
                     self.tmbUI["response"] = ["key", ""]
-                self.send_marker("Trial-end_1")
+                self.send_marker("Trial-end")
                 self.onreadyUI(frame)
 
-        # elif the sequence is empty, we are done!
-        print("Sequence frames done")
 
         # all test trials (excluding practice and timeouts)
         tmp1 = [r for r in self.results
@@ -300,10 +246,12 @@ class DSC():
         if self.showresults:
             mes = [self.my_textbox2(f"Your score is {score}. \nThe test is " +
                                     "over. \nThank you for participating!", (0, 2)),
-                   self.my_textbox2('Press <b>[continue]</b>', pos=(0, -7))
+                   self.my_textbox2('Press continue', pos=(0, -7))
                    ]
 
             present_msg(mes, self.win, key_resp="space")
+        else:
+            self.present_complete()
 
         # Close win if just created for the task
         if self.win_temp:
@@ -319,60 +267,22 @@ class DSC():
         df_out.to_csv(self.path_out + f'{self.subj_id}_DSC_outcomes.csv')
 
     def setFrameSequence(self):
-
-        # messages
         testMessage = {
-            "begin": [
-                self.my_textbox2("Digit-Symbol Coding Test", (0, 6)),
-
-                self.my_textbox2('Press <b>[Continue]</b> for instructions', (0, -6)),
-
-                visual.ImageStim(self.win, image=self.fpath + '/DSC/images/key.png', pos=(0, 0), units='deg')
-            ],
+            "begin": [visual.ImageStim(self.win, image=op.join(self.rootdir, 'intro.png'), pos=(0, 0), units='deg')],
 
             "practice": [
-                [
-                    self.my_textbox2("Instructions", (0, 6)),
-
-                    self.my_textbox2("Each <b>symbol</b> has a <b>number</b>", (0, -6)),
-
-                    self.my_textbox2('Press [Continue] to continue', (0, -8)),
-
-                    visual.ImageStim(self.win, image=self.fpath + '/DSC/images/key.png', pos=(0, 0), units='deg')
-                ],
-
-                [
-                    visual.ImageStim(self.win, image=self.fpath + '/DSC/images/1.gif', pos=(0, 6), units='deg'),
-
-                    visual.ImageStim(self.win, image=self.fpath + '/DSC/images/key.png', pos=(0, 0), units='deg'),
-
-                    self.my_textbox2("When a symbol appears at the top, " +
-                                     "press its number on the <b>keyboard</b> \n" +
-                                     "(here it is  <b>1</b>).", (0, -6)),
-
-                    self.my_textbox2('Press <b>[Continue]</b> to continue', (0, -10)),
-                ],
-                [
-                    visual.ImageStim(self.win, image=self.fpath + '/DSC/images/2.gif', pos=(0, 6), units='deg'),
-
-                    visual.ImageStim(self.win, image=self.fpath + '/DSC/images/keySmall.png', pos=(0, 0), units='deg'),
-
-                    self.my_textbox2("Let's practice a few symbols.", (0, -6))
-                ]
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'inst_1.png'), pos=(0, 0), units='deg')],
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'inst_2.png'), pos=(0, 0), units='deg'),],
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'inst_3.png'), pos=(0, 0), units='deg')]
             ],
             "test": [
-                self.my_textbox2("Excellent! \nYou have completed the practice.\n " +
-                                 "Now let's do more.", (0, 6)),
-
-                self.my_textbox2("Your score will be how many correct responses you" +
-                                 " make in a minute and a half,so try to be \
-                                 <b>ACCURATE</b> and <b>QUICK</b>!", (0, -4)),
-                self.my_textbox2('Press <b>[Continue]</b> to continue', (0, -10))
+                visual.ImageStim(self.win, image=op.join(self.rootdir, 'inst_end.png'), pos=(0, 0), units='deg'),
             ]
         }
 
         # type of frame to display
         frameType = ["begin",
+                     "message",
                      "message",
                      "message",
                      "practice",
@@ -385,16 +295,17 @@ class DSC():
         frameMessage = [testMessage["begin"],
                         testMessage["practice"][0],
                         testMessage["practice"][1],
+                        testMessage["practice"][2],
                         "",
                         "",
                         "",
                         testMessage["test"], ""]
 
         # symbol to display
-        frameSymbol = [0, 0, 0, 1, 3, 5, 0, 4]
+        frameSymbol = [0, 0, 0, 0, 1, 3, 5, 0, 4]
 
         # corresponding digit
-        frameDigit = [0, 0, 0, 1, 3, 2, 0, 1]
+        frameDigit = [0, 0, 0, 0, 1, 3, 2, 0, 1]
 
         # push all components into the frames chain
         for i in range(len(frameType)):
@@ -404,32 +315,23 @@ class DSC():
                     "message": frameMessage[i],
                     "symbol": frameSymbol[i],
                     "digit": frameDigit[i],
-                    "source": self.fpath + f'/DSC/images/{frameSymbol[i]}.gif'
+                    "source":  op.join(self.rootdir, f'images/{frameSymbol[i]}.png')
                 })
 
 
-if __name__ == '__main__':
-    from neurobooth_os.tasks.DSC import DSC
+if __name__ == "__main__":
+    from psychopy import sound, core, event, monitors, visual, monitors
+
+    # monitor_width=55 
+    # monitor_distance=50
+    # mon = monitors.getAllMonitors()[0]
+    # customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
+    win = visual.Window(
+    [1920, 1080],   
+    fullscr=False, 
+    units='pix',    
+    color=(0, 0, 0) 
+    )
 
     dsc = DSC()
-
-
-#         <img id="probe" class="img-responsive" src="images/1.gif">
-#     </div>
-#     <br><br>
-#     <div id="keyRow1">
-#         <img src="images/1.gif">
-#         <img src="images/2.gif">
-#         <img src="images/3.gif">
-#     </div>
-#     <div id="keyRow2">
-#         <img src="images/4.gif">
-#         <img src="images/5.gif">
-#         <img src="images/6.gif">
-#     </div>
-#     <div id="response">
-#         <img class="img-responsive" id="resp1" src="images/resp1.png">
-#         <img class="img-responsive" id="resp2" src="images/resp2.png">
-#         <img class="img-responsive" id="resp3" src="images/resp3.png">
-#     </div>
-# </div>
+    dsc.run() 

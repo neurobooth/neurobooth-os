@@ -26,7 +26,7 @@ def welcome_screen(with_audio=True, win=None):
     if win is None:
         win = utl.make_win(full_screen=False)
 
-    fname = op.join(neurobooth_os.__path__[0], 'tasks/assets/NB1.jpg')
+    fname = op.join(neurobooth_os.__path__[0], 'tasks/assets/welcome.jpg')
     welcome = visual.ImageStim(win, image=fname, units='pix')
     if with_audio:
         fname = op.join(neurobooth_os.__path__[0], 'tasks/assets/welcome.wav')
@@ -34,7 +34,7 @@ def welcome_screen(with_audio=True, win=None):
                                     name='welcome_instructions')
     else:
         welcome_audio = None
-    utl.present(win, welcome, welcome_audio, 5, waitKeys=True, first_screen=True)
+    utl.present(win, welcome, welcome_audio, 0, waitKeys=True, first_screen=True)
 
     win.winHandle.activate()
     return win
