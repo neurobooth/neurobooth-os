@@ -125,7 +125,7 @@ def Main():
 
                 # Log tech_obs to database
                 tech_obs_log["tech_obs_id"] = t_obs_id
-                tech_obs_log['event_array'] = str(events) if events is not None else "event:datestamp"
+                tech_obs_log['event_array'] = str(events).replace("'", '"') if events is not None else "event:datestamp"
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
                 
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
@@ -137,8 +137,8 @@ def Main():
                     pause_screen = utl.create_text_screen(win, text="Session Paused")
                     utl.present(win, pause_screen, waitKeys=False)
                     
-                    conn, _ = s1.accept()
-                    data = conn.recv(1024)
+                    connx2, _ = s1.accept()
+                    data = connx2.recv(1024)
                     data = data.decode("utf-8")
                     
                     if data == "unpause tasks":
