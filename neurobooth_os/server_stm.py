@@ -58,7 +58,7 @@ def Main():
                 streams = reconnect_streams(streams)
             else:
                 streams = start_lsl_threads("presentation", collection_id, win=win)               
-                print("Preparing devices")
+                print("Preparing devices")  
 
             print("UPDATOR:-Connect-")
 
@@ -73,7 +73,13 @@ def Main():
                         }
             if streams.get('Eyelink'):
                     task_karg["eye_tracker"] = streams['Eyelink']
-                
+                    
+            # Preload tasks media
+            for task in list(task_func_dict):
+                tsk_fun = task_func_dict[task]['obj']
+                this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
+                task_func_dict[task]['obj'] = tsk_fun(**this_task_kwargs)
+
             win = welcome_screen(with_audio=False, win=win)
             # When win is created, stdout pipe is reset
             if not hasattr(sys.stdout, 'terminal'):
@@ -90,8 +96,7 @@ def Main():
                 
                 # Do not record if calibration or intro instructions"
                 if 'calibration_task' in task or "intro_" in task:
-                      res = tsk_fun(**this_task_kwargs)
-                      res.run(**this_task_kwargs)
+                      tsk_fun.run(**this_task_kwargs)
                       continue                    
                 
                 t_obs_id = task_func_dict[task]['t_obs_id']
@@ -116,11 +121,9 @@ def Main():
                                      "acquisition", wait_data=3)
                 print(resp)
                 sleep(.5)
-                events = None
-                res = tsk_fun(**this_task_kwargs)
-                if hasattr(res, 'run'):  events = res.run(**this_task_kwargs)
-                socket_message("record_stop", "acquisition")
 
+                events = tsk_fun.run(**this_task_kwargs)
+                socket_message("record_stop", "acquisition")
                 print(f"Finished task:{task}")
 
                 # Log tech_obs to database
