@@ -38,7 +38,7 @@ def present_msg(elems, win, key_resp="space"):
 
 
 class DSC(Task):
-    def __init__(self, path="", subj_id="test", duration=10, **kwargs):
+    def __init__(self, path="", subj_id="test", duration=90, **kwargs):
         super().__init__(**kwargs)
    
         self.testVersion = 'DSC_simplified_oneProbe_2019'
@@ -53,7 +53,7 @@ class DSC(Task):
         self.testStart = 0  # start timestamp of the test
         self.rootdir = op.join(neurobooth_os.__path__[0], 'tasks', 'DSC')
         self.tot_time = duration
-        self.showresults = True
+        self.showresults = False
 
         try:
             self.io = launchHubServer()
@@ -118,10 +118,10 @@ class DSC(Task):
                 self.frameSequence.insert(0, frame)
 
                 message = [
-                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 8), units='deg'),
-                    visual.ImageStim(self.win, image=op.join(self.rootdir, 'images/key.png'), pos=(0, 0), units='deg'),
+                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 6), units='deg'),
+                    visual.ImageStim(self.win, image=op.join(self.rootdir, 'DSC/images/key.png'), pos=(0, 0), units='deg'),
                     self.my_textbox2(f"You should press **{frame['digit']}** on the <b>keyboard</b> " +
-                                     "when you see this symbol", (0, -8)),
+                                     "when you see this symbol", (0, -7)),
                     self.my_textbox2('Press continue', (0, -10)),
                 ]
 
@@ -144,7 +144,7 @@ class DSC(Task):
                     "message": "",
                     "symbol": symbol,
                     "digit": digit,
-                    "source": op.join(self.rootdir, f'images/{symbol}.png')
+                    "source": op.join(self.rootdir, f'images/{symbol}.gif')
                 })
 
     def nextTrial(self):
@@ -162,7 +162,7 @@ class DSC(Task):
             else:
 
                 stim = [
-                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 8), units='deg'),
+                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 6), units='deg'),
                     visual.ImageStim(self.win, image= op.join(self.rootdir, 'images/key.png'),
                                     pos=(0, 0), units='deg'),
                     ]
@@ -191,7 +191,7 @@ class DSC(Task):
                 countDown = core.CountdownTimer()
                 countDown.add(self.tmbUI["timeout"])
 
-                kpos = [-2.4, 0, 2.4]
+                kpos = [-2.2, 0, 2.2]
                 trialClock = core.Clock()
                 timed_out = True
                 while countDown.getTime() > 0:
@@ -207,7 +207,7 @@ class DSC(Task):
                         
                         rec_xpos = kpos[int(key[0][0]) - 1]
                         stim.append(
-                            visual.Rect(self.win, units='deg', lineColor='red',pos=(rec_xpos, -2.9), size=(2.5, 2.5),
+                            visual.Rect(self.win, units='deg', lineColor='red',pos=(rec_xpos, -2.6), size=(2.5, 2.5),
                                         lineWidth=4))
 
                         _ = self.keyboard.getReleases()
@@ -268,15 +268,15 @@ class DSC(Task):
 
     def setFrameSequence(self):
         testMessage = {
-            "begin": [visual.ImageStim(self.win, image=op.join(self.rootdir, 'intro.png'), pos=(0, 0), units='deg')],
+            "begin": [visual.ImageStim(self.win, image=op.join(self.rootdir, 'intro.jpg'), pos=(0, 0), units='deg')],
 
             "practice": [
-                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'inst_1.png'), pos=(0, 0), units='deg')],
-                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'inst_2.png'), pos=(0, 0), units='deg'),],
-                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'inst_3.png'), pos=(0, 0), units='deg')]
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_1.jpg'), pos=(0, 0), units='deg')],
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_2.jpg'), pos=(0, 0), units='deg'),],
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_3.jpg'), pos=(0, 0), units='deg'),],
             ],
             "test": [
-                visual.ImageStim(self.win, image=op.join(self.rootdir, 'inst_end.png'), pos=(0, 0), units='deg'),
+                visual.ImageStim(self.win, image=op.join(self.rootdir, 'practice_end.jpg'), pos=(0, 0), units='deg'),
             ]
         }
 
@@ -284,7 +284,7 @@ class DSC(Task):
         frameType = ["begin",
                      "message",
                      "message",
-                     "message",
+                      "message",
                      "practice",
                      "practice",
                      "practice",
@@ -315,23 +315,24 @@ class DSC(Task):
                     "message": frameMessage[i],
                     "symbol": frameSymbol[i],
                     "digit": frameDigit[i],
-                    "source":  op.join(self.rootdir, f'images/{frameSymbol[i]}.png')
+                    "source":  op.join(self.rootdir, f'images/{frameSymbol[i]}.gif')
                 })
 
 
 if __name__ == "__main__":
     from psychopy import sound, core, event, monitors, visual, monitors
 
-    # monitor_width=55 
-    # monitor_distance=50
-    # mon = monitors.getAllMonitors()[0]
-    # customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
+    monitor_width=55 
+    monitor_distance=50
+    mon = monitors.getAllMonitors()[0]
+    customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
     win = visual.Window(
     [1920, 1080],   
-    fullscr=False, 
+    fullscr=False,  
+    monitor=customMon,
     units='pix',    
     color=(0, 0, 0) 
     )
 
-    dsc = DSC()
+    dsc = DSC(win=win)
     dsc.run() 
