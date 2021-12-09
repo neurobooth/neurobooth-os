@@ -27,11 +27,11 @@ text_end='Thank you. You have completed this task'
 def send_marker(marker, msg):
     marker.push_sample([f"{msg}_{time.time()}"])
 
-def make_win(full_screen=True, monitor_width=55, monitor_distance=50):
+def make_win(full_screen=True, monitor_width=55, monitor_distance=60):
     mon = monitors.getAllMonitors()[0]
     customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
 
-    mon_size = monitors.Monitor(mon).getSizePix()
+    mon_size = [1920, 1080] #monitors.Monitor(mon).getSizePix()
     customMon.setSizePix(mon_size)
     customMon.saveMon()
 
