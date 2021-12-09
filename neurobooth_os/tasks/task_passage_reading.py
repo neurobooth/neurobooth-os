@@ -23,5 +23,5 @@ class Passage_Reading(Task):
         self.present_text(screen=screen, msg='task', audio=None, wait_time=5)
         
         if prompt:
-            self.present_text(screen=self.continue_repeat_screen, msg='continue-repeat', func=self.present_task,
+            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
                             waitKeys=False)   
