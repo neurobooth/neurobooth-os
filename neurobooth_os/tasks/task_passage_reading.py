@@ -17,7 +17,7 @@ class Passage_Reading(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
-    def present_task(self, prompt=True, **kwargs):
+    def present_task(self, prompt=True, duration=0, **kwargs):
         fname = op.join(neurobooth_os.__path__[0], 'tasks/assets/passage_reading_1536x864.jpg')
         screen = utils.create_image_screen(self.win, fname)
         self.present_text(screen=screen, msg='task', audio=None, wait_time=5)

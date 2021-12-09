@@ -125,7 +125,7 @@ class Task():
             self.present_text(screen=self.press_inst_screen, msg='pract-continue-repeat', func=self.present_practice,
                           waitKeys=False)
 
-    def present_task(self, prompt=True, duration=None, **kwargs):
+    def present_task(self, prompt=True, duration=0, **kwargs):
         self.countdown_task()
         self.present_text(screen=self.task_screen, msg='task', audio=None, wait_time=3)
         if prompt:

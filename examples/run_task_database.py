@@ -11,6 +11,7 @@ Use :func:`~neurobooth_os.iout.metadator.get_conn` to get a connection to the da
 
 # %%
 import os.path as op
+import time
 
 import neurobooth_os
 import neurobooth_os.iout.metadator as meta
@@ -22,11 +23,11 @@ import neurobooth_os.tasks.utils as utl
 # Define parameters
 subj_id = "test"
 collection_id = "mvp_030" 
-use_instruction_videos = False  # False if instruction videos not available
+use_instruction_videos = True  # False if instruction videos not available
 
 # %%
 # Prepare for task presentation
-conn = meta.get_conn(remote=True, database='neurobooth')
+conn = meta.get_conn(remote=False, database='neurobooth')
 win = utl.make_win(full_screen=False)
 
 task_func_dict = get_task_funcs(collection_id, conn)
@@ -48,10 +49,17 @@ streams['Eyelink'].calibrated = True
 # Select task
 print(list(task_func_dict))
 tasks =  ['pursuit_task_1', 'fixation_no_targ_task_1', 'saccades_vertical_task_1', 'sit_to_stand_task_1', 'ahhh_task_1']
+tasks = list(task_func_dict)
+
+# Delete calibration task as there is no eyetracker
+try:
+ del tasks[tasks.index('calibration_task_1')]
+except ValueError:
+    print('calibration_task_1 not present')
 
 # %%
-# Loop over each task and present it
-
+# Preload media 
+t0 = time.time()
 for task in tasks:
     # Get task and params
     tsk_fun = task_func_dict[task]['obj']
@@ -60,6 +68,13 @@ for task in tasks:
     this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
 
     # Run task
-    res = tsk_fun(**this_task_kwargs)
-    res.run(**this_task_kwargs)
+    task_func_dict[task]['obj'] = tsk_fun(**this_task_kwargs)
+
+print(f"Media loading took {time.time() - t0} for {len(tasks)} tasks")
+# %%
+# Loop over each task and present it
+
+for task in tasks:
+    this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
+    task_func_dict[task]['obj'].run(**this_task_kwargs)
 
