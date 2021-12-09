@@ -273,7 +273,7 @@ class DSC(Task):
             "practice": [
                 [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_1.jpg'), pos=(0, 0), units='deg')],
                 [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_2.jpg'), pos=(0, 0), units='deg'),],
-                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_3.jpg'), pos=(0, 0), units='deg'),],
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'inst_3.png'), pos=(0, 0), units='deg'),],
             ],
             "test": [
                 visual.ImageStim(self.win, image=op.join(self.rootdir, 'practice_end.jpg'), pos=(0, 0), units='deg'),
