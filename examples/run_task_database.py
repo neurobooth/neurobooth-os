@@ -48,8 +48,8 @@ streams['Eyelink'].calibrated = True
 # %%
 # Select task
 print(list(task_func_dict))
-tasks =  ['pursuit_task_1', 'fixation_no_targ_task_1', 'saccades_vertical_task_1', 'sit_to_stand_task_1', 'ahhh_task_1']
-tasks = list(task_func_dict)
+tasks =  ['passage_reading_task_1']
+# tasks = list(task_func_dict)
 
 # Delete calibration task as there is no eyetracker
 try:
