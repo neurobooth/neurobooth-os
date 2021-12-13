@@ -57,7 +57,7 @@ def mock_acq_routine(host, port, conn):
             filename, task = data.split(":")[1:]
             fname = config.paths['data_out'] + filename
             for k in streams.keys():
-                if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]: 
+                if any([i in k for i in ["hiFeed", "Intel", "FLIR"]]):
                     if task_devs_kw[task].get(k):
                         streams[k].start(fname)
             msg = "ACQ_devices_ready"

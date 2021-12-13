@@ -76,7 +76,8 @@ class Task():
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
-        self.end_screen = utils.create_text_screen(self.win, text_end)
+        self.end_screen = visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/task_complete.png'),
+                                                pos=(0, 0), units='deg')
 
 
     def send_marker(self, msg=None, add_event=False):
@@ -86,26 +87,25 @@ class Task():
             self.add_event(msg)
 
     def add_event(self, event_name):
-        self.events.append( f'{event_name}:{datetime.now().strftime("%H:%M:%S")}')
+        self.events.append(f"{event_name}:{datetime.now().strftime('%H:%M:%S')}")
 
-    def present_text(self, screen, msg, func=None, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=True,
-                     first_screen=False, video_prompt=False, video=None):
-        self.send_marker(f"{msg}-start_0", True)
+    def present_text(self, screen, msg, func=None, func_kwargs={}, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=True,
+                     first_screen=False):
+
+        self.send_marker(f"{msg}_start", True)
         utils.present(self.win, screen, audio=audio, wait_time=wait_time,
                       win_color=win_color, waitKeys=waitKeys, first_screen=first_screen)
-        self.send_marker(f"{msg}-end_1", True)
+        self.send_marker(f"{msg}_end", True)
+
         if func is not None:
-            if video_prompt and video is not None:
-                if utils.rewind_video(self.win, self.instruction_video):
-                    func()
-            else:
-                if utils.repeat_advance():
-                    func()
+            if utils.repeat_advance():
+                func(**func_kwargs)
 
     def countdown_task(self):
-        utils.play_video(self.win, self.countdown_video, stop=False)
         mySound = sound.Sound(1000, 0.2)
-        core.wait_time(.2)
+        utils.play_video(self.win, self.countdown_video, wait_time=4, stop=False)
+        mySound.play()
+        core.wait(.2)
         
     def present_video(self, video, msg, stop=False):
         self.send_marker(f"{msg}_start", True)
@@ -117,7 +117,7 @@ class Task():
         self.present_video(video=self.instruction_video, msg='intructions')
         if prompt:
             self.present_text(screen=self.press_inst_screen, msg='inst-continue-repeat', func=self.present_instructions,
-                          waitKeys=False, video_prompt=True, video=self.instruction_video)
+                          waitKeys=False)
 
     def present_practice(self, prompt=True):
         self.present_text(screen=self.practice_screen, msg='practice')
@@ -125,62 +125,58 @@ class Task():
             self.present_text(screen=self.press_inst_screen, msg='pract-continue-repeat', func=self.present_practice,
                           waitKeys=False)
 
-    def present_task(self, prompt=True, **kwargs):
+    def present_task(self, prompt=True, duration=0, **kwargs):
         self.countdown_task()
         self.present_text(screen=self.task_screen, msg='task', audio=None, wait_time=3)
         if prompt:
+            print(locals())
             self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
-                          waitKeys=False)
+                              waitKeys=False)
 
     def present_complete(self):
-        self.present_text(screen=self.end_screen, msg='complete', audio=None, wait_time=2, waitKeys=False)
+        self.present_text(screen=self.end_screen, msg='complete', audio=None, wait_time=1, waitKeys=False)
         self.close()
         
-    # Close win if just created for the task
+    # Close videos and win if just created for the task
     def close(self):
+        if self.instruction_video is not None:
+            self.instruction_video.stop()
+        self.countdown_video.stop()
         if self.win_temp:
             self.win.close()
 
-    def run(self, prompt=True, duration=3, **kwargs):
+    def run(self, prompt=True, duration=0, **kwargs):
         self.present_instructions(prompt)
         # self.present_practice(prompt)
-        self.present_task(duration, prompt, **kwargs)
+        self.present_task(prompt, duration, **kwargs)
         self.present_complete()
         return self.events
-
-
-class Task_No_Practice(Task):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-    
-    def run(self, prompt=True, **kwargs):
-        self.present_instructions(prompt)
-        self.present_task(prompt)
-        self.present_complete()
 
 
 class Task_countdown(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
-    def present_task(self, duration, prompt, **kwargs):
+    def present_task(self, prompt, duration, **kwargs):
         self.countdown_task()
         self.win.flip()
         core.wait(duration+2)
         
         if prompt:
+            func_kwargs = locals()
+            del func_kwargs['self']
             self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
-                          waitKeys=False)
+                            func_kwargs=func_kwargs, waitKeys=False)
 
 
 class Task_Eyetracker(Task):
-    def __init__(self, eye_tracker=None, monitor_width=55, subj_screendist_cm=75,  **kwargs):
+    def __init__(self, eye_tracker=None, monitor_width=55, subj_screendist_cm=60,  **kwargs):
         super().__init__(**kwargs)
 
         self.eye_tracker = eye_tracker
 
-        mon = monitors.getAllMonitors()[0]
-        self.mon_size = monitors.Monitor(mon).getSizePix()
+        mon = monitors.getAllMonitors()[1]
+        self.mon_size = [1920, 1080] # monitors.Monitor(mon).getSizePix()
         self.SCN_W, self.SCN_H = self.mon_size
         self.monitor_width = monitor_width
         self.pixpercm = self.mon_size[0] / self.monitor_width
@@ -239,5 +235,8 @@ class Introduction_Task(Task):
 
 if __name__ == "__main__":
 
-    task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
-    task.run() 
+    # task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
+    # task.run() 
+
+    task = Task_countdown(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
+    task.run(prompt=True, duration=3)

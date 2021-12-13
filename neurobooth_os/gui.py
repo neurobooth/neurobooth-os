@@ -52,9 +52,9 @@ def _process_received_data(serv_data, window):
             window.write_event_value('-update_butt-', elem)
 
         elif "Initiating task:" in data_row:
-            # Initiating task:task_id:obs_id:tech_obs_log_id
-            _, task_id, obs_id, obs_log_id = data_row.split(":")
-            window.write_event_value('task_initiated', f"['{task_id}', '{obs_id}', '{obs_log_id}']")
+            # Initiating task:task_id:obs_id:tech_obs_log_id:tsk_strt_time
+            _, task_id, obs_id, obs_log_id, tsk_strt_time = data_row.split(":")
+            window.write_event_value('task_initiated', f"['{task_id}', '{obs_id}', '{obs_log_id}', '{tsk_strt_time}']")
 
         elif "Finished task:" in data_row:
             # Finished task: task_id
@@ -97,7 +97,7 @@ def gui(remote=False, database='neurobooth'):
     statecolors = {"-init_servs-": ["green", "yellow"],
                    "-Connect-": ["green", "yellow"],
                    }
-
+    steps = []  # keep track of steps done
     event, values = window.read(.1)
     while True:
         event, values = window.read(.5)
@@ -170,11 +170,11 @@ def gui(remote=False, database='neurobooth'):
             window['-Connect-'].Update(button_color=('black', 'red'))
             event, values = window.read(.1)
 
-            ctr_rec.prepare_devices(f"{collection_id}:{str(tech_obs_log)}", nodes=nodes)
             vidf_mrkr = marker_stream('videofiles')
             # Create event to capture outlet_id
             window.write_event_value('-OUTLETID-', f"['{vidf_mrkr.name}', '{vidf_mrkr.outlet_id}']")
 
+            ctr_rec.prepare_devices(f"{collection_id}:{str(tech_obs_log)}", nodes=nodes)
             print('Connecting devices')
 
         # Real-time plotting of inlet data.
@@ -198,9 +198,21 @@ def gui(remote=False, database='neurobooth'):
                 running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
                 ctr_rec.task_presentation(running_task, sess_info['subj_id'],
                                           node=nodes[1])
+                steps.append("task_started")
             else:
-                sg.PopupError('No task selected')
+                sg.PopupErro('No task selected')
 
+        elif event == "Pause tasks":
+            if "task_started" not in steps:
+                sg.PopupError('Tasks not started')
+            else:
+                ctr_rec.message_presentation("pause tasks", nodes)
+                resp = sg.Popup('The next task will be paused', custom_text=('Continue tasks', 'Stop tasks'))
+                if resp == 'Continue tasks':
+                    ctr_rec.message_presentation("unpause tasks", nodes)
+                elif resp == 'Stop tasks':
+                    ctr_rec.message_presentation("stop tasks", nodes)
+                    
         # Save notes to a txt
         elif event == "_save_notes_":
             if values["_notes_taskname_"] == '':
@@ -250,11 +262,11 @@ def gui(remote=False, database='neurobooth'):
 
         # Signal a task started: record LSL data and update gui
         elif event == 'task_initiated':
-            # event values -> f"['{task_id}', '{t_obs_id}', '{tech_obs_log_id}']
-            task_id, t_obs_id, obs_log_id = eval(values[event])
+            # event values -> f"['{task_id}', '{t_obs_id}', '{tech_obs_log_id}, '{tsk_strt_time}']
+            task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
             print(f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}")
             # Start LSL recording
-            rec_fname = f"{tech_obs_log['study_id-date']}_{t_obs_id}"
+            rec_fname = f"{tech_obs_log['study_id-date']}_{tsk_strt_time}_{t_obs_id}"
             session.start_recording(rec_fname)
 
             window["task_title"].update("Running Task:")

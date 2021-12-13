@@ -171,3 +171,26 @@ def get_messages_to_ctr(callback=None, remote=False, host="", port=12347, *callb
         if data == "close":
             break
     s.close()
+
+
+def get_data_timeout(s1, timeout=.1):
+    """Change socket timeout, get data, and remove timeout.
+
+    Parameters
+    ----------
+    s1 : callable
+        socket.socket instance
+    timeout: float
+        Time to wait for message
+    """
+    s1.settimeout(timeout)
+    
+    try: 
+        conn, _ = s1.accept()
+        data = conn.recv(1024)
+        data = data.decode("utf-8")
+    except socket.timeout:
+        data = None
+        
+    s1.settimeout(None)
+    return data

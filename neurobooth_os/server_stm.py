@@ -8,10 +8,10 @@ from datetime import datetime
 import neurobooth_os
 from neurobooth_os import config
 from neurobooth_os.iout.screen_capture import ScreenMirror
-from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams, connect_mbient
+from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
 from neurobooth_os.iout import metadator as meta
 
-from neurobooth_os.netcomm import socket_message, node_info, get_client_messages, NewStdout
+from neurobooth_os.netcomm import socket_message, get_client_messages, NewStdout, get_data_timeout
 
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
@@ -58,7 +58,7 @@ def Main():
                 streams = reconnect_streams(streams)
             else:
                 streams = start_lsl_threads("presentation", collection_id, win=win)               
-                print("Preparing devices")
+                print("Preparing devices")  
 
             print("UPDATOR:-Connect-")
 
@@ -73,7 +73,13 @@ def Main():
                         }
             if streams.get('Eyelink'):
                     task_karg["eye_tracker"] = streams['Eyelink']
-                
+                    
+            # Preload tasks media
+            for task in list(task_func_dict):
+                tsk_fun = task_func_dict[task]['obj']
+                this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
+                task_func_dict[task]['obj'] = tsk_fun(**this_task_kwargs)
+
             win = welcome_screen(with_audio=False, win=win)
             # When win is created, stdout pipe is reset
             if not hasattr(sys.stdout, 'terminal'):
@@ -90,14 +96,16 @@ def Main():
                 
                 # Do not record if calibration or intro instructions"
                 if 'calibration_task' in task or "intro_" in task:
-                      res = tsk_fun(**this_task_kwargs)
-                      res.run(**this_task_kwargs)
+                      tsk_fun.run(**this_task_kwargs)
                       continue                    
                 
                 t_obs_id = task_func_dict[task]['t_obs_id']
                 tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
+                tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
+                tsk_strt_time = datetime.now().strftime("%Hh-%Mm-%Ss")
+
                 # Signal CTR to start LSL rec
-                print(f"Initiating task:{task}:{t_obs_id}:{tech_obs_log_id}")
+                print(f"Initiating task:{task}:{t_obs_id}:{tech_obs_log_id}:{tsk_strt_time}")
                 sleep(1)
 
                 # Start eyetracker if device in tech_obs 
@@ -105,32 +113,44 @@ def Main():
                             any('Eyelink' in d for d in list(task_devs_kw[task])):
                     if not streams['Eyelink'].calibrated:
                         streams['Eyelink'].calibrate()
-                    fname = f"{config.paths['data_out']}{study_id_date}_{t_obs_id}.edf"
+                    fname = f"{config.paths['data_out']}{study_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
                     streams['Eyelink'].start(fname)
-                            
 
                 # Start rec in ACQ and run task
-                resp = socket_message(f"record_start:{study_id_date}_{t_obs_id}:{task}",
+                resp = socket_message(f"record_start::{config.paths['data_out']}{study_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
                                      "acquisition", wait_data=3)
                 print(resp)
                 sleep(.5)
-                res = tsk_fun(**this_task_kwargs)
-                if hasattr(res, 'run'):  res.run(**this_task_kwargs)
-                socket_message("record_stop", "acquisition")
 
+                events = tsk_fun.run(**this_task_kwargs)
+                socket_message("record_stop", "acquisition")
                 print(f"Finished task:{task}")
 
                 # Log tech_obs to database
                 tech_obs_log["tech_obs_id"] = t_obs_id
-                tech_obs_log['event_array'] = "event:datestamp" # TODO: res should be event arrays
-                tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
-
+                tech_obs_log['event_array'] = str(events).replace("'", '"') if events is not None else "event:datestamp"
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
                 
-                if streams.get('Eyelink') and \
-                            any('Eyelink' in d for d in list(task_devs_kw[task])):
+                if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
                     streams['Eyelink'].stop()
-
+                
+                # Check if pause requested, unpause or stop
+                data = get_data_timeout(s1, .1)
+                if data == "pause tasks":
+                    pause_screen = utl.create_text_screen(win, text="Session Paused")
+                    utl.present(win, pause_screen, waitKeys=False)
+                    
+                    connx2, _ = s1.accept()
+                    data = connx2.recv(1024)
+                    data = data.decode("utf-8")
+                    
+                    if data == "unpause tasks":
+                        continue                    
+                    elif data == "stop tasks":
+                        break
+                    else:
+                        print("While paused received another message")
+                    
             finish_screen(win)
 
         elif data in ["close", "shutdown"]:

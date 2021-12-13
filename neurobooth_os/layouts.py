@@ -29,15 +29,15 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0),)
     layout = [
-        [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Combo(meta.get_subj_ids(conn), default_value="test", key='subj_id', size=(44, 1), background_color='white', text_color='black')],
+        [sg.Text('Subject ID:', pad=((0, 0), 0), justification='left'), sg.Combo(meta.get_subj_ids(conn), readonly=True, key='subj_id', size=(44, 1), background_color='white', text_color='black')],
         [_space()],
         [sg.Text('Staff ID:', pad=((0, 0), 0), justification='left'),  sg.Input(default_text="AN", key='staff_id', size=(44, 1), background_color='white', text_color='black')],
         [_space()],
-        [sg.T("Study ID"),  sg.Combo(meta.get_study_ids(conn), key='study_id', enable_events=True, size=(44, 1))],
+        [sg.T("Study ID"),  sg.Combo(meta.get_study_ids(conn), key='study_id', enable_events=True, size=(44, 1), readonly=True)],
         [_space()],  
-        [sg.T("Collection ID"),  sg.Combo("", key='collection_id', enable_events=True, size=(44, 1))],
+        [sg.T("Collection ID"),  sg.Combo("", key='collection_id', enable_events=True, size=(44, 1), readonly=True)],
         [_space()],   
-        [sg.Text('Task combo: '), sg.Combo("",  size=(64, 1), key="_tasks_")],
+        [sg.Text('Task combo: '), sg.Combo("",  size=(64, 1), key="_tasks_", readonly=True)],
         [_space()],     
         [_space(), sg.ReadFormButton('Save', button_color=('white', 'black'), key="_init_sess_save_")],              
         ]
@@ -82,8 +82,7 @@ def _make_tasks_checkbox(task_list):
         """
         
     tasks = task_list.split(", ")
-    nxcol = int(np.ceil(len(tasks)/3))
-    task_chunks = [tasks[i:i+nxcol] for i in range(0, (len(tasks)), nxcol)]
+    task_chunks = [tasks[i:i+3] for i in range(0, (len(tasks)), 3)]
     
     field_tasks = []
     for chunk in task_chunks:
@@ -139,7 +138,7 @@ def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
 
         [_space(5), _lay_butt('Terminate servers', 'Shut Down'),
          _space(5), sg.ReadFormButton('Start', button_color=('white', 'black')),
-         _space(5), _lay_butt('Test Comm', 'Test_network')
+         _space(5), _lay_butt('Pause', 'Pause tasks'),
          ]]
 
     layout_col2 = [[sg.Image(data=imgbytes, key='Webcam', size=frame_sz)],
