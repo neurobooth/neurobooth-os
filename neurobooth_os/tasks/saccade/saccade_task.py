@@ -68,8 +68,8 @@ class Saccade(Task_Eyetracker):
         self.target.size = self.pointer_size_pixel
         self.target.draw()
         self.win.flip()
-        self.doDriftCorrect([int(0 + self.mon_size[0] / 2.0),
-                               int(self.mon_size[1] / 2.0 - 0), 0, 1])
+        # self.doDriftCorrect([int(0 + self.mon_size[0] / 2.0),
+        #                        int(self.mon_size[1] / 2.0 - 0), 0, 1])
         self.win.color = (0, 0, 0)
         self.win.flip()
  
