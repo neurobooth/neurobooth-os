@@ -117,9 +117,13 @@ def gui(remote=False, database='neurobooth'):
             window['dob'].update(values=subject_df['date_of_birth'])
 
         elif event == 'select_subject':
-            row_idx = window['dob'].get_indexes()
-            subject_id = subject_df.iloc[row_idx].name
+            subject = subject_df.iloc[window['dob'].get_indexes()]
+            subject_id = subject.name
+            first_name = subject['first_name_birth']
+            last_name = subject['last_name_birth']
             window['dob'].update(values=[f'Subject ID: {subject_id}'])
+            window['first_name'].update(disabled=True)
+            window['last_name'].update(disabled=True)
 
         elif event == "collection_id":
             collection_id = values[event]
@@ -136,7 +140,8 @@ def gui(remote=False, database='neurobooth'):
                 sg.PopupError('No task combo')
             else:
                 sess_info = values
-                sess_info['subj_id'] = subject_id
+                sess_info.update({'subj_id': subject_id,
+                                  'first_name': first_name, 'last_name': last_name})
                 staff_id = sess_info['staff_id']
                 tech_obs_log["staff_id"] = sess_info['staff_id']
                 tech_obs_log["subject_id"] = sess_info['subj_id']
