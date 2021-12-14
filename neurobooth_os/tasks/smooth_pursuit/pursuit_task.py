@@ -29,11 +29,11 @@ class Pursuit(Task_Eyetracker):
 
     def run(self, prompt=True, **kwargs):
         self.present_instructions(prompt)        
-        self.run_trial(self.mov_pars)
+        self.run_trial(prompt, self.mov_pars)
         self.present_complete()
         self.close()
                                               
-    def run_trial(self, movement_pars):
+    def run_trial(self, prompt, movement_pars):
         """ Run a smooth pursuit trial
 
         trial_duration: the duration of the pursuit movement
@@ -61,8 +61,8 @@ class Pursuit(Task_Eyetracker):
         self.target.pos = (tar_x, tar_y)
         self.target.draw()
         self.win.flip()
-        self.doDriftCorrect([int(tar_x + self.mon_size[0] / 2.0),
-                               int(self.mon_size[1] / 2.0 - tar_y), 0, 1])
+        # self.doDriftCorrect([int(tar_x + self.mon_size[0] / 2.0),
+        #                        int(self.mon_size[1] / 2.0 - tar_y), 0, 1])
  
         # Start recording
         self.startRecording()
@@ -74,7 +74,7 @@ class Pursuit(Task_Eyetracker):
         frame = 0
         time_array = []
         while True:
-            core.wait(1/240.)
+            core.wait(1/480.)
             self.target.pos = (tar_x, tar_y)
             self.target.draw()
             self.win.flip()
@@ -129,7 +129,13 @@ class Pursuit(Task_Eyetracker):
 
         # Send a 'TRIAL_RESULT' message to mark the end of the trial
         self.sendMessage('TRIAL_RESULT')
+        
+        if prompt:
+            func_kwargs_func = {'prompt': prompt,
+                                'movement_pars': movement_pars}
+            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.run_trial,
+                          func_kwargs=func_kwargs_func, waitKeys=False)
 
 if __name__ == "__main__":
     task = Pursuit(full_screen=True)
-    task.run(prompt=False)
+    task.run(prompt=True)
