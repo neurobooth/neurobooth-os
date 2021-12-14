@@ -51,10 +51,10 @@ def mock_acq_routine(host, port, conn):
             pass
 
         elif "record_start" in data:  
-        # -> "record_start:FILENAME" FILENAME = {subj_id}_{task}
+        # -> "record_start::FILENAME" FILENAME = {subj_id}_{task}
 
             print("Starting recording")
-            filename, task = data.split(":")[1:]
+            filename, task = data.split("::")[1:]
             fname = config.paths['data_out'] + filename
             for k in streams.keys():
                 if any([i in k for i in ["hiFeed", "Intel", "FLIR"]]):

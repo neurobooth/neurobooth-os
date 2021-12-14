@@ -105,7 +105,7 @@ class Task():
         mySound = sound.Sound(1000, 0.2)
         utils.play_video(self.win, self.countdown_video, wait_time=4, stop=False)
         mySound.play()
-        core.wait(.2)
+        core.wait(.22)
         
     def present_video(self, video, msg, stop=False):
         self.send_marker(f"{msg}_start", True)
