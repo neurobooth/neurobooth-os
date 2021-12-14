@@ -137,11 +137,20 @@ def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
         console_output = [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
                  auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))]
     # console_output = [_space(3)]
+    subject_text = (f'Subject ID: {sess_info["subj_id"]}, {sess_info["first_name"]}',
+                    f' {sess_info["last_name"]}')
     layout_col1 = [
-        [_space(), sg.Text(f'Subject ID: {sess_info["subj_id"]}', pad =(20, 0 ), size=(20, 1), 
-         font=("Arial", 12, "bold"), text_color="black", background_color="white", k="_sbj_id_"),
-         sg.Text(f'Staff ID: {sess_info["staff_id"]}',  size=(20, 1), font=("Arial", 12, "bold"),
-          text_color="black", background_color="white", k="_staff_id_")
+        [_space(),
+        sg.Text(subject_text, pad =(20, 0), size=(30, 1),
+                font=("Arial", 12, "bold"),
+                text_color="black",
+                background_color="white",
+                k="_sbj_id_"),
+         sg.Text(f'Staff ID: {sess_info["staff_id"]}', size=(20, 1),
+                 font=("Arial", 12, "bold"),
+                 text_color="black",
+                 background_color="white",
+                 k="_staff_id_")
          ],
         [_space()],
 
