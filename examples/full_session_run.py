@@ -6,15 +6,18 @@ from time import sleep as tsleep
 from datetime import datetime
 
 import neurobooth_os.main_control_rec as ctr_rec
-from neurobooth_os.full_session_run_utils import event_listener
 from neurobooth_os.netcomm import get_messages_to_ctr, node_info, NewStdout
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout import marker_stream
-from neurobooth_os.gui import _process_received_data, event_handler
+from neurobooth_os.gui import _process_received_data, ctr_event_handler
 from neurobooth_os.layouts import _main_layout, _win_gen
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.tasks.task_importer import get_task_funcs
 
+def event_listener(window, nodes, timeout=1):
+    while True:
+        event, values = window.read(timeout)
+        yield event, values
 
 # Define parameters
 remote = True
@@ -85,7 +88,7 @@ out["vidf_mrkr"] = vidf_mrkr
 
 out['exit_flag'] ='prepared'
 for event, values in event_listener(window, nodes, timeout=1):
-    out = event_handler(window, event, values, conn, study_id_date, statecolors, stream_ids, inlets, out)
+    out = ctr_event_handler(window, event, values, conn, study_id_date, statecolors, stream_ids, inlets, out)
     if out["break_"]:
         print("exiting prepare loop")
         out["break_"] = False
@@ -104,7 +107,7 @@ else:
 for task in tasks:
     for event, values in  event_listener(window, nodes, timeout=1):
         out['exit_flag'] ='task_end'
-        out = event_handler(window, event, values, conn, study_id_date, statecolors, stream_ids, inlets, out)
+        out = ctr_event_handler(window, event, values, conn, study_id_date, statecolors, stream_ids, inlets, out)
         if out["break_"] == True:
             out["break_"] = False
             break
