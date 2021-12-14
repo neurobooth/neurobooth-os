@@ -255,7 +255,7 @@ def gui(remote=False, database='neurobooth'):
             session = session,                   
             vidf_mrkr = vidf_mrkr,
             )
-        out = event_handler(window, event, values, conn, subject_id_date, statecolors=statecolors, stream_ids=stream_ids,
+        out = ctr_event_handler(window, event, values, conn, subject_id_date, statecolors=statecolors, stream_ids=stream_ids,
                      inlets=inlets, out=out)
         obs_log_id = out['obs_log_id']
         t_obs_id = out['t_obs_id']
@@ -286,7 +286,7 @@ def gui(remote=False, database='neurobooth'):
     print("Session terminated")
 
 
-def event_handler(window, event, values, conn, subject_id, statecolors=None, stream_ids={},
+def ctr_event_handler(window, event, values, conn, subject_id, statecolors=None, stream_ids={},
                      inlets={}, out=None):
     
     if out is None:
