@@ -288,6 +288,34 @@ def gui(remote=False, database='neurobooth'):
 
 def ctr_event_handler(window, event, values, conn, subject_id, statecolors=None, stream_ids={},
                      inlets={}, out=None):
+    """Handles events from ctr server thread
+
+    Parameters
+    ----------
+    window : callable
+        pysimple gui window
+    event : str
+        event name from window.read()
+    values : dict
+        values from window.read()
+    conn : callable
+        connector object to pgadmin database
+    subject_id : str
+        Name of the subject
+    statecolors : dict, optional
+        Color of the buttons, by default None
+    stream_ids : dict, optional
+        Ids of the lsl streams, by default {}
+    inlets : dict, optional
+        Lsl inlets, by default {}
+    out : dict, optional
+        Dictionary with variables, by default None
+
+    Returns
+    -------
+    out dict
+        variables from out arg
+    """
     
     if out is None:
         out = dict(exit_flag=None,  # where to break
