@@ -136,6 +136,7 @@ def gui(remote=False, database='neurobooth'):
                 sg.PopupError('No task combo')
             else:
                 sess_info = values
+                sess_info['subj_id'] = subject_id
                 staff_id = sess_info['staff_id']
                 tech_obs_log["staff_id"] = sess_info['staff_id']
                 tech_obs_log["subject_id"] = sess_info['subj_id']
