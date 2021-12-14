@@ -6,7 +6,7 @@ Created on Tue Jul 20 10:00:23 2021
 """
 
 from __future__ import absolute_import, division
-from psychopy import sound, core, event, monitors, visual, monitors
+from psychopy import core, event, monitors
 
 import time
 import os.path as op
@@ -31,10 +31,9 @@ def make_win(full_screen=True, monitor_width=55, monitor_distance=60):
     mon = monitors.getAllMonitors()[0]
     customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
 
-    mon_size = [1920, 1080] #monitors.Monitor(mon).getSizePix()
+    mon_size = monitors.Monitor(mon).getSizePix()
     customMon.setSizePix(mon_size)
     customMon.saveMon()
-
     win = visual.Window(
         mon_size,
         fullscr=full_screen,
@@ -42,6 +41,9 @@ def make_win(full_screen=True, monitor_width=55, monitor_distance=60):
         units='pix',
         color=(0, 0, 0)
         )
+    print("Monitor Set Refresh Rate:{:.2f} Hz".format(1/win.monitorFramePeriod))
+    print("Monitor Actual Refresh Rate:{:.2f} Hz".format(win.getActualFrameRate(nIdentical=30, nMaxFrames=300,
+                                                                                nWarmUpFrames=10, threshold=1)))
     return win
 
 
