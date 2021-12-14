@@ -14,9 +14,8 @@ from datetime import datetime
 
 from neurobooth_os import config
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
-from neurobooth_os.netcomm import socket_message, get_client_messages
+from neurobooth_os.netcomm import socket_message, get_client_messages, get_data_timeout
 from neurobooth_os.tasks.task_importer import get_task_funcs
-from neurobooth_os.tasks.utils import get_data_timeout
 from neurobooth_os.iout import metadator as meta
 
 
@@ -94,7 +93,7 @@ def mock_stm_routine(host, port, conn):
                 sleep(1)
 
                  # Start/Stop rec in ACQ and run task
-                resp = socket_message(f"record_start:{config.paths['data_out']}{study_id_date}_{tsk_strt_time}_{task}:{task}",
+                resp = socket_message(f"record_start::{config.paths['data_out']}{study_id_date}_{tsk_strt_time}_{task}::{task}",
                                      "dummy_acq", wait_data=3)
                 print(resp)
                 sleep(.5)
