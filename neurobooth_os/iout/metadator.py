@@ -53,13 +53,6 @@ def get_conn(remote=False, database='neurobooth'):
     return conn
 
 
-def get_subj_ids(conn):
-    table_subject = Table('subject', conn=conn)
-    subjects_df = table_subject.query()
-    subject_ids = subjects_df.index.values.tolist()  # for autocomplete
-    return subject_ids
-
-
 def get_study_ids(conn):
     table_study = Table('study', conn=conn)
     studies_df = table_study.query()
