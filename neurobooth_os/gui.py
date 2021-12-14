@@ -111,6 +111,11 @@ def gui(remote=False, database='neurobooth'):
             collection_ids = meta.get_collection_ids(study_id, conn)
             window["collection_id"].update(values=collection_ids)
 
+        elif event == 'get_subject':
+            subject_ids = meta.get_subject_ids(conn, values['first_name'],
+                                               values['last_name'])
+            print(subject_ids)
+
         elif event == "collection_id":
             collection_id = values[event]
             tech_obs_log["collection_id"] = collection_id
@@ -126,7 +131,7 @@ def gui(remote=False, database='neurobooth'):
                 sg.PopupError('No task combo')
             else:
                 sess_info = values
-                subject_id, staff_id = sess_info['subj_id'], sess_info['staff_id']
+                staff_id = sess_info['staff_id']
                 tech_obs_log["staff_id"] = sess_info['staff_id']
                 tech_obs_log["subject_id"] = sess_info['subj_id']
                 tech_obs_log["study_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
