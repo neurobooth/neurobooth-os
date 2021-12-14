@@ -43,6 +43,9 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
                    enable_events=True)],
         [_space()],
 
+        [sg.Listbox([], size=(30, 10), key='dob')],
+        [_space()],
+
         [sg.Text('Staff ID:', pad=((0, 0), 0), justification='left'),
          sg.Input(default_text="AN", key='staff_id', size=(44, 1),
                   background_color='white', text_color='black')],
