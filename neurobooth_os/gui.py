@@ -124,9 +124,9 @@ def gui(remote=False, database='neurobooth'):
             window["collection_id"].update(values=collection_ids)
 
         elif event == 'get_subject':
-            subject_ids = meta.get_subject_ids(conn, values['first_name'],
-                                               values['last_name'])
-            print(subject_ids)
+            subject_ids, dobs = meta.get_subject_ids(conn, values['first_name'],
+                                                     values['last_name'])
+            window['dob'].update(values=dobs)
 
         elif event == "collection_id":
             collection_id = values[event]
