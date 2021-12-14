@@ -123,10 +123,15 @@ def gui(remote=False, database='neurobooth'):
             collection_ids = meta.get_collection_ids(study_id, conn)
             window["collection_id"].update(values=collection_ids)
 
-        elif event == 'get_subject':
-            subject_ids, dobs = meta.get_subject_ids(conn, values['first_name'],
-                                                     values['last_name'])
-            window['dob'].update(values=dobs)
+        elif event == 'find_subject':
+            subject_df = meta.get_subject_ids(conn, values['first_name'],
+                                              values['last_name'])
+            window['dob'].update(values=subject_df['date_of_birth'])
+
+        elif event == 'select_subject':
+            row_idx = window['dob'].get_indexes()
+            subject_id = subject_df.iloc[row_idx].name
+            window['dob'].update(values=[f'Subject ID: {subject_id}'])
 
         elif event == "collection_id":
             collection_id = values[event]

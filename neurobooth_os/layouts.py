@@ -39,11 +39,15 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
                   background_color='white', text_color='black')],
         [_space()],
 
-        [sg.Button('Get subject', button_color='white', key='get_subject',
+        [sg.Button('Find subject', button_color='white', key='find_subject',
                    enable_events=True)],
         [_space()],
 
         [sg.Listbox([], size=(30, 10), key='dob')],
+        [_space()],
+
+        [sg.Button('Select subject', button_color='white', key='select_subject',
+                   enable_events=True)],
         [_space()],
 
         [sg.Text('Staff ID:', pad=((0, 0), 0), justification='left'),
