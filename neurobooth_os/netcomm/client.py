@@ -129,13 +129,13 @@ def node_info(node_name):
         host = 'ctr'
     elif node_name == "dummy_acq":
         host = 'localhost'
-        port = 80
+        port = 1280
     elif node_name == "dummy_stm":
         host = 'localhost'
-        port = 81
+        port = 1281
     elif node_name == "dummy_ctr":
         host = 'localhost'
-        port = 82
+        port = 1282
     return host, port
 
 
