@@ -15,7 +15,7 @@ from psychopy.hardware import keyboard
 from neurobooth_os.tasks.utils import make_win
 from neurobooth_os.tasks import Task
 
-class mouse_task(Task):
+class hevelius_task(Task):
 
     def __init__(self, path="", subj_id="test", **kwargs):
         super().__init__(**kwargs)
@@ -49,7 +49,7 @@ class mouse_task(Task):
 
         # An ExperimentHandler isn't essential but helps with data saving
         thisExp = data.ExperimentHandler(name=self.subj_id, version='', runtimeInfo=None,
-                                         originPath='C:\neurobooth\neurobooth-eel\tasks\\mouse.py',
+                                         originPath='C:\neurobooth\neurobooth-eel\tasks\\hevelius_task.py',
                                          savePickle=True, saveWideText=True, dataFileName=self.filename + self.rep)
         
         # Initialize components for Routine "trial"
@@ -238,6 +238,6 @@ class mouse_task(Task):
 
 
 if __name__ == "__main__":
-    task = mouse_task(full_screen=False)
+    task = hevelius_task(full_screen=False)
     task.run( prompt=True, num_iterations=30)
 
