@@ -15,7 +15,7 @@ import PySimpleGUI as sg
 import liesl
 
 import neurobooth_os.main_control_rec as ctr_rec
-from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, get_lsl_images, stream_plotter
+from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 from neurobooth_os.netcomm import get_messages_to_ctr, node_info, NewStdout
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
 import neurobooth_os.iout.metadator as meta
@@ -152,11 +152,11 @@ def gui(remote=False, database='neurobooth'):
                 sg.PopupError('No task combo')
             else:
                 sess_info = values
-                sess_info.update({'subj_id': subject_id,
+                sess_info.update({'subject_id': subject_id,
                                   'first_name': first_name, 'last_name': last_name})
                 staff_id = sess_info['staff_id']
                 tech_obs_log["staff_id"] = sess_info['staff_id']
-                tech_obs_log["subject_id"] = sess_info['subj_id']
+                tech_obs_log["subject_id"] = sess_info['subject_id']
                 tech_obs_log["study_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
                 subject_id_date = tech_obs_log["study_id-date"]
                 
@@ -186,12 +186,6 @@ def gui(remote=False, database='neurobooth'):
             window['-init_servs-'].Update(button_color=('black', 'red'))
             event, values = window.read(.1)
             ctr_rec.start_servers(nodes=nodes, remote=remote, conn=conn)
-            time.sleep(1)
-
-        # Real time display (RTD)
-        elif event == 'RTD':  # TODO signal when RTD finishes
-            ctr_rec.prepare_feedback()
-            print('RTD')
             time.sleep(1)
 
         # Turn on devices and start LSL outlet stream
@@ -225,8 +219,7 @@ def gui(remote=False, database='neurobooth'):
             window['Start'].Update(button_color=('black', 'yellow'))
             if len(tasks):
                 running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
-                ctr_rec.task_presentation(running_task, sess_info['subj_id'],
-                                          node=nodes[1])
+                ctr_rec.task_presentation(running_task, sess_info['subj_id'], node=nodes[1])
                 steps.append("task_started")
             else:
                 sg.PopupError('No task selected')
@@ -248,7 +241,7 @@ def gui(remote=False, database='neurobooth'):
                 sg.PopupError('Pressed saving notes without task, select one in the dropdown list')
                 continue
 
-            write_task_notes(subject_id, staff_id, values['_notes_taskname_'], values['notes'])
+            write_task_notes(subject_id_date, staff_id, values['_notes_taskname_'], values['notes'])
             window["notes"].Update('')
 
         # Shut down the other servers and stops plotting
@@ -283,12 +276,7 @@ def gui(remote=False, database='neurobooth'):
     ##################################################################################
     # Conditionals handling inlets for plotting and recording
     ##################################################################################
-        # Plot STM screen or webcam frames
-        if any(k for k in inlets.keys() if k in ["Webcam", "Screen"]):
-            plot_elem = get_lsl_images(inlets)
-            for elem in plot_elem:
-                window[elem[0]].update(data=elem[1])
-
+    
         # Print LSL inlet names in GUI
         if inlet_keys != list(inlets):
             inlet_keys = list(inlets)
