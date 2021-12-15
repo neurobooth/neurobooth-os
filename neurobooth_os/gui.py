@@ -216,7 +216,7 @@ def gui(remote=False, database='neurobooth'):
             window['Start'].Update(button_color=('black', 'yellow'))
             if len(tasks):
                 running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
-                ctr_rec.task_presentation(running_task, sess_info['subj_id'], node=nodes[1])
+                ctr_rec.task_presentation(running_task, sess_info['subject_id'], node=nodes[1])
                 steps.append("task_started")
             else:
                 sg.PopupError('No task selected')
