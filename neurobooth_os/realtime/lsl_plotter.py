@@ -58,7 +58,6 @@ def get_lsl_images(inlets, frame_sz=(320, 240)):
 
 
 class stream_plotter():
-
     def __init__(self):
         self.inlets = {}
         self.pltotting_ts = False

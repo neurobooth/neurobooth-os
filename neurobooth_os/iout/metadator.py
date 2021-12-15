@@ -66,6 +66,7 @@ def get_subject_ids(conn, first_name, last_name):
         where=f"first_name_birth='{first_name}' AND last_name_birth='{last_name}'")
     return subject_df
 
+
 def get_collection_ids(study_id, conn):
     table_study = Table('study', conn=conn)
     studies_df = table_study.query()
