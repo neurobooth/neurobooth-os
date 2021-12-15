@@ -137,7 +137,7 @@ def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
         console_output = [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
                  auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))]
     # console_output = [_space(3)]
-    subject_text = (f'Subject ID: {sess_info["subj_id"]}, {sess_info["first_name"]}',
+    subject_text = (f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}',
                     f' {sess_info["last_name"]}')
     layout_col1 = [
         [_space(),
@@ -166,16 +166,14 @@ def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
         console_output,
         [_space()],
 
-        [_space(1), _lay_butt('Initiate servers', '-init_servs-'),         
-         _space(5), _lay_butt('Display', 'RTD'), 
+        [_space(1), _lay_butt('Initiate servers', '-init_servs-'),
          _space(5), _lay_butt('Connect Devices', '-Connect-'),
          _space(5), _lay_butt('Plot Devices', 'plot'),
          ],         
         [_space()],
-
-        [_space(5), _lay_butt('Terminate servers', 'Shut Down'),
-         _space(5), sg.ReadFormButton('Start', button_color=('white', 'black')),
+        [_space(5), sg.ReadFormButton('Start', button_color=('white', 'black')),
          _space(5), _lay_butt('Pause', 'Pause tasks'),
+         _space(5), _lay_butt('Terminate servers', 'Shut Down'),
          ]]
 
     layout_col2 = [[sg.Image(data=imgbytes, key='Webcam', size=frame_sz)],
