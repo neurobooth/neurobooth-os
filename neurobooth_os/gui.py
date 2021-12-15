@@ -33,16 +33,13 @@ def _process_received_data(serv_data, window):
     window : object
         PySimpleGui window object
     """
-    # print(serv_data)
+    
     # Split server name and data
     serv_data = serv_data.split(":::")[-1]
-    # print(serv_name, ":::")
     for data_row in serv_data.split("\n"):
-        # print("\t " , data_row)
 
         if "-OUTLETID-" in data_row:
             # -OUTLETID-:outlet_name:uuid
-            # print("Signaling outletid")
             evnt, outlet_name, outlet_id = data_row.split(":")
             window.write_event_value('-OUTLETID-', f"['{outlet_name}', '{outlet_id}']")
 
