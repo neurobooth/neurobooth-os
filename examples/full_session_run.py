@@ -25,7 +25,9 @@ database_name = "neurobooth"  # "mock_neurobooth"
 collection_id = "mvp_030"  # "mock_collection"  # Define mock with tasks to run
 sess_info = {"subj_id": "69",  #"test_nogui",
              "staff_id":"AN", 
-             '_tasks_': "mock_task_1"}
+             '_tasks_': "mock_task_1",
+             'first_name': 'Anna',
+             'last_name': 'Luddy'}
 
 nodes = ('dummy_acq', 'dummy_stm')
 
