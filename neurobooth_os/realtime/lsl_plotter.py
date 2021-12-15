@@ -14,34 +14,6 @@ import threading
 import time
 
 
-def update_streams():
-    streams = pylsl.resolve_streams(.6)
-    inlets = {}
-    for info in streams:
-        name = info.name()
-        # inx=1
-        # while True:
-        #     if name in inlets.keys():
-        #         name = name.split("_")[0] + f"_{inx}"
-        #         inx +=1
-        #     else:
-        #         break
-
-        if info.type() == 'Markers':
-            print('(NOT YET) Adding marker inlet: ' + name)
-            # inlets.append(MarkerInlet(info))
-
-        elif info.name() in ["Screen", "Webcam", "Mouse", "Audio", "mbient"]:
-            print('Adding data inlet: ' + name)
-
-            inlet = pylsl.StreamInlet(info)  # , recover=False)
-            inlets[name] = inlet
-
-        # else:
-        #     print('Don\'t know what to do with stream ' + info.name())
-    return inlets
-
-
 def create_lsl_inlets(stream_ids):
     """Create LSL inlets on CTR computer.
 
@@ -57,7 +29,6 @@ def create_lsl_inlets(stream_ids):
     """
     inlets = {}
     for id_stream in stream_ids.values():
-        # print("resolving: ", id_stream)
         stream = pylsl.resolve_byprop("source_id", id_stream, timeout=1)
         if stream:
             inlet = pylsl.StreamInlet(stream[0])
