@@ -19,20 +19,25 @@ def event_listener(window, timeout=1):
         event, values = window.read(timeout)
         yield event, values
 
-# Define parameters
+# Manually define parameters
 remote = True
 database_name = "neurobooth"  # "mock_neurobooth"
+study_id = 'study1'
 collection_id = "mvp_030"  # "mock_collection"  # Define mock with tasks to run
-sess_info = {"subject_id": "69",  #"test_nogui",
-             "staff_id":"AN", 
-             '_tasks_': "mock_task_1",
-             'first_name': 'Prince',
-             'last_name': 'Philips'}
+subject_id = "69"
+staff_id = "AN"
+
+# Variables setup
+sess_info = {"subject_id": subject_id,  #"test_nogui",
+             "staff_id": staff_id, 
+             '_tasks_': "task_1",
+             'first_name': 'Name',
+             'last_name': 'Surname'}
 
 nodes = ('dummy_acq', 'dummy_stm')
 
 tech_obs_log = meta._new_tech_log_dict()
-tech_obs_log["study_id"] = 'study1'
+tech_obs_log["study_id"] = study_id
 tech_obs_log["collection_id"] = collection_id
 tech_obs_log["staff_id"] = sess_info['staff_id']
 tech_obs_log["subject_id"] = sess_info['subj_id']
@@ -82,7 +87,7 @@ statecolors = {"-init_servs-": ["green", "yellow"],
                 "-Connect-": ["green", "yellow"],
                }
 
-# Prepare devices
+# Prepare devices and streams
 vidf_mrkr = marker_stream('videofiles')
 window.write_event_value('-OUTLETID-', f"['{vidf_mrkr.name}', '{vidf_mrkr.outlet_id}']")
 ctr_rec.prepare_devices(f"{collection_id}:{str(tech_obs_log)}", nodes=nodes)
@@ -103,8 +108,7 @@ for task in tasks_obs:
     task_id, *_ = meta._get_task_param(task, conn)
     tasks.append(task_id)
 print(tasks)
-
-tasks = ['intro_occulo_task_1', 'pursuit_task_1', 'intro_cog_task_1', 'sit_to_stand_task_1']
+# tasks = ['intro_occulo_task_1', 'pursuit_task_1', 'intro_cog_task_1', 'sit_to_stand_task_1']
 
 if len(tasks):
     running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
