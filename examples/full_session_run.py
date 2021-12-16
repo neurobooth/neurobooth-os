@@ -122,7 +122,12 @@ out['exit_flag'] ='task_end'
 tasks_no_introcal = [ t for t in tasks if  not any(x for x in ['calibration_task', "intro_"] if x in t)]
 for task in tasks_no_introcal:
     for event, values in  event_listener(window, timeout=1):
-        out = ctr_event_handler(window, event, values, conn, study_id_date, statecolors, stream_ids, inlets, out)
+        _record_lsl(window, session, subject_id, task_id,
+                    t_obs_id, obs_log_id, tsk_strt_time)
+        _stop_lsl_and_save(window, session, conn,
+                           rec_fname, task_id, tech_obs_log_id,
+                           t_obs_id)
+
         if out["break_"] == True:
             out["break_"] = False
             print(f'out task {task}')
