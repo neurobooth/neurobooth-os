@@ -64,6 +64,8 @@ def _process_received_data(serv_data, window):
             window.write_event_value(event, f"{stream_name}, {filename}]")
             
 
+########## Database functions ############
+
 def _find_subject(window, conn, first_name, last_name):
     """Find subject from database"""
     subject_df = meta.get_subject_ids(conn, first_name, last_name)
@@ -100,6 +102,23 @@ def _get_collections(window, conn, study_id):
     window["collection_id"].update(values=collection_ids)
     return collection_ids
 
+def _save_session(window, tech_obs_log, staff_id, subject_id, first_name,
+                  last_name, tasks):
+    """Save session."""
+    tech_obs_log["staff_id"] = staff_id
+    tech_obs_log["subject_id"] = subject_id
+    tech_obs_log["study_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
+
+    subject_id_date = tech_obs_log["study_id-date"]
+
+    window.close()
+
+    return {'subject_id': subject_id, 'first_name': first_name,
+            'last_name': last_name, 'tasks': tasks,
+            'subject_id_date': subject_id_date}
+
+
+########## Task-related functions ############
 
 def _start_task_presentation(window, tasks, subject_id, steps, node):
     """Present tasks"""
@@ -122,21 +141,65 @@ def _pause_tasks(steps, presentation_node):
         socket_message(resp.lower(), presentation_node)
 
 
-def _save_session(window, tech_obs_log, staff_id, subject_id, first_name,
-                  last_name, tasks):
-    """Save session."""
-    tech_obs_log["staff_id"] = staff_id
-    tech_obs_log["subject_id"] = subject_id
-    tech_obs_log["study_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
+########## LSL functions ############
 
-    subject_id_date = tech_obs_log["study_id-date"]
+def _start_lsl_session(window, inlets):
+    window.write_event_value('start_lsl_session', 'none')
 
-    window.close()
+    # Create LSL session
+    streamargs = [{'name': n} for n in list(inlets)]
+    session = liesl.Session(prefix='', streamargs=streamargs,
+                            mainfolder=cfg.paths["data_out"] )
+    print("LSL session with: ", list(inlets))
+    return session
 
-    return {'subject_id': subject_id, 'first_name': first_name,
-            'last_name': last_name, 'tasks': tasks,
-            'subject_id_date': subject_id_date}
 
+def _record_lsl(window, session, subject_id, task_id, t_obs_id, obs_log_id,
+                tsk_strt_time):
+
+    print(f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}")
+
+    # Start LSL recording
+    rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
+    session.start_recording(rec_fname)
+
+    window["task_title"].update("Running Task:")
+    window["task_running"].update(task_id, background_color="red")
+    window['Start'].Update(button_color=('black', 'red'))
+    return rec_fname
+
+
+def _create_lsl_inlet(stream_ids, outlet_values, inlets):
+    # event values -> f"['{outlet_name}', '{outlet_id}']
+    outlet_name, outlet_id = eval(outlet_values)
+    
+    # update the inlet if new or different source_id
+    if stream_ids.get(outlet_name) is None or outlet_id != stream_ids[outlet_name]:
+        stream_ids[outlet_name] = outlet_id
+        inlets.append(create_lsl_inlets({outlet_name: outlet_id}))
+
+
+def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, obs_log_id,
+                       t_obs_id):
+    """Stop LSL stream and save"""
+
+    # Stop LSL recording
+    session.stop_recording()
+
+    window["task_running"].update(task_id, background_color="green")
+    window['Start'].Update(button_color=('black', 'green'))
+
+    xdf_fname = get_xdf_name(session, rec_fname)
+    split_sens_files(xdf_fname, obs_log_id, t_obs_id, conn)
+
+######### Server communication ############
+
+def _start_servers(window, conn, nodes, remote=True):
+    window['-init_servs-'].Update(button_color=('black', 'red'))
+    event, values = window.read(.1)
+    ctr_rec.start_servers(nodes=nodes, remote=remote, conn=conn)
+    time.sleep(1)
+    return event, values
 
 def _start_ctr_server(host_ctr, port_ctr, sess_info, remote=True):
     """Start threaded control server and new window."""
@@ -157,44 +220,9 @@ def _start_ctr_server(host_ctr, port_ctr, sess_info, remote=True):
     if remote:
         time.sleep(.1)
         sys.stdout = NewStdout("mock",  target_node="dummy_ctr", terminal_print=True)
+    return window
 
-
-def _record_lsl(window, session, subject_id, task_id, t_obs_id, obs_log_id,
-                tsk_strt_time):
-
-    print(f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}")
-    # Start LSL recording
-    rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
-
-    # Start LSL recording
-    session.start_recording(rec_fname)
-
-    window["task_title"].update("Running Task:")
-    window["task_running"].update(task_id, background_color="red")
-    window['Start'].Update(button_color=('black', 'red'))
-    return rec_fname
-
-
-def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, obs_log_id,
-                       t_obs_id):
-    """Stop LSL stream and save"""
-
-    # Stop LSL recording
-    session.stop_recording()
-
-    window["task_running"].update(task_id, background_color="green")
-    window['Start'].Update(button_color=('black', 'green'))
-
-    xdf_fname = get_xdf_name(session, rec_fname)
-    split_sens_files(xdf_fname, obs_log_id, t_obs_id, conn)
-
-
-def _start_servers(window, conn, nodes, remote=True):
-    window['-init_servs-'].Update(button_color=('black', 'red'))
-    event, values = window.read(.1)
-    ctr_rec.start_servers(nodes=nodes, remote=remote, conn=conn)
-    time.sleep(1)
-    return event, values
+######### Visualization ############
 
 def _plot_realtime(window, plttr, inlets):
     # if no inlets send event to prepare devices and make popup error
@@ -206,17 +234,6 @@ def _plot_realtime(window, plttr, inlets):
         plttr.inlets = inlets
     else:
         plttr.start(inlets)
-
-
-def _start_lsl_session(window, inlets):
-    window.write_event_value('start_lsl_session', 'none')
-
-    # Create LSL session
-    streamargs = [{'name': n} for n in list(inlets)]
-    session = liesl.Session(prefix='', streamargs=streamargs,
-                            mainfolder=cfg.paths["data_out"] )
-    print("LSL session with: ", list(inlets))
-    return session
 
 
 def _update_button_status(window, statecolors, button_name, inlets):
@@ -388,13 +405,7 @@ def gui(remote=False, database='neurobooth'):
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
-            # event values -> f"['{outlet_name}', '{outlet_id}']
-            outlet_name, outlet_id = eval(values[event])
-            
-            # update the inlet if new or different source_id
-            if stream_ids.get(outlet_name) is None or outlet_id != stream_ids[outlet_name]:
-                stream_ids[outlet_name] = outlet_id
-                inlets.append(create_lsl_inlets({outlet_name: outlet_id}))
+            _create_lsl_inlet(stream_ids, values[event], inlets)
 
     ##################################################################################
     # Conditionals handling inlets for plotting and recording
