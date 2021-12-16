@@ -112,6 +112,43 @@ def _present_tasks(window, tasks, subject_id, steps, nodes):
         sg.PopupError('No task selected')
 
 
+def _save_session(window, tech_obs_log, staff_id, subject_id, first_name,
+                  last_name, tasks):
+    """Save session."""
+    tech_obs_log["staff_id"] = staff_id
+    tech_obs_log["subject_id"] = subject_id
+    tech_obs_log["study_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
+
+    subject_id_date = tech_obs_log["study_id-date"]
+
+    window.close()
+
+    return {'subject_id': subject_id, 'first_name': first_name,
+            'last_name': last_name, 'tasks': tasks}
+
+
+def _start_ctr_server(host_ctr, port_ctr, sess_info, remote=True):
+    """Start threaded control server and new window."""
+
+    # Open new layout with main window
+    window = _win_gen(_main_layout, sess_info, remote)
+
+    # Start a threaded socket CTR server once main window generated
+    callback_args = window
+    server_thread = threading.Thread(target=get_messages_to_ctr,
+                                    args=(_process_received_data, remote,
+                                          host_ctr, port_ctr,
+                                    callback_args,),
+                                    daemon=True)
+    server_thread.start()
+
+    # Rerout print for ctr server to capture data in remote case
+    if remote:
+        time.sleep(.1)
+        sys.stdout = NewStdout("mock",  target_node="dummy_ctr", terminal_print=True)
+
+
+
 def gui(remote=False, database='neurobooth'):
     """Start the Graphical User Interface.
 
@@ -183,32 +220,11 @@ def gui(remote=False, database='neurobooth'):
             if values["_tasks_"] == "":
                 sg.PopupError('No task combo')
             else:
-                tech_obs_log["staff_id"] = values['staff_id']
-                tech_obs_log["subject_id"] = values['subject_id']
-                tech_obs_log["study_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
+                sess_info = _save_session(window,
+                                          tech_obs_log, values['staff_id'],
+                                          subject_id, first_name, last_name, tasks)
+                _start_ctr_server(host_ctr, port_ctr, sess_info, remote=remote)
 
-                subject_id_date = tech_obs_log["study_id-date"]
-
-                window.close()
-
-                # Open new layout with main window
-                sess_info = {'subject_id': subject_id, 'first_name': first_name,
-                             'last_name': last_name, 'tasks': tasks}
-                window = _win_gen(_main_layout, sess_info, remote)
-
-                # Start a threaded socket CTR server once main window generated
-                callback_args = window    
-                server_thread = threading.Thread(target=get_messages_to_ctr,
-                                                args=(_process_received_data, remote, host_ctr, port_ctr,
-                                                callback_args,),
-                                                daemon=True)
-                server_thread.start()
-
-                # Rerout print for ctr server to capture data in remote case
-                if remote:
-                    time.sleep(.1)
-                    sys.stdout = NewStdout("mock",  target_node="dummy_ctr", terminal_print=True)
-            
         ############################################################
         # Main Window -> Run neurobooth session
         ############################################################
