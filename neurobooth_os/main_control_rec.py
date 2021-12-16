@@ -66,11 +66,6 @@ def prepare_devices(collection_id="mvp_025", nodes=("acquisition", "presentation
         socket_message(f"prepare:{collection_id}", node)
 
 
-def task_presentation(task_name, filename, node):
-    # task_name can be list of task1-task2-task3
-    socket_message(f"present:{task_name}:{filename}", node)
-
-
 def message_presentation(msg, nodes=("presentation",)):
     """Send message to presentation, either node presentation or mock_stm
 
