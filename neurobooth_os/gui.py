@@ -196,6 +196,33 @@ def _start_servers(window, conn, nodes, remote=True):
     time.sleep(1)
     return event, values
 
+def _plot_realtime(window, plttr, inlets):
+    # if no inlets send event to prepare devices and make popup error
+    if len(inlets) == 0:
+        window.write_event_value('-Connect-')
+        sg.PopupError('No inlet devices detected, preparing. Press plot once prepared')
+
+    if plttr.pltotting_ts is True:
+        plttr.inlets = inlets
+    else:
+        plttr.start(inlets)
+
+
+def _prepare_devices(window, nodes, collection_id, tech_obs_log):
+    window['-Connect-'].Update(button_color=('black', 'red'))
+    event, values = window.read(.1)
+
+    vidf_mrkr = marker_stream('videofiles')
+    # Create event to capture outlet_id
+    window.write_event_value('-OUTLETID-', f"['{vidf_mrkr.name}', '{vidf_mrkr.outlet_id}']")
+
+    nodes = ctr_rec._get_nodes(nodes)
+    for node in nodes:
+        socket_message(f"prepare:{collection_id}:{str(tech_obs_log)}", node)
+
+    print('Connecting devices')
+    return event, values
+
 
 def gui(remote=False, database='neurobooth'):
     """Start the Graphical User Interface.
@@ -270,29 +297,13 @@ def gui(remote=False, database='neurobooth'):
         elif event == "-init_servs-":
             _start_servers(window, conn, nodes, remote=True)
 
-        # Turn on devices and start LSL outlet stream
+        # Turn on devices
         elif event == '-Connect-':
-            window['-Connect-'].Update(button_color=('black', 'red'))
-            event, values = window.read(.1)
+            event, values = _prepare_devices(window, nodes, collection_id,
+                                             tech_obs_log)
 
-            vidf_mrkr = marker_stream('videofiles')
-            # Create event to capture outlet_id
-            window.write_event_value('-OUTLETID-', f"['{vidf_mrkr.name}', '{vidf_mrkr.outlet_id}']")
-
-            ctr_rec.prepare_devices(f"{collection_id}:{str(tech_obs_log)}", nodes=nodes)
-            print('Connecting devices')
-
-        # Real-time plotting of inlet data.
         elif event == 'plot':
-            # if no inlets send event to prepare devices and make popup error
-            if len(inlets) == 0:
-                window.write_event_value('-Connect-')
-                sg.PopupError('No inlet devices detected, preparing. Press plot once prepared')
-
-            if plttr.pltotting_ts is True:
-                plttr.inlets = inlets
-            else:
-                plttr.start(inlets)
+            _plot_realtime(window, plttr, inlets)
 
         # Start task presentation.
         elif event == 'Start':
@@ -339,7 +350,7 @@ def gui(remote=False, database='neurobooth'):
                                t_obs_id)
 
             if exit_flag == 'task_end':
-                break_ = True
+                break
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":            
