@@ -65,7 +65,7 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
                   readonly=True)],
         [_space()],   
 
-        [sg.Text('Task combo: '), sg.Combo("",  size=(64, 1), key="_tasks_", readonly=True)],
+        [sg.Text('Task combo: '), sg.Combo("",  size=(64, 1), key="tasks", readonly=True)],
         [_space()],     
         [_space(), sg.ReadFormButton('Save', button_color=('white', 'black'), key="_init_sess_save_")],              
         ]
@@ -129,7 +129,7 @@ def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
     sg.theme('Dark Grey 9')
     sg.set_options(element_padding=(0, 0))
 
-    field_tasks = _make_tasks_checkbox(sess_info['_tasks_'])
+    field_tasks = _make_tasks_checkbox(sess_info['tasks'])
    
     if remote:
         console_output = [_space(3)]
@@ -156,7 +156,7 @@ def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
 
         [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left', k="_title_notes_"),
          sg.Multiline(key='notes', default_text='', size=(64, 10)), _space()],
-        [_space(), sg.Combo([task_mapping(t)[0] for t in sess_info['_tasks_'].split(", ")],
+        [_space(), sg.Combo([task_mapping(t)[0] for t in sess_info['tasks'].split(", ")],
          k="_notes_taskname_"), sg.ReadFormButton('Save', key="_save_notes_")],
         [_space()]
 

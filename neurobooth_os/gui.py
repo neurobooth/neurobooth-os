@@ -183,17 +183,17 @@ def gui(remote=False, database='neurobooth'):
             if values["_tasks_"] == "":
                 sg.PopupError('No task combo')
             else:
-                sess_info = values
-                sess_info.update({'subject_id': subject_id,
-                                  'first_name': first_name, 'last_name': last_name})
-                staff_id = sess_info['staff_id']
-                tech_obs_log["staff_id"] = sess_info['staff_id']
-                tech_obs_log["subject_id"] = sess_info['subject_id']
+                tech_obs_log["staff_id"] = values['staff_id']
+                tech_obs_log["subject_id"] = values['subject_id']
                 tech_obs_log["study_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
+
                 subject_id_date = tech_obs_log["study_id-date"]
-                
+
                 window.close()
+
                 # Open new layout with main window
+                sess_info = {'subject_id': subject_id, 'first_name': first_name,
+                             'last_name': last_name, 'tasks': tasks}
                 window = _win_gen(_main_layout, sess_info, remote)
 
                 # Start a threaded socket CTR server once main window generated
