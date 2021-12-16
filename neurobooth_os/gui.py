@@ -329,7 +329,7 @@ def gui(remote=False, database='neurobooth'):
                 sess_info = _save_session(window,
                                           tech_obs_log, values['staff_id'],
                                           subject_id, first_name, last_name, tasks)
-                _start_ctr_server(host_ctr, port_ctr, sess_info, remote=remote)
+                window = _start_ctr_server(host_ctr, port_ctr, sess_info, remote=remote)
 
         ############################################################
         # Main Window -> Run neurobooth session
