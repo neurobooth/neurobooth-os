@@ -101,15 +101,25 @@ def _get_collections(window, conn, study_id):
     return collection_ids
 
 
-def _present_tasks(window, tasks, subject_id, steps, nodes):
+def _present_tasks(window, tasks, subject_id, steps, node):
     """Present tasks"""
     window['Start'].Update(button_color=('black', 'yellow'))
     if len(tasks) > 0:
         running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
-        socket_message(f"present:{running_task}:{subject_id}", nodes[1])
+        socket_message(f"present:{running_task}:{subject_id}", node)
         steps.append("task_started")
     else:
         sg.PopupError('No task selected')
+
+
+def _pause_tasks(steps, presentation_node):
+    if "task_started" not in steps:
+        sg.PopupError('Tasks not started')
+    else:
+        socket_message("pause tasks", presentation_node)
+        resp = sg.Popup('The next task will be paused',
+                        custom_text=('Continue tasks', 'Stop tasks'))
+        socket_message(resp.lower(), presentation_node)
 
 
 def _save_session(window, tech_obs_log, staff_id, subject_id, first_name,
@@ -262,16 +272,11 @@ def gui(remote=False, database='neurobooth'):
 
         # Start task presentation.
         elif event == 'Start':
-            _present_tasks(window, tasks, sess_info['subj_id'], steps, nodes)
+            _present_tasks(window, tasks, sess_info['subj_id'], steps,
+                           node=nodes[1])
 
         elif event == "Pause tasks":
-            if "task_started" not in steps:
-                sg.PopupError('Tasks not started')
-            else:
-                socket_message("pause tasks", nodes[1])
-                resp = sg.Popup('The next task will be paused',
-                                custom_text=('Continue tasks', 'Stop tasks'))
-                socket_message(resp.lower(), nodes[1])
+            _pause_tasks(steps, presentation_node=nodes[1])
 
         # Save notes to a txt
         elif event == "_save_notes_":
