@@ -134,7 +134,8 @@ def _save_session(window, tech_obs_log, staff_id, subject_id, first_name,
     window.close()
 
     return {'subject_id': subject_id, 'first_name': first_name,
-            'last_name': last_name, 'tasks': tasks}
+            'last_name': last_name, 'tasks': tasks,
+            'subject_id_date': subject_id_date}
 
 
 def _start_ctr_server(host_ctr, port_ctr, sess_info, remote=True):
@@ -186,6 +187,14 @@ def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, tech_obs_log_i
 
     xdf_fname = get_xdf_name(session, rec_fname)
     split_sens_files(xdf_fname, tech_obs_log_id, t_obs_id, conn)
+
+
+def _start_servers(window, conn, nodes, remote=True):
+    window['-init_servs-'].Update(button_color=('black', 'red'))
+    event, values = window.read(.1)
+    ctr_rec.start_servers(nodes=nodes, remote=remote, conn=conn)
+    time.sleep(1)
+    return event, values
 
 
 def gui(remote=False, database='neurobooth'):
@@ -259,10 +268,7 @@ def gui(remote=False, database='neurobooth'):
 
         # Start servers on STM, ACQ
         elif event == "-init_servs-":
-            window['-init_servs-'].Update(button_color=('black', 'red'))
-            event, values = window.read(.1)
-            ctr_rec.start_servers(nodes=nodes, remote=remote, conn=conn)
-            time.sleep(1)
+            _start_servers(window, conn, nodes, remote=True)
 
         # Turn on devices and start LSL outlet stream
         elif event == '-Connect-':
@@ -302,7 +308,9 @@ def gui(remote=False, database='neurobooth'):
                 sg.PopupError('Pressed saving notes without task, select one in the dropdown list')
                 continue
 
-            write_task_notes(subject_id_date, staff_id, values['_notes_taskname_'], values['notes'])
+            write_task_notes(sess_info['subject_id_date'],
+                             sess_info['staff_id'],
+                             values['_notes_taskname_'], values['notes'])
             window["notes"].Update('')
 
         # Shut down the other servers and stops plotting
@@ -310,7 +318,6 @@ def gui(remote=False, database='neurobooth'):
             plttr.stop()
             ctr_rec.shut_all(nodes=nodes)
             break
-        
 
         ##################################################################################
         # Thread events from process_received_data -> received messages from other servers
