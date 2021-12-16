@@ -175,7 +175,7 @@ def _record_lsl(window, session, subject_id, task_id, t_obs_id, obs_log_id,
     return rec_fname
 
 
-def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, tech_obs_log_id,
+def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, obs_log_id,
                        t_obs_id):
     """Stop LSL stream and save"""
 
@@ -186,7 +186,7 @@ def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, tech_obs_log_i
     window['Start'].Update(button_color=('black', 'green'))
 
     xdf_fname = get_xdf_name(session, rec_fname)
-    split_sens_files(xdf_fname, tech_obs_log_id, t_obs_id, conn)
+    split_sens_files(xdf_fname, obs_log_id, t_obs_id, conn)
 
 
 def _start_servers(window, conn, nodes, remote=True):
@@ -221,7 +221,7 @@ def _prepare_devices(window, nodes, collection_id, tech_obs_log):
         socket_message(f"prepare:{collection_id}:{str(tech_obs_log)}", node)
 
     print('Connecting devices')
-    return event, values
+    return vidf_mrkr, event, values
 
 
 def gui(remote=False, database='neurobooth'):
@@ -299,8 +299,8 @@ def gui(remote=False, database='neurobooth'):
 
         # Turn on devices
         elif event == '-Connect-':
-            event, values = _prepare_devices(window, nodes, collection_id,
-                                             tech_obs_log)
+            vidf_mrkr, event, values = _prepare_devices(window, nodes, collection_id,
+                                                        tech_obs_log)
 
         elif event == 'plot':
             _plot_realtime(window, plttr, inlets)
@@ -346,11 +346,8 @@ def gui(remote=False, database='neurobooth'):
             task_id = values['task_finished']
             
             _stop_lsl_and_save(window, session, conn,
-                               rec_fname, task_id, tech_obs_log_id,
-                               t_obs_id)
-
-            if exit_flag == 'task_end':
-                break
+                               rec_fname, task_id, obs_log_id, t_obs_id)
+            break
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":            
