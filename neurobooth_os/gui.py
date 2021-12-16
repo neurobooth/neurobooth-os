@@ -252,12 +252,13 @@ def gui(remote=False, database='neurobooth'):
             if "task_started" not in steps:
                 sg.PopupError('Tasks not started')
             else:
-                ctr_rec.message_presentation("pause tasks", nodes)
-                resp = sg.Popup('The next task will be paused', custom_text=('Continue tasks', 'Stop tasks'))
+                socket_message("pause tasks", nodes[1])
+                resp = sg.Popup('The next task will be paused',
+                                custom_text=('Continue tasks', 'Stop tasks'))
                 if resp == 'Continue tasks':
-                    ctr_rec.message_presentation("unpause tasks", nodes)
+                    socket_message("unpause tasks", nodes[1])
                 elif resp == 'Stop tasks':
-                    ctr_rec.message_presentation("stop tasks", nodes)
+                    socket_message("stop tasks", nodes[1])
 
         # Save notes to a txt
         elif event == "_save_notes_":
@@ -384,8 +385,7 @@ def ctr_event_handler(window, event, values, conn, subject_id, statecolors=None,
         # update the inlet if new or different source_id
         if stream_ids.get(outlet_name) is None or outlet_id != stream_ids[outlet_name]:
             stream_ids[outlet_name] = outlet_id
-            new_inlet = create_lsl_inlets({outlet_name: outlet_id})
-            inlets.update(new_inlet)
+            inlets.append(create_lsl_inlets({outlet_name: outlet_id}))
 
     # Signal a task started: record LSL data and update gui
     elif event == 'task_initiated':
