@@ -16,7 +16,7 @@ import liesl
 
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
-from neurobooth_os.netcomm import get_messages_to_ctr, node_info, NewStdout
+from neurobooth_os.netcomm import get_messages_to_ctr, node_info, NewStdout, socket_message
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, get_xdf_name
@@ -64,6 +64,54 @@ def _process_received_data(serv_data, window):
             window.write_event_value(event, f"{stream_name}, {filename}]")
             
 
+def _find_subject(window, conn, first_name, last_name):
+    """Find subject from database"""
+    subject_df = meta.get_subject_ids(conn, first_name, last_name)
+    window['dob'].update(values=subject_df['date_of_birth'])
+    return subject_df
+
+
+def _select_subject(window, subject_df):
+    """Select subject from the DOB window"""
+    subject = subject_df.iloc[window['dob'].get_indexes()]
+    subject_id = subject.name
+    first_name = subject['first_name_birth']
+    last_name = subject['last_name_birth']
+
+    # Update GUI
+    window['dob'].update(values=[f'Subject ID: {subject_id}'])
+    window['first_name'].update(disabled=True)
+    window['last_name'].update(disabled=True)
+    return first_name, last_name, subject_id
+
+
+def _get_tasks(window, conn, collection_id):
+    tasks_obs = meta.get_tasks(collection_id, conn)
+    tasks = list()
+    for task in tasks_obs:
+        task_id, *_ = meta._get_task_param(task, conn)
+        tasks.append(task_id)
+    window["_tasks_"].update(value=", ".join(tasks))
+    return tasks
+
+
+def _get_collections(window, conn, study_id):
+    collection_ids = meta.get_collection_ids(study_id, conn)
+    window["collection_id"].update(values=collection_ids)
+    return collection_ids
+
+
+def _present_tasks(window, tasks, subject_id, steps, nodes):
+    """Present tasks"""
+    window['Start'].Update(button_color=('black', 'yellow'))
+    if len(tasks) > 0:
+        running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
+        socket_message(f"present:{running_task}:{subject_id}", nodes[1])
+        steps.append("task_started")
+    else:
+        sg.PopupError('No task selected')
+
+
 def gui(remote=False, database='neurobooth'):
     """Start the Graphical User Interface.
 
@@ -106,7 +154,7 @@ def gui(remote=False, database='neurobooth'):
     statecolors = {"-init_servs-": ["green", "yellow"],
                    "-Connect-": ["green", "yellow"],
                    }
-    steps = []  # keep track of steps done
+    steps = list()  # keep track of steps done
     event, values = window.read(.1)
     while True:
         event, values = window.read(.5)
@@ -117,32 +165,19 @@ def gui(remote=False, database='neurobooth'):
         if event == "study_id":
             study_id = values[event]
             tech_obs_log["study_id"] = study_id
-            collection_ids = meta.get_collection_ids(study_id, conn)
-            window["collection_id"].update(values=collection_ids)
+            collection_ids = _get_collections(window, conn, study_id)
 
         elif event == 'find_subject':
-            subject_df = meta.get_subject_ids(conn, values['first_name'],
-                                              values['last_name'])
-            window['dob'].update(values=subject_df['date_of_birth'])
+            subject_df = _find_subject(window, conn, values['first_name'],
+                                       values['last_name'])
 
         elif event == 'select_subject':
-            subject = subject_df.iloc[window['dob'].get_indexes()]
-            subject_id = subject.name
-            first_name = subject['first_name_birth']
-            last_name = subject['last_name_birth']
-            window['dob'].update(values=[f'Subject ID: {subject_id}'])
-            window['first_name'].update(disabled=True)
-            window['last_name'].update(disabled=True)
+            first_name, last_name, subject_id = _select_subject(window, subject_df)
 
         elif event == "collection_id":
             collection_id = values[event]
             tech_obs_log["collection_id"] = collection_id
-            tasks_obs = meta.get_tasks(collection_id, conn)
-            task_list = []
-            for task in tasks_obs:
-                task_id, *_ = meta._get_task_param(task, conn)
-                task_list.append(task_id)
-            window["_tasks_"].update(value=", ".join(task_list))
+            tasks = _get_tasks(window, conn, collection_id)
 
         elif event == "_init_sess_save_":
             if values["_tasks_"] == "":
@@ -211,15 +246,7 @@ def gui(remote=False, database='neurobooth'):
 
         # Start task presentation.
         elif event == 'Start':
-            tasks = [k for k, v in values.items() if "task" in k and v == True]
-                    
-            window['Start'].Update(button_color=('black', 'yellow'))
-            if len(tasks):
-                running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
-                ctr_rec.task_presentation(running_task, sess_info['subject_id'], node=nodes[1])
-                steps.append("task_started")
-            else:
-                sg.PopupError('No task selected')
+            _present_tasks(window, tasks, sess_info['subj_id'], steps, nodes)
 
         elif event == "Pause tasks":
             if "task_started" not in steps:
