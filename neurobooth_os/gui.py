@@ -208,6 +208,17 @@ def _plot_realtime(window, plttr, inlets):
         plttr.start(inlets)
 
 
+def _start_lsl_session(window, inlets):
+    window.write_event_value('start_lsl_session', 'none')
+
+    # Create LSL session
+    streamargs = [{'name': n} for n in list(inlets)]
+    session = liesl.Session(prefix='', streamargs=streamargs,
+                            mainfolder=cfg.paths["data_out"] )
+    print("LSL session with: ", list(inlets))
+    return session
+
+
 def _update_button_status(window, statecolors, button_name, inlets):
     if button_name in list(statecolors):
         # 2 colors for init_servers and Connect, 1 connected, 2 connected
@@ -217,16 +228,7 @@ def _update_button_status(window, statecolors, button_name, inlets):
 
             # Signal start LSL session if both servers devices are ready:
             if button_name == "-Connect-" and color == "green":
-                window.write_event_value('start_lsl_session', 'none')
-
-                # Create LSL session
-                streamargs = [{'name': n} for n in list(inlets)]
-                session = liesl.Session(prefix='', streamargs=streamargs,
-                                        mainfolder=cfg.paths["data_out"] )
-                print("LSL session with: ", list(inlets))
-
-                if exit_flag =='prepared':
-                    break_ = True
+                return _start_lsl_session(window, inlets)
 
 
 def _prepare_devices(window, nodes, collection_id, tech_obs_log):
@@ -378,8 +380,11 @@ def gui(remote=False, database='neurobooth'):
 
         # Update colors for: -init_servs-, -Connect-, Start buttons
         elif event == "-update_butt-":
-            _update_button_status(window, statecolors, values['-update_butt-'],
-                                  inlets)
+            session = _update_button_status(window, statecolors,
+                                            values['-update_butt-'],
+                                            inlets)
+            if session is not None:
+                break
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
