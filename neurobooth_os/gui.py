@@ -101,7 +101,7 @@ def _get_collections(window, conn, study_id):
     return collection_ids
 
 
-def _present_tasks(window, tasks, subject_id, steps, node):
+def _start_task_presentation(window, tasks, subject_id, steps, node):
     """Present tasks"""
     window['Start'].Update(button_color=('black', 'yellow'))
     if len(tasks) > 0:
@@ -329,10 +329,10 @@ def gui(remote=False, database='neurobooth'):
         elif event == 'plot':
             _plot_realtime(window, plttr, inlets)
 
-        # Start task presentation.
         elif event == 'Start':
-            _present_tasks(window, tasks, sess_info['subj_id'], steps,
-                           node=nodes[1])
+            tasks = [k for k, v in values.items() if "task" in k and v is True]
+            _start_task_presentation(window, tasks, sess_info['subj_id'], steps,
+                                     node=nodes[1])
 
         elif event == "Pause tasks":
             _pause_tasks(steps, presentation_node=nodes[1])
