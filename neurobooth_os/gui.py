@@ -158,6 +158,35 @@ def _start_ctr_server(host_ctr, port_ctr, sess_info, remote=True):
         sys.stdout = NewStdout("mock",  target_node="dummy_ctr", terminal_print=True)
 
 
+def _record_lsl(window, session, subject_id, task_id, t_obs_id, obs_log_id,
+                tsk_strt_time):
+
+    print(f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}")
+    # Start LSL recording
+    rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
+
+    # Start LSL recording
+    session.start_recording(rec_fname)
+
+    window["task_title"].update("Running Task:")
+    window["task_running"].update(task_id, background_color="red")
+    window['Start'].Update(button_color=('black', 'red'))
+    return rec_fname
+
+
+def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, tech_obs_log_id,
+                       t_obs_id):
+    """Stop LSL stream and save"""
+
+    # Stop LSL recording
+    session.stop_recording()
+
+    window["task_running"].update(task_id, background_color="green")
+    window['Start'].Update(button_color=('black', 'green'))
+
+    xdf_fname = get_xdf_name(session, rec_fname)
+    split_sens_files(xdf_fname, tech_obs_log_id, t_obs_id, conn)
+
 
 def gui(remote=False, database='neurobooth'):
     """Start the Graphical User Interface.
@@ -186,18 +215,7 @@ def gui(remote=False, database='neurobooth'):
     tech_obs_log = meta._new_tech_log_dict()
     stream_ids, inlets = {}, {}
     plot_elem, inlet_keys = [], []
-    
-    # Create variables for out dict 
-    subject_id_date = None
-    exit_flag=None  # where to break
-    break_ = False  # break loop if True                
-    obs_log_id = None
-    t_obs_id = None
-    task_id = None
-    rec_fname = None, # lsl file name
-    session = None    
-    vidf_mrkr = None
-            
+
     statecolors = {"-init_servs-": ["green", "yellow"],
                    "-Connect-": ["green", "yellow"],
                    }
@@ -297,25 +315,61 @@ def gui(remote=False, database='neurobooth'):
         ##################################################################################
         # Thread events from process_received_data -> received messages from other servers
         ##################################################################################
-        
-        out = dict(exit_flag=exit_flag,  # where to break
-            break_ = break_,  # break loop if True                
-            obs_log_id = obs_log_id, 
-            t_obs_id = t_obs_id, 
-            task_id = task_id,
-            rec_fname = rec_fname, # lsl file name
-            session = session,                   
-            vidf_mrkr = vidf_mrkr,
-            )
-        out = ctr_event_handler(window, event, values, conn, subject_id_date, statecolors=statecolors, stream_ids=stream_ids,
-                     inlets=inlets, out=out)
-        obs_log_id = out['obs_log_id']
-        t_obs_id = out['t_obs_id']
-        task_id = out['task_id']
-        rec_fname = out['rec_fname']
-        session = out['session']
-        vidf_mrkr = out['vidf_mrkr']
-        
+            
+        # Signal a task started: record LSL data and update gui
+        elif event == 'task_initiated':
+            # event values -> f"['{task_id}', '{t_obs_id}', '{tech_obs_log_id}, '{tsk_strt_time}']
+            task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
+            rec_fname = _record_lsl(window, session, subject_id, task_id,
+                                    t_obs_id, obs_log_id, tsk_strt_time)
+
+        # Signal a task ended: stop LSL recording and update gui
+        elif event == 'task_finished':
+            task_id = values['task_finished']
+            
+            _stop_lsl_and_save(window, session, conn,
+                               rec_fname, task_id, tech_obs_log_id,
+                               t_obs_id)
+
+            if exit_flag == 'task_end':
+                break_ = True
+
+        # Send a marker string with the name of the new video file created
+        elif event == "-new_filename-":            
+            vidf_mrkr.push_sample([values[event]])
+            print(f"pushed videfilename mark {values[event]}")
+
+        # Update colors for: -init_servs-, -Connect-, Start buttons
+        elif event == "-update_butt-":
+            if values['-update_butt-'] in list(statecolors):
+                # 2 colors for init_servers and Connect, 1 connected, 2 connected
+                if len(statecolors[values['-update_butt-']]):
+                    color = statecolors[values['-update_butt-']].pop()
+                    window[values['-update_butt-']].Update(button_color=('black', color))
+
+                    # Signal start LSL session if both servers devices are ready:
+                    if values['-update_butt-'] == "-Connect-" and color == "green":
+                        window.write_event_value('start_lsl_session', 'none')
+                        
+                        # Create LSL session
+                        streamargs = [{'name': n} for n in list(inlets)]
+                        session = liesl.Session(prefix='', streamargs=streamargs,
+                                                mainfolder=cfg.paths["data_out"] )
+                        print("LSL session with: ", list(inlets))
+
+                        if exit_flag =='prepared':
+                            break_ = True
+                        
+        # Create LSL inlet stream
+        elif event == "-OUTLETID-":
+            # event values -> f"['{outlet_name}', '{outlet_id}']
+            outlet_name, outlet_id = eval(values[event])
+            
+            # update the inlet if new or different source_id
+            if stream_ids.get(outlet_name) is None or outlet_id != stream_ids[outlet_name]:
+                stream_ids[outlet_name] = outlet_id
+                inlets.append(create_lsl_inlets({outlet_name: outlet_id}))
+
     ##################################################################################
     # Conditionals handling inlets for plotting and recording
     ##################################################################################
@@ -331,122 +385,6 @@ def gui(remote=False, database='neurobooth'):
     else:
         window['-OUTPUT-'].__del__()
     print("Session terminated")
-
-
-def ctr_event_handler(window, event, values, conn, subject_id, statecolors=None, stream_ids={},
-                     inlets={}, out=None):
-    """Handles events from ctr server thread
-
-    Parameters
-    ----------
-    window : callable
-        pysimple gui window
-    event : str
-        event name from window.read()
-    values : dict
-        values from window.read()
-    conn : callable
-        connector object to pgadmin database
-    subject_id : str
-        Name of the subject
-    statecolors : dict, optional
-        Color of the buttons, by default None
-    stream_ids : dict, optional
-        Ids of the lsl streams, by default {}
-    inlets : dict, optional
-        Lsl inlets, by default {}
-    out : dict, optional
-        Dictionary with variables, by default None
-
-    Returns
-    -------
-    out dict
-        variables from out arg
-    """
-    
-    if out is None:
-        out = dict(exit_flag=None,  # where to break
-                   break_ = False,  # break loop if True                
-                   obs_log_id = None, 
-                   t_obs_id = None, 
-                   task_id = None,
-                   rec_fname = None, # lsl file name
-                   session = liesl.Session(),                   
-                   vidf_mrkr = marker_stream('videofiles'),
-                   )
-
-    # Update colors for: -init_servs-, -Connect-, Start buttons
-    if event == "-update_butt-":
-        if values['-update_butt-'] in list(statecolors):
-            # 2 colors for init_servers and Connect, 1 connected, 2 connected
-            if len(statecolors[values['-update_butt-']]):
-                color = statecolors[values['-update_butt-']].pop()
-                window[values['-update_butt-']].Update(button_color=('black', color))
-
-                # Signal start LSL session if both servers devices are ready:
-                if values['-update_butt-'] == "-Connect-" and color == "green":
-                    window.write_event_value('start_lsl_session', 'none')
-                    
-                    # Create LSL session
-                    streamargs = [{'name': n} for n in list(inlets)]
-                    out["session"] = liesl.Session(prefix='', streamargs=streamargs, mainfolder=cfg.paths["data_out"] )
-                    print("LSL session with: ", list(inlets))
-
-                    if out['exit_flag'] =='prepared':
-                        out['break_'] = True
-                    
-    # Create LSL inlet stream
-    elif event == "-OUTLETID-":
-        # event values -> f"['{outlet_name}', '{outlet_id}']
-        outlet_name, outlet_id = eval(values[event])
-        
-        # update the inlet if new or different source_id
-        if stream_ids.get(outlet_name) is None or outlet_id != stream_ids[outlet_name]:
-            stream_ids[outlet_name] = outlet_id
-            inlets.append(create_lsl_inlets({outlet_name: outlet_id}))
-
-    # Signal a task started: record LSL data and update gui
-    elif event == 'task_initiated':
-        # event values -> f"['{task_id}', '{t_obs_id}', '{tech_obs_log_id}, '{tsk_strt_time}']
-        task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
-        out["obs_log_id"] = obs_log_id
-        out["t_obs_id"] = t_obs_id
-        out["task_id"] = task_id
-
-        print(f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}")
-        # Start LSL recording
-        rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
-
-        # Start LSL recording
-        out["rec_fname"] = rec_fname
-        out['session'].start_recording(out["rec_fname"])
-
-        window["task_title"].update("Running Task:")
-        window["task_running"].update(task_id, background_color="red")
-        window['Start'].Update(button_color=('black', 'red'))
-
-    # Signal a task ended: stop LSL recording and update gui
-    elif event == 'task_finished':
-        task_id = values[event]
-        
-        # Stop LSL recording
-        out['session'].stop_recording()
-
-        window["task_running"].update(task_id, background_color="green")
-        window['Start'].Update(button_color=('black', 'green'))
-
-        xdf_fname = get_xdf_name(out['session'], out["rec_fname"])
-        split_sens_files(xdf_fname, out["obs_log_id"], out["t_obs_id"], conn)
-        
-        if out['exit_flag'] =='task_end':
-            out['break_'] = True
-
-    # Send a marker string with the name of the new video file created
-    elif event == "-new_filename-":            
-        out["vidf_mrkr"].push_sample([values[event]])
-        print(f"pushed videfilename mark {values[event]}")
-
-    return out
 
 
 def main():
