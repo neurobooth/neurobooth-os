@@ -177,7 +177,7 @@ def _create_lsl_inlet(stream_ids, outlet_values, inlets):
     # update the inlet if new or different source_id
     if stream_ids.get(outlet_name) is None or outlet_id != stream_ids[outlet_name]:
         stream_ids[outlet_name] = outlet_id
-        inlets.append(create_lsl_inlets({outlet_name: outlet_id}))
+        inlets.update(create_lsl_inlets({outlet_name: outlet_id}))
 
 
 def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, obs_log_id,
