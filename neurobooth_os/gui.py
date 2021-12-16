@@ -93,7 +93,8 @@ def _get_tasks(window, conn, collection_id):
     for task in tasks_obs:
         task_id, *_ = meta._get_task_param(task, conn)
         tasks.append(task_id)
-    window["_tasks_"].update(value=", ".join(tasks))
+    tasks = ", ".join(tasks)
+    window["tasks"].update(value=tasks)
     return tasks
 
 
@@ -114,7 +115,7 @@ def _save_session(window, tech_obs_log, staff_id, subject_id, first_name,
     window.close()
 
     return {'subject_id': subject_id, 'first_name': first_name,
-            'last_name': last_name, 'tasks': tasks,
+            'last_name': last_name, 'tasks': tasks, 'staff_id': staff_id,
             'subject_id_date': subject_id_date}
 
 
@@ -322,7 +323,7 @@ def gui(remote=False, database='neurobooth'):
             tasks = _get_tasks(window, conn, collection_id)
 
         elif event == "_init_sess_save_":
-            if values["_tasks_"] == "":
+            if values["tasks"] == "":
                 sg.PopupError('No task combo')
             else:
                 sess_info = _save_session(window,
