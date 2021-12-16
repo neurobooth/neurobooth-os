@@ -255,10 +255,7 @@ def gui(remote=False, database='neurobooth'):
                 socket_message("pause tasks", nodes[1])
                 resp = sg.Popup('The next task will be paused',
                                 custom_text=('Continue tasks', 'Stop tasks'))
-                if resp == 'Continue tasks':
-                    socket_message("unpause tasks", nodes[1])
-                elif resp == 'Stop tasks':
-                    socket_message("stop tasks", nodes[1])
+                socket_message(resp.lower(), nodes[1])
 
         # Save notes to a txt
         elif event == "_save_notes_":

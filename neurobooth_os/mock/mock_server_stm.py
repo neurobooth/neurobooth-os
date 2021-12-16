@@ -109,7 +109,7 @@ def mock_stm_routine(host, port, conn):
                 tech_obs_log['event_array'] = str(events) if events is not None else "event:datestamp"
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)
                 
-                # Check if pause requested, unpause or stop
+                # Check if pause requested, continue or stop
                 data = get_data_timeout(s1, .1)
                 if data == "pause tasks":
                     print("Session Paused")
@@ -118,7 +118,7 @@ def mock_stm_routine(host, port, conn):
                     data = conn.recv(1024)
                     data = data.decode("utf-8")
                     
-                    if data == "unpause tasks":
+                    if data == "continue tasks":
                         continue                    
                     elif data == "stop tasks":
                         break
