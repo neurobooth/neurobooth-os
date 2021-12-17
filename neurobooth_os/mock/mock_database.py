@@ -84,7 +84,7 @@ def delete_mock_rows(conn_mock):
     table_ids = ['study', 'collection', 'tech_obs_data', 'device',
                     'sensor', 'stimulus', 'instruction']
     primary_keys = ['study_id', 'collection_id', 'tech_obs_id',
-                    'device_id', 'sensor_id', 'stimulus_id']
+                    'device_id', 'sensor_id', 'stimulus_id', 'instruction_id']
     for table_id, pk in zip(table_ids, primary_keys):
         table = Table(table_id, conn_mock)
         table.delete_row(f"{pk} LIKE 'mock%'")
