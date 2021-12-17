@@ -3,91 +3,132 @@
 
 from __future__ import absolute_import, division
 
-import os
-
 import numpy as np
+import pylink
 from numpy.random import shuffle
-
 from psychopy import visual, core, data, event, logging
 from psychopy.constants import NOT_STARTED, STARTED, FINISHED
 from psychopy.hardware import keyboard
+from neurobooth_os.tasks import utils
+from neurobooth_os.tasks.task import Task_Eyetracker
+import neurobooth_os
+import json
+import os.path as op
 
-from neurobooth_os.tasks.utils import make_win
-from neurobooth_os.tasks import Task
+class hevelius_task(Task_Eyetracker):
 
-class hevelius_task(Task):
-
-    def __init__(self, path="", subj_id="test", **kwargs):
+    def __init__(self, trials_data, record_psychopy=True, path="", subj_id="test", **kwargs):
         super().__init__(**kwargs)
-        
+
         self.path_out = path
         self.subj_id = subj_id
         # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
-        self.filename = self.path_out + f'{self.subj_id}_MouseTask_results'       
+        self.filename = self.path_out + f'{self.subj_id}_MouseTask_results'
         self.frameTolerance = 0.001  # how close to onset before 'same' frame
         self.rep = ''  # repeated task num to add to filename
+        self.trials_data = trials_data
+        self.record_psychopy = record_psychopy
 
 
-    def run(self, prompt=True, **kwargs):
+    def convert_pix(self, loc):
+        newloc = [[], []]
+        newloc[0] = int(loc[0] - self.win.size[0] / 2.0)
+        newloc[1] = int(self.win.size[1] / 2.0 - loc[1])
+        return newloc
+
+    def run(self, prompt=False, **kwargs):
+
+        practice_blocks = sorted(list(filter(lambda x: x.startswith('practice'), list(self.trials_data.keys()))))
+        trials_blocks = sorted(list(filter(lambda x: x.startswith('block'), list(self.trials_data.keys()))))
+
         self.present_instructions(prompt)
-        self.run_trials(prompt, **kwargs)
+        self.screen_text = visual.TextStim(win=self.win, name='',
+                                           text='',
+                                           font='Open Sans',
+                                           pos=(-0.88, 0.5),
+                                           height=0.03,
+                                           wrapWidth=800,
+                                           ori=0.0,
+                                           color='black',
+                                           colorSpace='rgb',
+                                           opacity=None,
+                                           languageStyle='LTR',
+                                           depth=0.0,
+                                           units='height',
+                                           alignText='left',
+                                           anchorHoriz='left',
+                                           anchorVert='top')
+
+        # # Recording database
+        self.startRecording()
+        pylink.msecDelay(100)
+        self.run_blocks(practice_blocks, 'Practice ')
+        text_practice_done = 'Thank you for completing Practice Session \n\tPlease press:\n\t"Continue" to the task'
+        continue_screen = utils.create_text_screen(self.win, text_practice_done)
+        self.present_text(continue_screen, msg='Practice session completed')
+        self.run_blocks(trials_blocks, '')
+        self.sendMessage('EyeTracking Done')
+
+        if prompt:
+            func_kwargs_func = {'prompt': prompt}
+            self.rep += "_I"
+            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.run,
+                              func_kwargs=func_kwargs_func, waitKeys=False)
         self.present_complete()
         return self.events
 
+    def run_blocks(self, blocks, block_type):
+        for index, block in enumerate(blocks):
+            print('block start')
+            self.sendMessage(block_type + ' Block {} of {}'.format(index+1,  len(blocks)))
+            text_continue = block_type + 'Block {} of {} \n\tPlease press:\n\t"Continue" to advance'.format(index + 1, len(blocks))
+            continue_screen = utils.create_text_screen(self.win, text_continue)
+            self.present_text(continue_screen, msg=block_type + ' Block {} of {}'.format(index+1,  len(blocks)))
+            self.run_trials(self.trials_data[block], block_type)
+            utils.change_win_color(self.win, 'grey')
 
-    def run_trials(self, prompt, num_iterations=30, **kwargs):
-        
-        self.ntrials = num_iterations
-        
+    def run_trials(self, block, block_type):
+        self.screen_text.setAutoDraw(False)
+        utils.change_win_color(self.win, 'white')
         # create a default keyboard (e.g. to check for escape)
         defaultKeyboard = keyboard.Keyboard()
         mouse = event.Mouse(win=self.win)
 
         # An ExperimentHandler isn't essential but helps with data saving
-        self.thisExp = data.ExperimentHandler(name="MouseTask", version='', runtimeInfo=None, savePickle=True,
-                                              saveWideText=True, dataFileName=self.filename + self.rep) 
 
         # An ExperimentHandler isn't essential but helps with data saving
         thisExp = data.ExperimentHandler(name=self.subj_id, version='', runtimeInfo=None,
-                                         originPath='C:\neurobooth\neurobooth-eel\tasks\\hevelius_task.py',
-                                         savePickle=True, saveWideText=True, dataFileName=self.filename + self.rep)
-        
+                                         originPath='C:\\neurobooth\\neurobooth-eel\\tasks\\hevelius_task.py',
+                                         savePickle=False, saveWideText=False, dataFileName=self.filename + self.rep)
+
         # Initialize components for Routine "trial"
         trialClock = core.Clock()
-        polygon = visual.Polygon(
+        polygon = visual.Circle(
             win=self.win, name='polygon',
-            edges=9999, size=(30, 30),
+            edges=32, radius=block['target_size']/(2),
             ori=0, pos=(0, 0), units='pix',
-            lineWidth=1, lineColor='white', lineColorSpace='rgb',
-            fillColor='white', fillColorSpace='rgb',
+            lineWidth=1, lineColor='black', lineColorSpace='rgb',
+            fillColor='red', fillColorSpace='rgb',
             opacity=1, depth=0.0, interpolate=True)
 
         x, y = [None, None]
         mouse.mouseClock = core.Clock()
-        xLocs = [-.4, -.35, -.3, -.25, -.2, -.15, -.1, -.05, 0, 0.05, .1, .15, .2, .25, .3, .35, .4]
-        yLocs = [-.4, -.35, -.3, -.25, -.2, -.15, -.1, -.05, 0, 0.05, .1, .15, .2, .25, .3, .35, .4]
-        xLocs = [xLoc * 1920 for xLoc in xLocs]
-        yLocs = [yLoc * 1080 for yLoc in yLocs]
         locs = []
+        for loc in block['target_positions']:
+            locs.append([loc['x'], loc['y']])
 
-        for x in xLocs:
-            for y in yLocs:
-                locs.append([x, y])
-
-        # Shuffle the locations
-        shuffle(locs)
         i = 0  # current index for locations
-        mouse.setPos((locs[0][0], locs[0][1]))
+
         # Create some handy timers
         globalClock = core.Clock()  # to track the time since experiment started
         routineTimer = core.CountdownTimer()  # to track time remaining of each (non-slip) routine
 
         # set up handler to look after randomisation of conditions etc
-        trials = data.TrialHandler(nReps=self.ntrials, method='random',
+        trials = data.TrialHandler(nReps=len(locs), method='random',
                                    originPath=-1,
                                    trialList=[None],
                                    seed=None, name='trials')
-        
+
         thisExp.addLoop(trials)  # add the loop to the experiment
         thisTrial = trials.trialList[0]  # so we can initialise stimuli with some values
         # abbreviate parameter names if possible (e.g. rgb = thisTrial.rgb)
@@ -95,7 +136,13 @@ class hevelius_task(Task):
             for paramName in thisTrial:
                 exec('{} = thisTrial[paramName]'.format(paramName))
 
-        for thisTrial in trials:
+
+
+        for index, thisTrial in enumerate(trials):
+
+
+            self.screen_text.text = block_type + 'Task {} of {}'.format(index + 1, len(locs))
+
             # abbreviate parameter names if possible (e.g. rgb = thisTrial.rgb)
             if thisTrial is not None:
                 for paramName in thisTrial:
@@ -113,8 +160,16 @@ class hevelius_task(Task):
             mouse.time = []
             mouse.clicked_name = []
             gotValidClick = False  # until a click is received
-            currentLoc = locs[i]
+            currentLoc = self.convert_pix(locs[i])
             polygon.pos = currentLoc
+            if index == 0:
+                mouse.setPos((currentLoc[0], currentLoc[1]))
+            #print(index, currentLoc, locs[i])
+            _x = int(currentLoc[0] + self.win.size[0] / 2.0)
+            _y = int( self.win.size[0] / 2.0 - currentLoc[1])
+            tar_msg = f'!V TARGET_POS target {_x}, {_y} 1 0'
+            self.sendMessage(tar_msg)
+
             # keep track of which components have finished
             trialComponents = [polygon, mouse]
             for thisComponent in trialComponents:
@@ -147,6 +202,7 @@ class hevelius_task(Task):
                     polygon.tStartRefresh = tThisFlipGlobal  # on global time
                     self.win.timeOnFlip(polygon, 'tStartRefresh')  # time at next scr refresh
                     polygon.setAutoDraw(True)
+                    self.screen_text.setAutoDraw(True)
                     # MARKER Trial start 1
                 # *mouse* updates
                 if mouse.status == NOT_STARTED and t >= 0.0 - self.frameTolerance:
@@ -200,6 +256,7 @@ class hevelius_task(Task):
             for thisComponent in trialComponents:
                 if hasattr(thisComponent, "setAutoDraw"):
                     thisComponent.setAutoDraw(False)
+                    self.screen_text.setAutoDraw(False)
             trials.addData('polygon.started', polygon.tStartRefresh)
             trials.addData('polygon.stopped', polygon.tStopRefresh)
             # store data for trials (TrialHandler)
@@ -223,21 +280,17 @@ class hevelius_task(Task):
             # the Routine "trial" was not non-slip safe, so reset the non-slip timer
             routineTimer.reset()
             thisExp.nextEntry()
+        print('block end')
 
         # these shouldn't be strictly necessary (should auto-save)
-        thisExp.saveAsWideText(self.filename + self.rep + '.csv', delim='auto')
-        thisExp.saveAsPickle(self.filename + self.rep)
-    
-        if prompt:
-            func_kwargs = locals()
-            func_kwargs_func = {'prompt': func_kwargs['prompt'],
-                                'num_iterations': func_kwargs['num_iterations'] }
-            self.rep += "_I"
-            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.run_trials,
-                          func_kwargs=func_kwargs_func, waitKeys=False)
+        if self.record_psychopy:
+            thisExp.saveAsWideText(self.filename + self.rep + '.csv', delim='auto')
+            thisExp.saveAsPickle(self.filename + self.rep)
 
 
 if __name__ == "__main__":
-    task = hevelius_task(full_screen=False)
-    task.run( prompt=True, num_iterations=30)
+    with open(op.join(neurobooth_os.__path__[0], 'tasks/assets/hevelius_config.json')) as f:
+        trials_data = json.load(f)
+    task = hevelius_task(trials_data, record_psychopy=False, full_screen=False, blocks=2, num_iterations=2)
+    task.run()
 
