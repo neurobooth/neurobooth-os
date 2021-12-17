@@ -34,7 +34,8 @@ def insert_mock_rows(conn_mock):
                          'stimulus_file', 'stimulus_filetype'])
 
     Table('instruction', conn_mock).insert_rows(
-        [('mock_instruction_id', "mock task, follow the instructions",)], cols=['instruction_id', 'instruction_text'])
+        [('mock_instruction_id', "mock task, follow the instructions",)],
+        cols=['instruction_id', 'instruction_text'])
 
     table = Table('tech_obs_data', conn_mock)
     table.insert_rows([('mock_obs_1', 'mock_instruction_id', 'mock_task_1',
@@ -47,24 +48,29 @@ def insert_mock_rows(conn_mock):
                           "sensor_id_array", "feature_of_interest" ])
 
     table = Table('device', conn_mock)
+    cols = ['device_id', 'device_sn', 'wearable_bool', 'device_location',
+            'device_name', 'device_make', 'device_model', 'device_firmware',
+            'sensor_id_array']
     table.insert_rows([('mock_dev_1', 0, False, 0, 'mock', 'mock_make',
-                        'neurobooth inc', 0, '{mock_sens_1}')])
+                        'neurobooth inc', 0, '{mock_sens_1}')], cols=cols)
     table.insert_rows([('mock_Mbient_1', 0, False, 0, 'mock',
                         'mock_make', 'neurobooth inc', 0,
-                        '{mock_Mbient_acc_1, mock_Mbient_grad_1}')])
+                        '{mock_Mbient_acc_1, mock_Mbient_grad_1}')], cols=cols)
     table.insert_rows([('mock_Mbient_2', 0, False, 0, 'mock',
                         'mock_make', 'neurobooth inc', 0,
-                        '{mock_Mbient_acc_1, mock_Mbient_grad_1}')])
+                        '{mock_Mbient_acc_1, mock_Mbient_grad_1}')], cols=cols)
     table.insert_rows([('mock_Intel_1', 0, False, 0, 'mock',
                         'mock_make', 'neurobooth inc', 0,
-                        '{mock_Intel_rgb_1, mock_Intel_depth_1}')])
+                        '{mock_Intel_rgb_1, mock_Intel_depth_1}')], cols=cols)
 
     table = Table('sensor', conn_mock)
-    table.insert_rows([('mock_sens_1', 100, None, None, 'edf', None)])
-    table.insert_rows([('mock_Mbient_acc_1', 100, None, None, 'edf', None)])
-    table.insert_rows([('mock_Mbient_grad_1', 100, None, None, 'edf', None)])
-    table.insert_rows([('mock_Intel_rgb_1', 180, 1080, 720, 'bag', None)])
-    table.insert_rows([('mock_Intel_depth_1', 180, 1080, 720, 'bag', None)])
+    cols = ['sensor_id', 'temporal_res', 'spatial_res_x', 'spatial_res_y',
+            'file_type', 'laterality']
+    table.insert_rows([('mock_sens_1', 100, None, None, 'edf', None)], cols=cols)
+    table.insert_rows([('mock_Mbient_acc_1', 100, None, None, 'edf', None)], cols=cols)
+    table.insert_rows([('mock_Mbient_grad_1', 100, None, None, 'edf', None)], cols=cols)
+    table.insert_rows([('mock_Intel_rgb_1', 180, 1080, 720, 'bag', None)], cols=cols)
+    table.insert_rows([('mock_Intel_depth_1', 180, 1080, 720, 'bag', None)], cols=cols)
 
 
 def delete_mock_rows(conn_mock):
