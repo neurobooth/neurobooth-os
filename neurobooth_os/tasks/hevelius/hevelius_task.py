@@ -293,4 +293,3 @@ if __name__ == "__main__":
         trials_data = json.load(f)
     task = hevelius_task(trials_data, record_psychopy=False, full_screen=False, blocks=2, num_iterations=2)
     task.run()
-
