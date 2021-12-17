@@ -139,8 +139,7 @@ class hevelius_task(Task_Eyetracker):
 
 
         for index, thisTrial in enumerate(trials):
-
-
+            self.sendMessage(block_type + 'Task {} of {}'.format(index + 1, len(locs)))
             self.screen_text.text = block_type + 'Task {} of {}'.format(index + 1, len(locs))
 
             # abbreviate parameter names if possible (e.g. rgb = thisTrial.rgb)
