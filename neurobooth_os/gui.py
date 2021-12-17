@@ -349,7 +349,7 @@ def gui(remote=False, database='neurobooth'):
 
         elif event == 'Start':
             tasks = [k for k, v in values.items() if "task" in k and v is True]
-            _start_task_presentation(window, tasks, sess_info['subj_id'], steps,
+            _start_task_presentation(window, tasks, sess_info['subject_id'], steps,
                                      node=nodes[1])
 
         elif event == "Pause tasks":
@@ -389,7 +389,6 @@ def gui(remote=False, database='neurobooth'):
             
             _stop_lsl_and_save(window, session, conn,
                                rec_fname, task_id, obs_log_id, t_obs_id)
-            break
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":            
@@ -401,8 +400,6 @@ def gui(remote=False, database='neurobooth'):
             session = _update_button_status(window, statecolors,
                                             values['-update_butt-'],
                                             inlets)
-            if session is not None:
-                break
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
