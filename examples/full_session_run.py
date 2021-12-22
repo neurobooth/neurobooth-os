@@ -1,3 +1,5 @@
+import time
+
 from neurobooth_os.netcomm import node_info
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.gui import (_find_subject, _select_subject, _get_tasks,
@@ -28,6 +30,7 @@ tech_obs_log = meta._new_tech_log_dict()
 class FakeGUIElement(dict):
     def get_indexes(self):
         return 0
+
     def Update(self, button_color):
         pass
 
@@ -37,6 +40,7 @@ class FakeWindow(dict):
         self.events = dict()
 
     def read(self, timeout):
+        time.sleep(timeout)
         try:
             return self.events.popitem()
         except:
@@ -83,20 +87,24 @@ _start_servers(fake_window2, conn, nodes, remote=True)
 vidf_mrkr, _, _ = _prepare_devices(fake_window2, nodes, collection_id,
                                 tech_obs_log)
 
+started = False
 while True:
-    event, values = fake_window2.read(0.5)
+    event, value = fake_window2.read(0.5)
 
-    if event == 'task_initiated':
-        task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(event['task_initiated'])
+    if event == 'task_initiated' and not started:
+        task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(value)
         _start_task_presentation(fake_window2, [tasks], sess_info['subject_id'], steps,
                                  node=nodes[1])
+        rec_fname = _record_lsl(fake_window2, session, subject_id, task_id,
+                                t_obs_id, obs_log_id, tsk_strt_time)
+        started = True
 
     elif event == '-update_butt-':
         session = _start_lsl_session(fake_window2, inlets)
 
     elif event == '-OUTLETID-':
-        _create_lsl_inlet(stream_ids, event.values['-OUTLETID-'], inlets)
+        _create_lsl_inlet(stream_ids, value, inlets)
 
-    elif event == '-OUTLETID-':
-        rec_fname = _record_lsl(fake_window2, session, subject_id, task_id,
-                                t_obs_id, obs_log_id, tsk_strt_time)
+    elif event == "-new_filename-":
+        vidf_mrkr.push_sample([value])
+        print(f"pushed videfilename mark {value}")
