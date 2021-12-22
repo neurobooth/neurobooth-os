@@ -3,7 +3,9 @@ import neurobooth_os.iout.metadator as meta
 from neurobooth_os.gui import (_find_subject, _select_subject, _get_tasks,
                                _save_session, _get_collections,
                                _start_ctr_server, _start_servers,
-                               _prepare_devices, _start_task_presentation)
+                               _prepare_devices, _start_task_presentation,
+                               _update_button_status, _create_lsl_inlet,
+                               _start_lsl_session, _record_lsl)
 
 # Manually define parameters
 remote = True
@@ -20,6 +22,7 @@ else:
 # collection_id = "mvp_030"  # "mock_collection"  # Define mock with tasks to run
 
 steps = list()
+stream_ids, inlets = dict(), dict()
 tech_obs_log = meta._new_tech_log_dict()
 
 class FakeGUIElement(dict):
@@ -29,10 +32,19 @@ class FakeGUIElement(dict):
         pass
 
 class FakeWindow(dict):
-    def read(self, arg1):
-        return (0, 0)
-    def write_event_value(self, arg1, arg2):
-        return
+    def __init__(self, mapping):
+        super(FakeWindow, self).__init__(mapping)
+        self.events = dict()
+
+    def read(self, timeout):
+        try:
+            return self.events.popitem()
+        except:
+            return (None, None)
+
+    def write_event_value(self, key, val):
+        self.events[key] = val
+
     def close(self):
         pass
 
@@ -69,6 +81,22 @@ window.close()
 
 _start_servers(fake_window2, conn, nodes, remote=True)
 vidf_mrkr, _, _ = _prepare_devices(fake_window2, nodes, collection_id,
-                                   tech_obs_log)
-_start_task_presentation(fake_window2, tasks, sess_info['subject_id'], steps,
-                         node=nodes[1])
+                                tech_obs_log)
+
+while True:
+    event, values = fake_window2.read(0.5)
+
+    if event == 'task_initiated':
+        task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(event['task_initiated'])
+        _start_task_presentation(fake_window2, [tasks], sess_info['subject_id'], steps,
+                                 node=nodes[1])
+
+    elif event == '-update_butt-':
+        session = _start_lsl_session(fake_window2, inlets)
+
+    elif event == '-OUTLETID-':
+        _create_lsl_inlet(stream_ids, event.values['-OUTLETID-'], inlets)
+
+    elif event == '-OUTLETID-':
+        rec_fname = _record_lsl(fake_window2, session, subject_id, task_id,
+                                t_obs_id, obs_log_id, tsk_strt_time)
