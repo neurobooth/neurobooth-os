@@ -52,24 +52,22 @@ _start_servers(main_window, conn, nodes, remote=remote)
 vidf_mrkr, _, _ = _prepare_devices(main_window, nodes, collection_id,
                                    tech_obs_log)
 
-is_ready = 0
+tasks_selected = [tasks]
+_start_task_presentation(main_window, tasks_selected, sess_info['subject_id'], steps,
+                         node=nodes[1])
+
+n_tasks_finished = 0
+n_nodes_ready = 0
 while True:
-    event, value = main_window.read(0.5)
+    event, value = main_window.read(0.1)
+
     if event == '-OUTLETID-':
         _create_lsl_inlet(stream_ids, value, inlets)
 
     elif event == "-update_butt-":
-        is_ready += 1
-        if is_ready == 2:
+        n_nodes_ready += 1
+        if n_nodes_ready == 2:
             session = _start_lsl_session(main_window, inlets)
-            break
-
-_start_task_presentation(main_window, [tasks], sess_info['subject_id'], steps,
-                         node=nodes[1])
-
-n_tasks_finished = 0
-while True:
-    event, value = main_window.read(0.5)
 
     if event == 'task_initiated':
         task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(value)
@@ -86,6 +84,6 @@ while True:
                            rec_fname, task_id, obs_log_id, t_obs_id)
         n_tasks_finished += 1
 
-    # elif n_tasks_finished == len(tasks):
-    #    ctr_rec.shut_all(nodes=nodes)
-    #    break
+    elif n_tasks_finished == len(tasks_selected):
+        ctr_rec.shut_all(nodes=nodes)
+        break
