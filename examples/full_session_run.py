@@ -86,7 +86,8 @@ while True:
         task_id = value
         _stop_lsl_and_save(main_window, session, conn,
                            rec_fname, task_id, obs_log_id, t_obs_id)
-        n_tasks_finished += 1
+        if task_id not in ['calibration_task', "intro_"]:
+            n_tasks_finished += 1
 
     elif n_tasks_finished == len(tasks_selected):
         ctr_rec.shut_all(nodes=nodes)
