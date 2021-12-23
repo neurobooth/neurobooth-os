@@ -263,6 +263,17 @@ def _prepare_devices(window, nodes, collection_id, tech_obs_log):
     return vidf_mrkr, event, values
 
 
+def _get_ports(remote, database='neurobooth'):
+    if remote:
+        database = "mock_neurobooth"
+        nodes = ('dummy_acq', 'dummy_stm')
+        host_ctr, port_ctr = node_info("dummy_ctr")
+    else:
+        nodes = ('acquisition', 'presentation')
+        host_ctr, port_ctr = node_info("control")
+    return database, nodes, host_ctr, port_ctr
+
+
 def gui(remote=False, database='neurobooth'):
     """Start the Graphical User Interface.
 
@@ -274,14 +285,7 @@ def gui(remote=False, database='neurobooth'):
     database : str
         The database name
     """
-    
-    if remote:
-        database = "mock_neurobooth"
-        nodes = ('dummy_acq', 'dummy_stm')
-        host_ctr, port_ctr = node_info("dummy_ctr")
-    else:
-        nodes = ('acquisition', 'presentation')
-        host_ctr, port_ctr = node_info("control")
+    database, nodes, host_ctr, port_ctr = _get_ports(remote, database='neurobooth')
 
     conn = meta.get_conn(remote=remote, database=database)
     window = _win_gen(_init_layout, conn)
