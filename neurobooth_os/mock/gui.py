@@ -17,7 +17,8 @@ class MockGUIElement(dict):
         pass
 
 class MockWindow(dict):
-    def __init__(self, mapping):
+    def __init__(self, gui_element_names):
+        mapping = {name: MockGUIElement() for name in gui_element_names}
         super(MockWindow, self).__init__(mapping)
         self.events = dict()
 
