@@ -52,15 +52,10 @@ _start_servers(main_window, conn, nodes, remote=remote)
 vidf_mrkr, _, _ = _prepare_devices(main_window, nodes, collection_id,
                                    tech_obs_log)
 
-tasks_selected = [tasks]
-_start_task_presentation(main_window, tasks_selected, sess_info['subject_id'], steps,
-                         node=nodes[1])
-
-n_tasks_finished = 0
+# Start LSL streams
 n_nodes_ready = 0
 while True:
     event, value = main_window.read(0.1)
-
     if event == '-OUTLETID-':
         _create_lsl_inlet(stream_ids, value, inlets)
 
@@ -68,6 +63,15 @@ while True:
         n_nodes_ready += 1
         if n_nodes_ready == 2:
             session = _start_lsl_session(main_window, inlets)
+            break
+
+tasks_selected = [tasks]
+_start_task_presentation(main_window, tasks_selected, sess_info['subject_id'], steps,
+                         node=nodes[1])
+
+n_tasks_finished = 0
+while True:
+    event, value = main_window.read(0.1)
 
     if event == 'task_initiated':
         task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(value)
