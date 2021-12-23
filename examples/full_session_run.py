@@ -1,4 +1,4 @@
-import time
+"""Run full session without PySimpleGUI."""
 
 from neurobooth_os.netcomm import node_info
 import neurobooth_os.iout.metadator as meta
@@ -7,33 +7,25 @@ from neurobooth_os.gui import (_find_subject, _select_subject, _get_tasks,
                                _start_ctr_server, _start_servers,
                                _prepare_devices, _start_task_presentation,
                                _update_button_status, _create_lsl_inlet,
-                               _start_lsl_session, _record_lsl)
+                               _start_lsl_session, _record_lsl,
+                               _get_ports)
 from neurobooth_os.mock import MockWindow
 
-# Manually define parameters
 remote = True
-
-# Get DB connexion
-if remote:
-    database = "mock_neurobooth"
-    nodes = ('dummy_acq', 'dummy_stm')
-    host_ctr, port_ctr = node_info("dummy_ctr")
-else:
-    nodes = ('acquisition', 'presentation')
-    host_ctr, port_ctr = node_info("control")
-
-# collection_id = "mvp_030"  # "mock_collection"  # Define mock with tasks to run
+database, nodes, host_ctr, port_ctr = _get_ports(remote, database='neurobooth')
 
 steps = list()
 stream_ids, inlets = dict(), dict()
 tech_obs_log = meta._new_tech_log_dict()
 
-start_window = MockWindow(['dob', 'first_name', 'last_name', 'collection_id',
+start_window = MockWindow(['first_name', 'last_name', 'dob', 'collection_id',
                            'tasks'])
 main_window = MockWindow(['-init_servs-', '-Connect-', 'Start', 'task_title',
-                           'task_running'])
+                          'task_running'])
 
 conn = meta.get_conn(remote=remote, database=database)
+
+####### START WINDOW #########
 
 first_name, last_name = "Anna", "Luddy"
 subject_df = _find_subject(start_window, conn, first_name, last_name)
@@ -50,14 +42,16 @@ staff_id = 'AN'
 sess_info = _save_session(start_window,
                           tech_obs_log, staff_id,
                           subject_id, first_name, last_name, tasks)
-_start_ctr_server(main_window, host_ctr, port_ctr, sess_info, remote=remote)
 
-_start_servers(main_window, conn, nodes, remote=True)
+####### MAIN WINDOW #########
+
+_start_ctr_server(main_window, host_ctr, port_ctr, sess_info, remote=remote)
+_start_servers(main_window, conn, nodes, remote=remote)
 vidf_mrkr, _, _ = _prepare_devices(main_window, nodes, collection_id,
-                                tech_obs_log)
+                                   tech_obs_log)
 
 _start_task_presentation(main_window, [tasks], sess_info['subject_id'], steps,
-                            node=nodes[1])
+                         node=nodes[1])
 
 while True:
     event, value = main_window.read(0.5)
