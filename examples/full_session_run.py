@@ -2,13 +2,14 @@
 
 from neurobooth_os.netcomm import node_info
 import neurobooth_os.iout.metadator as meta
+import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.gui import (_find_subject, _select_subject, _get_tasks,
                                _save_session, _get_collections,
                                _start_ctr_server, _start_servers,
                                _prepare_devices, _start_task_presentation,
                                _update_button_status, _create_lsl_inlet,
                                _start_lsl_session, _record_lsl,
-                               _get_ports)
+                               _get_ports, _stop_lsl_and_save)
 from neurobooth_os.mock import MockWindow
 
 remote = True
@@ -36,6 +37,7 @@ tech_obs_log["study_id"] = study_id
 collection_ids = _get_collections(start_window, conn, study_id)
 
 collection_id = collection_ids[0]
+tech_obs_log["collection_id"] = collection_id
 tasks = _get_tasks(start_window, conn, collection_id)
 
 staff_id = 'AN'
@@ -50,9 +52,22 @@ _start_servers(main_window, conn, nodes, remote=remote)
 vidf_mrkr, _, _ = _prepare_devices(main_window, nodes, collection_id,
                                    tech_obs_log)
 
+is_ready = 0
+while True:
+    event, value = main_window.read(0.5)
+    if event == '-OUTLETID-':
+        _create_lsl_inlet(stream_ids, value, inlets)
+
+    elif event == "-update_butt-":
+        is_ready += 1
+        if is_ready == 2:
+            session = _start_lsl_session(main_window, inlets)
+            break
+
 _start_task_presentation(main_window, [tasks], sess_info['subject_id'], steps,
                          node=nodes[1])
 
+n_tasks_finished = 0
 while True:
     event, value = main_window.read(0.5)
 
@@ -61,12 +76,16 @@ while True:
         rec_fname = _record_lsl(main_window, session, subject_id, task_id,
                                 t_obs_id, obs_log_id, tsk_strt_time)
 
-    elif event == '-update_butt-':
-        session = _start_lsl_session(main_window, inlets)
-
-    elif event == '-OUTLETID-':
-        _create_lsl_inlet(stream_ids, value, inlets)
-
     elif event == "-new_filename-":
         vidf_mrkr.push_sample([value])
         print(f"pushed videfilename mark {value}")
+
+    elif event == 'task_finished':
+        task_id = value
+        _stop_lsl_and_save(main_window, session, conn,
+                           rec_fname, task_id, obs_log_id, t_obs_id)
+        n_tasks_finished += 1
+
+    # elif n_tasks_finished == len(tasks):
+    #    ctr_rec.shut_all(nodes=nodes)
+    #    break
