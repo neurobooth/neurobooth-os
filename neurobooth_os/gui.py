@@ -202,11 +202,8 @@ def _start_servers(window, conn, nodes, remote=True):
     time.sleep(1)
     return event, values
 
-def _start_ctr_server(host_ctr, port_ctr, sess_info, remote=True):
+def _start_ctr_server(window, host_ctr, port_ctr, sess_info, remote=True):
     """Start threaded control server and new window."""
-
-    # Open new layout with main window
-    window = _win_gen(_main_layout, sess_info, remote)
 
     # Start a threaded socket CTR server once main window generated
     callback_args = window
@@ -329,7 +326,9 @@ def gui(remote=False, database='neurobooth'):
                 sess_info = _save_session(window,
                                           tech_obs_log, values['staff_id'],
                                           subject_id, first_name, last_name, tasks)
-                window = _start_ctr_server(host_ctr, port_ctr, sess_info, remote=remote)
+                # Open new layout with main window
+                window = _win_gen(_main_layout, sess_info, remote)
+                _start_ctr_server(window, host_ctr, port_ctr, sess_info, remote=remote)
 
         ############################################################
         # Main Window -> Run neurobooth session

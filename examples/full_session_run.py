@@ -80,8 +80,7 @@ staff_id = 'AN'
 sess_info = _save_session(fake_window1,
                           tech_obs_log, staff_id,
                           subject_id, first_name, last_name, tasks)
-window = _start_ctr_server(host_ctr, port_ctr, sess_info, remote=remote)
-window.close()
+_start_ctr_server(fake_window2, host_ctr, port_ctr, sess_info, remote=remote)
 
 _start_servers(fake_window2, conn, nodes, remote=True)
 vidf_mrkr, _, _ = _prepare_devices(fake_window2, nodes, collection_id,
