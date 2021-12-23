@@ -8,6 +8,7 @@ from neurobooth_os.gui import (_find_subject, _select_subject, _get_tasks,
                                _prepare_devices, _start_task_presentation,
                                _update_button_status, _create_lsl_inlet,
                                _start_lsl_session, _record_lsl)
+from neurobooth_os.mock import MockWindow, MockGUIElement
 
 # Manually define parameters
 remote = True
@@ -27,40 +28,16 @@ steps = list()
 stream_ids, inlets = dict(), dict()
 tech_obs_log = meta._new_tech_log_dict()
 
-class FakeGUIElement(dict):
-    def get_indexes(self):
-        return 0
-
-    def Update(self, button_color):
-        pass
-
-class FakeWindow(dict):
-    def __init__(self, mapping):
-        super(FakeWindow, self).__init__(mapping)
-        self.events = dict()
-
-    def read(self, timeout):
-        time.sleep(timeout)
-        try:
-            return self.events.popitem()
-        except:
-            return (None, None)
-
-    def write_event_value(self, key, val):
-        self.events[key] = val
-
-    def close(self):
-        pass
-
-fake_gui_element = FakeGUIElement()
-fake_window1 = FakeWindow(
+fake_gui_element = MockGUIElement()
+fake_window1 = MockWindow(
     {'dob': fake_gui_element, 'first_name': fake_gui_element,
      'last_name': fake_gui_element, 'collection_id': fake_gui_element,
      'tasks': fake_gui_element})
 
-fake_window2 = FakeWindow(
+fake_window2 = MockWindow(
     {'-init_servs-': fake_gui_element, '-Connect-': fake_gui_element,
-     'Start': fake_gui_element}
+     'Start': fake_gui_element, 'task_title': fake_gui_element,
+     'task_running': fake_gui_element}
 )
 
 conn = meta.get_conn(remote=remote, database=database)
@@ -86,17 +63,16 @@ _start_servers(fake_window2, conn, nodes, remote=True)
 vidf_mrkr, _, _ = _prepare_devices(fake_window2, nodes, collection_id,
                                 tech_obs_log)
 
-started = False
+_start_task_presentation(fake_window2, [tasks], sess_info['subject_id'], steps,
+                            node=nodes[1])
+
 while True:
     event, value = fake_window2.read(0.5)
 
-    if event == 'task_initiated' and not started:
+    if event == 'task_initiated':
         task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(value)
-        _start_task_presentation(fake_window2, [tasks], sess_info['subject_id'], steps,
-                                 node=nodes[1])
         rec_fname = _record_lsl(fake_window2, session, subject_id, task_id,
                                 t_obs_id, obs_log_id, tsk_strt_time)
-        started = True
 
     elif event == '-update_butt-':
         session = _start_lsl_session(fake_window2, inlets)
