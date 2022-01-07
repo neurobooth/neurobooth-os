@@ -65,27 +65,6 @@ def prepare_devices(collection_id="mvp_025", nodes=("acquisition", "presentation
     for node in nodes:
         socket_message(f"prepare:{collection_id}", node)
 
-
-def task_presentation(task_name, filename, node):
-    # task_name can be list of task1-task2-task3
-    socket_message(f"present:{task_name}:{filename}", node)
-
-
-def message_presentation(msg, nodes=("presentation",)):
-    """Send message to presentation, either node presentation or mock_stm
-
-    Parameters
-    ----------
-    msg : str
-    String to send via socket connection to node
-    nodes : tuple, optional
-        Name of the servers, by default ("presentation",)
-    """
-    nodes = _get_nodes(nodes)
-    for node in nodes:
-        if "acq" not in node:
-            socket_message(msg, node)
-
     
 def shut_all(nodes=("acquisition", "presentation")):
     """Shut all nodes

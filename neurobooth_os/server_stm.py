@@ -146,7 +146,7 @@ def Main():
                     data = connx2.recv(1024)
                     data = data.decode("utf-8")
                     
-                    if data == "unpause tasks":
+                    if data == "continue tasks":
                         continue                    
                     elif data == "stop tasks":
                         break
