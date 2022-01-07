@@ -10,7 +10,7 @@ import wave
 class MicStream():
     def __init__(self, CHANNELS=1, RATE=44100, CHUNK=1024, device_id="Mic_Yeti_1",
                  sensor_ids=['Mic_Yeti_sens_1'],
-                 FORMAT=pyaudio.paFloat32, save_on_disk=False):
+                 FORMAT=pyaudio.paFloat32, save_on_disk=True):
 
         self.CHUNK = CHUNK
         self.fps = RATE

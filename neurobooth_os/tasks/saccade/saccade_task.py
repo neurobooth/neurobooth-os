@@ -34,7 +34,7 @@ class Saccade(Task_Eyetracker):
         if direction == 'horizontal':
             self.movement_pars = [self.amplitude_pixel / 2, 0]
         elif direction == 'vertical':
-            self.movement_pars = [0, self.amplitude_pixel / 2]
+            self.movement_pars = [0, self.amplitude_pixel / 4]
         else:
             raise ValueError("Only horizontal and vertical saccade is supported")
 
@@ -68,8 +68,8 @@ class Saccade(Task_Eyetracker):
         self.target.size = self.pointer_size_pixel
         self.target.draw()
         self.win.flip()
-        self.doDriftCorrect([int(0 + self.mon_size[0] / 2.0),
-                               int(self.mon_size[1] / 2.0 - 0), 0, 1])
+        # self.doDriftCorrect([int(0 + self.mon_size[0] / 2.0),
+        #                        int(self.mon_size[1] / 2.0 - 0), 0, 1])
         self.win.color = (0, 0, 0)
         self.win.flip()
  
@@ -135,7 +135,7 @@ class Saccade(Task_Eyetracker):
 
 if __name__ == "__main__":
     
-    task = Saccade()
-    task.run(prompt=False)
-    task = Saccade(direction='vertical', amplitude_deg=15)
+    # task = Saccade()
+    # task.run(prompt=False)
+    task = Saccade(direction='vertical', amplitude_deg=30)
     task.run(prompt=False)

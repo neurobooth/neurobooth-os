@@ -75,7 +75,9 @@ def Main():
                     task_karg["eye_tracker"] = streams['Eyelink']
                     
             # Preload tasks media
-            for task in list(task_func_dict):
+            for task in tasks.split("-"):
+                if task not in task_func_dict.keys():
+                    continue
                 tsk_fun = task_func_dict[task]['obj']
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
                 task_func_dict[task]['obj'] = tsk_fun(**this_task_kwargs)

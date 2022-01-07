@@ -61,8 +61,8 @@ class Pursuit(Task_Eyetracker):
         self.target.pos = (tar_x, tar_y)
         self.target.draw()
         self.win.flip()
-        self.doDriftCorrect([int(tar_x + self.mon_size[0] / 2.0),
-                               int(self.mon_size[1] / 2.0 - tar_y), 0, 1])
+        # self.doDriftCorrect([int(tar_x + self.mon_size[0] / 2.0),
+        #                        int(self.mon_size[1] / 2.0 - tar_y), 0, 1])
  
         # Start recording
         self.startRecording()
@@ -74,7 +74,7 @@ class Pursuit(Task_Eyetracker):
         frame = 0
         time_array = []
         while True:
-            core.wait(1/240.)
+            # core.wait(1/240.)
             self.target.pos = (tar_x, tar_y)
             self.target.draw()
             self.win.flip()
