@@ -1,5 +1,5 @@
 """Run full session without PySimpleGUI."""
-
+import time
 from neurobooth_os.netcomm import node_info
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.main_control_rec as ctr_rec
@@ -12,8 +12,17 @@ from neurobooth_os.gui import (_find_subject, _select_subject, _get_tasks,
                                _get_ports, _stop_lsl_and_save)
 from neurobooth_os.mock import MockWindow
 
-remote = True
-database, nodes, host_ctr, port_ctr = _get_ports(remote, database='neurobooth')
+####### PARAMETERS #########
+remote = False
+database = 'neurobooth'
+staff_id = 'AN'
+first_name, last_name = "Anna", "Luddy"
+study_id = "study1"  # 'mock_study'
+collection_id = "mvp_030"
+
+
+####### PREPARE WINDOWS #########
+database, nodes, host_ctr, port_ctr = _get_ports(remote, database=database)
 
 steps = list()
 stream_ids, inlets = dict(), dict()
@@ -27,28 +36,26 @@ main_window = MockWindow(['-init_servs-', '-Connect-', 'Start', 'task_title',
 conn = meta.get_conn(remote=remote, database=database)
 
 ####### START WINDOW #########
-
-first_name, last_name = "Anna", "Luddy"
 subject_df = _find_subject(start_window, conn, first_name, last_name)
 first_name, last_name, subject_id = _select_subject(start_window, subject_df)
 
-study_id = 'mock_study'
 tech_obs_log["study_id"] = study_id
 collection_ids = _get_collections(start_window, conn, study_id)
 
-collection_id = collection_ids[0]
 tech_obs_log["collection_id"] = collection_id
 tasks = _get_tasks(start_window, conn, collection_id)
 
-staff_id = 'AN'
 sess_info = _save_session(start_window,
                           tech_obs_log, staff_id,
                           subject_id, first_name, last_name, tasks)
 
 ####### MAIN WINDOW #########
-
-_start_ctr_server(main_window, host_ctr, port_ctr, sess_info, remote=remote)
+_start_ctr_server(main_window, host_ctr, port_ctr, remote=remote)
+if not remote:
+    time.sleep(2)
 _start_servers(main_window, conn, nodes, remote=remote)
+if not remote:
+    time.sleep(5)
 vidf_mrkr, _, _ = _prepare_devices(main_window, nodes, collection_id,
                                    tech_obs_log)
 

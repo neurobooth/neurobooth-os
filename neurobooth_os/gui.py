@@ -202,15 +202,14 @@ def _start_servers(window, conn, nodes, remote=True):
     time.sleep(1)
     return event, values
 
-def _start_ctr_server(window, host_ctr, port_ctr, sess_info, remote=True):
+def _start_ctr_server(window, host_ctr, port_ctr, remote=True):
     """Start threaded control server and new window."""
 
     # Start a threaded socket CTR server once main window generated
     callback_args = window
     server_thread = threading.Thread(target=get_messages_to_ctr,
                                     args=(_process_received_data, remote,
-                                          host_ctr, port_ctr,
-                                    callback_args,),
+                                          host_ctr, port_ctr, callback_args,),
                                     daemon=True)
     server_thread.start()
 
@@ -218,7 +217,7 @@ def _start_ctr_server(window, host_ctr, port_ctr, sess_info, remote=True):
     if remote:
         time.sleep(.1)
         sys.stdout = NewStdout("mock",  target_node="dummy_ctr", terminal_print=True)
-    return window
+
 
 ######### Visualization ############
 
@@ -332,7 +331,7 @@ def gui(remote=False, database='neurobooth'):
                                           subject_id, first_name, last_name, tasks)
                 # Open new layout with main window
                 window = _win_gen(_main_layout, sess_info, remote)
-                _start_ctr_server(window, host_ctr, port_ctr, sess_info, remote=remote)
+                _start_ctr_server(window, host_ctr, port_ctr, remote=remote)
 
         ############################################################
         # Main Window -> Run neurobooth session
@@ -340,7 +339,7 @@ def gui(remote=False, database='neurobooth'):
 
         # Start servers on STM, ACQ
         elif event == "-init_servs-":
-            _start_servers(window, conn, nodes, remote=True)
+            _start_servers(window, conn, nodes, remote=remote)
 
         # Turn on devices
         elif event == '-Connect-':
