@@ -45,10 +45,10 @@ def Main():
 
             collection_id = data.split(":")[1]
             tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
-            study_id_date = tech_obs_log["study_id-date"]
+            study_id_date = tech_obs_log["subject_id-date"]
 
             # delete subj_date as not present in DB
-            del tech_obs_log["study_id-date"]
+            del tech_obs_log["subject_id-date"]
 
             task_func_dict = get_task_funcs(collection_id, conn)
             task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)

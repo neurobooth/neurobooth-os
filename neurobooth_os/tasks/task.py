@@ -176,7 +176,7 @@ class Task_Eyetracker(Task):
         self.eye_tracker = eye_tracker
 
         mon = monitors.getAllMonitors()[1]
-        self.mon_size = [1920, 1080] # monitors.Monitor(mon).getSizePix()
+        self.mon_size = monitors.Monitor(mon).getSizePix()
         self.SCN_W, self.SCN_H = self.mon_size
         self.monitor_width = monitor_width
         self.pixpercm = self.mon_size[0] / self.monitor_width

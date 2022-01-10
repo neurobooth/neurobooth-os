@@ -108,9 +108,9 @@ def _save_session(window, tech_obs_log, staff_id, subject_id, first_name,
     """Save session."""
     tech_obs_log["staff_id"] = staff_id
     tech_obs_log["subject_id"] = subject_id
-    tech_obs_log["study_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
+    tech_obs_log["subject_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
 
-    subject_id_date = tech_obs_log["study_id-date"]
+    subject_id_date = tech_obs_log["subject_id-date"]
 
     window.close()
 
@@ -382,7 +382,7 @@ def gui(remote=False, database='neurobooth'):
         elif event == 'task_initiated':
             # event values -> f"['{task_id}', '{t_obs_id}', '{tech_obs_log_id}, '{tsk_strt_time}']
             task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
-            rec_fname = _record_lsl(window, session, subject_id, task_id,
+            rec_fname = _record_lsl(window, session, sess_info['subject_id_date'], task_id,
                                     t_obs_id, obs_log_id, tsk_strt_time)
 
         # Signal a task ended: stop LSL recording and update gui
