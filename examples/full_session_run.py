@@ -82,7 +82,7 @@ while True:
 
     if event == 'task_initiated':
         task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(value)
-        rec_fname = _record_lsl(main_window, session, subject_id, task_id,
+        rec_fname = _record_lsl(main_window, session, sess_info['subject_id_date'], task_id,
                                 t_obs_id, obs_log_id, tsk_strt_time)
 
     elif event == "-new_filename-":
