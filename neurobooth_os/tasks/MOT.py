@@ -28,6 +28,10 @@ import random
 import math
 
 from numpy import sqrt
+from psychopy import core, visual, event, gui, data, sound
+from random import randint, sample, choice, shuffle
+from itertools import chain
+import os, csv
 
 circle = []         # Array of SVG circles objects
 happy =[]              # array of happy targets
@@ -149,25 +153,12 @@ def setup():
     
     # when done, update the circles on the DOM
     for i in range(numCircles):    
-        circle[i] = paper.circle(mycircle["x"][i], mycircle["y"][i], mycircle["r"]);
-        circle[i].attr({fill: "black"});        # colour
-        circle[i].data("index", i);             # index tag
-    
+        circle[i] = visual.Circle(self.win, mycircle["r"], pos=(mycircle["x"][i], mycircle["y"][i]), 
+                                  lineColor=self.color, fillColor=self.color, units='pix')
+ 
+     # draw a box for the circles
+    background = visual.Rect(self.win, width=700, height=700, fillColor='white', units='pix')
 
-    # draw a box for the circles
-    paper.rect(0, 0, paperSize, paperSize).attr({"stroke": "black",
-                                                "stroke-width": "2px",
-                                                "fill": "none"});
-
-    # create numtargets happy green dots and hide them
-    for i in range(numTargets):
-        happy[i] = paper.image("happy-green-border.jpg", 0, 0, 2*mycircle["r"], 2*mycircle["r"])
-        happy[i].node.style.display = "none"
-    
-    # create numcircles sad red dots and hide them
-    for i in range(numCircles): 
-        sad[i] = paper.image("sad-red-border.jpg", 0, 0, 2*mycircle["r"], 2*mycircle["r"]);
-        sad[i].node.style.display = "none";
     
 
 def moveCircles():
