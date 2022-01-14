@@ -74,7 +74,7 @@ class DSC(Task):
 
     def my_textbox2(self, text, pos=(0, 0), size=(None, None)):
         tbx = TextBox2(self.win, pos=pos, color='black', units='deg', lineSpacing=.9,
-                       letterHeight=1.1, text=text, font="Arial",  # size=(20, None),
+                       letterHeight=1, text=text, font="Arial",  # size=(20, None),
                        borderColor=None, fillColor=None, editable=False, alignment='center')
         return tbx
 
@@ -113,16 +113,14 @@ class DSC(Task):
 
             # on practice trials, stop sequence and advise participant if input timeout or not correct
             if self.tmbUI["status"] == "timeout" or not correct:
-                print(f"corr: {correct}, status: {self.tmbUI['status']}")
                 # rewind frame sequence by one frame, so same frame is displayed again
                 self.frameSequence.insert(0, frame)
 
                 message = [
-                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 6), units='deg'),
-                    visual.ImageStim(self.win, image=op.join(self.rootdir, 'DSC/images/key.png'), pos=(0, 0), units='deg'),
-                    self.my_textbox2(f"You should press **{frame['digit']}** on the <b>keyboard</b> " +
-                                     "when you see this symbol", (0, -7)),
-                    self.my_textbox2('Press continue', (0, -10)),
+                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 10), units='deg'),
+                    visual.ImageStim(self.win, image=op.join(self.rootdir, 'images/key.png'), pos=(0, 0), units='deg'),
+                    self.my_textbox2(f"You should press {frame['digit']} on the keyboard when you see this symbol", (0, -9)),
+                    visual.ImageStim(self.win, image= op.join(self.rootdir, 'continue.png'), pos=(0, 0), units='deg')
                 ]
 
                 present_msg(message, self.win)
@@ -162,7 +160,7 @@ class DSC(Task):
             else:
 
                 stim = [
-                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 6), units='deg'),
+                    visual.ImageStim(self.win, image=frame["source"], pos=(0, 10), units='deg'),
                     visual.ImageStim(self.win, image= op.join(self.rootdir, 'images/key.png'),
                                     pos=(0, 0), units='deg'),
                     ]
@@ -191,7 +189,7 @@ class DSC(Task):
                 countDown = core.CountdownTimer()
                 countDown.add(self.tmbUI["timeout"])
 
-                kpos = [-2.2, 0, 2.2]
+                kpos = [-5, 0, 5]
                 trialClock = core.Clock()
                 timed_out = True
                 while countDown.getTime() > 0:
@@ -207,14 +205,14 @@ class DSC(Task):
                         
                         rec_xpos = kpos[int(key[0][0]) - 1]
                         stim.append(
-                            visual.Rect(self.win, units='deg', lineColor='red',pos=(rec_xpos, -2.6), size=(2.5, 2.5),
+                            visual.Rect(self.win, units='deg', lineColor='red',pos=(rec_xpos, -5.5), size=(3.5, 3.5),
                                         lineWidth=4))
 
                         _ = self.keyboard.getReleases()
                         for ss in stim:
                             ss.draw()
                         self.win.flip()
-                        response_events = self.keyboard.waitForReleases()
+                        response_events = self.keyboard.waitForReleases()                       
                         self.send_marker("Trial-res_1")
                         break
 
@@ -246,7 +244,7 @@ class DSC(Task):
         if self.showresults:
             mes = [self.my_textbox2(f"Your score is {score}. \nThe test is " +
                                     "over. \nThank you for participating!", (0, 2)),
-                   self.my_textbox2('Press continue', pos=(0, -7))
+                   visual.ImageStim(self.win, image= op.join(self.rootdir, 'continue.png'), pos=(0, 0), units='deg'),
                    ]
 
             present_msg(mes, self.win, key_resp="space")
@@ -262,9 +260,11 @@ class DSC(Task):
         # SAVE RESULTS to file
         df_res = pd.DataFrame(self.results)
         df_out = pd.DataFrame.from_dict(self.outcomes, orient='index', columns=['vals'])
-
-        df_res.to_csv(self.path_out + f'{self.subj_id}_DSC_results.csv')
-        df_out.to_csv(self.path_out + f'{self.subj_id}_DSC_outcomes.csv')
+        
+        res_fname = self.path_out + f'{self.subj_id}_DSC_results.csv'
+        out_fname = self.path_out + f'{self.subj_id}_DSC_outcomes.csv'
+        df_res.to_csv(res_fname)
+        df_out.to_csv(out_fname)
 
     def setFrameSequence(self):
         testMessage = {
@@ -273,7 +273,7 @@ class DSC(Task):
             "practice": [
                 [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_1.jpg'), pos=(0, 0), units='deg')],
                 [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_2.jpg'), pos=(0, 0), units='deg'),],
-                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'inst_3.png'), pos=(0, 0), units='deg'),],
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_3.png'), pos=(0, 0), units='deg'),],
             ],
             "test": [
                 visual.ImageStim(self.win, image=op.join(self.rootdir, 'practice_end.jpg'), pos=(0, 0), units='deg'),
@@ -331,8 +331,8 @@ if __name__ == "__main__":
     fullscr=False,  
     monitor=customMon,
     units='pix',    
-    color=(0, 0, 0) 
+    color='white' 
     )
 
-    dsc = DSC(win=win)
-    dsc.run() 
+    self = DSC(win=win)
+    self.run() 
