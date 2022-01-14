@@ -34,7 +34,7 @@ class Saccade(Task_Eyetracker):
         if direction == 'horizontal':
             self.movement_pars = [self.amplitude_pixel / 2, 0]
         elif direction == 'vertical':
-            self.movement_pars = [0, self.amplitude_pixel / 2]
+            self.movement_pars = [0, self.amplitude_pixel / 3]
         else:
             raise ValueError("Only horizontal and vertical saccade is supported")
 
@@ -137,5 +137,5 @@ if __name__ == "__main__":
     
     task = Saccade()
     task.run(prompt=False)
-    task = Saccade(direction='vertical', amplitude_deg=15)
+    task = Saccade(direction='vertical', amplitude_deg=30)
     task.run(prompt=False)
