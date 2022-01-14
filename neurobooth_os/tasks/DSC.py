@@ -68,6 +68,8 @@ class DSC(Task):
 
 
     def run(self, **kwargs):
+        self.win.color = "white"
+        self.win.flip()
         self.nextTrial()
         self.io.quit()
 
@@ -268,15 +270,15 @@ class DSC(Task):
 
     def setFrameSequence(self):
         testMessage = {
-            "begin": [visual.ImageStim(self.win, image=op.join(self.rootdir, 'intro.jpg'), pos=(0, 0), units='deg')],
+            "begin": [visual.ImageStim(self.win, image=op.join(self.rootdir, 'intro.png'), pos=(0, 0), units='deg')],
 
             "practice": [
-                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_1.jpg'), pos=(0, 0), units='deg')],
-                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_2.jpg'), pos=(0, 0), units='deg'),],
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_1.png'), pos=(0, 0), units='deg')],
+                [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_2.png'), pos=(0, 0), units='deg'),],
                 [ visual.ImageStim(self.win, image= op.join(self.rootdir, 'intruct_3.png'), pos=(0, 0), units='deg'),],
             ],
             "test": [
-                visual.ImageStim(self.win, image=op.join(self.rootdir, 'practice_end.jpg'), pos=(0, 0), units='deg'),
+                visual.ImageStim(self.win, image=op.join(self.rootdir, 'practice_end.png'), pos=(0, 0), units='deg'),
             ]
         }
 
