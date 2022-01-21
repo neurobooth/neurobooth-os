@@ -23,16 +23,35 @@ class Fixation_Target(Task_Eyetracker):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
-    def present_task(self, prompt=True, duration=3, target_pos=(-10,50), target_size=25, **kwargs):
+    def present_task(self, prompt=True, duration=3, target_pos=(-10,5), target_size=25, **kwargs):
         self.countdown_task()
-        self.target.pos = target_pos   
+        self.target.pos = [self.deg_2_pix(target_pos[0])/2, self.deg_2_pix(target_pos[1])/2] 
         self.target.size = target_size
         self.present_text(screen=self.target, msg='task', audio=None, wait_time=duration, waitKeys=False)
         
         if prompt:
             func_kwargs = locals()
             del func_kwargs['self']
-            print(func_kwargs)
+            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
+                          func_kwargs=func_kwargs, waitKeys=False)
+
+
+class Fixation_Target_Multiple(Task_Eyetracker):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    def present_task(self, prompt=True, duration=3, trial_pos=[(0,0), (0,15)], target_size=25, **kwargs):
+
+        
+        self.countdown_task()
+        for pos in trial_pos:
+            self.target.pos = [self.deg_2_pix(pos[0])/2, self.deg_2_pix(pos[1])/2] 
+            self.target.size = target_size
+            self.present_text(screen=self.target, msg='trial', audio=None, wait_time=duration, waitKeys=False)
+        
+        if prompt:
+            func_kwargs = locals()
+            del func_kwargs['self']
             self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
                           func_kwargs=func_kwargs, waitKeys=False)
 
@@ -42,6 +61,7 @@ class Fixation_Target_sidetrials(Task_Eyetracker):
         super().__init__(**kwargs)
     
     def present_task(self, prompt=True, duration=3, target_pos=(-10,10), target_size=25, trial_intruct=['trial 1', 'trial 2'], **kwargs):
+        self.target.units = 'deg'
         
         for nth, trl in enumerate(trial_intruct):            
             msg = utils.create_text_screen(self.win, trl  + "\n\n\nPress CONTINUE")
@@ -49,7 +69,7 @@ class Fixation_Target_sidetrials(Task_Eyetracker):
             utils.present(self.win, msg)
         
             self.countdown_task()
-            self.target.pos = target_pos   
+            self.target.pos = [self.deg_2_pix(target_pos[0])/2, self.deg_2_pix(target_pos[1])/2]  
             self.target.size = target_size
             self.present_text(screen=self.target, msg='task', audio=None, wait_time=duration, waitKeys=False)
             
@@ -60,7 +80,6 @@ class Fixation_Target_sidetrials(Task_Eyetracker):
         if prompt:
             func_kwargs = locals()
             del func_kwargs['self']
-            print(func_kwargs)
             self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
                           func_kwargs=func_kwargs, waitKeys=False)
             
@@ -72,7 +91,10 @@ if __name__ == "__main__":
 
     task = Fixation_Target(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
     task.run(prompt=True, duration=3,  target_pos=(-10,-5))
-        
+    
+    t = Fixation_Target_Multiple()
+    t.run(duration=3, trial_pos=[(0,15), (30,15), (-30, 15)], target_size=25)
+    
     t= Fixation_Target_sidetrials()
-    t.run(duration=3, target_pos=(0,20), target_size=0, trial_intruct=["Do the task with your DOMINANT arm", "Do the task with your NON-DOMINANT arm"])         
+    t.run(duration=3, target_pos=(0,20), target_size=25, trial_intruct=["Do the task with your DOMINANT arm", "Do the task with your NON-DOMINANT arm"])         
 
