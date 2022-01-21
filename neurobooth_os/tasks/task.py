@@ -16,10 +16,10 @@ import time
 
 from psychopy import visual, monitors, sound, core
 from psychopy import prefs
-#prefs.hardware['audioLib'] = ['pyo']
 
 import neurobooth_os
 from neurobooth_os.tasks import utils
+from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 
 
 class Task():
@@ -186,7 +186,10 @@ class Task_Eyetracker(Task):
         self.win.color = [0, 0, 0]
         self.win.flip()
         self.target = visual.GratingStim(self.win, tex=None, mask='circle', size=25)
-
+    
+    def deg_2_pix(self, deg):
+        return deg2pix(deg, self.subj_screendist_cm, self.pixpercm)
+        
     def sendMessage(self, msg):
         if self.eye_tracker is not None:
             self.eye_tracker.tk.sendMessage(msg)
