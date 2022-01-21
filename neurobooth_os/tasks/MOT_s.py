@@ -214,7 +214,7 @@ win = visual.Window(
         )
 
 n_targets=2
-duration= 5
+duration= 10
 
 circle, mycircle = setup(win, mycircle, numCircles, paperSize)
 background = visual.Rect(win, width=paperSize, height=paperSize, fillColor='white', units='pix')
