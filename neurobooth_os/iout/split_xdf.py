@@ -87,7 +87,7 @@ def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None):
             continue
         
         sensors = "-".join(sensors_id)
-        data_sens = {'marker': marker, 'device_data': dev_data}
+        data_sens = {'marker': marker[0], 'device_data': dev_data}
         head, ext = op.splitext(fname)
         fname_full = f"{head}-{device_id}-{sensors}.hdf5"
         write_hdf5(fname_full, data_sens, overwrite=True)
