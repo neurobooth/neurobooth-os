@@ -78,3 +78,4 @@ for task in tasks:
     this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
     task_func_dict[task]['obj'].run(**this_task_kwargs)
 
+task_func_dict[task]['obj'].win.close()
