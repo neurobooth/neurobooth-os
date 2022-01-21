@@ -91,8 +91,11 @@ class VidRec_Flir():
     # from buffer in separate process
     def camCaptureVid(self):
         while self.recording or self.image_queue.qsize():
-            dequeuedImage = self.image_queue.get(block=True, timeout=1)
-            self.video_out.write(dequeuedImage)
+            try:
+                dequeuedImage = self.image_queue.get(block=True, timeout=1)
+                self.video_out.write(dequeuedImage)
+            except queue.Empty:    
+                pass
             
     def start(self, name="temp_video"):
         self.prepare(name)
