@@ -86,7 +86,7 @@ class Pursuit(Task_Eyetracker):
             else:
                 _x = int(tar_x + self.SCN_W / 2.0)
                 _y = int(self.SCN_H / 2.0 - tar_y)
-                tar_msg = f'!V TARGET_POS target {_x}, {_y} 1 0'
+                tar_msg = f'!V TARGET_POS target {_x}, {_y} 1 0'  # TODO: 1 0  eyetracker code confirm meaning
                 self.sendMessage(tar_msg)
 
             time_elapsed = flip_time - move_start
