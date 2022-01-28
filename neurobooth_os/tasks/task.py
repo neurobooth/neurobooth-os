@@ -14,7 +14,7 @@ import os.path as op
 from datetime import datetime
 import time
 
-from psychopy import visual, monitors, sound, core
+from psychopy import visual, monitors, sound, core, event
 from psychopy import prefs
 
 import neurobooth_os
@@ -63,7 +63,11 @@ class Task():
                 win=self.win, filename=self.path_instruction_video, noAudio=False)
         else:
             self.instruction_video = None
-
+        
+        # Create mouse and set not visible
+        self.Mouse = event.Mouse(visible=False, win=self.win)
+        self.Mouse.setVisible(0)
+        
         self.root_pckg = neurobooth_os.__path__[0]
 
         self.press_inst_screen = visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/inst_end_task.png'),
