@@ -98,7 +98,7 @@ class Saccade(Task_Eyetracker):
             flip_time = core.getTime()
             frame += 1
             if frame == 1:
-                self.sendMessage('Movement_onset')
+                self.sendMessage('Movement onset')
                 move_start = core.getTime()
             else:
                 _x = int(tar_x + self.SCN_W / 2.0)
@@ -109,8 +109,6 @@ class Saccade(Task_Eyetracker):
             time_elapsed = flip_time - move_start
 
             # update the target position
-            
-
             tar_x = self.trial_sign[index] * amp_x 
             tar_y = self.trial_sign[index] * amp_y 
 
