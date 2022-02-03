@@ -81,12 +81,12 @@ class Pursuit(Task_Eyetracker):
             flip_time = core.getTime()
             frame += 1
             if frame == 1:
-                self.sendMessage('Movement_onset')
+                self.sendMessage('Movement onset')
                 move_start = core.getTime()
             else:
                 _x = int(tar_x + self.SCN_W / 2.0)
                 _y = int(self.SCN_H / 2.0 - tar_y)
-                tar_msg = f'!V TARGET_POS target {_x}, {_y} 1 0'  # TODO: 1 0  eyetracker code confirm meaning
+                tar_msg = f'!V TARGET_POS target {_x}, {_y} 1 0'  #  1 0  eyetracker code x, y, draw (1 yes), interpolation (0 == yes)
                 self.sendMessage(tar_msg)
 
             time_elapsed = flip_time - move_start
