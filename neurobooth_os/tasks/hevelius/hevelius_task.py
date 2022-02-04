@@ -230,6 +230,10 @@ class hevelius_task(Task_Eyetracker):
                             x, y = mouse.getPos()
                             mouse.x.append(x)
                             mouse.y.append(y)
+                            _x = int(x + self.win.size[0] / 2.0)
+                            _y = int( self.win.size[0] / 2.0 - y)
+                            tar_msg = f'!V TARGET_POS mouse {_x}, {_y} 1 0'
+                            self.sendMessage(tar_msg)
                             buttons = mouse.getPressed()
                             mouse.leftButton.append(buttons[0])
                             mouse.midButton.append(buttons[1])
@@ -237,6 +241,7 @@ class hevelius_task(Task_Eyetracker):
                             mouse.time.append(mouse.mouseClock.getTime())
                             if gotValidClick:  # abort routine on response
                                 continueRoutine = False
+                                self.sendMessage(f"!V TARGET_POS valid_click {_x} {_y} 1 0")
 
                 # check if all components have finished
                 if not continueRoutine:  # a component has requested a forced-end of Routine

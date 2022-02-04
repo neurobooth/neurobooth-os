@@ -46,6 +46,9 @@ def make_win(full_screen=True, monitor_width=55, monitor_distance=60):
                                                                                 nWarmUpFrames=10, threshold=1)))
     return win
 
+def change_win_color(win, color):
+    win.color = color
+    win.flip()
 
 def create_text_screen(win, text):
     screen = visual.TextStim(win=win, name='',

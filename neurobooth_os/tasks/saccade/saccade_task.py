@@ -87,7 +87,9 @@ class Saccade(Task_Eyetracker):
             self.target.size = self.pointer_size_pixel
             self.target.draw()
             self.win.flip()
-            tar_msg = f'!V TARGET_POS Center {0}, {0} 1 0'
+            fx_x = int(self.target.pos[0] + self.SCN_W / 2.0)
+            fx_y = int(self.SCN_H / 2.0 - self.target.pos[1])
+            tar_msg = f'!V TARGET_POS target {fx_x}, {fx_y} 1 0' #  1 0  eyetracker code x, y, draw (1 yes), interpolation (0 == yes)
             self.sendMessage(tar_msg)
             core.wait(self.wait_center + self.jitter_percent*self.wait_center*np.random.random(1)[0])
 
