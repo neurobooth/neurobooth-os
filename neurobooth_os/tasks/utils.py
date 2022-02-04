@@ -23,6 +23,9 @@ text_practice_screen = 'Please practice the task \n\tPress any button when done'
 text_task='Please do the task \n\tPress any button when done'
 text_end='Thank you. You have completed this task'
 
+def change_win_color(win, color):
+    win.color = color
+    win.flip()
 
 def send_marker(marker, msg):
     marker.push_sample([f"{msg}_{time.time()}"])
