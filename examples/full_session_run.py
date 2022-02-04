@@ -72,7 +72,7 @@ while True:
             session = _start_lsl_session(main_window, inlets)
             break
 
-tasks_selected = [tasks]
+tasks_selected = tasks.split(", ")
 _start_task_presentation(main_window, tasks_selected, sess_info['subject_id'], steps,
                          node=nodes[1])
 
