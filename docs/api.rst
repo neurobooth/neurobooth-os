@@ -29,6 +29,7 @@ Mock
 
    insert_mock_rows
    delete_mock_rows
+   MockWindow
 
 LSL
 ---
