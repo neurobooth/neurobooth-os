@@ -252,7 +252,7 @@ def _prepare_devices(window, nodes, collection_id, tech_obs_log):
 
     vidf_mrkr = marker_stream('videofiles')
     # Create event to capture outlet_id
-    window.write_event_value('-OUTLETID-', f"['{vidf_mrkr.name}', '{vidf_mrkr.outlet_id}']")
+    window.write_event_value('-OUTLETID-', f"['{vidf_mrkr.name}', '{vidf_mrkr.oulet_id}']")
 
     nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:

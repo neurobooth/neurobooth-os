@@ -41,21 +41,23 @@ def mock_stm_routine(host, port, conn):
             # data = "prepare:collection_id:str(tech_obs_log_dict)"
 
             collection_id = data.split(":")[1]
-            tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
-            study_id_date = tech_obs_log["study_id-date"]
-
-            # delete subj_date as not present in DB
-            del tech_obs_log["study_id-date"]
-
-            task_func_dict = get_task_funcs(collection_id, conn)
-            task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
-
             if len(streams):
                 print("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
                 streams = start_lsl_threads("dummy_stm", collection_id, conn=conn)
-                print("Preparing devices")
+                print("Preparing devices")        
+                
+            tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
+            subject_id_date = tech_obs_log["subject_id-date"]
+
+            # delete subj_date as not present in DB
+            del tech_obs_log["subject_id-date"]
+
+            task_func_dict = get_task_funcs(collection_id, conn)
+            task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
+
+
 
             print("UPDATOR:-Connect-")
 
@@ -64,7 +66,7 @@ def mock_stm_routine(host, port, conn):
             # task_name can be list of task1-task2-task3
             tasks, subj_id = data.split(":")[1:]
             task_karg ={"path": config.paths['data_out'],
-                        "subj_id": study_id_date,
+                        "subj_id": subject_id_date,
                         "marker_outlet": streams['marker'],
                         }
             
@@ -93,7 +95,7 @@ def mock_stm_routine(host, port, conn):
                 sleep(1)
 
                  # Start/Stop rec in ACQ and run task
-                resp = socket_message(f"record_start::{config.paths['data_out']}{study_id_date}_{tsk_strt_time}_{task}::{task}",
+                resp = socket_message(f"record_start::{config.paths['data_out']}{subject_id_date}_{tsk_strt_time}_{task}::{task}",
                                      "dummy_acq", wait_data=3)
                 print(resp)
                 sleep(.5)
