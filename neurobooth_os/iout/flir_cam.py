@@ -91,8 +91,11 @@ class VidRec_Flir():
     # from buffer in separate process
     def camCaptureVid(self):
         while self.recording or self.image_queue.qsize():
-            dequeuedImage = self.image_queue.get(block=True, timeout=1)
-            self.video_out.write(dequeuedImage)
+            try:
+                dequeuedImage = self.image_queue.get(block=True, timeout=1)
+                self.video_out.write(dequeuedImage)
+            except queue.Empty:
+                continue
             
     def start(self, name="temp_video"):
         self.prepare(name)
@@ -144,8 +147,8 @@ class VidRec_Flir():
             # self.video_out.write(im_conv_d)
             self.frame_counter += 1
 
-            # if not self.frame_counter % 200:
-            #     print(f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}")
+            if not self.frame_counter % 1000:
+                print(f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}")
 
         print(f"FLIR recording ended with {self.frame_counter} frames in {time.time()-t0}")
         self.cam.EndAcquisition()
