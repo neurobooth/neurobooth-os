@@ -31,7 +31,7 @@ def marker_stream(name='Marker', outlet_id=None):
 
     # Create outlets
     outlet_marker = StreamOutlet(stream_info_marker)
-    outlet_marker.outlet_id = outlet_id
+    outlet_marker.oulet_id = outlet_id
     outlet_marker.name = name
     outlet_marker.push_sample([f"Stream-created_0_{time.time()}"])
     print(f"-OUTLETID-:{name}:{outlet_id}")

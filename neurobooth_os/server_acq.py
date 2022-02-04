@@ -49,7 +49,7 @@ def Main():
             None
 
         elif "record_start" in data:  
-            # "record_start:filename:task_id" FILENAME = {subj_id}_{obs_id}
+            # "record_start::filename::task_id" FILENAME = {subj_id}_{obs_id}
             print("Starting recording")
             fname, task = data.split("::")[1:]            
             for k in streams.keys():
