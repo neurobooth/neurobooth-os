@@ -16,10 +16,10 @@ import time
 
 from psychopy import visual, monitors, sound, core
 from psychopy import prefs
-#prefs.hardware['audioLib'] = ['pyo']
 
 import neurobooth_os
 from neurobooth_os.tasks import utils
+from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 
 
 class Task():
@@ -168,9 +168,9 @@ class Task_countdown(Task):
             self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
                             func_kwargs=func_kwargs, waitKeys=False)
 
-
+            
 class Task_Eyetracker(Task):
-    def __init__(self, eye_tracker=None, monitor_width=55, subj_screendist_cm=60,  **kwargs):
+    def __init__(self, eye_tracker=None, monitor_width=55, subj_screendist_cm=60, target_size=.7,  **kwargs):
         super().__init__(**kwargs)
 
         self.eye_tracker = eye_tracker
@@ -181,16 +181,22 @@ class Task_Eyetracker(Task):
         self.monitor_width = monitor_width
         self.pixpercm = self.mon_size[0] / self.monitor_width
         self.subj_screendist_cm = subj_screendist_cm
-
+        
+        self.target_size_pix = self.deg_2_pix(target_size)
+        
         # prepare the pursuit target, the clock and the movement parameters
         self.win.color = [0, 0, 0]
         self.win.flip()
-        self.target = visual.GratingStim(self.win, tex=None, mask='circle', size=25)
-
+        self.target = visual.GratingStim(self.win, tex=None, mask='circle', size=self.target_size_pix)
+    
+    def deg_2_pix(self, deg):
+        return deg2pix(deg, self.subj_screendist_cm, self.pixpercm)
+        
     def sendMessage(self, msg):
         if self.eye_tracker is not None:
             self.eye_tracker.tk.sendMessage(msg)
-        
+            self.send_marker(msg, False)
+            
     def setOfflineMode(self):
         if self.eye_tracker is not None:
             self.eye_tracker.paused = True

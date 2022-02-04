@@ -45,7 +45,7 @@ def Main():
 
             collection_id = data.split(":")[1]
             tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
-            study_id_date = tech_obs_log["subject_id-date"]
+            subject_id_date = tech_obs_log["subject_id-date"]
 
             # delete subj_date as not present in DB
             del tech_obs_log["subject_id-date"]
@@ -68,7 +68,7 @@ def Main():
             tasks, subj_id = data.split(":")[1:]
             task_karg ={"win": win,
                         "path": config.paths['data_out'],
-                        "subj_id": study_id_date,
+                        "subj_id": subject_id_date,
                         "marker_outlet": streams['marker'],
                         }
             if streams.get('Eyelink'):
@@ -121,7 +121,7 @@ def Main():
                             any('Eyelink' in d for d in list(task_devs_kw[task])):
                     if not streams['Eyelink'].calibrated:
                         streams['Eyelink'].calibrate()
-                    fname = f"{config.paths['data_out']}{study_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
+                    fname = f"{config.paths['data_out']}{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
                     streams['Eyelink'].start(fname)
                 
                 events = tsk_fun.run(**this_task_kwargs)
