@@ -13,7 +13,7 @@ fname = op.join(expanduser("~"), ".neurobooth_os_config")
 if not op.exists(fname):        
     paths = {
         "data_out": r"C:\neurobooth\neurobooth_data\\",
-        'nas': r'Z:\session_data\\',
+        'nas': r'Z:\data\\',
         'video_tasks' : r"C:\Users\STM\Dropbox (Partners HealthCare)\Neurobooth Videos for tasks\Videos_to_present",
         'cam_inx_lowfeed' : 0
         }

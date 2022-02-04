@@ -135,7 +135,7 @@ class Saccade(Task_Eyetracker):
 
 if __name__ == "__main__":
     
-    task = Saccade()
-    task.run(prompt=False)
+    # task = Saccade()
+    # task.run(prompt=False)
     task = Saccade(direction='vertical', amplitude_deg=30)
     task.run(prompt=False)

@@ -77,6 +77,7 @@ def shut_all(nodes=("acquisition", "presentation")):
     nodes = _get_nodes(nodes)
     for node in nodes:
         socket_message("shutdown", node)
+    time.sleep(3)
     kill_pid_txt()  # TODO only if error
 
 

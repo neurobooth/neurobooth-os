@@ -6,11 +6,12 @@ import time
 import uuid
 import wave
 
+import neurobooth_os.config as cfg
 
 class MicStream():
     def __init__(self, CHANNELS=1, RATE=44100, CHUNK=1024, device_id="Mic_Yeti_1",
                  sensor_ids=['Mic_Yeti_sens_1'],
-                 FORMAT=pyaudio.paFloat32, save_on_disk=False):
+                 FORMAT=pyaudio.paInt16, save_on_disk=False):
 
         self.CHUNK = CHUNK
         self.fps = RATE
@@ -43,7 +44,7 @@ class MicStream():
         # Setup outlet stream infos
         self.oulet_id = str(uuid.uuid4())
         self.stream_info_audio = StreamInfo('Audio', 'Experimental', CHUNK, RATE / CHUNK,
-                                            'float32', self.oulet_id)
+                                            'int16', self.oulet_id)
 
         self.stream_info_audio.desc().append_child_value("fps", str(self.fps))
         self.stream_info_audio.desc().append_child_value("device_name", self.device_name)
@@ -70,7 +71,7 @@ class MicStream():
         print("Microphone stream opened")
         while self.streaming:
             data = self.stream_in.read(self.CHUNK)
-            decoded = np.frombuffer(data, 'float32')
+            decoded = np.frombuffer(data, 'int16')
             if self.save_on_disk:
                 self.frames_raw.append(data)
                 self.frames.append(decoded)
@@ -88,14 +89,15 @@ class MicStream():
     def stop(self):
         self.streaming = False
         if self.save_on_disk:
-            wf = wave.open("decoded_mic_data.wav", 'wb')
+            wf = wave.open(cfg.paths["data_out"] + "decoded_mic_data.wav", 'wb')
             wf.setnchannels(self.CHANNELS)
             wf.setsampwidth(self.p.get_sample_size(self.FORMAT))
             wf.setframerate(self.fps)
             wf.writeframes(b''.join(self.frames))
             wf.close()
 
-            wf = wave.open("raw_mic_data.wav", 'wb')
+
+            wf = wave.open(cfg.paths["data_out"] + "raw_mic_data.wav", 'wb')
             wf.setnchannels(self.CHANNELS)
             wf.setsampwidth(self.p.get_sample_size(self.FORMAT))
             wf.setframerate(self.fps)
