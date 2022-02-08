@@ -193,13 +193,17 @@ class Task_Eyetracker(Task):
         self.win.flip()
         self.target = visual.GratingStim(self.win, tex=None, mask='circle', size=self.target_size_pix)
     
-    def pos_psych_pix(self, locs:list):
-        """ compute location x, y from 0 center to top-left centered"""
+    def pos_psych2pix(self, locs:list):
+        """ compute location x, y from 0 centered psychopy to top-left centered pixels"""
         x = int(locs[0] + self.win.size[0] / 2.0)
         y = int(self.win.size[0] / 2.0 - locs[1])
         return [x, y]
 
-    
+    def send_target_loc(self, loc:list, target_name="target"):
+        """ send target loc(ation) 0 centered to eyetracker after converting to top-left centered pixels."""        
+        loc = self.pos_psych2pix(loc)
+        self.sendMessage( f'!V TARGET_POS {target_name} {loc[0]}, {loc[1]} 1 0')
+        
     def deg_2_pix(self, deg):
         return deg2pix(deg, self.subj_screendist_cm, self.pixpercm)
         
