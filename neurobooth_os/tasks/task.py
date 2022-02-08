@@ -207,10 +207,11 @@ class Task_Eyetracker(Task):
     def deg_2_pix(self, deg):
         return deg2pix(deg, self.subj_screendist_cm, self.pixpercm)
         
-    def sendMessage(self, msg):
+    def sendMessage(self, msg, to_marker=True):
         if self.eye_tracker is not None:
             self.eye_tracker.tk.sendMessage(msg)
-            self.send_marker(msg, False)
+            if to_marker:
+                self.send_marker(msg, False)
             
     def setOfflineMode(self):
         if self.eye_tracker is not None:
