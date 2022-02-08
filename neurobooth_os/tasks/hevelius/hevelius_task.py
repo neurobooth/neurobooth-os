@@ -80,6 +80,7 @@ class hevelius_task(Task_Eyetracker):
     def run_blocks(self, blocks, block_type):
         for index, block in enumerate(blocks):
             print('block start')
+            self.sendMessage(f"TRIALID {index+1}")
             self.sendMessage(block_type + ' Block {} of {}'.format(index+1,  len(blocks)))
             text_continue = block_type + 'Block {} of {} \n\tPlease press:\n\t"Continue" to advance'.format(index + 1, len(blocks))
             continue_screen = utils.create_text_screen(self.win, text_continue)
@@ -164,10 +165,8 @@ class hevelius_task(Task_Eyetracker):
             if index == 0:
                 mouse.setPos((currentLoc[0], currentLoc[1]))
             #print(index, currentLoc, locs[i])
-            _x = int(currentLoc[0] + self.win.size[0] / 2.0)
-            _y = int( self.win.size[0] / 2.0 - currentLoc[1])
-            tar_msg = f'!V TARGET_POS target {_x}, {_y} 1 0'
-            self.sendMessage(tar_msg)
+            self.send_target_loc(currentLoc, 'target')
+
 
             # keep track of which components have finished
             trialComponents = [polygon, mouse]
@@ -230,10 +229,6 @@ class hevelius_task(Task_Eyetracker):
                             x, y = mouse.getPos()
                             mouse.x.append(x)
                             mouse.y.append(y)
-                            _x = int(x + self.win.size[0] / 2.0)
-                            _y = int( self.win.size[0] / 2.0 - y)
-                            tar_msg = f'!V TARGET_POS mouse {_x}, {_y} 1 0'
-                            self.sendMessage(tar_msg)
                             buttons = mouse.getPressed()
                             mouse.leftButton.append(buttons[0])
                             mouse.midButton.append(buttons[1])
@@ -241,7 +236,9 @@ class hevelius_task(Task_Eyetracker):
                             mouse.time.append(mouse.mouseClock.getTime())
                             if gotValidClick:  # abort routine on response
                                 continueRoutine = False
-                                self.sendMessage(f"!V TARGET_POS valid_click {_x} {_y} 1 0")
+                                self.send_target_loc([x, y], 'mouse_valid_click')
+                            else:
+                                self.send_target_loc([x, y], 'mouse_click')
 
                 # check if all components have finished
                 if not continueRoutine:  # a component has requested a forced-end of Routine
