@@ -25,8 +25,10 @@ class Fixation_Target(Task_Eyetracker):
     
     def present_task(self, prompt=True, duration=3, target_pos=(-10,5), target_size=.7, **kwargs):
         self.countdown_task()
-        self.target.pos = [self.deg_2_pix(target_pos[0])/2, self.deg_2_pix(target_pos[1])/2] 
+        self.target.pos = [self.deg_2_pix(target_pos[0])/2, self.deg_2_pix(target_pos[1])/2]
         self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
+        if self.target.size:
+            self.send_target_loc(self.target.pos)
         self.present_text(screen=self.target, msg='task', audio=None, wait_time=duration, waitKeys=False)
         
         if prompt:
@@ -45,6 +47,8 @@ class Fixation_Target_Multiple(Task_Eyetracker):
         for pos in trial_pos:
             self.target.pos = [self.deg_2_pix(pos[0])/2, self.deg_2_pix(pos[1])/2] 
             self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
+            if self.target.size:
+                self.send_target_loc(self.target.pos)
             self.present_text(screen=self.target, msg='trial', audio=None, wait_time=duration, waitKeys=False)
         
         if prompt:
@@ -68,6 +72,8 @@ class Fixation_Target_sidetrials(Task_Eyetracker):
             self.countdown_task()
             self.target.pos = [self.deg_2_pix(target_pos[0])/2, self.deg_2_pix(target_pos[1])/2]  
             self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
+            if self.target.size:
+                self.send_target_loc(self.target.pos)
             self.present_text(screen=self.target, msg='task', audio=None, wait_time=duration, waitKeys=False)
             
             msg = utils.create_text_screen(self.win, "Task on one side ended")

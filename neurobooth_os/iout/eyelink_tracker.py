@@ -46,7 +46,7 @@ class EyeTracker():
 
         # Setup outlet stream info
         self.oulet_id = str(uuid.uuid4())
-        self.stream_info = StreamInfo('EyeLink','Gaze', 20, self.sample_rate, 'float32', self.oulet_id)
+        self.stream_info = StreamInfo('EyeLink','Gaze', 12, self.sample_rate, 'float32', self.oulet_id)
         self.stream_info.desc().append_child_value("fps", str(self.sample_rate))
         self.stream_info.desc().append_child_value("device_id", self.device_id)
         self.stream_info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
@@ -155,10 +155,6 @@ class EyeTracker():
                 continue
 
             smp = self.tk.getNewestSample()
-
-            # if old_sample == smp:
-            #     print("same samples")
-            #     print(values)
 
             if smp is not None and old_sample != smp:
                     

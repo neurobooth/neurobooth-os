@@ -96,10 +96,10 @@ def Main():
                 tsk_fun = task_func_dict[task]['obj']
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
                 
-                # Do not record if calibration or intro instructions"
-                if 'calibration_task' in task or "intro_" in task:
-                      tsk_fun.run(**this_task_kwargs)
-                      continue                    
+                # Do not record if intro instructions"
+                if "intro_" in task:
+                  tsk_fun.run(**this_task_kwargs)
+                  continue                    
                 
                 t_obs_id = task_func_dict[task]['t_obs_id']
                 tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
@@ -117,13 +117,21 @@ def Main():
                 sleep(.5)
 
                 # Start eyetracker if device in tech_obs 
-                if streams.get('Eyelink') and \
-                            any('Eyelink' in d for d in list(task_devs_kw[task])):
+                if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
                     if not streams['Eyelink'].calibrated:
                         streams['Eyelink'].calibrate()
                     fname = f"{config.paths['data_out']}{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
                     streams['Eyelink'].start(fname)
+                    
+                    if 'calibration_task' in task:
+                        this_task_kwargs.update({"fname": fname})
                 
+                # Start rec in ACQ and run task
+                resp = socket_message(f"record_start::{config.paths['data_out']}{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
+                                     "acquisition", wait_data=3)
+                print(resp)
+                sleep(.5)
+
                 events = tsk_fun.run(**this_task_kwargs)
                 socket_message("record_stop", "acquisition")
                 print(f"Finished task:{task}")
