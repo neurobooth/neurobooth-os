@@ -103,6 +103,7 @@ class Saccade(Task_Eyetracker):
                 self.sendMessage('Movement onset')
                 move_start = core.getTime()           
 
+
             time_elapsed = flip_time - move_start
 
             # update the target position
@@ -130,7 +131,7 @@ class Saccade(Task_Eyetracker):
 
 if __name__ == "__main__":
     
-    task = Saccade()
-    task.run(prompt=False)
+    # task = Saccade()
+    # task.run(prompt=False)
     task = Saccade(direction='vertical', amplitude_deg=30)
     task.run(prompt=False)

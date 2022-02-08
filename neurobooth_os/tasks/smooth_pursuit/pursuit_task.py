@@ -87,7 +87,6 @@ class Pursuit(Task_Eyetracker):
                 self.sendMessage('Movement onset')
                 move_start = core.getTime()
 
-
             time_elapsed = flip_time - move_start
             time_array.append(flip_time)
 
