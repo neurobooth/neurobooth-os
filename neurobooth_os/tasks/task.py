@@ -202,7 +202,7 @@ class Task_Eyetracker(Task):
     def send_target_loc(self, loc:list, target_name="target"):
         """ send target loc(ation) 0 centered to eyetracker after converting to top-left centered pixels."""        
         loc = self.pos_psych2pix(loc)
-        self.sendMessage( f'!V TARGET_POS {target_name} {loc[0]}, {loc[1]} 1 0')
+        self.sendMessage( f'!V TARGET_POS {target_name} {loc[0]}, {loc[1]} 1 0')  #  1 0  eyetracker code x, y, draw (1 yes), interpolation (0 == yes)
         
     def deg_2_pix(self, deg):
         return deg2pix(deg, self.subj_screendist_cm, self.pixpercm)

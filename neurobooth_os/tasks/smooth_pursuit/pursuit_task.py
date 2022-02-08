@@ -15,8 +15,7 @@ from neurobooth_os.tasks.task import Task_Eyetracker
 
 
 class Pursuit(Task_Eyetracker):
-    def __init__(self, amplitude_deg=30, peak_velocity_deg=30, start_phase_deg=0,  ntrials=5, **kwargs):    
-    # amplitude_deg=30, peak_velocity_deg=33.3, **kwargs):
+    def __init__(self, amplitude_deg=30, peak_velocity_deg=30, start_phase_deg=0,  ntrials=5, **kwargs):
 
         super().__init__(**kwargs)
         self.amplitude_deg = amplitude_deg
@@ -61,6 +60,8 @@ class Pursuit(Task_Eyetracker):
         self.target.pos = (tar_x, tar_y)
         self.target.draw()
         self.win.flip()
+        self.send_target_loc(self.target.pos)
+        
         # self.doDriftCorrect([int(tar_x + self.mon_size[0] / 2.0),
         #                        int(self.mon_size[1] / 2.0 - tar_y), 0, 1])
  
@@ -78,16 +79,14 @@ class Pursuit(Task_Eyetracker):
             self.target.pos = (tar_x, tar_y)
             self.target.draw()
             self.win.flip()
+            self.send_target_loc(self.target.pos)
+            
             flip_time = core.getTime()
             frame += 1
             if frame == 1:
                 self.sendMessage('Movement onset')
                 move_start = core.getTime()
-            else:
-                _x = int(tar_x + self.SCN_W / 2.0)
-                _y = int(self.SCN_H / 2.0 - tar_y)
-                tar_msg = f'!V TARGET_POS target {_x}, {_y} 1 0'  #  1 0  eyetracker code x, y, draw (1 yes), interpolation (0 == yes)
-                self.sendMessage(tar_msg)
+
 
             time_elapsed = flip_time - move_start
             time_array.append(flip_time)

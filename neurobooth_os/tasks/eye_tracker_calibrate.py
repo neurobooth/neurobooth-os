@@ -17,11 +17,5 @@ class Calibrate(Task_Eyetracker):
 
     def run(self, prompt=True, fname="test", **kwargs):
             self.present_instructions(prompt)
-            
-            self.fname_temp = "name8chr.edf"
-            self.tk.openDataFile(self.fname_temp)
-            self.eye_tracker.calibrate()
-            self.tk.closeDataFile()
-            self.tk.receiveDataFile(self.fname_temp, fname)
-            
+            self.eye_tracker.calibrate()            
             self.present_complete()
