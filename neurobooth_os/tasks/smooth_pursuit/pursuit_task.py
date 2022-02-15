@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+  # -*- coding: utf-8 -*-
 """
 Created on Wed Nov 03 08:00:23 2021
 
@@ -75,7 +75,7 @@ class Pursuit(Task_Eyetracker):
         frame = 0
         time_array = []
         while True:
-            core.wait(1/480.)
+            # core.wait(1/480.)
             self.target.pos = (tar_x, tar_y)
             self.target.draw()
             self.win.flip()
@@ -84,7 +84,7 @@ class Pursuit(Task_Eyetracker):
             flip_time = core.getTime()
             frame += 1
             if frame == 1:
-                self.sendMessage('Movement onset')
+                self.sendMessage('Movement onset') 
                 move_start = core.getTime()
 
             time_elapsed = flip_time - move_start
@@ -97,16 +97,17 @@ class Pursuit(Task_Eyetracker):
 
             # break if the time elapsed exceeds the trial duration
             if time_elapsed > self.ntrials * (1/freq_x):
-                print(frame)
+                print(frame)  
                 time_array = np.array(time_array)
                 time_array = np.diff(time_array)
-                print(np.mean(time_array)*1000)
-                print(np.median(time_array)*1000)
-                print(np.std(time_array)*1000)
-                print(np.max(time_array)*1000)
-                print(np.min(time_array)*1000)
+                print("mean time:",np.mean(time_array)*1000)
+                print("med time:",np.median(time_array)*1000)
+                print("std time:",np.std(time_array)*1000)
+                print("max time:",np.max(time_array)*1000)
+                print("min time:", np.min(time_array)*1000)
                 break
-
+        
+        self.time_array = time_array   
         # clear the window
         self.win.color = (0, 0, 0)
         self.win.flip()
@@ -135,5 +136,12 @@ class Pursuit(Task_Eyetracker):
                           func_kwargs=func_kwargs_func, waitKeys=False)
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     task = Pursuit(full_screen=True)
     task.run(prompt=True)
+
+    tstmp = task.time_array
+    plt.figure()
+    plt.hist(tstmp, 30)
+    plt.figure()
+    plt.plot(tstmp )

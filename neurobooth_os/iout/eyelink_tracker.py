@@ -167,11 +167,11 @@ class EyeTracker():
                 if smp.isRightSample():
                     gaze = smp.getRightEye().getGaze()                   
                     pupil = smp.getRightEye().getPupilSize()  # pupil size
-                    values[:3] = gaze + [pupil]
+                    values[:3] = [gaze[0], gaze[1], pupil]
                 if smp.isLeftSample():
                     gaze = smp.getLeftEye().getGaze()
                     pupil = smp.getLeftEye().getPupilSize()
-                    values[3:6] = gaze + [pupil]
+                    values[3:6] = [gaze[0], gaze[1], pupil]
                                         
                 self.outlet.push_sample(values)
                 old_sample = smp
@@ -193,4 +193,3 @@ class EyeTracker():
         if self.recording:
             self.stop()
         self.tk.close()
-
