@@ -17,7 +17,7 @@ import os.path as op
 
 class hevelius_task(Task_Eyetracker):
 
-    def __init__(self, trials_data, record_psychopy=True, path="", subj_id="test", **kwargs):
+    def __init__(self, record_psychopy=True, path="", subj_id="test", **kwargs):
         super().__init__(**kwargs)
 
         self.path_out = path
@@ -26,7 +26,8 @@ class hevelius_task(Task_Eyetracker):
         self.filename = self.path_out + f'{self.subj_id}_MouseTask_results'
         self.frameTolerance = 0.001  # how close to onset before 'same' frame
         self.rep = ''  # repeated task num to add to filename
-        self.trials_data = trials_data
+        with open(op.join(neurobooth_os.__path__[0], 'tasks/assets/hevelius_centered_config.json')) as f:
+            self.trials_data = json.load(f)
         self.record_psychopy = record_psychopy
 
 
@@ -165,7 +166,7 @@ class hevelius_task(Task_Eyetracker):
             if index == 0:
                 mouse.setPos((currentLoc[0], currentLoc[1]))
             #print(index, currentLoc, locs[i])
-            self.send_target_loc(currentLoc, 'target')
+            self.send_target_loc(currentLoc, 'target', to_marker=True, no_interpolation=1)
 
 
             # keep track of which components have finished
@@ -191,7 +192,7 @@ class hevelius_task(Task_Eyetracker):
                 frameN = frameN + 1  # number of completed frames (so 0 is the first frame)
 
                 # update/draw components on each frame
-
+                
                 # *polygon* updates
                 if polygon.status == NOT_STARTED and tThisFlip >= 0.0 - self.frameTolerance:
                     # keep track of start time/frame for later
@@ -213,8 +214,24 @@ class hevelius_task(Task_Eyetracker):
                     mouse.mouseClock.reset()
                     prevButtonState = mouse.getPressed()  # if button is down already this ISN'T a new click
 
+                was_inside = False
                 if mouse.status == STARTED:  # only update if started and not finished!
                     x, y = mouse.getPos()
+                    self.send_target_loc([x, y], 'mouse', to_marker=False)
+                    onTarget = False
+                    for obj in [polygon]:
+                        if obj.contains(mouse):
+                            onTarget = True
+                    if onTarget:
+                        self.sendMessage('mouse_in_target_1')
+                    # if onTarget and not was_inside:
+                    #     self.sendMessage('mouse_in_target_1')
+                    #     was_inside = True
+                    # elif was_inside and not onTarget:
+                    #     self.sendMessage('mouse_off_target_0')
+                    #     was_inside = False
+                        
+                        
                     buttons = mouse.getPressed()
                     if buttons != prevButtonState:  # button state changed?
                         prevButtonState = buttons
@@ -236,9 +253,9 @@ class hevelius_task(Task_Eyetracker):
                             mouse.time.append(mouse.mouseClock.getTime())
                             if gotValidClick:  # abort routine on response
                                 continueRoutine = False
-                                self.send_target_loc([x, y], 'mouse_valid_click')
+                                self.sendMessage('mouse_valid_click')
                             else:
-                                self.send_target_loc([x, y], 'mouse_click')
+                                self.sendMessage('mouse_click')
 
                 # check if all components have finished
                 if not continueRoutine:  # a component has requested a forced-end of Routine
@@ -290,7 +307,6 @@ class hevelius_task(Task_Eyetracker):
 
 
 if __name__ == "__main__":
-    with open(op.join(neurobooth_os.__path__[0], 'tasks/assets/hevelius_config.json')) as f:
-        trials_data = json.load(f)
-    task = hevelius_task(trials_data, record_psychopy=False, full_screen=False, blocks=2, num_iterations=2)
+
+    task = hevelius_task( record_psychopy=False, full_screen=False, blocks=2, num_iterations=2)
     task.run()
