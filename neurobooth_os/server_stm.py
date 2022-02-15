@@ -23,7 +23,7 @@ def Main():
 
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    win = utl.make_win(full_screen=False)
+    win = utl.make_win(full_screen=True)
     conn = meta.get_conn()
 
     streams, screen_running = {}, False
@@ -110,21 +110,17 @@ def Main():
                 print(f"Initiating task:{task}:{t_obs_id}:{tech_obs_log_id}:{tsk_strt_time}")
                 sleep(1)
 
-                # Start rec in ACQ and run task
-                resp = socket_message(f"record_start::{config.paths['data_out']}{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
-                                     "acquisition", wait_data=3)
-                print(resp)
-                sleep(.5)
-
                 # Start eyetracker if device in tech_obs 
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
-                    if not streams['Eyelink'].calibrated:
-                        streams['Eyelink'].calibrate()
+                    # if not streams['Eyelink'].calibrated:
+                    #     streams['Eyelink'].calibrate()
                     fname = f"{config.paths['data_out']}{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
-                    streams['Eyelink'].start(fname)
                     
+                    # if not calibration record with start method
                     if 'calibration_task' in task:
                         this_task_kwargs.update({"fname": fname})
+                    else:
+                        streams['Eyelink'].start(fname)
                 
                 # Start rec in ACQ and run task
                 resp = socket_message(f"record_start::{config.paths['data_out']}{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
@@ -142,7 +138,8 @@ def Main():
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
                 
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
-                    streams['Eyelink'].stop()
+                    if 'calibration_task' not in task:
+                        streams['Eyelink'].stop()
                 
                 # Check if pause requested, unpause or stop
                 data = get_data_timeout(s1, .1)

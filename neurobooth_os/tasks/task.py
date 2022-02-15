@@ -196,13 +196,15 @@ class Task_Eyetracker(Task):
     def pos_psych2pix(self, locs:list):
         """ compute location x, y from 0 centered psychopy to top-left centered pixels"""
         x = int(locs[0] + self.win.size[0] / 2.0)
-        y = int(self.win.size[0] / 2.0 - locs[1])
+        y = int(self.win.size[1] / 2.0 - locs[1])
         return [x, y]
 
-    def send_target_loc(self, loc:list, target_name="target"):
-        """ send target loc(ation) 0 centered to eyetracker after converting to top-left centered pixels."""        
+    def send_target_loc(self, loc:list, target_name="target", to_marker=True, no_interpolation=0):
+        """ send target loc(ation) 0 centered to eyetracker after converting to top-left centered pixels.
+        no_interpolation: 0 or 1
+            0 interpolates, 1 doesn't"""        
         loc = self.pos_psych2pix(loc)
-        self.sendMessage( f'!V TARGET_POS {target_name} {loc[0]}, {loc[1]} 1 0')  #  1 0  eyetracker code x, y, draw (1 yes), interpolation (0 == yes)
+        self.sendMessage( f'!V TARGET_POS {target_name} {loc[0]}, {loc[1]} 1 {no_interpolation}', to_marker)  #  1 0  eyetracker code x, y, draw (1 yes), interpolation (0 == yes)
         
     def deg_2_pix(self, deg):
         return deg2pix(deg, self.subj_screendist_cm, self.pixpercm)
