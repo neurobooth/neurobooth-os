@@ -17,7 +17,7 @@ import os.path as op
 
 class hevelius_task(Task_Eyetracker):
 
-    def __init__(self, record_psychopy=True, path="", subj_id="test", **kwargs):
+    def __init__(self, record_psychopy=False, path="", subj_id="test", **kwargs):
         super().__init__(**kwargs)
 
         self.path_out = path
