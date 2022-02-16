@@ -81,8 +81,8 @@ class hevelius_task(Task_Eyetracker):
     def run_blocks(self, blocks, block_type):
         for index, block in enumerate(blocks):
             print('block start')
-            self.sendMessage(f"TRIALID {index+1}")
-            self.sendMessage(block_type + ' Block {} of {}'.format(index+1,  len(blocks)))
+#             self.sendMessage(f"TRIALID {index+1}")
+#             self.sendMessage(block_type + ' Block {} of {}'.format(index+1,  len(blocks)))
             text_continue = block_type + 'Block {} of {} \n\tPlease press:\n\t"Continue" to advance'.format(index + 1, len(blocks))
             continue_screen = utils.create_text_screen(self.win, text_continue)
             self.present_text(continue_screen, msg=block_type + ' Block {} of {}'.format(index+1,  len(blocks)))
@@ -163,8 +163,8 @@ class hevelius_task(Task_Eyetracker):
             gotValidClick = False  # until a click is received
             currentLoc = self.convert_pix(locs[i])
             polygon.pos = currentLoc
-            if index == 0:
-                mouse.setPos((currentLoc[0], currentLoc[1]))
+#             if index == 0:
+#                 mouse.setPos((currentLoc[0], currentLoc[1]))
             #print(index, currentLoc, locs[i])
             self.send_target_loc(currentLoc, 'target', to_marker=True, no_interpolation=1)
 
@@ -218,12 +218,12 @@ class hevelius_task(Task_Eyetracker):
                 if mouse.status == STARTED:  # only update if started and not finished!
                     x, y = mouse.getPos()
                     self.send_target_loc([x, y], 'mouse', to_marker=False)
-                    onTarget = False
+                    onTarget = 0
                     for obj in [polygon]:
                         if obj.contains(mouse):
-                            onTarget = True
-                    if onTarget:
-                        self.sendMessage('mouse_in_target_1')
+                            onTarget = 1                                                   
+                    self.sendMessage(f'mouse_in_target_{onTarget}')
+                    
                     # if onTarget and not was_inside:
                     #     self.sendMessage('mouse_in_target_1')
                     #     was_inside = True
