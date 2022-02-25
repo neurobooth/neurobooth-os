@@ -17,7 +17,8 @@ import os.path as op
 
 class hevelius_task(Task_Eyetracker):
 
-    def __init__(self, record_psychopy=False, path="", subj_id="test", **kwargs):
+    def __init__(self, record_psychopy=False, path="", subj_id="test",
+                 trial_data_fname='tasks/assets/hevelius_centered_config.json', **kwargs):
         super().__init__(**kwargs)
 
         self.path_out = path
@@ -26,7 +27,8 @@ class hevelius_task(Task_Eyetracker):
         self.filename = self.path_out + f'{self.subj_id}_MouseTask_results'
         self.frameTolerance = 0.001  # how close to onset before 'same' frame
         self.rep = ''  # repeated task num to add to filename
-        with open(op.join(neurobooth_os.__path__[0], 'tasks/assets/hevelius_centered_config.json')) as f:
+        self.trial_data_fname = trial_data_fname
+        with open(op.join(neurobooth_os.__path__[0], self.trial_data_fname)) as f:
             self.trials_data = json.load(f)
         self.record_psychopy = record_psychopy
 
