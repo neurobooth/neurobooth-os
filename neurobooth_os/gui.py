@@ -61,7 +61,7 @@ def _process_received_data(serv_data, window):
         elif "-new_filename-" in data_row:
             # new file created, data_row = "-new_filename-:stream_name:video_filename"
             event, stream_name, filename = data_row.split(":")
-            window.write_event_value(event, f"{stream_name}, {filename}]")
+            window.write_event_value(event, f"{stream_name},{filename}")
             
 
 ########## Database functions ############
@@ -144,12 +144,12 @@ def _pause_tasks(steps, presentation_node):
 
 ########## LSL functions ############
 
-def _start_lsl_session(window, inlets):
+def _start_lsl_session(window, inlets, folder=''):
     window.write_event_value('start_lsl_session', 'none')
 
     # Create LSL session
     streamargs = [{'name': n} for n in list(inlets)]
-    session = liesl.Session(prefix='', streamargs=streamargs,
+    session = liesl.Session(prefix=folder, streamargs=streamargs,
                             mainfolder=cfg.paths["data_out"] )
     print("LSL session with: ", list(inlets))
     return session
@@ -181,7 +181,7 @@ def _create_lsl_inlet(stream_ids, outlet_values, inlets):
 
 
 def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, obs_log_id,
-                       t_obs_id):
+                       t_obs_id, folder):
     """Stop LSL stream and save"""
 
     # Stop LSL recording
@@ -191,7 +191,7 @@ def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, obs_log_id,
     window['Start'].Update(button_color=('black', 'green'))
 
     xdf_fname = get_xdf_name(session, rec_fname)
-    split_sens_files(xdf_fname, obs_log_id, t_obs_id, conn)
+    split_sens_files(xdf_fname, obs_log_id, t_obs_id, conn, folder)
 
 ######### Server communication ############
 
@@ -233,7 +233,7 @@ def _plot_realtime(window, plttr, inlets):
         plttr.start(inlets)
 
 
-def _update_button_status(window, statecolors, button_name, inlets):
+def _update_button_status(window, statecolors, button_name, inlets, subject_id):
     if button_name in list(statecolors):
         # 2 colors for init_servers and Connect, 1 connected, 2 connected
         if len(statecolors[button_name]):
@@ -242,7 +242,7 @@ def _update_button_status(window, statecolors, button_name, inlets):
 
             # Signal start LSL session if both servers devices are ready:
             if button_name == "-Connect-" and color == "green":
-                return _start_lsl_session(window, inlets)
+                return _start_lsl_session(window, inlets, subject_id) 
 
 
 def _prepare_devices(window, nodes, collection_id, tech_obs_log):
@@ -390,7 +390,7 @@ def gui(remote=False, database='neurobooth'):
             task_id = values['task_finished']
             
             _stop_lsl_and_save(window, session, conn,
-                               rec_fname, task_id, obs_log_id, t_obs_id)
+                               rec_fname, task_id, obs_log_id, t_obs_id, sess_info['subject_id_date'])
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":            
@@ -399,9 +399,8 @@ def gui(remote=False, database='neurobooth'):
 
         # Update colors for: -init_servs-, -Connect-, Start buttons
         elif event == "-update_butt-":
-            session = _update_button_status(window, statecolors,
-                                            values['-update_butt-'],
-                                            inlets)
+            session = _update_button_status(window, statecolors, values['-update_butt-'],
+                                            inlets, sess_info['subject_id_date'])
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
