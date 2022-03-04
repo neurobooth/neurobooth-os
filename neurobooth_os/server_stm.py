@@ -23,7 +23,7 @@ def Main():
 
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    win = utl.make_win(full_screen=True)
+    win = utl.make_win(full_screen=False)
     conn = meta.get_conn()
 
     streams, screen_running = {}, False
@@ -46,6 +46,10 @@ def Main():
             collection_id = data.split(":")[1]
             tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
             subject_id_date = tech_obs_log["subject_id-date"]
+
+            ses_folder = f"{config.paths['data_out']}{subject_id_date}"
+            if not os.path.exists(ses_folder):
+                os.mkdir(ses_folder)
 
             # delete subj_date as not present in DB
             del tech_obs_log["subject_id-date"]
