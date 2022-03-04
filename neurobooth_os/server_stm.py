@@ -67,7 +67,7 @@ def Main():
             
             tasks, subj_id = data.split(":")[1:]
             task_karg ={"win": win,
-                        "path": config.paths['data_out'],
+                        "path": config.paths['data_out'] + f"{subject_id_date}/",
                         "subj_id": subject_id_date,
                         "marker_outlet": streams['marker'],
                         }
@@ -114,7 +114,7 @@ def Main():
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
                     # if not streams['Eyelink'].calibrated:
                     #     streams['Eyelink'].calibrate()
-                    fname = f"{config.paths['data_out']}{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
+                    fname = f"{config.paths['data_out']}{subject_id_date}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
                     
                     # if not calibration record with start method
                     if 'calibration_task' in task:
@@ -123,13 +123,13 @@ def Main():
                         streams['Eyelink'].start(fname)
                 
                 # Start rec in ACQ and run task
-                resp = socket_message(f"record_start::{config.paths['data_out']}{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
-                                     "acquisition", wait_data=3)
+                resp = socket_message(f"record_start::{config.paths['data_out']}{subject_id_date}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
+                                     "acquisition", wait_data=10)
                 print(resp)
                 sleep(.5)
 
                 events = tsk_fun.run(**this_task_kwargs)
-                socket_message("record_stop", "acquisition")
+                socket_message("record_stop", "acquisition", wait_data=15)
                 print(f"Finished task:{task}")
 
                 # Log tech_obs to database
