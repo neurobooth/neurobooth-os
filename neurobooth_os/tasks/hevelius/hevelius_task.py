@@ -221,12 +221,13 @@ class hevelius_task(Task_Eyetracker):
                 if mouse.status == STARTED:  # only update if started and not finished!
                     x, y = mouse.getPos()
                     self.send_target_loc([x, y], 'mouse', to_marker=False)
-                    onTarget = False
+                    onTarget = 0
                     for obj in [polygon]:
                         if obj.contains(mouse):
-                            onTarget = True
-                    if onTarget:
-                        self.sendMessage('mouse_in_target_1')
+                            onTarget = 1
+                    # if onTarget:
+                    #     self.sendMessage('mouse_in_target_1')
+                    self.sendMessage(str({'button':mouse.getPressed()[0], 'x':x, 'y':y, 'time':core.getTime(), 'in':onTarget}))
                     # if onTarget and not was_inside:
                     #     self.sendMessage('mouse_in_target_1')
                     #     was_inside = True

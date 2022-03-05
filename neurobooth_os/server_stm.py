@@ -127,7 +127,9 @@ def Main():
                         streams['Eyelink'].start(fname)
                 
                 # Start rec in ACQ and run task
-                resp = socket_message(f"record_start::{config.paths['data_out']}{subject_id_date}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
+                # resp = socket_message(f"record_start::{config.paths['data_out']}{subject_id_date}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
+                #                      "acquisition", wait_data=10)                 
+                resp = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
                                      "acquisition", wait_data=10)
                 print(resp)
                 sleep(.5)
