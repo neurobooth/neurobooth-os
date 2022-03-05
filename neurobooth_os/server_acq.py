@@ -2,6 +2,7 @@ import socket
 import os
 import sys
 from time import time, sleep
+from collections import OrderedDict
 
 import neurobooth_os
 from neurobooth_os import config
@@ -35,6 +36,12 @@ def Main():
         elif "prepare" in data:
             # data = "prepare:collection_id:str(tech_obs_log_dict)"
             collection_id = data.split(":")[1]
+            tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
+            subject_id_date = tech_obs_log['subject_id-date']
+            ses_folder = f"{config.paths['data_out']}{subject_id_date}"
+            if not os.path.exists(ses_folder):
+                os.mkdir(ses_folder)
+
             task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
             if len(streams):
                 print("Checking prepared devices")
@@ -51,9 +58,11 @@ def Main():
         elif "record_start" in data:  
             # "record_start::filename::task_id" FILENAME = {subj_id}_{obs_id}
             print("Starting recording")
-            fname, task = data.split("::")[1:]            
+            fname, task = data.split("::")[1:]  
+            fname = f"{config.paths['data_out']}{subject_id_date}/{fname}"
+
             for k in streams.keys():
-                if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]: 
+                if k.split("_")[0] in ["hiFeed", "FLIR", "Intel"]: 
                     if task_devs_kw[task].get(k):
                         streams[k].start(fname)
             msg = "ACQ_devices_ready"
@@ -62,8 +71,10 @@ def Main():
         elif "record_stop" in data:
             print("Closing recording")
             for k in streams.keys():
-                if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
+                if k.split("_")[0] in ["hiFeed", "FLIR", "Intel"]:
                     streams[k].stop()
+            msg = "ACQ_devices_stoped"
+            connx.send(msg.encode("ascii"))
 
         elif data in ["close", "shutdown"]:
             print("Closing devices")

@@ -27,7 +27,7 @@ class VidRec_Flir():
     def __init__(self, 
                  sizex=round(1936 / 2), sizey=round(1216 / 2), fps=196,
                  camSN="20522874", exposure=4500, gain=20, gamma=.6,
-                 device_id="FLIR_blackfly_1", sensor_ids=['FLIR_rgb_1'], fd= .6):
+                 device_id="FLIR_blackfly_1", sensor_ids=['FLIR_rgb_1'], fd= .5):
 
         self.open = False
         self.serial_num = camSN
