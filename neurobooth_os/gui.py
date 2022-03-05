@@ -233,7 +233,7 @@ def _plot_realtime(window, plttr, inlets):
         plttr.start(inlets)
 
 
-def _update_button_status(window, statecolors, button_name, inlets, subject_id):
+def _update_button_status(window, statecolors, button_name, inlets, folder_session):
     if button_name in list(statecolors):
         # 2 colors for init_servers and Connect, 1 connected, 2 connected
         if len(statecolors[button_name]):
@@ -242,7 +242,7 @@ def _update_button_status(window, statecolors, button_name, inlets, subject_id):
 
             # Signal start LSL session if both servers devices are ready:
             if button_name == "-Connect-" and color == "green":
-                return _start_lsl_session(window, inlets, subject_id) 
+                return _start_lsl_session(window, inlets, folder_session) 
 
 
 def _prepare_devices(window, nodes, collection_id, tech_obs_log):

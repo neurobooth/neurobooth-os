@@ -104,13 +104,16 @@ def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None, f
         end_time = datetime.fromtimestamp(end_time).strftime("%Y-%m-%d %H:%M:%S")
         temp_res = 1 / np.median(np.diff(dev_data['time_stamps']))
 
-        if videofiles.get(name): 
-            head = f"{head}, {videofiles.get(name)}"
-            print(f"Videofile name: {head}")
-        
         if len(folder):
             head = f"{folder}/{head}"
 
+        if videofiles.get(name): 
+            if len(folder):
+                head = f"{head}, {folder}/{videofiles.get(name)}"
+            else:
+                head = f"{head}, {videofiles.get(name)}"
+            print(f"Videofile name: {head}")
+        
         if tech_obs_log_id is not None:
             for sens_id in sensors_id:
                 cols = ["tech_obs_log_id", "true_temporal_resolution", "true_spatial_resolution",
