@@ -17,7 +17,8 @@ import os.path as op
 
 class hevelius_task(Task_Eyetracker):
 
-    def __init__(self, record_psychopy=False, path="", subj_id="test", **kwargs):
+    def __init__(self, record_psychopy=False, path="", subj_id="test",
+                 trial_data_fname='tasks/assets/hevelius_centered_config.json', **kwargs):
         super().__init__(**kwargs)
 
         self.path_out = path
@@ -26,15 +27,16 @@ class hevelius_task(Task_Eyetracker):
         self.filename = self.path_out + f'{self.subj_id}_MouseTask_results'
         self.frameTolerance = 0.001  # how close to onset before 'same' frame
         self.rep = ''  # repeated task num to add to filename
-        with open(op.join(neurobooth_os.__path__[0], 'tasks/assets/hevelius_centered_config.json')) as f:
+        self.trial_data_fname = trial_data_fname
+        with open(op.join(neurobooth_os.__path__[0], self.trial_data_fname)) as f:
             self.trials_data = json.load(f)
         self.record_psychopy = record_psychopy
 
 
-    def convert_pix(self, loc):
+    def convert_pix(self, loc, offset):
         newloc = [[], []]
-        newloc[0] = int(loc[0] - self.win.size[0] / 2.0)
-        newloc[1] = int(self.win.size[1] / 2.0 - loc[1])
+        newloc[0] = int(loc[0] - offset['x'])
+        newloc[1] = int(offset['y'] - loc[1])
         return newloc
 
     def run(self, prompt=False, **kwargs):
@@ -115,6 +117,7 @@ class hevelius_task(Task_Eyetracker):
 
         x, y = [None, None]
         mouse.mouseClock = core.Clock()
+        offset = block['offset']
         locs = []
         for loc in block['target_positions']:
             locs.append([loc['x'], loc['y']])
@@ -142,7 +145,7 @@ class hevelius_task(Task_Eyetracker):
 
         for index, thisTrial in enumerate(trials):
             self.sendMessage(block_type + 'Task {} of {}'.format(index + 1, len(locs)))
-            self.screen_text.text = block_type + 'Task {} of {}'.format(index + 1, len(locs))
+            #self.screen_text.text = block_type + 'Task {} of {}'.format(index + 1, len(locs))
 
             # abbreviate parameter names if possible (e.g. rgb = thisTrial.rgb)
             if thisTrial is not None:
@@ -161,7 +164,7 @@ class hevelius_task(Task_Eyetracker):
             mouse.time = []
             mouse.clicked_name = []
             gotValidClick = False  # until a click is received
-            currentLoc = self.convert_pix(locs[i])
+            currentLoc = self.convert_pix(locs[i], offset)
             polygon.pos = currentLoc
 #             if index == 0:
 #                 mouse.setPos((currentLoc[0], currentLoc[1]))
@@ -201,7 +204,7 @@ class hevelius_task(Task_Eyetracker):
                     polygon.tStartRefresh = tThisFlipGlobal  # on global time
                     self.win.timeOnFlip(polygon, 'tStartRefresh')  # time at next scr refresh
                     polygon.setAutoDraw(True)
-                    self.screen_text.setAutoDraw(True)
+                    #self.screen_text.setAutoDraw(True)
                     # MARKER Trial start 1
                 # *mouse* updates
                 if mouse.status == NOT_STARTED and t >= 0.0 - self.frameTolerance:
@@ -221,9 +224,11 @@ class hevelius_task(Task_Eyetracker):
                     onTarget = 0
                     for obj in [polygon]:
                         if obj.contains(mouse):
-                            onTarget = 1                                                   
-                    self.sendMessage(f'mouse_in_target_{onTarget}')
-                    
+                            onTarget = 1
+                    # if onTarget:
+                    #     self.sendMessage('mouse_in_target_1')
+                    self.sendMessage(str({'button':mouse.getPressed()[0], 'x':x, 'y':y, 'time':core.getTime(), 'in':onTarget}))
+
                     # if onTarget and not was_inside:
                     #     self.sendMessage('mouse_in_target_1')
                     #     was_inside = True
@@ -274,7 +279,7 @@ class hevelius_task(Task_Eyetracker):
             for thisComponent in trialComponents:
                 if hasattr(thisComponent, "setAutoDraw"):
                     thisComponent.setAutoDraw(False)
-                    self.screen_text.setAutoDraw(False)
+                    #self.screen_text.setAutoDraw(False)
             trials.addData('polygon.started', polygon.tStartRefresh)
             trials.addData('polygon.stopped', polygon.tStopRefresh)
             # store data for trials (TrialHandler)

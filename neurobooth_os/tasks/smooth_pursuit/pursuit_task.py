@@ -24,7 +24,7 @@ class Pursuit(Task_Eyetracker):
         self.angular_freq = peak_vel2freq(self.peak_velocity_deg, self.peak_velocity_deg)
         self.ntrials = ntrials
         # [amp_x, amp_y, phase_x, phase_y, angular_freq_x, angular_freq_y]
-        self.mov_pars = [self.amplitude_pixel / 2, 0, deg2rad(start_phase_deg), 0, self.angular_freq, self.angular_freq]
+        self.mov_pars = [self.amplitude_pixel, 0, deg2rad(start_phase_deg), 0, self.angular_freq, self.angular_freq]
 
     def run(self, prompt=True, **kwargs):
         self.present_instructions(prompt)        

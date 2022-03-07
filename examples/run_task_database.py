@@ -18,11 +18,11 @@ import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
 from neurobooth_os.tasks.task_importer import get_task_funcs
 import neurobooth_os.tasks.utils as utl
-
+from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 # %%
 # Define parameters
 subj_id = "test"
-collection_id = "mvp_030" 
+collection_id = "demo" 
 use_instruction_videos = True  # False if instruction videos not available
 
 # %%
@@ -48,14 +48,12 @@ streams['Eyelink'].calibrated = True
 # %%
 # Select task
 print(list(task_func_dict))
-tasks =  ['passage_reading_task_1']
-# tasks = list(task_func_dict)
+tasks = list(task_func_dict)
 
 # Delete calibration task as there is no eyetracker
-try:
+if 'calibration_task_1' in tasks:
  del tasks[tasks.index('calibration_task_1')]
-except ValueError:
-    print('calibration_task_1 not present')
+
 
 # %%
 # Preload media 
@@ -73,9 +71,10 @@ for task in tasks:
 print(f"Media loading took {time.time() - t0} for {len(tasks)} tasks")
 # %%
 # Loop over each task and present it
-
+win = welcome_screen(with_audio=False, win=win)
 for task in tasks:
     this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
     task_func_dict[task]['obj'].run(**this_task_kwargs)
 
+finish_screen(win)
 task_func_dict[task]['obj'].win.close()

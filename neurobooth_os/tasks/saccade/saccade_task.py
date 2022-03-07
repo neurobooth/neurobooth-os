@@ -32,9 +32,9 @@ class Saccade(Task_Eyetracker):
         self.pointer_size_pixel = deg2pix(self.pointer_size_deg, self.subj_screendist_cm, self.pixpercm)
         # [-amp_x, amp_y]
         if direction == 'horizontal':
-            self.movement_pars = [self.amplitude_pixel / 2, 0]
+            self.movement_pars = [self.amplitude_pixel, 0]
         elif direction == 'vertical':
-            self.movement_pars = [0, self.amplitude_pixel / 3]
+            self.movement_pars = [0, self.amplitude_pixel]
         else:
             raise ValueError("Only horizontal and vertical saccade is supported")
 

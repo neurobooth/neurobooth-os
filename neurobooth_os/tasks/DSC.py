@@ -208,7 +208,7 @@ class DSC(Task_Eyetracker):
                         timed_out = False
                         
                         rec_xpos = [kpos[int(key[0][0]) - 1], -5.5]
-                        self.pos_psych2pix(rec_xpos, "target_box")
+                        self.send_target_loc(rec_xpos, "target_box")
                         
                         stim.append(
                             visual.Rect(self.win, units='deg', lineColor='red',pos=rec_xpos, size=(3.5, 3.5),
