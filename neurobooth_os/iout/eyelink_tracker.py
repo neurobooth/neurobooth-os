@@ -7,7 +7,6 @@ import pylink
 from psychopy import visual, monitors
 from pylsl import StreamInfo, StreamOutlet
 
-import neurobooth_os.config as config
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 
@@ -47,10 +46,21 @@ class EyeTracker():
 
         # Setup outlet stream info
         self.oulet_id = str(uuid.uuid4())
-        self.stream_info = StreamInfo('EyeLink','Gaze', 20, self.sample_rate, 'float32', self.oulet_id)
+        self.stream_info = StreamInfo('EyeLink','Gaze', 12, self.sample_rate, 'float32', self.oulet_id)
         self.stream_info.desc().append_child_value("fps", str(self.sample_rate))
         self.stream_info.desc().append_child_value("device_id", self.device_id)
         self.stream_info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
+        col_names = ['R_gazeX', 'R_gazeY', 'R_pupil','L_gazeX', 'L_gazeY', 'L_pupil', 'TargetDistance',
+                     'TargetPosition', 'PPD', 'timestamp']
+        self.stream_info.desc().append_child_value("column_names", str(col_names))
+        self.stream_info.desc().append_child_value("gaze", "location gaze in the screen in pixels")
+        self.stream_info.desc().append_child_value("pupil", "size pupil")
+        self.stream_info.desc().append_child_value("TargetDistance", "distance subject target sticker to screen")
+        self.stream_info.desc().append_child_value("TargetPosition", "location subject target sticker in eyetracker " + \
+                                                    "camera space, quantifies movement")
+        self.stream_info.desc().append_child_value("PPD", " Angular resolution at current gaze position in screen pixels per" + \
+                                                   "visual degree (from gaze to deg visual angle)")
+        self.stream_info.desc().append_child_value('timestamp', "eyetracker timestamp of the sample")
         self.outlet = StreamOutlet(self.stream_info)
         
         print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
@@ -70,10 +80,23 @@ class EyeTracker():
         self.tk.setOfflineMode()
         pylink.msecDelay(50)
         self.tk.sendCommand(f'sample_rate {self.sample_rate}')
-
-        # Make gaze, HREF, and raw (PUPIL) data available over the link
-        sample_flag = 'LEFT,RIGHT,GAZE,GAZERES,PUPIL,HREF,AREA,STATUS,INPUT'
-        self.tk.sendCommand(f'link_sample_data = {sample_flag}')
+        
+        # File and Link data control
+        # what eye events to save in the EDF file, include everything by default
+        file_event_flags = 'LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON,INPUT'
+        # what eye events to make available over the link, include everything by default
+        link_event_flags = 'LEFT,RIGHT,FIXATION,SACCADE,BLINK,BUTTON,FIXUPDATE,INPUT'
+        # what sample data to save in the EDF data file and to make available
+        # over the link, include the 'HTARGET' flag to save head target sticker
+        # data for supported eye trackers
+        
+        file_sample_flags = 'LEFT,RIGHT,GAZE,HREF,RAW,AREA,HTARGET,GAZERES,BUTTON,STATUS,INPUT'
+        link_sample_flags = 'LEFT,RIGHT,GAZE,GAZERES,PUPIL,HREF,AREA,HTARGET,STATUS,INPUT'
+        
+        self.tk.sendCommand("file_event_filter = %s" % file_event_flags)
+        self.tk.sendCommand("file_sample_data = %s" % file_sample_flags)
+        self.tk.sendCommand("link_event_filter = %s" % link_event_flags)
+        self.tk.sendCommand("link_sample_data = %s" % link_sample_flags)
 
         # Pass screen resolution  to the tracker
         self.tk.sendCommand(f"screen_pixel_coords = 0 0 {self.mon_size[0]-1} {self.mon_size[1]-1}")
@@ -121,7 +144,7 @@ class EyeTracker():
         self.stream_thread.start()
 
     def record(self):
-        import time
+
         print("Eyetracker LSL recording")
         self.paused = False
         old_sample = None
@@ -129,38 +152,27 @@ class EyeTracker():
         while self.recording:
             if self.paused:
                 time.sleep(.1)
-                # print("eyetracker sleeping")
                 continue
 
             smp = self.tk.getNewestSample()
 
-            if old_sample == smp:
-                print("same samples")
-                print(values)
-
             if smp is not None and old_sample != smp:
-
-                # now = pylsl.local_clock()
+                    
                 ppd = smp.getPPD()
                 timestamp = smp.getTime()
-                values = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                          smp.getTargetX(), smp.getTargetY(), smp.getTargetDistance(),
+                values = [0, 0, 0, 0, 0, 0, smp.getTargetX(), smp.getTargetY(), smp.getTargetDistance(),
                           ppd[0], ppd[1], timestamp]
 
-                # Grab gaze, HREF, raw, & pupil size data
+                # Grab gaze & pupil size data
                 if smp.isRightSample():
-                    gaze = smp.getRightEye().getGaze()
-                    href = smp.getRightEye().getHREF()  # head ref not necessary
-                    raw = smp.getRightEye().getRawPupil()  # raw not necessary
+                    gaze = smp.getRightEye().getGaze()                   
                     pupil = smp.getRightEye().getPupilSize()  # pupil size
-                    values[:7] = [p for pp in [gaze, href, raw] for p in pp] + [pupil]
+                    values[:3] = [gaze[0], gaze[1], pupil]
                 if smp.isLeftSample():
                     gaze = smp.getLeftEye().getGaze()
-                    href = smp.getLeftEye().getHREF()
-                    raw = smp.getLeftEye().getRawPupil()
                     pupil = smp.getLeftEye().getPupilSize()
-                    values[7:14] = [p for pp in [gaze, href, raw] for p in pp] + [pupil]
-
+                    values[3:6] = [gaze[0], gaze[1], pupil]
+                                        
                 self.outlet.push_sample(values)
                 old_sample = smp
 
@@ -181,66 +193,3 @@ class EyeTracker():
         if self.recording:
             self.stop()
         self.tk.close()
-
-# info = pylsl.stream_info("EyeLink", "Gaze", 9, 100, pylsl.cf_float32, "eyelink-" + socket.gethostname());
-# outlet = pylsl.stream_outlet(info)
-# while True:
-#     try:
-#         print
-#         "Trying to connect to EyeLink tracker..."
-#         try:
-#             tracker = EyeLink("255.255.255.255")
-#             print
-#             "Established a passive connection with the eye tracker."
-#         except:
-#             tracker = EyeLink("100.1.1.1")
-#             print
-#             "Established a primary connection with the eye tracker."
-#         beginRealTimeMode(100)
-#         getEYELINK().startRecording(1, 1, 1, 1)
-#         print
-#         "Now reading samples..."
-#         while True:
-#             sample = getEYELINK().getNewestSample()
-#             if sample is not None:
-#                 now = pylsl.local_clock()
-#                 ppd = sample.getPPD()
-#                 values = [0, 0, 0, 0, sample.getTargetX(), sample.getTargetY(), sample.getTargetDistance(), ppd[0],
-#                           ppd[1]]
-#                 if (sample.isLeftSample()) or (sample.isBinocular()):
-#                     values[0:2] = sample.getLeftEye().getGaze()
-#                 if (sample.isRightSample()) or (sample.isBinocular()):
-#                     values[2:4] = sample.getRightEye().getGaze()
-#                 print
-#                 values
-#                 outlet.push_sample(pylsl.vectord(values), now, True)
-#                 time.sleep(1.0 / 250)
-#     except Exception, e:
-#         print
-#         "connection broke off: ", e
-
-
-# smp = tk.getNewestSample()
-# if smp is not None:
-#     # Grab gaze, HREF, raw, & pupil size data
-#     if smp.isRightSample():
-#         gaze = smp.getRightEye().getGaze()
-#         href = smp.getRightEye().getHREF()
-#         raw = smp.getRightEye().getRawPupil()
-#         pupil = smp.getRightEye().getPupilSize()
-#     elif smp.isLeftSample():
-#         gaze = smp.getLeftEye().getGaze()
-#         href = smp.getLeftEye().getHREF()
-#         raw = smp.getLeftEye().getRawPupil()
-#         pupil = smp.getLeftEye().getPupilSize()
-#
-#     timestamp = smp.getTime()
-
-# # Close the EDF data file on the Host
-# tk.closeDataFile()
-#
-# # Download the EDF data file from Host
-# tk.receiveDataFile('smp_test.edf', 'smp_test.edf')
-#
-# # Close the link to the tracker
-# tk.close()

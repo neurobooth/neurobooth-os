@@ -268,7 +268,7 @@ def clickHandler():
     # stops listening after numTargets clicks
     # gives feedback and paces the trial presentation
 
-    i
+  
     
     mouse = event.Mouse(win=win)
     # retrieve the identity of this dot

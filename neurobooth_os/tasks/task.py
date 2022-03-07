@@ -14,7 +14,7 @@ import os.path as op
 from datetime import datetime
 import time
 
-from psychopy import visual, monitors, sound, core
+from psychopy import visual, monitors, sound, core, event
 from psychopy import prefs
 
 import neurobooth_os
@@ -63,7 +63,11 @@ class Task():
                 win=self.win, filename=self.path_instruction_video, noAudio=False)
         else:
             self.instruction_video = None
-
+        
+        # Create mouse and set not visible
+        self.Mouse = event.Mouse(visible=False, win=self.win)
+        self.Mouse.setVisible(0)
+        
         self.root_pckg = neurobooth_os.__path__[0]
 
         self.press_inst_screen = visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/inst_end_task.png'),
@@ -189,13 +193,27 @@ class Task_Eyetracker(Task):
         self.win.flip()
         self.target = visual.GratingStim(self.win, tex=None, mask='circle', size=self.target_size_pix)
     
+    def pos_psych2pix(self, locs:list):
+        """ compute location x, y from 0 centered psychopy to top-left centered pixels"""
+        x = int(locs[0] + self.win.size[0] / 2.0)
+        y = int(self.win.size[1] / 2.0 - locs[1])
+        return [x, y]
+
+    def send_target_loc(self, loc:list, target_name="target", to_marker=True, no_interpolation=0):
+        """ send target loc(ation) 0 centered to eyetracker after converting to top-left centered pixels.
+        no_interpolation: 0 or 1
+            0 interpolates, 1 doesn't"""        
+        loc = self.pos_psych2pix(loc)
+        self.sendMessage( f'!V TARGET_POS {target_name} {loc[0]}, {loc[1]} 1 {no_interpolation}', to_marker)  #  1 0  eyetracker code x, y, draw (1 yes), interpolation (0 == yes)
+        
     def deg_2_pix(self, deg):
         return deg2pix(deg, self.subj_screendist_cm, self.pixpercm)
         
-    def sendMessage(self, msg):
+    def sendMessage(self, msg, to_marker=True):
         if self.eye_tracker is not None:
             self.eye_tracker.tk.sendMessage(msg)
-            self.send_marker(msg, False)
+            if to_marker:
+                self.send_marker(msg, False)
             
     def setOfflineMode(self):
         if self.eye_tracker is not None:

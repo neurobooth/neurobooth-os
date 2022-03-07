@@ -18,7 +18,7 @@ from psychopy.visual.textbox2 import TextBox2
 
 import neurobooth_os
 from neurobooth_os.tasks import utils
-from neurobooth_os.tasks import Task
+from neurobooth_os.tasks import Task_Eyetracker
 
 
 def my_textbox2(win, text, pos=(0, 0), size=(None, None)):
@@ -37,7 +37,7 @@ def present_msg(elems, win, key_resp="space"):
     event.waitKeys(keyList=key_resp)
 
 
-class DSC(Task):
+class DSC(Task_Eyetracker):
     def __init__(self, path="", subj_id="test", duration=90, **kwargs):
         super().__init__(**kwargs)
    
@@ -185,6 +185,8 @@ class DSC(Task):
                 self.win.flip()
 
                 self.send_marker("Trial-start")
+                self.sendMessage("TRIALID", to_marker=False)
+                
                 trialClock = core.Clock()
                 countDown = core.CountdownTimer().add(self.tmbUI["timeout"])
 
@@ -198,16 +200,18 @@ class DSC(Task):
                     key = event.getKeys(keyList=['1', '2', '3'], timeStamped=True)
                     if key:
                         kvl = key[0][0]
-                        self.send_marker("Trial-res_0")
+                        self.sendMessage("Trial-res_0")
                         self.tmbUI["rt"] = trialClock.getTime()
                         self.tmbUI["response"] = ["key", key[0][0]]
                         self.tmbUI["downTimestamp"] = key[0][1]
                         self.tmbUI["status"] = "Ontime"
                         timed_out = False
                         
-                        rec_xpos = kpos[int(key[0][0]) - 1]
+                        rec_xpos = [kpos[int(key[0][0]) - 1], -5.5]
+                        self.send_target_loc(rec_xpos, "target_box")
+                        
                         stim.append(
-                            visual.Rect(self.win, units='deg', lineColor='red',pos=(rec_xpos, -5.5), size=(3.5, 3.5),
+                            visual.Rect(self.win, units='deg', lineColor='red',pos=rec_xpos, size=(3.5, 3.5),
                                         lineWidth=4))
 
                         _ = self.keyboard.getReleases()
@@ -215,14 +219,14 @@ class DSC(Task):
                             ss.draw()
                         self.win.flip()
                         response_events = self.keyboard.waitForReleases()                       
-                        self.send_marker("Trial-res_1")
+                        self.sendMessage("Trial-res_1")
                         break
 
                 if timed_out:
                     print("timed out")
                     self.tmbUI["status"] = "timeout"
                     self.tmbUI["response"] = ["key", ""]
-                self.send_marker("Trial-end")
+                self.sendMessage("Trial-end")
                 self.onreadyUI(frame)
 
 

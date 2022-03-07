@@ -32,9 +32,9 @@ class Saccade(Task_Eyetracker):
         self.pointer_size_pixel = deg2pix(self.pointer_size_deg, self.subj_screendist_cm, self.pixpercm)
         # [-amp_x, amp_y]
         if direction == 'horizontal':
-            self.movement_pars = [self.amplitude_pixel / 2, 0]
+            self.movement_pars = [self.amplitude_pixel, 0]
         elif direction == 'vertical':
-            self.movement_pars = [0, self.amplitude_pixel / 3]
+            self.movement_pars = [0, self.amplitude_pixel]
         else:
             raise ValueError("Only horizontal and vertical saccade is supported")
 
@@ -87,30 +87,26 @@ class Saccade(Task_Eyetracker):
             self.target.size = self.pointer_size_pixel
             self.target.draw()
             self.win.flip()
-            tar_msg = f'!V TARGET_POS Center {0}, {0} 1 0'
-            self.sendMessage(tar_msg)
+            self.send_target_loc(self.target.pos)
+            
             core.wait(self.wait_center + self.jitter_percent*self.wait_center*np.random.random(1)[0])
 
             self.target.pos = (tar_x, tar_y)
             self.target.size = self.pointer_size_pixel
             self.target.draw()
             self.win.flip()
+            self.send_target_loc(self.target.pos)
+            
             flip_time = core.getTime()
             frame += 1
             if frame == 1:
-                self.sendMessage('Movement_onset')
-                move_start = core.getTime()
-            else:
-                _x = int(tar_x + self.SCN_W / 2.0)
-                _y = int(self.SCN_H / 2.0 - tar_y)
-                tar_msg = f'!V TARGET_POS target {_x}, {_y} 1 0'
-                self.sendMessage(tar_msg)
+                self.sendMessage('Movement onset')
+                move_start = core.getTime()           
+
 
             time_elapsed = flip_time - move_start
 
             # update the target position
-            
-
             tar_x = self.trial_sign[index] * amp_x 
             tar_y = self.trial_sign[index] * amp_y 
 

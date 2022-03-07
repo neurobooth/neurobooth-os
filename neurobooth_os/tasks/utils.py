@@ -23,6 +23,9 @@ text_practice_screen = 'Please practice the task \n\tPress any button when done'
 text_task='Please do the task \n\tPress any button when done'
 text_end='Thank you. You have completed this task'
 
+def change_win_color(win, color):
+    win.color = color
+    win.flip()
 
 def send_marker(marker, msg):
     marker.push_sample([f"{msg}_{time.time()}"])
@@ -46,6 +49,9 @@ def make_win(full_screen=True, monitor_width=55, monitor_distance=60):
                                                                                 nWarmUpFrames=10, threshold=1)))
     return win
 
+def change_win_color(win, color):
+    win.color = color
+    win.flip()
 
 def create_text_screen(win, text):
     screen = visual.TextStim(win=win, name='',

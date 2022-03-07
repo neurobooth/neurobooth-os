@@ -25,8 +25,10 @@ class Fixation_Target(Task_Eyetracker):
     
     def present_task(self, prompt=True, duration=3, target_pos=(-10,5), target_size=.7, **kwargs):
         self.countdown_task()
-        self.target.pos = [self.deg_2_pix(target_pos[0])/2, self.deg_2_pix(target_pos[1])/2] 
+        self.target.pos = [self.deg_2_pix(target_pos[0]), self.deg_2_pix(target_pos[1])]
         self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
+        if sum(self.target.size):
+            self.send_target_loc(self.target.pos)
         self.present_text(screen=self.target, msg='task', audio=None, wait_time=duration, waitKeys=False)
         
         if prompt:
@@ -43,8 +45,10 @@ class Fixation_Target_Multiple(Task_Eyetracker):
     def present_task(self, prompt=True, duration=3, trial_pos=[(0,0), (0,15)], target_size=.7, **kwargs):
         self.countdown_task()
         for pos in trial_pos:
-            self.target.pos = [self.deg_2_pix(pos[0])/2, self.deg_2_pix(pos[1])/2] 
+            self.target.pos = [self.deg_2_pix(pos[0]), self.deg_2_pix(pos[1])] 
             self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
+            if sum(self.target.size):
+                self.send_target_loc(self.target.pos)
             self.present_text(screen=self.target, msg='trial', audio=None, wait_time=duration, waitKeys=False)
         
         if prompt:
@@ -66,8 +70,10 @@ class Fixation_Target_sidetrials(Task_Eyetracker):
             utils.present(self.win, msg)
         
             self.countdown_task()
-            self.target.pos = [self.deg_2_pix(target_pos[0])/2, self.deg_2_pix(target_pos[1])/2]  
+            self.target.pos = [self.deg_2_pix(target_pos[0]), self.deg_2_pix(target_pos[1])]  
             self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
+            if sum(self.target.size):
+                self.send_target_loc(self.target.pos)
             self.present_text(screen=self.target, msg='task', audio=None, wait_time=duration, waitKeys=False)
             
             msg = utils.create_text_screen(self.win, "Task on one side ended")
@@ -86,12 +92,12 @@ if __name__ == "__main__":
     # task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
     # task.run() 
 
-    task = Fixation_Target(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
-    task.run(prompt=True, duration=3,  target_pos=(-10,-5))
+    # task = Fixation_Target(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
+    # task.run(prompt=True, duration=3,  target_pos=(0,0))
     
     t = Fixation_Target_Multiple()
-    t.run(duration=3, trial_pos=[(0,15), (30,15), (-30, 15)], target_size=25)
+    t.run(duration=3, trial_pos=[(0,7.5), (15,7.5), (-15, 0)], target_size=.7)
     
-    t= Fixation_Target_sidetrials()
-    t.run(duration=3, target_pos=(0,15), target_size=80, trial_intruct=["Do the task with your DOMINANT arm", "Do the task with your NON-DOMINANT arm"])         
+    # t= Fixation_Target_sidetrials()
+    # t.run(duration=3, target_pos=(0,7.5), target_size=.7, trial_intruct=["Do the task with your DOMINANT arm", "Do the task with your NON-DOMINANT arm"])         
 
