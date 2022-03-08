@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+  # -*- coding: utf-8 -*-
 """
 Created on Wed Nov 03 08:00:23 2021
 
@@ -15,8 +15,7 @@ from neurobooth_os.tasks.task import Task_Eyetracker
 
 
 class Pursuit(Task_Eyetracker):
-    def __init__(self, amplitude_deg=30, peak_velocity_deg=30, start_phase_deg=0,  ntrials=5, **kwargs):    
-    # amplitude_deg=30, peak_velocity_deg=33.3, **kwargs):
+    def __init__(self, amplitude_deg=30, peak_velocity_deg=30, start_phase_deg=0,  ntrials=5, **kwargs):
 
         super().__init__(**kwargs)
         self.amplitude_deg = amplitude_deg
@@ -25,7 +24,7 @@ class Pursuit(Task_Eyetracker):
         self.angular_freq = peak_vel2freq(self.peak_velocity_deg, self.peak_velocity_deg)
         self.ntrials = ntrials
         # [amp_x, amp_y, phase_x, phase_y, angular_freq_x, angular_freq_y]
-        self.mov_pars = [self.amplitude_pixel / 2, 0, deg2rad(start_phase_deg), 0, self.angular_freq, self.angular_freq]
+        self.mov_pars = [self.amplitude_pixel, 0, deg2rad(start_phase_deg), 0, self.angular_freq, self.angular_freq]
 
     def run(self, prompt=True, **kwargs):
         self.present_instructions(prompt)        
@@ -61,6 +60,8 @@ class Pursuit(Task_Eyetracker):
         self.target.pos = (tar_x, tar_y)
         self.target.draw()
         self.win.flip()
+        self.send_target_loc(self.target.pos)
+        
         # self.doDriftCorrect([int(tar_x + self.mon_size[0] / 2.0),
         #                        int(self.mon_size[1] / 2.0 - tar_y), 0, 1])
  
@@ -74,20 +75,17 @@ class Pursuit(Task_Eyetracker):
         frame = 0
         time_array = []
         while True:
-            core.wait(1/480.)
+            # core.wait(1/480.)
             self.target.pos = (tar_x, tar_y)
             self.target.draw()
             self.win.flip()
+            self.send_target_loc(self.target.pos)
+            
             flip_time = core.getTime()
             frame += 1
             if frame == 1:
-                self.sendMessage('Movement_onset')
+                self.sendMessage('Movement onset') 
                 move_start = core.getTime()
-            else:
-                _x = int(tar_x + self.SCN_W / 2.0)
-                _y = int(self.SCN_H / 2.0 - tar_y)
-                tar_msg = f'!V TARGET_POS target {_x}, {_y} 1 0'
-                self.sendMessage(tar_msg)
 
             time_elapsed = flip_time - move_start
             time_array.append(flip_time)
@@ -99,16 +97,17 @@ class Pursuit(Task_Eyetracker):
 
             # break if the time elapsed exceeds the trial duration
             if time_elapsed > self.ntrials * (1/freq_x):
-                print(frame)
+                print(frame)  
                 time_array = np.array(time_array)
                 time_array = np.diff(time_array)
-                print(np.mean(time_array)*1000)
-                print(np.median(time_array)*1000)
-                print(np.std(time_array)*1000)
-                print(np.max(time_array)*1000)
-                print(np.min(time_array)*1000)
+                print("mean time:",np.mean(time_array)*1000)
+                print("med time:",np.median(time_array)*1000)
+                print("std time:",np.std(time_array)*1000)
+                print("max time:",np.max(time_array)*1000)
+                print("min time:", np.min(time_array)*1000)
                 break
-
+        
+        self.time_array = time_array   
         # clear the window
         self.win.color = (0, 0, 0)
         self.win.flip()
@@ -137,5 +136,12 @@ class Pursuit(Task_Eyetracker):
                           func_kwargs=func_kwargs_func, waitKeys=False)
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     task = Pursuit(full_screen=True)
     task.run(prompt=True)
+
+    tstmp = task.time_array
+    plt.figure()
+    plt.hist(tstmp, 30)
+    plt.figure()
+    plt.plot(tstmp )

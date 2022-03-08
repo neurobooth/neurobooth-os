@@ -23,7 +23,7 @@ def Main():
 
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    win = utl.make_win(full_screen=False)
+    win = utl.make_win(full_screen=True)
     conn = meta.get_conn()
 
     streams, screen_running = {}, False
@@ -47,6 +47,10 @@ def Main():
             tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
             subject_id_date = tech_obs_log["subject_id-date"]
 
+            ses_folder = f"{config.paths['data_out']}{subject_id_date}"
+            if not os.path.exists(ses_folder):
+                os.mkdir(ses_folder)
+
             # delete subj_date as not present in DB
             del tech_obs_log["subject_id-date"]
 
@@ -67,7 +71,7 @@ def Main():
             
             tasks, subj_id = data.split(":")[1:]
             task_karg ={"win": win,
-                        "path": config.paths['data_out'],
+                        "path": config.paths['data_out'] + f"{subject_id_date}/",
                         "subj_id": subject_id_date,
                         "marker_outlet": streams['marker'],
                         }
@@ -96,10 +100,10 @@ def Main():
                 tsk_fun = task_func_dict[task]['obj']
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
                 
-                # Do not record if calibration or intro instructions"
-                if 'calibration_task' in task or "intro_" in task:
-                      tsk_fun.run(**this_task_kwargs)
-                      continue                    
+                # Do not record if intro instructions"
+                if "intro_" in task:
+                  tsk_fun.run(**this_task_kwargs)
+                  continue                    
                 
                 t_obs_id = task_func_dict[task]['t_obs_id']
                 tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
@@ -110,22 +114,26 @@ def Main():
                 print(f"Initiating task:{task}:{t_obs_id}:{tech_obs_log_id}:{tsk_strt_time}")
                 sleep(1)
 
-                # Start rec in ACQ and run task
-                resp = socket_message(f"record_start::{config.paths['data_out']}{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
-                                     "acquisition", wait_data=3)
+                # Start eyetracker if device in tech_obs 
+                if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
+                    # if not streams['Eyelink'].calibrated:
+                    #     streams['Eyelink'].calibrate()
+                    fname = f"{config.paths['data_out']}{subject_id_date}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
+                    
+                    # if not calibration record with start method
+                    if 'calibration_task' in task:
+                        this_task_kwargs.update({"fname": fname})
+                    else:
+                        streams['Eyelink'].start(fname)
+                
+                # Start rec in ACQ and run task               
+                resp = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
+                                     "acquisition", wait_data=10)
                 print(resp)
                 sleep(.5)
 
-                # Start eyetracker if device in tech_obs 
-                if streams.get('Eyelink') and \
-                            any('Eyelink' in d for d in list(task_devs_kw[task])):
-                    if not streams['Eyelink'].calibrated:
-                        streams['Eyelink'].calibrate()
-                    fname = f"{config.paths['data_out']}{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
-                    streams['Eyelink'].start(fname)
-                
                 events = tsk_fun.run(**this_task_kwargs)
-                socket_message("record_stop", "acquisition")
+                socket_message("record_stop", "acquisition", wait_data=15)
                 print(f"Finished task:{task}")
 
                 # Log tech_obs to database
@@ -134,7 +142,8 @@ def Main():
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
                 
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
-                    streams['Eyelink'].stop()
+                    if 'calibration_task' not in task:
+                        streams['Eyelink'].stop()
                 
                 # Check if pause requested, unpause or stop
                 data = get_data_timeout(s1, .1)
