@@ -34,7 +34,7 @@ def compute_clocks_diff():
     return time_offset
 
 
-def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None):
+def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None, folder=''):
     """Split xdf file per sensor
 
     Parameters
@@ -47,6 +47,8 @@ def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None):
         task id for the database, by default None. If conn not None, it can not be None. 
     conn : callable
         Connector to the database, if None does not insert rows, by default None
+    folder : str
+        path to fname
 
     Returns
     -------
@@ -102,10 +104,16 @@ def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None):
         end_time = datetime.fromtimestamp(end_time).strftime("%Y-%m-%d %H:%M:%S")
         temp_res = 1 / np.median(np.diff(dev_data['time_stamps']))
 
-        if videofiles.get(name): 
-            head = f"{head}, {videofiles.get(name)}"
-            print(f"Videofile name: {head}")
+        if len(folder):
+            head = f"{folder}/{head}"
 
+        if videofiles.get(name): 
+            if len(folder):
+                head = f"{head}, {folder}/{videofiles.get(name)}"
+            else:
+                head = f"{head}, {videofiles.get(name)}"
+            print(f"Videofile name: {head}")
+        
         if tech_obs_log_id is not None:
             for sens_id in sensors_id:
                 cols = ["tech_obs_log_id", "true_temporal_resolution", "true_spatial_resolution",

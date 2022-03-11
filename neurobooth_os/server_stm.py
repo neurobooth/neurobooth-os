@@ -23,7 +23,7 @@ def Main():
 
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    win = utl.make_win(full_screen=False)
+    win = utl.make_win(full_screen=True)
     conn = meta.get_conn()
 
     streams, screen_running = {}, False
@@ -132,8 +132,6 @@ def Main():
                         streams['Eyelink'].start(fname)
                 
                 # Start rec in ACQ and run task
-                # resp = socket_message(f"record_start::{config.paths['data_out']}{subject_id_date}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
-                #                      "acquisition", wait_data=10)                 
                 resp = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
                                      "acquisition", wait_data=10)
                 print(resp)
