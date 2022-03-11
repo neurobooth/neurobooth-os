@@ -91,7 +91,12 @@ def Main():
             if not hasattr(sys.stdout, 'terminal'):
                 sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
             
-            for task in tasks.split("-"):
+            tasks = tasks.split("-")
+            task_calib = [t for t in tasks if 'calibration_task' in t]
+            
+            while len(tasks):
+                task = tasks.pop(0)
+                
                 if task not in task_func_dict.keys():
                     print(f"Task {task} not implemented")
                     continue
@@ -161,6 +166,12 @@ def Main():
                         continue                    
                     elif data == "stop tasks":
                         break
+                    elif data == 'calibrate':
+                        if not len(task_calib):
+                            print("No calibration task")
+                            continue
+                        tasks.insert(0, task_calib[0])
+                        print("Calibration task added")
                     else:
                         print("While paused received another message")
                     
