@@ -138,7 +138,7 @@ def _pause_tasks(steps, presentation_node):
     else:
         socket_message("pause tasks", presentation_node)
         resp = sg.Popup('The next task will be paused',
-                        custom_text=('Continue tasks', 'Stop tasks'))
+                        custom_text=('Continue tasks', 'Stop tasks', "Calibrate"))
         socket_message(resp.lower(), presentation_node)
 
 

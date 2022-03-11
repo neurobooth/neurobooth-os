@@ -91,7 +91,12 @@ def Main():
             if not hasattr(sys.stdout, 'terminal'):
                 sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
             
-            for task in tasks.split("-"):
+            tasks = tasks.split("-")
+            task_calib = [t for t in tasks if 'calibration_task' in t]
+            
+            while len(tasks):
+                task = tasks.pop(0)
+                
                 if task not in task_func_dict.keys():
                     print(f"Task {task} not implemented")
                     continue
@@ -126,7 +131,7 @@ def Main():
                     else:
                         streams['Eyelink'].start(fname)
                 
-                # Start rec in ACQ and run task               
+                # Start rec in ACQ and run task
                 resp = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
                                      "acquisition", wait_data=10)
                 print(resp)
@@ -159,6 +164,12 @@ def Main():
                         continue                    
                     elif data == "stop tasks":
                         break
+                    elif data == 'calibrate':
+                        if not len(task_calib):
+                            print("No calibration task")
+                            continue
+                        tasks.insert(0, task_calib[0])
+                        print("Calibration task added")
                     else:
                         print("While paused received another message")
                     
