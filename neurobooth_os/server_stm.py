@@ -23,7 +23,7 @@ def Main():
 
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    win = utl.make_win(full_screen=True)
+    win = utl.make_win(full_screen=False)
     conn = meta.get_conn()
 
     streams, screen_running = {}, False
@@ -169,6 +169,10 @@ def Main():
                             print("No calibration task")
                             continue
                         tasks.insert(0, task_calib[0])
+                        # Preload calibration task media
+                        tsk_fun = task_func_dict[task_calib[0]]['obj']
+                        this_task_kwargs = {**task_karg, **task_func_dict[task_calib[0]]['kwargs']}
+                        task_func_dict[task_calib[0]]['obj'] = tsk_fun(**this_task_kwargs)
                         print("Calibration task added")
                     else:
                         print("While paused received another message")
