@@ -17,24 +17,25 @@ class Calibrate(Task_Eyetracker):
 
         super().__init__(**kwargs)
 
-    def run(self, prompt=True, fname="test", **kwargs):
+    def run(self, prompt=True, fname="test", instructions=True, **kwargs):
+        if instructions:
             self.present_instructions(prompt)
             
-            print(f"-new_filename-:{self.eye_tracker.streamName}:{op.split(fname)[-1]}")            
-            self.fname = fname
-            self.fname_temp = "name8chr.edf"
-            self.eye_tracker.tk.openDataFile(self.fname_temp)
-            
-            self.eye_tracker.calibrate()     
-            
-            # record for an instant so loadable in data viewer
-            self.eye_tracker.tk.startRecording(1, 1, 1, 1)            
-            self.eye_tracker.tk.stopRecording()
-            self.eye_tracker.tk.closeDataFile()
-            # Download file
-            self.eye_tracker.tk.receiveDataFile(self.fname_temp, self.fname)
-            
-            self.present_complete()
+        print(f"-new_filename-:{self.eye_tracker.streamName}:{op.split(fname)[-1]}")            
+        self.fname = fname
+        self.fname_temp = "name8chr.edf"
+        self.eye_tracker.tk.openDataFile(self.fname_temp)
+        
+        self.eye_tracker.calibrate()     
+        
+        # record for an instant so loadable in data viewer
+        self.eye_tracker.tk.startRecording(1, 1, 1, 1)            
+        self.eye_tracker.tk.stopRecording()
+        self.eye_tracker.tk.closeDataFile()
+        # Download file
+        self.eye_tracker.tk.receiveDataFile(self.fname_temp, self.fname)
+        
+        self.present_complete()
 
 
 
