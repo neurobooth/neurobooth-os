@@ -24,11 +24,17 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 
 class VidRec_Flir():
+    # def __init__(self, 
+    #              sizex=round(1936 / 2), sizey=round(1216 / 2), fps=196,
+    #              camSN="20522874", exposure=4500, gain=20, gamma=.6,
+    #              device_id="FLIR_blackfly_1", sensor_ids=['FLIR_rgb_1'], fd= .5):
     def __init__(self, 
-                 sizex=round(1936 / 2), sizey=round(1216 / 2), fps=196,
+                 sizex=500, sizey=800, fps=196,
                  camSN="20522874", exposure=4500, gain=20, gamma=.6,
-                 device_id="FLIR_blackfly_1", sensor_ids=['FLIR_rgb_1'], fd= .5):
-
+                 device_id="FLIR_blackfly_1", sensor_ids=['FLIR_rgb_1'], fd= 1):
+        # not currently using sizex, sizey --> need to update to use these parameters
+        # need to read these parameters from database
+        # need new column in database that allows parameters in json file
         self.open = False
         self.serial_num = camSN
         self.fps = fps
