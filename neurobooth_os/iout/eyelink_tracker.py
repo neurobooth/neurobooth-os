@@ -116,18 +116,19 @@ class EyeTracker():
         calib_msg.draw()
         self.win.flip()
 
+        pylink.closeGraphics()
         graphics = EyeLinkCoreGraphicsPsychoPy(self.tk, self.win)
         pylink.openGraphicsEx(graphics)
 
         # Calibrate the tracker
         self.tk.doTrackerSetup()
         self.calibrated = True
-
         prompt = 'Calibration finished'
         prompt_msg = visual.TextStim(self.win, text=prompt, color='Black', units='pix')
         prompt_msg.draw()
         self.win.flip()
-
+        
+        
     def start(self, filename="TEST.EDF"):
         self.filename = filename        
         print(f"-new_filename-:{self.streamName}:{op.split(filename)[-1]}")
