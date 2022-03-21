@@ -174,7 +174,8 @@ class Task_countdown(Task):
 
             
 class Task_Eyetracker(Task):
-    def __init__(self, eye_tracker=None, monitor_width=55, subj_screendist_cm=60, target_size=.7,  **kwargs):
+    def __init__(self, eye_tracker=None,
+                 target_size=7,  **kwargs):
         super().__init__(**kwargs)
 
         self.eye_tracker = eye_tracker
@@ -182,9 +183,9 @@ class Task_Eyetracker(Task):
         mon = monitors.getAllMonitors()[1]
         self.mon_size = monitors.Monitor(mon).getSizePix()
         self.SCN_W, self.SCN_H = self.mon_size
-        self.monitor_width = monitor_width
+        self.monitor_width = self.win.monitor.getWidth()
         self.pixpercm = self.mon_size[0] / self.monitor_width
-        self.subj_screendist_cm = subj_screendist_cm
+        self.subj_screendist_cm = self.win.monitor.getDistance() 
         
         self.target_size_pix = self.deg_2_pix(target_size)
         
