@@ -5,7 +5,7 @@ Created on Fri Jan 21 10:23:08 2022
 @author: STM
 """
 
-
+import os.path as op
 import random
 import math
 import time
@@ -15,12 +15,17 @@ from psychopy import core, visual, event, gui, data, sound, monitors
 from psychopy.visual.textbox2 import TextBox2
 from itertools import chain
 
+import neurobooth_os
 from neurobooth_os.tasks import utils
+from neurobooth_os.tasks import Task_Eyetracker
 
 
-class MOT():
-    def __init__(self):
-        # super().__init__(**kwargs)
+class MOT(Task_Eyetracker):
+    def __init__(self, path="", subj_id="test", duration=90, **kwargs):
+        super().__init__(**kwargs)
+        
+        self.path_out = path
+        self.subj_id = subj_id
         self.mycircle = {"x":[],       # circle x
                         "y":[],       # circle y
                         "d":[],       # circle motion direction in deg
@@ -32,23 +37,25 @@ class MOT():
         self.duration = 5        # desired duration of trial in s
         
         self.paperSize = 700        # size of stimulus graphics page
-        self.clickTimeout = 15   # timeout for clicking on targets
+        self.clickTimeout = 10   # timeout for clicking on targets
         self.seed = 1               # URL parameter: if we want a particular random number generator seed
-
-        self.win = visual.Window(
-                [1920, 1080],
-                fullscr=False,
-                monitor=monitors.getAllMonitors()[1],
-                units='pix',
-                color= 'white'
-                )
-        
         self.trialCount = 0
-        self.score = 0
-        self.background = visual.Rect(self.win, width=self.paperSize, height=self.paperSize, fillColor='white', units='pix')
+        self.score = 0        
         self.trial_info_str = ''
-    
+        self.rootdir = op.join(neurobooth_os.__path__[0], 'tasks', 'MOT')
+        
+        self.setup(self.win)
+        
 
+    
+    def setup(self, win):
+
+        self.win.color = "white"
+        self.win.flip()
+        self.background = visual.Rect(self.win, width=self.paperSize, height=self.paperSize, fillColor='white', units='pix')
+        # create the trials chain
+        self.setFrameSequence()
+        
     def trial_info_msg(self, msg_type= None):
         if msg_type == 'practice':
             msg = self.trial_info_str
@@ -76,7 +83,7 @@ class MOT():
         
         
     # initialize the dots
-    def setup(self, numCircles):
+    def setup_dots(self, numCircles):
         
         # initialize start positions and motion directions randomly
         x, y, d = [], [], []
@@ -195,8 +202,6 @@ class MOT():
         return circle
     
     
-    
-    
     def clickHandler(self, circle, n_targets, frame_type):
     
         # this handler listens for clicks on the targets
@@ -204,7 +209,8 @@ class MOT():
         # stops listening after numTargets clicks
         # gives feedback and paces the trial presentation
             
-        mouse = event.Mouse(win=self.win)    
+        mouse = event.Mouse(win=self.win)
+        self.Mouse.setVisible(1)
         mouse.mouseClock = core.Clock()    
         mouse.clickReset()   
         trialClock = core.Clock()
@@ -229,7 +235,7 @@ class MOT():
                         if i < n_targets:
                             ncorrect += 1
                             c.color = 'green'
-                            if frame_type == "test"
+                            if frame_type == "test":
                                 self.score += 1
                         else:
                             c.color = 'red'
@@ -245,7 +251,7 @@ class MOT():
             if  rt > self.clickTimeout:
                 rt = 'timeout'
                 break
-        
+        self.Mouse.setVisible(0)
         return clicks, ncorrect, rt
                 
     
@@ -263,7 +269,7 @@ class MOT():
         # set the random seed for each trial
         random.seed(frame['message'])
         
-        circle = self.setup(frame['n_circles'])        
+        circle = self.setup_dots(frame['n_circles'])        
         circle = self.moveCircles(circle)
         
         if frame_type == 'test':
@@ -271,18 +277,28 @@ class MOT():
         else:
             self.win.flip()
         
-        # initialize the dots
-        for n in range(numTargets):
-            circle[n].color = 'green'
-        if frame_type == 'test':
-            self.present_stim(circle + self.trial_info_msg())
-        else:
-            self.present_stim(circle)
-    
-        core.wait(1)
-    
-        for n in range(numTargets):
-            circle[n].color = 'black'
+        
+        # initialize the dots, flashgreen colors
+        countDown = core.CountdownTimer()
+        countDown.add(1.5)
+
+        while countDown.getTime() > 0:
+            for n in range(numTargets):
+                circle[n].color = 'green'
+            if frame_type == 'test':
+                self.present_stim(circle + self.trial_info_msg())
+            else:
+                self.present_stim(circle)        
+            core.wait(.1)
+
+            for n in range(numTargets):
+                circle[n].color = 'black'
+                
+            if frame_type == 'test':
+                self.present_stim(circle + self.trial_info_msg())
+            else:
+                self.present_stim(circle)
+            core.wait(.1)
 
         clock  = core.Clock()
         while clock.getTime() < duration:
@@ -337,11 +353,10 @@ class MOT():
                 # rewind frame sequence by one frame, so same frame is displayed again
                 frameSequence.insert(0, frame)
                 
-                msg_alert = "You took too long to respond!\n Remember: once the movement stops," +\
-                                      "click the dots that flashed. \n" +\
-                                      "Click continue to retry"
+                msg_alert = "You took too long to respond!\n Remember: once the movement stops,\n" +\
+                                      "click the dots that flashed." 
                 msg_stim = self.my_textbox2(msg_alert)                
-                self.present_stim([msg_stim], 'space')
+                self.present_stim([self.continue_msg, msg_stim], 'space')
                 
                 # set timout variable values
                 state = 'timeout'
@@ -351,20 +366,20 @@ class MOT():
                     self.trialCount -= 1
                     
             elif frame['type'] == 'practice':
-                msg = f"You got {ncorrect} of {frame['n_targets']} dots correct. \nPress continue"
+                msg = f"You got {ncorrect} of {frame['n_targets']} dots correct."
                 if ncorrect < frame['n_targets']:
                     
                     if practiceErr < 2:  # up to 2 practice errors                    
                         # rewind frame sequence by one frame, so same frame is displayed again
                         frameSequence.insert(0, frame)
                         msg = "Let's try again. \nWhen the movement stops," +\
-                            f"click the {frame['n_targets']} dots that flashed. \nPress continue"
+                            f"click the {frame['n_targets']} dots that flashed."
                         
                         practiceErr += 1
                 else:
                     practiceErr = 0
                 msg_stim = self.my_textbox2(msg)
-                self.present_stim([msg_stim], 'space')
+                self.present_stim([self.continue_msg,  msg_stim], 'space')
 
             frame['rt'] = rt
             frame["ncorrect"] = ncorrect
@@ -400,47 +415,36 @@ class MOT():
         outcomes["correct"] = round(self.score / total, 3)
         outcomes["rtTotal"] = round(sum(rtTotal), 1)
     
-          # we either save locally or to the server
-    
-    
+        # SAVE RESULTS to file
+        df_res = pd.DataFrame(self.results)
+        df_out = pd.DataFrame.from_dict(self.outcomes, orient='index', columns=['vals'])
+        res_fname = self.path_out + f'{self.subj_id}_MOT_results.csv'
+        out_fname = self.path_out + f'{self.subj_id}_MOT_outcomes.csv'
+        df_res.to_csv(res_fname)
+        df_out.to_csv(out_fname)
+        
+        
+        # Close win if just created for the task
+        if self.win_temp:
+            self.win.close()
+        else:
+            self.present_stim([visual.ImageStim(self.win, image=op.join(self.rootdir, 'task_complete.png'), pos=(0, 0), units='deg')])  
+            self.win.flip()
+              
     
     
     def setFrameSequence(self):
         testMessage ={            
-            "begin":[self.my_textbox2("Multiple Object Tracking\n <img src=MOT.gif>")],
-            "instruction1":[self.my_textbox2("Instructions: img src=happy-green-border.jpg> \n" +\
-                            "Keep track of the dots that flash, \n they have green smiles behind them.")],
-            "practice2":[self.my_textbox2(("<h2>Instructions:</h2>" 
-                            "Next time, when the movement stops, "
-                            "click the 2 dots that flashed.  "
-                            "The other dots have "
-                            "red sad faces behind them. "
-                            "<img src=sad-red-border.jpg> "
-                            "Try <b><i>not</i></b> to click on those.  "))],
-            "practice3":[self.my_textbox2(("   Good!  "
-                            "Now we'll do the same thing with "
-                            "3 flashing dots.  "))],
-            "targets3":[self.my_textbox2(("  Great! \n Now we'll do 6 more with 3 dots. "
-                        "\nMotion is slow at first, then gets faster. "
-                        "\nThis will be the first of 3 parts.  "
-                        "\nWhen you lose track of dots, just guess. "
-                        "\nYour score will be the total number of "
-                        "\ngreen smiles that you click.  "))],
-            "targets4":[self.my_textbox2((" Excellent!  "
-                        "\nYou have finished the first part of this test. " 
-                        "\nThere are two parts left.  " 
-                        "\nThe next part has 4 flashing dots. "
-                        "\nMotion is slow at first, then gets faster.  "
-                        "\nWhen you lose track of dots, just guess. "
-                        "\nEvery smile you click adds to your score!  "))],
-            "targets5":[self.my_textbox2((" Outstanding!  "
-                        "\nNow there is only one part left!  " 
-                        "\nThe final part has 5 flashing dots! "
-                        "\nMotion is slow at first, then gets faster.  "
-                        "\nWhen you lose track of dots, just guess. "
-                        "\nEvery smile you click adds to your score!  "))]
+            "begin": [ visual.ImageStim(self.win, image=op.join(self.rootdir, 'intro.png'), pos=(0, 0), units='deg') ],
+            "instruction1":[ visual.ImageStim(self.win, image=op.join(self.rootdir, 'inst1.png'), pos=(0, 0), units='deg') ],
+            "practice2": [ visual.ImageStim(self.win, image=op.join(self.rootdir, 'inst2.png'), pos=(0, 0), units='deg') ],
+            "practice3": [ visual.ImageStim(self.win, image=op.join(self.rootdir, 'inst3.png'), pos=(0, 0), units='deg') ],
+            "targets3": [ visual.ImageStim(self.win, image=op.join(self.rootdir, 'targ3.png'), pos=(0, 0), units='deg') ],
+            "targets4": [ visual.ImageStim(self.win, image=op.join(self.rootdir, 'targ4.png'), pos=(0, 0), units='deg') ],
+            "targets5": [ visual.ImageStim(self.win, image=op.join(self.rootdir, 'targ5.png'), pos=(0, 0), units='deg') ],
         }
-    
+        self.continue_msg = visual.ImageStim(self.win, image=op.join(self.rootdir, 'continue.png'), pos=(0, 0), units='deg')
+        
         # set the random generator's seed
         s = self.seed;
     
