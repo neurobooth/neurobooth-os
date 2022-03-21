@@ -257,11 +257,6 @@ class DSC(Task_Eyetracker):
         else:
             self.present_complete()
 
-        # Close win if just created for the task
-        if self.win_temp:
-            self.win.close()
-        else:
-            self.win.flip()
 
         # SAVE RESULTS to file
         df_res = pd.DataFrame(self.results)
@@ -272,6 +267,14 @@ class DSC(Task_Eyetracker):
         df_res.to_csv(res_fname)
         df_out.to_csv(out_fname)
 
+        # Close win if just created for the task
+        if self.win_temp:
+            self.win.close()
+        else:
+            self.present_stim([visual.ImageStim(self.win, image=op.join(self.rootdir, 'task_complete.png'), pos=(0, 0), units='deg')])  
+            self.win.flip()
+            
+        
     def setFrameSequence(self):
         testMessage = {
             "begin": [visual.ImageStim(self.win, image=op.join(self.rootdir, 'intro.png'), pos=(0, 0), units='deg')],
