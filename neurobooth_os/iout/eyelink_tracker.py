@@ -15,8 +15,6 @@ class EyeTracker():
     def __init__(
             self,
             sample_rate=1000,
-            monitor_width=55,
-            monitor_distance=65,
             calibration_type="HV5",
             win=None,
             with_lsl=True,
@@ -26,8 +24,6 @@ class EyeTracker():
         
         self.IP = ip
         self.sample_rate = sample_rate
-        self.monitor_width = monitor_width
-        self.monitor_distance = monitor_distance
         self.device_id = device_id
         self.sensor_ids = sensor_ids
         self.streamName = "EyeLink"
@@ -37,7 +33,7 @@ class EyeTracker():
         self.calibration_type = calibration_type
 
         if win is None:
-            customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
+            customMon = monitors.Monitor('demoMon', width=55, distance=60) # distance subject to screen specified in task/utils:make_win() here just for testing
             self.win = visual.Window(self.mon_size, fullscr=False, monitor=customMon, units='pix')
             self.win_temp = True
         else:
