@@ -121,8 +121,8 @@ class DSC(Task_Eyetracker):
                 message = [
                     visual.ImageStim(self.win, image=frame["source"], pos=(0, 10), units='deg'),
                     visual.ImageStim(self.win, image=op.join(self.rootdir, 'images/key.png'), pos=(0, 0), units='deg'),
-                    self.my_textbox2(f"You should press {frame['digit']} on the keyboard when you see this symbol", (0, -9)),
-                    visual.ImageStim(self.win, image= op.join(self.rootdir, 'continue.png'), pos=(0, 0), units='deg')
+                    self.my_textbox2(f"You should press {frame['digit']} on the keyboard when you see this symbol", (0, -8)),
+                    visual.ImageStim(self.win, image= op.join(self.rootdir, 'continue.png'), pos=(0, -1), units='deg')
                 ]
 
                 present_msg(message, self.win)
@@ -193,7 +193,7 @@ class DSC(Task_Eyetracker):
                 countDown = core.CountdownTimer()
                 countDown.add(self.tmbUI["timeout"])
 
-                kpos = [-5, 0, 5]
+                kpos = [-4.2, 0, 4.2]
                 trialClock = core.Clock()
                 timed_out = True
                 while countDown.getTime() > 0:
@@ -207,7 +207,7 @@ class DSC(Task_Eyetracker):
                         self.tmbUI["status"] = "Ontime"
                         timed_out = False
                         
-                        rec_xpos = [kpos[int(key[0][0]) - 1], -5.5]
+                        rec_xpos = [kpos[int(key[0][0]) - 1], -4.5]
                         self.send_target_loc(rec_xpos, "target_box")
                         
                         stim.append(
@@ -271,7 +271,8 @@ class DSC(Task_Eyetracker):
         if self.win_temp:
             self.win.close()
         else:
-            self.present_stim([visual.ImageStim(self.win, image=op.join(self.rootdir, 'task_complete.png'), pos=(0, 0), units='deg')])  
+            stim = visual.ImageStim(self.win, image=op.join(self.rootdir, 'task_complete.png'), pos=(0, 0), units='deg')
+            stim.draw()
             self.win.flip()
             
         
@@ -332,12 +333,12 @@ if __name__ == "__main__":
     from psychopy import sound, core, event, monitors, visual, monitors
 
     monitor_width=55 
-    monitor_distance=50
+    monitor_distance=60
     mon = monitors.getAllMonitors()[0]
     customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
     win = visual.Window(
     [1920, 1080],   
-    fullscr=False,  
+    fullscr=True ,  
     monitor=customMon,
     units='pix',    
     color='white' 
