@@ -165,7 +165,7 @@ class Sensor:
         # libmetawear.mbl_mw_macro_erase_all(self.device.board)
         # Restarts the board after performing garbage collection
         # print("Clear  macros")
-        libmetawear.mbl_mw_debug_reset_after_gc(self.device.board)
+        # libmetawear.mbl_mw_debug_reset_after_gc(self.device.board)
         # print("Disconnect")
         # libmetawear.mbl_mw_debug_disconnect(self.device.board)
         self.device.disconnect()
