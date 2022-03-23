@@ -29,7 +29,7 @@ def socket_message(message, node_name, wait_data=False):
     """
     def connect():
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+        s.settimeout(1)
         # connect to server on local computer
         s.connect((host, port))
         s.send(message.encode('ascii'))
