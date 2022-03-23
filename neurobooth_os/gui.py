@@ -5,6 +5,8 @@ Created on Fri Apr  2 08:01:51 2021
 @author: neurobooth
 """
 
+import os
+import os.path as op
 import sys
 import time
 import threading
@@ -12,6 +14,7 @@ from optparse import OptionParser
 from datetime import datetime
 
 import PySimpleGUI as sg
+from gevent import config
 import liesl
 
 import neurobooth_os.main_control_rec as ctr_rec
@@ -364,6 +367,8 @@ def gui(remote=False, database='neurobooth'):
             if values["_notes_taskname_"] == '':
                 sg.PopupError('Pressed saving notes without task, select one in the dropdown list')
                 continue
+            if not op.exists(f"{cfg.paths['data_out']}/{sess_info['subject_id_date']}"):
+                os.mkdir(f"{cfg.paths['data_out']}/{sess_info['subject_id_date']}")
 
             write_task_notes(sess_info['subject_id_date'],
                              sess_info['staff_id'],
