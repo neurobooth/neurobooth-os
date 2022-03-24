@@ -63,7 +63,7 @@ class Sensor:
     def connect(self):
         self.device = self.connector(self.mac)
         self.device.connect()
-        print(f"Mbient {self.dev_name} connected")
+        # print(f"Mbient {self.dev_name} connected")
 
     def data_handler(self, ctx, data):
         values = parse_value(data, n_elem=2)
@@ -86,8 +86,12 @@ class Sensor:
 
         libmetawear.mbl_mw_acc_set_odr(self.device.board, self.acc_hz)
         libmetawear.mbl_mw_acc_set_range(self.device.board, 16.0)
-        libmetawear.mbl_mw_gyro_bmi160_set_odr(self.device.board, self.gyro_hz)
+        libmetawear.mbl_mw_acc_write_acceleration_config(self.device.board)
+        
+        libmetawear.mbl_mw_gyro_bmi160_set_odr(self.device.board, self.gyro_hz)        
         libmetawear.mbl_mw_gyro_bmi160_set_range(self.device.board, 2000)
+        libmetawear.mbl_mw_gyro_bmi160_write_config(self.device.board)
+        
         e = Event()
 
         def processor_created(context, pointer):
@@ -130,7 +134,7 @@ class Sensor:
         libmetawear.mbl_mw_datasignal_subscribe(charge, None, battery_handler)
 
     def start(self):
-        print(f"Started mbient{self.dev_name}")
+        # print(f"Started mbient{self.dev_name}")
         libmetawear.mbl_mw_acc_enable_acceleration_sampling(self.device.board)
         libmetawear.mbl_mw_gyro_bmi160_enable_rotation_sampling(self.device.board)
 
@@ -146,14 +150,28 @@ class Sensor:
 
     def stop(self):
         e = Event()
-
+        # stop sampling
+        libmetawear.mbl_mw_acc_stop(self.device.board)
+        libmetawear.mbl_mw_gyro_bmi160_stop(self.device.board)        
+        libmetawear.mbl_mw_acc_disable_acceleration_sampling(self.device.board)
+        libmetawear.mbl_mw_gyro_bmi160_disable_rotation_sampling(self.device.board)
+        
+        # unsubscribe
+        acc = libmetawear.mbl_mw_acc_get_acceleration_data_signal(self.device.board)
+        libmetawear.mbl_mw_datasignal_unsubscribe(signal)
+        gyr = libmetawear.mbl_mw_gyro_bmi160_get_rotation_data_signal(self.device.board)
+        libmetawear.mbl_mw_datasignal_unsubscribe(gyr)
+        
+        # disconnect
         self.device.on_disconnect = lambda s: e.set()
         libmetawear.mbl_mw_debug_reset(self.device.board)
         print("Stopping ", self.dev_name)
         self.streaming = False
-
+        e.wait()
+        
     def close(self):
-        self.device.on_disconnect = lambda status: print(f"Mbient {self.dev_name} disconnected!")
+        self.stop()
+        # self.device.on_disconnect = lambda status: print(f"Mbient {self.dev_name} disconnected!")
         # Stops data logging
         # print("stop logging")
         # libmetawear.mbl_mw_logging_stop(self.device.board)
@@ -168,7 +186,7 @@ class Sensor:
         # libmetawear.mbl_mw_debug_reset_after_gc(self.device.board)
         # print("Disconnect")
         # libmetawear.mbl_mw_debug_disconnect(self.device.board)
-        self.device.disconnect()
+        # self.device.disconnect()
 
 
 if __name__ == "__main__":
