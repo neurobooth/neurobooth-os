@@ -78,7 +78,7 @@ def shut_all(nodes=("acquisition", "presentation")):
     for node in nodes:
         socket_message("shutdown", node)
     time.sleep(3)
-    kill_pid_txt()  # TODO only if error
+    # kill_pid_txt()  # TODO only if error
 
 
 def test_lan_delay(n=100, nodes=("acquisition", "presentation")):
