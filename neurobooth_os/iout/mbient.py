@@ -158,7 +158,7 @@ class Sensor:
         
         # unsubscribe
         acc = libmetawear.mbl_mw_acc_get_acceleration_data_signal(self.device.board)
-        libmetawear.mbl_mw_datasignal_unsubscribe(signal)
+        libmetawear.mbl_mw_datasignal_unsubscribe(acc)
         gyr = libmetawear.mbl_mw_gyro_bmi160_get_rotation_data_signal(self.device.board)
         libmetawear.mbl_mw_datasignal_unsubscribe(gyr)
         
@@ -191,25 +191,25 @@ class Sensor:
 
 if __name__ == "__main__":
 
-    mac = "CE:F3:BD:BD:04:8F"  # "EE:99:D8:9D:69:5F" #
-    # mbt = Sensor(mac)
-    # mbt.start()
-    # sleep(3)
-    # mbt.stop()
+    mac = "EE:99:D8:9D:69:5F" #
+    mbt = Sensor(mac)
+    mbt.start()
+    sleep(3)
+    mbt.stop()
     # sleep(1)
     # mbt.close()
 
-    self = Sensor(mac)
+    # self = Sensor(mac)
 
-    def data_handler(ctx, data):
-        values = parse_value(data)
-        print(values)
+    # def data_handler(ctx, data):
+    #     values = parse_value(data)
+    #     print(values)
 
-    callback = cbindings.FnVoid_VoidP_DataP(data_handler)
+    # callback = cbindings.FnVoid_VoidP_DataP(data_handler)
 
-    signal = libmetawear.mbl_mw_settings_get_battery_state_data_signal(self.device.board)
-    libmetawear.mbl_mw_datasignal_subscribe(signal, None, callback)
-    libmetawear.mbl_mw_datasignal_read(signal)
+    # signal = libmetawear.mbl_mw_settings_get_battery_state_data_signal(self.device.board)
+    # libmetawear.mbl_mw_datasignal_subscribe(signal, None, callback)
+    # libmetawear.mbl_mw_datasignal_read(signal)
 
     # voltage = libmetawear.mbl_mw_datasignal_get_component(signal, cbindings.Const.SETTINGS_BATTERY_VOLTAGE_INDEX)
     # charge = libmetawear.mbl_mw_datasignal_get_component(signal, cbindings.Const.SETTINGS_BATTERY_CHARGE_INDEX)
@@ -220,4 +220,4 @@ if __name__ == "__main__":
     # libmetawear.mbl_mw_datasignal_read(voltage)
     # libmetawear.mbl_mw_datasignal_read(charge)
 
-    self.close()
+    # self.close()
