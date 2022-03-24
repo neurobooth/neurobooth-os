@@ -85,7 +85,7 @@ class VidRec_Intel():
     def record(self):
         self.recording = True
         self.frame_counter = 0
-        print(f"Intel {self.device_index} recording {self.video_filename}")
+        # print(f"Intel {self.device_index} recording {self.video_filename}")
         self.pipeline.start(self.config)
         while self.recording:
             frame = self.pipeline.wait_for_frames()
@@ -100,7 +100,7 @@ class VidRec_Intel():
             self.frame_counter += 1
 
         self.pipeline.stop()
-        print(f"Intel {self.device_index} recording ended, total frames captured: {self.n}, pushed lsl indexes: {self.frame_counter}")
+        # print(f"Intel {self.device_index} recording ended, total frames captured: {self.n}, pushed lsl indexes: {self.frame_counter}")
 
     @catch_exception
     def stop(self):

@@ -44,7 +44,7 @@ def Main():
 
             task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
             if len(streams):
-                print("Checking prepared devices")
+                # print("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
                 streams = start_lsl_threads("acquisition", collection_id)
@@ -69,7 +69,7 @@ def Main():
             connx.send(msg.encode("ascii"))
 
         elif "record_stop" in data:
-            print("Closing recording")
+            # print("Closing recording")
             for k in streams.keys():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel"]:
                     streams[k].stop()
@@ -77,7 +77,7 @@ def Main():
             connx.send(msg.encode("ascii"))
 
         elif data in ["close", "shutdown"]:
-            print("Closing devices")
+            # print("Closing devices")
             streams = close_streams(streams)
 
             if "shutdown" in data:

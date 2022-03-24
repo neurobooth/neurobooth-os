@@ -34,7 +34,7 @@ for data, connx in get_client_messages(s1):
         if not screen_running:
             screen_feed = ScreenMirror()
             screen_feed.start()
-            print("Stim screen feed running")
+            # print("Stim screen feed running")
             screen_running = True
         else:
             print(f"-OUTLETID-:Screen:{screen_feed.outlet_id}")
@@ -61,8 +61,7 @@ for data, connx in get_client_messages(s1):
             print("Checking prepared devices")
             streams = reconnect_streams(streams)
         else:
-            streams = start_lsl_threads("presentation", collection_id, win=win)               
-            print("Preparing devices")  
+            streams = start_lsl_threads("presentation", collection_id, win=win)
 
         print("UPDATOR:-Connect-")
         
@@ -137,7 +136,7 @@ for data, connx in get_client_messages(s1):
             # Start rec in ACQ and run task
             resp = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
                                  "acquisition", wait_data=10)
-            print(resp)
+            # print(resp)
             sleep(.5)
 
             events = tsk_fun.run(**this_task_kwargs)
@@ -181,14 +180,14 @@ for data, connx in get_client_messages(s1):
 
     elif data in ["close", "shutdown"]:
         streams = close_streams(streams)
-        print("Closing devices")
+        # print("Closing devices")
 
         if "shutdown" in data:
             if screen_running:
                 screen_feed.stop()
-                print("Closing screen mirroring")
+                # print("Closing screen mirroring")
                 screen_running = False
-            print("Closing Stim server")
+            # print("Closing Stim server")
             break
 
     elif "time_test" in data:

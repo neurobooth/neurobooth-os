@@ -135,14 +135,14 @@ class EyeTracker():
 
         pylink.beginRealTimeMode(100)
         self.tk.startRecording(1, 1, 1, 1)
-        print("Eyetracker recording")
+        # print("Eyetracker recording")
         self.recording = True
         self.stream_thread = threading.Thread(target=self.record)
         self.stream_thread.start()
 
     def record(self):
 
-        print("Eyetracker LSL recording")
+        # print("Eyetracker LSL recording")
         self.paused = False
         old_sample = None
         values = []
@@ -182,7 +182,7 @@ class EyeTracker():
         self.recording = False
         if self.streaming:
             self.stream_thread.join()
-            print("Eyelink stoped recording, downaloading edf")
+            # print("Eyelink stoped recording, downaloading edf")
             self.tk.receiveDataFile(self.fname_temp, self.filename)
             self.streaming = False
 
