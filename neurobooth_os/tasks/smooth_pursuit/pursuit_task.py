@@ -97,14 +97,14 @@ class Pursuit(Task_Eyetracker):
 
             # break if the time elapsed exceeds the trial duration
             if time_elapsed > self.ntrials * (1/freq_x):
-                print(frame)  
+                # print(frame)  
                 time_array = np.array(time_array)
                 time_array = np.diff(time_array)
-                print("mean time:",np.mean(time_array)*1000)
-                print("med time:",np.median(time_array)*1000)
-                print("std time:",np.std(time_array)*1000)
-                print("max time:",np.max(time_array)*1000)
-                print("min time:", np.min(time_array)*1000)
+                # print("mean time:",np.mean(time_array)*1000)
+                # print("med time:",np.median(time_array)*1000)
+                # print("std time:",np.std(time_array)*1000)
+                # print("max time:",np.max(time_array)*1000)
+                # print("min time:", np.min(time_array)*1000)
                 break
         
         self.time_array = time_array   

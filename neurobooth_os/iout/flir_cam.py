@@ -135,7 +135,7 @@ class VidRec_Flir():
         self.frame_counter = 0
         self.save_thread = threading.Thread(target=self.camCaptureVid)
         self.save_thread.start()
-        print(f"FLIR recording {self.video_filename}")
+        # print(f"FLIR recording {self.video_filename}")
         t0 = time.time()
         self.stamp = []
         while self.recording:
@@ -153,16 +153,15 @@ class VidRec_Flir():
             # self.video_out.write(im_conv_d)
             self.frame_counter += 1
 
-            if not self.frame_counter % 1000:
+            if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
                 print(f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}")
 
-        print(f"FLIR recording ended with {self.frame_counter} frames in {time.time()-t0}")
+        # print(f"FLIR recording ended with {self.frame_counter} frames in {time.time()-t0}")
         self.cam.EndAcquisition()
         self.recording = False
         self.save_thread.join()
-        # self.writer.close()
         self.video_out.release()
-        print(f"FLIR video saving ended in {time.time()-t0} sec")
+        # print(f"FLIR video saving ended in {time.time()-t0} sec")
 
     def stop(self):
         if self.open and self.recording:
