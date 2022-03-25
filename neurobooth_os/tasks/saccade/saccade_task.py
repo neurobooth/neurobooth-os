@@ -16,7 +16,7 @@ import numpy as np
 
 class Saccade(Task_Eyetracker):
     def __init__(self, amplitude_deg=30, direction='horizontal',  wait_center =1, Wait_offset=1,
-                jitter_percent=0.5, pointer_size_deg=0.7 , trial_sign=[-1, -1, 1, -1, 1, -1, 1, 1, -1, -1, 1, 1], **kwargs):    
+                jitter_percent=0.5, target_size=7 , trial_sign=[-1, -1, 1, -1, 1, -1, 1, 1, -1, -1, 1, 1], **kwargs):    
     # amplitude_deg=30, peak_velocity_deg=33.3, **kwargs):
 
         super().__init__(**kwargs)
@@ -28,7 +28,7 @@ class Saccade(Task_Eyetracker):
         self.wait_center = wait_center
         self.wait_offset = Wait_offset
         self.jitter_percent = jitter_percent
-        self.pointer_size_deg = pointer_size_deg
+        self.pointer_size_deg = target_size
         self.pointer_size_pixel = deg2pix(self.pointer_size_deg, self.subj_screendist_cm, self.pixpercm)
         # [-amp_x, amp_y]
         if direction == 'horizontal':

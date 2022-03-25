@@ -137,7 +137,7 @@ class Pursuit(Task_Eyetracker):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    task = Pursuit(full_screen=True)
+    task = Pursuit(full_screen=False, target_size=.7)
     task.run(prompt=True)
 
     tstmp = task.time_array
