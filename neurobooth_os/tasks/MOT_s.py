@@ -36,9 +36,9 @@ class MOT(Task_Eyetracker):
         self.numCircles = 10        # total # of circles
         self.duration = 5        # desired duration of trial in s
         
-        self.paperSize = 700        # size of stimulus graphics page
+        self.paperSize = 500        # size of stimulus graphics page
         self.clickTimeout = 10   # timeout for clicking on targets
-        self.seed = 1               # URL parameter: if we want a particular random number generator seed
+        self.seed = 2               # URL parameter: if we want a particular random number generator seed
         self.trialCount = 0
         self.score = 0        
         self.trial_info_str = ''
@@ -52,7 +52,7 @@ class MOT(Task_Eyetracker):
 
         self.win.color = "white"
         self.win.flip()
-        self.background = visual.Rect(self.win, width=self.paperSize, height=self.paperSize, fillColor='white', units='pix')
+        self.background = [visual.Rect(self.win, width=self.paperSize, height=self.paperSize, lineColor='black', fillColor='white', units='pix')]
         # create the trials chain
         self.setFrameSequence()
         
@@ -95,7 +95,7 @@ class MOT(Task_Eyetracker):
         self.mycircle["x"] = x
         self.mycircle["y"] = y
         self.mycircle["d"] = d
-         
+        repulsion = self.mycircle["z"] * self.mycircle["r"]
         # enforce proximity limits
         for i in range(numCircles -1):
             # reposition each circle until outside repulsion area of all other circles
@@ -108,7 +108,7 @@ class MOT(Task_Eyetracker):
                 # repulsion distance defaults to 5 times the circle's radius
                 for j in range(i+1, numCircles):
                     dist = math.sqrt((self.mycircle["x"][i] - self.mycircle["x"][j])**2 + (self.mycircle["y"][i] - self.mycircle["y"][j])**2)
-                    if dist > 5 * self.mycircle["r"]:
+                    if dist > ( 5 * self.mycircle["r"]):
                         # print(i, j, dist)
                         tooClose = False
                         break
@@ -143,7 +143,7 @@ class MOT(Task_Eyetracker):
             oldY = self.mycircle['y'][i]
     
             # update direction vector with noise
-            newD = self.mycircle['d'][i] + random.random() * 2.0 * noise - noise
+            newD = self.mycircle['d'][i] + random.uniform(0, 1) * 2.0 * noise - noise
     
             # compute x and y shift
             velocityX = math.cos(newD) * self.mycircle['speed']
@@ -161,22 +161,25 @@ class MOT(Task_Eyetracker):
     
                 # look ahead one step: if next move collides, update direction til no collision or timeout            
                 timeout = 0
-                while timeout<1000:
+                while timeout < 1000:
                     timeout +=1
                     dist = math.sqrt((newX - self.mycircle['x'][j])**2 + (newY - self.mycircle['y'][j])**2)
     
                     if dist < repulsion:                
                         # update vector direction
-                        newD += random.choice([-1,1]) * 0.05 * math.pi
+                        newD += random.choice([-1,1]) * random.uniform(0, 1) * math.pi
                         # recompute  x shift and x coordinate
-                        velocityX = math.cos(newD) * self.mycircle["speed"]
-                        newX = oldX + velocityX
+                        velocityX = math.cos(newD) * self.mycircle["speed"]                        
                         # recompute  y shift and y coordinate
                         velocityY = math.sin(newD) * self.mycircle["speed"]
-                        newY = oldY + velocityY             
+                        if dist < math.sqrt(((oldX + velocityX )- self.mycircle['x'][j])**2 + ((oldY + velocityY)  - self.mycircle['y'][j])**2):
+                            newX = oldX + velocityX
+                            newY = oldY + velocityY             
                     else:
                         break
-                
+                    if timeout == 10000:
+                        print(f'time out {j} {i} d = {dist}')
+                        
             # enforce elastic boundaries
             if newX >= (self.paperSize - self.mycircle["r"]) or newX <= self.mycircle["r"]:
                 # bounce off left or right boundaries
@@ -243,7 +246,7 @@ class MOT(Task_Eyetracker):
                             stim = circle + self.trial_info_msg(frame_type)
                         else:
                              stim = circle
-                        self.present_stim(stim)
+                        self.present_stim(self.background + stim)
     
                         break
             prevButtonState = buttons
@@ -286,18 +289,18 @@ class MOT(Task_Eyetracker):
             for n in range(numTargets):
                 circle[n].color = 'green'
             if frame_type == 'test':
-                self.present_stim(circle + self.trial_info_msg())
+                self.present_stim(self.background + circle + self.trial_info_msg())
             else:
-                self.present_stim(circle)        
+                self.present_stim(self.background + circle)        
             core.wait(.1)
 
             for n in range(numTargets):
                 circle[n].color = 'black'
                 
             if frame_type == 'test':
-                self.present_stim(circle + self.trial_info_msg())
+                self.present_stim(self.background + circle + self.trial_info_msg())
             else:
-                self.present_stim(circle)
+                self.present_stim(self.background + circle)
             core.wait(.1)
 
         clock  = core.Clock()
@@ -305,9 +308,9 @@ class MOT(Task_Eyetracker):
             circle = self.moveCircles(circle)
             # self.background.draw()
             if frame_type == 'test':
-                self.present_stim(circle + self.trial_info_msg())
+                self.present_stim(self.background + circle + self.trial_info_msg())
             else:
-                self.present_stim(circle)
+                self.present_stim(self.background + circle)
                 
         return  circle
         
@@ -343,7 +346,7 @@ class MOT(Task_Eyetracker):
             trueDuration = round(clockDuration.getTime(), 2)
             
             msg_stim = self.trial_info_msg(frame['type'])
-            self.present_stim(circle + msg_stim)
+            self.present_stim(self.background + circle + msg_stim)
             
             clicks, ncorrect, rt =  self.clickHandler(circle, frame['n_targets'],  frame['type'])
             time.sleep(.5)
