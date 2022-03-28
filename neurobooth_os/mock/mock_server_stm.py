@@ -5,6 +5,7 @@ Created on Tue Sep 14 15:33:40 2021
 @author: adona
 """
 
+import os
 import time
 from time import sleep
 import socket
@@ -41,24 +42,25 @@ def mock_stm_routine(host, port, conn):
             # data = "prepare:collection_id:str(tech_obs_log_dict)"
 
             collection_id = data.split(":")[1]
-            if len(streams):
-                print("Checking prepared devices")
-                streams = reconnect_streams(streams)
-            else:
-                streams = start_lsl_threads("dummy_stm", collection_id, conn=conn)
-                print("Preparing devices")        
-                
             tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
             subject_id_date = tech_obs_log["subject_id-date"]
+
+            ses_folder = f"{config.paths['data_out']}{subject_id_date}"
+            if not os.path.exists(ses_folder):
+                os.mkdir(ses_folder)
 
             # delete subj_date as not present in DB
             del tech_obs_log["subject_id-date"]
 
             task_func_dict = get_task_funcs(collection_id, conn)
             task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
-
-
-
+            
+            if len(streams):
+                print("Checking prepared devices")
+                streams = reconnect_streams(streams)
+            else:
+                streams = start_lsl_threads("dummy_stm", collection_id, conn=conn)
+ 
             print("UPDATOR:-Connect-")
 
         elif "present" in data:   
@@ -79,8 +81,8 @@ def mock_stm_routine(host, port, conn):
                 tsk_fun = task_func_dict[task]['obj']
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
                 
-                # Do not record if calibration or intro instructions"
-                if 'calibration_task' in task or "intro_" in task:
+                # Do not record if intro instructions
+                if "intro_" in task:
                       res = tsk_fun(**this_task_kwargs)
                       res.run(**this_task_kwargs)
                       continue                    
@@ -95,20 +97,20 @@ def mock_stm_routine(host, port, conn):
                 sleep(1)
 
                  # Start/Stop rec in ACQ and run task
-                resp = socket_message(f"record_start::{config.paths['data_out']}{subject_id_date}_{tsk_strt_time}_{task}::{task}",
-                                     "dummy_acq", wait_data=3)
-                print(resp)
+                resp = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
+                                     "dummy_acq", wait_data=10)
+
                 sleep(.5)
                 events = None
                 res = tsk_fun(**this_task_kwargs)
                 if hasattr(res, 'run'):  events = res.run(**this_task_kwargs)
-                socket_message("record_stop", "dummy_acq")
-
+                
+                socket_message("record_stop", "dummy_acq", wait_data=15)
                 print(f"Finished task:{task}")
                 
                 # Log tech_obs to database
                 tech_obs_log["tech_obs_id"] = t_obs_id
-                tech_obs_log['event_array'] = str(events) if events is not None else "event:datestamp"
+                tech_obs_log['event_array'] =  str(events).replace("'", '"') if events is not None else "event:datestamp"
                 meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)
                 
                 # Check if pause requested, continue or stop
@@ -124,6 +126,8 @@ def mock_stm_routine(host, port, conn):
                         continue                    
                     elif data == "stop tasks":
                         break
+                    elif data == 'calibrate':
+                        print('No calibration task for mock')
                     else:
                         print("While paused received another message")
 

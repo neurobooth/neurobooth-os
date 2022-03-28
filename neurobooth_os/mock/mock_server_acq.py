@@ -4,7 +4,7 @@ Created on Tue Sep 14 15:33:40 2021
 
 @author: adona
 """
-
+import os
 import time
 from time import sleep
 import socket
@@ -36,15 +36,21 @@ def mock_acq_routine(host, port, conn):
 
         if "prepare" in data:
             # data = "prepare:collection_id:str(tech_obs_log_dict)"
-
             collection_id = data.split(":")[1]
+            tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
+            subject_id_date = tech_obs_log['subject_id-date']
+            ses_folder = f"{config.paths['data_out']}{subject_id_date}"
+            if not os.path.exists(ses_folder):
+                os.mkdir(ses_folder)
+
             task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
             if len(streams):
-                print("Checking prepared devices")
+                # print("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
-                streams = start_lsl_threads("dummy_acq", collection_id, conn=conn)
+                streams = start_lsl_threads("acquisition", collection_id)
 
+            devs = list(streams.keys())
             print("UPDATOR:-Connect-")
 
         elif "dev_param_update" in data:
@@ -68,7 +74,9 @@ def mock_acq_routine(host, port, conn):
             for k in streams.keys():
                 if any([i in k for i in ["hiFeed", "Intel", "FLIR"]]):
                     streams[k].stop()
-
+            msg = "ACQ_devices_stoped"
+            connx.send(msg.encode("ascii"))
+            
         elif data in ["close", "shutdown"]:
             print("Closing devices")
             streams = close_streams(streams)
