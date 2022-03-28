@@ -31,7 +31,7 @@ conn = meta.get_conn(remote=False, database='neurobooth')
 win = utl.make_win(full_screen=False)
 
 task_func_dict = get_task_funcs(collection_id, conn)
-task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
+task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
 
 task_karg ={"win": win,
             "path": cfg.paths['data_out'],
