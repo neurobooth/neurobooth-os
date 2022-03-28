@@ -69,7 +69,8 @@ def get_subject_ids(conn, first_name, last_name):
 
 def get_collection_ids(study_id, conn):
     table_study = Table('study', conn=conn)
-    collection_ids = table_study.query(where=f'study_id = {study_id}')['collection_ids']
+    studies_df = table_study.query()
+    collection_ids = studies_df.loc[study_id, "collection_ids"]
     return collection_ids
 
 
