@@ -196,7 +196,13 @@ def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, obs_log_id,
     window['Start'].Update(button_color=('black', 'green'))
 
     xdf_fname = get_xdf_name(session, rec_fname)
-    split_sens_files(xdf_fname, obs_log_id, t_obs_id, conn, folder)
+    
+    # split xdf in a thread
+    xdf_split = threading.Thread(target=split_sens_files,
+                                    args=(xdf_fname, obs_log_id, t_obs_id, conn, folder,),
+                                    daemon=True)
+    xdf_split.start()
+   
 
 ######### Server communication ############
 
