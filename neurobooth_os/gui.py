@@ -72,7 +72,7 @@ def _process_received_data(serv_data, window):
 def _find_subject(window, conn, first_name, last_name):
     """Find subject from database"""
     subject_df = meta.get_subject_ids(conn, first_name, last_name)
-    window['dob'].update(values=subject_df['date_of_birth'])
+    window['dob'].update(values=subject_df['date_of_birth_subject'])
     return subject_df
 
 
