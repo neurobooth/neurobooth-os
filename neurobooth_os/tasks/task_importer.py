@@ -53,10 +53,10 @@ def get_task_funcs(collection_id, conn):
 
     task_func_dict = {}
     for obs_id in tasks_obs:        
-        task_stim_id, task_dev, task_sens, instr_kwargs = meta._get_task_param(obs_id, conn)
+        task_stim_id, task_dev, task_sens, instr_kwargs = meta._get_task_param(obs_id, conn)  # xtask_sens -> sens_id, always end with id
         if instr_kwargs.get('instruction_file') is not None:
             instr_kwargs['instruction_file'] =  op.join(cfg.paths['video_tasks'], instr_kwargs['instruction_file'])
-        stim_file, stim_kwargs = meta._get_task_stim(task_stim_id, conn)
+        stim_file, stim_kwargs = meta._get_stimulus_kwargs(task_stim_id, conn)
         task_kwargs = {**stim_kwargs, **instr_kwargs}
 
         # Convert path to class to class inst.
