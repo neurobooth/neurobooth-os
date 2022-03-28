@@ -384,7 +384,7 @@ def gui(remote=False, database='neurobooth'):
         # Shut down the other servers and stops plotting
         elif event == 'Shut Down' or event == sg.WINDOW_CLOSED:
             plttr.stop()
-            ctr_rec.shut_all(nodes=nodes)
+            ctr_rec.shut_all(nodes=nodes[::-1])
             break
 
         ##################################################################################
