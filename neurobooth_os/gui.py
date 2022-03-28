@@ -140,7 +140,7 @@ def _pause_tasks(steps, presentation_node):
         sg.PopupError('Tasks not started')
     else:
         socket_message("pause tasks", presentation_node)
-        resp = sg.Popup("The next task will be paused. \nDon't respond until end current task",
+        resp = sg.Popup("The next task will be paused. \n\nDon't respond until end current task",
                         custom_text=('Continue or Stop tasks', "Calibrate"))
         if resp == 'Continue or Stop tasks':
             resp = sg.Popup( custom_text=('Continue tasks', 'Stop tasks',))
@@ -243,18 +243,20 @@ def _update_button_status(window, statecolors, button_name, inlets, folder_sessi
         # 2 colors for init_servers and Connect, 1 connected, 2 connected
         if len(statecolors[button_name]):
             color = statecolors[button_name].pop()
-            window[button_name].Update(button_color=('black', color))
-
+            session = None
             # Signal start LSL session if both servers devices are ready:
             if button_name == "-Connect-" and color == "green":
-                return _start_lsl_session(window, inlets, folder_session) 
+                session =  _start_lsl_session(window, inlets, folder_session) 
+            window[button_name].Update(button_color=('black', color))
+            return session
 
 
 def _prepare_devices(window, nodes, collection_id, tech_obs_log):
     """Prepare devices"""
     window['-Connect-'].Update(button_color=('black', 'red'))
     event, values = window.read(.1)
-
+    print('Connecting devices')
+    
     vidf_mrkr = marker_stream('videofiles')
     # Create event to capture outlet_id
     window.write_event_value('-OUTLETID-', f"['{vidf_mrkr.name}', '{vidf_mrkr.oulet_id}']")
@@ -262,8 +264,7 @@ def _prepare_devices(window, nodes, collection_id, tech_obs_log):
     nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:
         socket_message(f"prepare:{collection_id}:{str(tech_obs_log)}", node)
-
-    print('Connecting devices')
+    
     return vidf_mrkr, event, values
 
 
@@ -398,11 +399,12 @@ def gui(remote=False, database='neurobooth'):
             
             _stop_lsl_and_save(window, session, conn,
                                rec_fname, task_id, obs_log_id, t_obs_id, sess_info['subject_id_date'])
+            print("Xdf data converted to HDF5")
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":            
             vidf_mrkr.push_sample([values[event]])
-            print(f"pushed videfilename mark {values[event]}")
+            print(f"PICKED videfilename mark {values[event]}")
 
         # Update colors for: -init_servs-, -Connect-, Start buttons
         elif event == "-update_butt-":
