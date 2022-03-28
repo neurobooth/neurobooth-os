@@ -85,7 +85,7 @@ def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None, f
 
         # Only log and split devices in tech_obs DB
         if tech_obs_id is not None and device_id not in devices_ids:
-            print(f"Skipping {name} not in tech obs device list: {devices_ids}")
+            # print(f"Skipping {name} not in tech obs device list: {devices_ids}")
             continue
         
         sensors = "-".join(sensors_id)
@@ -93,7 +93,7 @@ def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None, f
         head, ext = op.splitext(fname)
         fname_full = f"{head}-{device_id}-{sensors}.hdf5"
         write_hdf5(fname_full, data_sens, overwrite=True)
-        print(f"Saving stream {name} to {fname_full}")
+        # print(f"Saving stream {name} to {fname_full}")
         files.append(fname_full)
         _, head = op.split(fname_full)
 
@@ -112,7 +112,7 @@ def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None, f
                 head = f"{head}, {folder}/{videofiles.get(name)}"
             else:
                 head = f"{head}, {videofiles.get(name)}"
-            print(f"Videofile name: {head}")
+            # print(f"Videofile name: {head}")
         
         if tech_obs_log_id is not None:
             for sens_id in sensors_id:
