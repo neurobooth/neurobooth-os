@@ -69,7 +69,7 @@ while True:
     elif event == "-update_butt-":
         n_nodes_ready += 1
         if n_nodes_ready == 2:
-            session = _start_lsl_session(main_window, inlets)
+            session = _start_lsl_session(main_window, inlets, sess_info['subject_id_date'])
             break
 
 tasks_selected = tasks.split(", ")
@@ -92,7 +92,7 @@ while True:
     elif event == 'task_finished':
         task_id = value
         _stop_lsl_and_save(main_window, session, conn,
-                           rec_fname, task_id, obs_log_id, t_obs_id)
+                           rec_fname, task_id, obs_log_id, t_obs_id, sess_info['subject_id_date'])
         if task_id not in ['calibration_task', "intro_"]:
             n_tasks_finished += 1
 
