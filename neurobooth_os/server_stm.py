@@ -55,7 +55,7 @@ for data, connx in get_client_messages(s1):
         del tech_obs_log["subject_id-date"]
 
         task_func_dict = get_task_funcs(collection_id, conn)
-        task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
+        task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
 
         if len(streams):
             print("Checking prepared devices")

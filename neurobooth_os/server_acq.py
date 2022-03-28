@@ -42,7 +42,7 @@ def Main():
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
-            task_devs_kw = meta._get_coll_dev_kwarg_tasks(collection_id, conn)
+            task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
             if len(streams):
                 # print("Checking prepared devices")
                 streams = reconnect_streams(streams)
