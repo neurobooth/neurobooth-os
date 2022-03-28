@@ -11,6 +11,7 @@ import math
 import time
 
 from numpy import sqrt
+import pandas as pd
 from psychopy import core, visual, event, gui, data, sound, monitors
 from psychopy.visual.textbox2 import TextBox2
 from itertools import chain
@@ -60,10 +61,10 @@ class MOT(Task_Eyetracker):
         if msg_type == 'practice':
             msg = self.trial_info_str
         elif msg_type == 'test':
-            msg = f" {self.trialCount} of 6. {self.trial_info_str}   Score {self.score}"
+            msg = f" {self.trialCount + 1} of 6. {self.trial_info_str}   Score {self.score}"
         else:
-            msg = f" {self.trialCount} of 6. {' '*len(self.trial_info_str)}   Score {self.score}"
-        return [visual.TextStim(self.win, text=msg, pos=(0, -10), units='deg', color='blue')]        
+            msg = f" {self.trialCount + 1} of 6. {' '*len(self.trial_info_str)}   Score {self.score}"
+        return [visual.TextStim(self.win, text=msg, pos=(0, -8), units='deg', color='blue')]        
         
         
     def my_textbox2(self, text, pos=(0, 0), size=(None, None)):
