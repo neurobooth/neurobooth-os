@@ -41,7 +41,8 @@ class Task():
         self.path_instruction_video = instruction_file
         self.full_screen = full_screen
         self.events = []
-        print("path to instruction video: ", self.path_instruction_video)
+        if self.path_instruction_video:
+            print(f"Loading {self.path_instruction_video}")
 
         if marker_outlet is not None:
             self.with_lsl = True
