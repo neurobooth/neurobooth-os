@@ -9,6 +9,7 @@ import time
 from time import sleep
 import socket
 import sys
+from collections import OrderedDict
 
 from neurobooth_os import config
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams

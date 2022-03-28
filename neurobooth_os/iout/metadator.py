@@ -69,8 +69,7 @@ def get_subject_ids(conn, first_name, last_name):
 
 def get_collection_ids(study_id, conn):
     table_study = Table('study', conn=conn)
-    studies_df = table_study.query()
-    collection_ids = studies_df.loc[study_id, "collection_ids"]
+    collection_ids = table_study.query(where=f'study_id = {study_id}')['collection_ids']
     return collection_ids
 
 
@@ -82,6 +81,7 @@ def get_tasks(collection_id, conn):
 
 
 def _new_tech_log_dict(application_id="neurobooth_os"):
+    """Create a new tech_obs_log dict."""
     tech_obs_log = OrderedDict()
     tech_obs_log["subject_id"] = ""
     tech_obs_log["study_id"] = ""
@@ -91,7 +91,7 @@ def _new_tech_log_dict(application_id="neurobooth_os"):
     tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
     tech_obs_log["event_array"] = []  # marker_name:timestamp
     tech_obs_log["collection_id"] = ""
-    return tech_obs_log
+    return tech_obs_log  # XXX: tech_obs_log_dict
 
 
 def _make_new_tech_obs_row(conn, subject_id):
@@ -99,7 +99,7 @@ def _make_new_tech_obs_row(conn, subject_id):
     return table.insert_rows([(subject_id,)], cols=['subject_id'])
 
 
-def _fill_tech_obs_row(tech_obs_id, dict_vals, conn):
+def _fill_tech_obs_row(tech_obs_id, dict_vals, conn):  # XXX: dict_vals -> tech_obs_log_dict
     # tech_obs_id = str
     # dict_vals = dict with key-vals to fill row
     table = Table("tech_obs_log", conn=conn)
@@ -107,18 +107,27 @@ def _fill_tech_obs_row(tech_obs_id, dict_vals, conn):
     table.update_row(tech_obs_id, tuple(vals), cols=list(dict_vals))
 
 
-def _get_task_param(obs_id, conn):
+def _get_task_param(tech_obs_id, conn):
+    """Get .
+    
+    obs_id : str
+        The tech_obs_id
+    """
+    # tech_obs_data, stimulus, instruction
     table_tech_obs = Table('tech_obs_data', conn=conn)
-    tech_obs_df = table_tech_obs.query(where=f"tech_obs_id = '{obs_id}'")
+    tech_obs_df = table_tech_obs.query(where=f"tech_obs_id = '{tech_obs_id}'")
     devices_ids, = tech_obs_df["device_id_array"]
     sens_ids, = tech_obs_df["sensor_id_array"]
     stimulus_id, = tech_obs_df["stimulus_id"]
     instr_id,  =  tech_obs_df["instruction_id"]
-    instr_kwargs = _get_instruct_dic_param(instr_id, conn)
-    return stimulus_id, devices_ids, sens_ids, instr_kwargs
+    instr_kwargs = _get_instruction_kwargs(instr_id, conn)
+    #  stim_file, stim_kwargs = meta._get_task_stim(task_stim_id, conn)
+    # task = {'instruction_kwargs': dict(), 'stimulus_kwargs': dict(), 'device_ids': ..., } ?
+    return stimulus_id, devices_ids, sens_ids, instr_kwargs  # XXX: name similarly in calling function
 
 
-def _get_instruct_dic_param(instruction_id, conn):
+def _get_instruction_kwargs(instruction_id, conn):
+    """Get dictionary from instruction table."""
     if instruction_id is None:
         return {}
     table = Table('instruction', conn=conn)
@@ -129,7 +138,8 @@ def _get_instruct_dic_param(instruction_id, conn):
     return dict_instr
 
 
-def _get_task_stim(stimulus_id, conn):
+def _get_stimulus_kwargs(stimulus_id, conn):
+    """Get task parameters from database."""
     table_stimulus = Table('stimulus', conn)
     stimulus_df = table_stimulus.query(where=f"stimulus_id = '{stimulus_id}'")
     stim_file, = stimulus_df["stimulus_file"]
@@ -152,7 +162,7 @@ def _get_task_stim(stimulus_id, conn):
     return stim_file, taks_kwargs
 
 
-def get_sens_param(sens_id, conn):
+def _get_sensor_kwargs(sens_id, conn):
     table_sens = Table('sensor', conn=conn)
     tech_obs_df = table_sens.query(where=f"sensor_id = '{sens_id}'")
     param = tech_obs_df.iloc[0].to_dict()
@@ -168,9 +178,9 @@ def get_dev_sn(dev_id, conn):
     return sn[0]
 
 
-def meta_devinfo_tofunct(dev_id_param, dev_id):
+def map_database_to_deviceclass(dev_id, dev_id_param):
     # Convert SN and sens param from metadata to kwarg for device function
-    # input: dict, from get_kwarg_task
+    # input: dict, from _get_device_kwargs
     #   dict with keys: "SN":"xx", "sensors": {"sensor_ith":{parameters}}
 
     info = dev_id_param
@@ -240,12 +250,12 @@ def meta_devinfo_tofunct(dev_id_param, dev_id):
     elif "Mouse" in dev_id:
         return kwarg
     else:
-        print(f"Device id parameters not found for {dev_id} in meta_devinfo_tofunct")
+        print(f"Device id parameters not found for {dev_id} in map_database_to_deviceclass")
 
     return kwarg
 
 
-def get_kwarg_task(task_id, conn):
+def _get_device_kwargs(task_id, conn):
 
     stim_id, dev_ids, sens_ids, _ = _get_task_param(task_id, conn)
     dev_kwarg = {}
@@ -260,15 +270,15 @@ def get_kwarg_task(task_id, conn):
         for sens_id in dev_sens_ids:
             if sens_id == "":
                 continue
-            dev_id_param["sensors"][sens_id] = get_sens_param(sens_id, conn)
+            dev_id_param["sensors"][sens_id] = _get_sensor_kwargs(sens_id, conn)
 
-        kwarg = meta_devinfo_tofunct(dev_id_param, dev_id)
+        kwarg = map_database_to_deviceclass(dev_id, dev_id_param)
 
         dev_kwarg[dev_id] = kwarg
     return dev_kwarg
 
 
-def _get_coll_dev_kwarg_tasks(collection_id, conn):
+def _get_device_kwargs_by_task(collection_id, conn):
     # Get devices kwargs for all the tasks
     # outputs dict with keys = stimulus_id, vals = dict with dev parameters
 
@@ -277,40 +287,39 @@ def _get_coll_dev_kwarg_tasks(collection_id, conn):
     tasks_kwarg = OrderedDict()
     for task in tech_obs:
         stim_id, *_ = _get_task_param(task, conn)
-        task_kwarg = get_kwarg_task(task, conn)
+        task_kwarg = _get_device_kwargs(task, conn)
         tasks_kwarg[stim_id] = task_kwarg
 
     return tasks_kwarg
 
 
-def get_new_dev_param(kwarg_task1, kwarg_task2):
-    # change device and device parameters between tasks
-    # TODO test kwarg_task from get_coll_dev_kwarg_tasks(collection_id)
 
-    open_dev = []
-    close_dev = []
-    change_param = {}
-    for k1, v1 in kwarg_task1.items():
-        # dev not present in task2
-        if not kwarg_task2.get(k1):
-            close_dev.append(k1)
-            # print("close", k1)
-            continue
+# List of functions
+# -----------------
+#
+# get_conn
+#
+# Create functions
+# ~~~~~~~~~~~~~~~~
+# _new_tech_log_dict ?
+# _make_new_tech_obs_row
+# 
+# Read functions
+# ~~~~~~~~~~~~~~
+# get_study_ids
+# get_subject_ids
+# get_collection_ids
+# get_tasks
+# get_dev_sn
+# _get_task_param(tech_obs_id)
+# _get_instruction_kwargs(instruction_id)
+# _get_stimulus_kwargs(stimulus_id)
+# _get_device_kwargs_by_task(collection_id)
+# _get_device_kwargs(tech_obs_id)
+# _get_sensor_kwargs(sensor_id)
+# map_database_to_deviceclass(device_id, sensor_kwargs)
+#
+# Update functions
+# ~~~~~~~~~~~~~~~~
+# _fill_tech_obs_row
 
-        # dev parameters change
-        if not v1 == kwarg_task2.get(k1):
-            v2 = kwarg_task2.get(k1)
-            # print(v1)
-            change_param[k1] = {}
-            for kk1, vv1 in v1.items():
-                if vv1 != v2.get(kk1):
-                    change_param[k1]["vv1"] = v2.get(kk1)
-                    # print(kk1, vv1, v2.get(kk1))
-
-    for k2, v2 in kwarg_task2.items():
-        # print(k1, v1)
-        if not kwarg_task1.get(k2):
-            open_dev.append(k2)
-            # print(k2)
-
-    return open_dev, close_dev, change_param
