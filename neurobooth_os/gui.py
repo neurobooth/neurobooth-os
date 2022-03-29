@@ -73,20 +73,20 @@ def _find_subject(window, conn, first_name, last_name):
     """Find subject from database"""
     subject_df = meta.get_subject_ids(conn, first_name, last_name)
     window['dob'].update(values=subject_df['date_of_birth_subject'])
+    window['select_subject'].update('Select subject')
     return subject_df
 
 
 def _select_subject(window, subject_df):
-    """Select subject from the DOB window"""
+    """Select subject from the DOB window"""   
     subject = subject_df.iloc[window['dob'].get_indexes()]
     subject_id = subject.name
     first_name = subject['first_name_birth']
     last_name = subject['last_name_birth']
 
     # Update GUI
-    window['dob'].update(values=[f'Subject ID: {subject_id}'])
-    window['first_name'].update(disabled=True)
-    window['last_name'].update(disabled=True)
+    window['dob'].update(values=[''])
+    window['select_subject'].update(f'Subject ID: {subject_id}')
     return first_name, last_name, subject_id
 
 
@@ -327,7 +327,10 @@ def gui(remote=False, database='neurobooth'):
                                        values['last_name'])
 
         elif event == 'select_subject':
-            first_name, last_name, subject_id = _select_subject(window, subject_df)
+            if window['dob'].get_indexes():               
+                first_name, last_name, subject_id = _select_subject(window, subject_df)
+            else:
+                sg.popup('No subject selected')
 
         elif event == "collection_id":
             collection_id = values[event]

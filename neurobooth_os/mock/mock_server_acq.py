@@ -49,7 +49,7 @@ def mock_acq_routine(host, port, conn):
                 # print("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
-                streams = start_lsl_threads("acquisition", collection_id)
+                streams = start_lsl_threads("dummy_acq", collection_id, conn=conn)
 
             devs = list(streams.keys())
             print("UPDATOR:-Connect-")
