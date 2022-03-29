@@ -43,6 +43,5 @@ def welcome_screen(with_audio=True, win=None):
 def finish_screen(win):
     fname = op.join(neurobooth_os.__path__[0], 'tasks/assets/end_slide_3_7_22.jpg')
     finish = visual.ImageStim(win, fname, units='pix')
-    utl.present(win, finish, None, 2)
-    # win.close()
+    utl.present(win, finish, waitKeys=False)
     return win
