@@ -4,6 +4,7 @@ import os
 from time import time, sleep
 from collections import OrderedDict
 from datetime import datetime
+import copy 
 
 import neurobooth_os
 from neurobooth_os import config
@@ -23,10 +24,10 @@ def Main():
 
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    win = utl.make_win(full_screen=True)
+    win = utl.make_win(full_screen=False)
     conn = meta.get_conn()
 
-    streams, screen_running = {}, False
+    streams, screen_running, presented = {}, False, False
 
     for data, connx in get_client_messages(s1):
 
@@ -78,11 +79,14 @@ def Main():
             if streams.get('Eyelink'):
                     task_karg["eye_tracker"] = streams['Eyelink']
                     
+            if presented:
+                task_func_dict = get_task_funcs(collection_id, conn)
+                
             # Preload tasks media
             for task in tasks.split("-"):
                 if task not in task_func_dict.keys():
                     continue
-                tsk_fun = task_func_dict[task]['obj']
+                tsk_fun = copy.copy(task_func_dict[task]['obj'])
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
                 task_func_dict[task]['obj'] = tsk_fun(**this_task_kwargs)
 
@@ -152,6 +156,7 @@ def Main():
                     if 'calibration_task' not in task:
                         streams['Eyelink'].stop()
                 
+                sleep(2)
                 # Check if pause requested, unpause or stop
                 data = get_data_timeout(s1, .1)
                 if data == "pause tasks":
@@ -177,6 +182,7 @@ def Main():
                         print("While paused received another message")
                     
             finish_screen(win)
+            presented = True
 
         elif data in ["close", "shutdown"]:
             streams = close_streams(streams)
