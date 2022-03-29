@@ -63,7 +63,7 @@ def get_study_ids(conn):
 def get_subject_ids(conn, first_name, last_name):
     table_subject = Table('subject', conn=conn)
     subject_df = table_subject.query(
-        where=f"first_name_birth='{first_name}' AND last_name_birth='{last_name}'")
+        where=f"LOWER(first_name_birth)=LOWER('{first_name}') AND LOWER(last_name_birth)=LOWER('{last_name}')")
     return subject_df
 
 
