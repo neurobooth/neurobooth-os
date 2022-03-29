@@ -46,7 +46,7 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
         [sg.Listbox([], size=(30, 10), key='dob')],
         [_space()],
 
-        [sg.Button('Select subject', button_color='white', key='select_subject',
+        [sg.Button('Select subject', button_color='white', key='select_subject',size=(30, 1),
                    enable_events=True)],
         [_space()],
 
@@ -135,9 +135,9 @@ def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
         console_output = [_space(3)]
     else:
         console_output = [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
-                 auto_size_text=True), sg.Output(key='-OUTPUT-', size=(84, 30))]
+                 auto_size_text=True), sg.Output(key='-OUTPUT-', size=(90, 30))]
     # console_output = [_space(3)]
-    subject_text = (f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}',
+    subject_text = (f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}' +
                     f' {sess_info["last_name"]}')
     layout_col1 = [
         [_space(),
@@ -182,7 +182,7 @@ def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
                    [sg.Text('', k="task_running", justification='left', size=(20, 1))],
                    [_space()], [_space()], [_space()], [_space()],
                    [sg.Text('Inlet streams')],
-                   [sg.Multiline(size=(35, 10), key='inlet_State', do_not_clear=False, no_scrollbar=True)]
+                   [sg.Multiline(size=(40, 15), key='inlet_State', do_not_clear=False, no_scrollbar=True)]
                    ]
 
     layout = [[sg.Column(layout_col1, pad=(0, 0)), sg.Column(
