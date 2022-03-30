@@ -64,7 +64,7 @@ def mock_acq_routine(host, port, conn):
             filename, task = data.split("::")[1:]
             fname = config.paths['data_out'] + filename
             for k in streams.keys():
-                if any([i in k for i in ["hiFeed", "Intel", "FLIR"]]):
+                if any([i in k for i in ["hiFeed", "Intel", "FLIR", "IPhone"]]):
                     if task_devs_kw[task].get(k):
                         streams[k].start(fname)
             msg = "ACQ_devices_ready"
@@ -73,7 +73,7 @@ def mock_acq_routine(host, port, conn):
         elif "record_stop" in data:
             print("Closing recording")
             for k in streams.keys():
-                if any([i in k for i in ["hiFeed", "Intel", "FLIR"]]):
+                if any([i in k for i in ["hiFeed", "Intel", "FLIR", "IPhone"]]):
                     streams[k].stop()
             msg = "ACQ_devices_stoped"
             connx.send(msg.encode("ascii"))

@@ -62,7 +62,7 @@ def Main():
             fname = f"{config.paths['data_out']}{subject_id_date}/{fname}"
 
             for k in streams.keys():
-                if k.split("_")[0] in ["hiFeed", "FLIR", "Intel"]: 
+                if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]: 
                     if task_devs_kw[task].get(k):
                         streams[k].start(fname)
             msg = "ACQ_devices_ready"
@@ -71,7 +71,7 @@ def Main():
         elif "record_stop" in data:
             # print("Closing recording")
             for k in streams.keys():
-                if k.split("_")[0] in ["hiFeed", "FLIR", "Intel"]:
+                if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
                     streams[k].stop()
             msg = "ACQ_devices_stoped"
             connx.send(msg.encode("ascii"))

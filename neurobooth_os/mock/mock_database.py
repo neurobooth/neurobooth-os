@@ -39,10 +39,11 @@ def insert_mock_rows(conn_mock):
 
     table = Table('tech_obs_data', conn_mock)
     table.insert_rows([('mock_obs_1', 'mock_instruction_id', 'mock_task_1',
-                        '{mock_Mbient_1,mock_Mbient_2, mock_Intel_1}',                        
+                        '{mock_Mbient_1,mock_Mbient_2, mock_Intel_1, IPhone_dev_1}',                        
                         ('{{mock_Mbient_acc_1, mock_Mbient_grad_1},'
                          '{mock_Mbient_acc_1, mock_Mbient_grad_1},'
-                         '{mock_Intel_rgb_1, mock_Intel_depth_1}}')
+                         '{mock_Intel_rgb_1, mock_Intel_depth_1}},'
+                         '{IPhone_sens_1, ""}')
                          , "hand")], 
                          cols=["tech_obs_id", "instruction_id", "stimulus_id", "device_id_array",
                           "sensor_id_array", "feature_of_interest" ])
@@ -62,6 +63,10 @@ def insert_mock_rows(conn_mock):
     table.insert_rows([('mock_Intel_1', 0, False, 0, 'mock',
                         'mock_make', 'neurobooth inc', 0,
                         '{mock_Intel_rgb_1, mock_Intel_depth_1}')], cols=cols)
+    table.insert_rows([('IPhone_dev_1', 0, False, 0, 'iphone',
+                        'IPhone', 'apple inc', 0,
+                        '{IPhone_sens_1}')], cols=cols)
+
 
     table = Table('sensor', conn_mock)
     cols = ['sensor_id', 'temporal_res', 'spatial_res_x', 'spatial_res_y',
@@ -71,7 +76,7 @@ def insert_mock_rows(conn_mock):
     table.insert_rows([('mock_Mbient_grad_1', 100, None, None, 'edf', None)], cols=cols)
     table.insert_rows([('mock_Intel_rgb_1', 180, 1080, 720, 'bag', None)], cols=cols)
     table.insert_rows([('mock_Intel_depth_1', 180, 1080, 720, 'bag', None)], cols=cols)
-
+    table.insert_rows([('IPhone_sens_1', 240, 1080, 720, 'mov', None)], cols=cols)
 
 def delete_mock_rows(conn_mock):
     """Delete rows in mock database with primary key starting with mock.

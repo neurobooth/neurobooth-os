@@ -13,12 +13,12 @@ from neurobooth_os.gui import (_find_subject, _select_subject, _get_tasks,
 from neurobooth_os.mock import MockWindow
 
 ####### PARAMETERS #########
-remote = False
+remote = True
 database = 'mock_neurobooth'
 staff_id = 'AN'
 first_name, last_name = "Anna", "Luddy"
-study_id = "study1"  # 'mock_study'
-collection_id = "mvp_030"
+study_id = "mock_study"  # 'mock_study'
+collection_id = "mock_collection"
 
 
 ####### PREPARE WINDOWS #########
@@ -29,7 +29,7 @@ stream_ids, inlets = dict(), dict()
 tech_obs_log = meta._new_tech_log_dict()
 
 start_window = MockWindow(['first_name', 'last_name', 'dob', 'collection_id',
-                           'tasks'])
+                           'tasks', 'select_subject'])
 main_window = MockWindow(['-init_servs-', '-Connect-', 'Start', 'task_title',
                           'task_running'])
 
