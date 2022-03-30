@@ -46,7 +46,8 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
         from neurobooth_os.iout.microphone import MicStream
         from neurobooth_os.iout.camera_intel import VidRec_Intel
         from neurobooth_os.iout.flir_cam import VidRec_Flir
-
+        from neurobooth_os.iout.iphone import IPhone
+        
         for kdev, argsdev in kwarg_alldevs.items():
             if "Intel" in kdev:
                 streams[kdev] = VidRec_Intel(**argsdev)
@@ -61,6 +62,9 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
             elif "Mic_Yeti" in kdev:
                 streams[kdev] = MicStream(**argsdev)
                 streams[kdev].start()
+            elif "IPhone"in kdev:
+                streams[kdev] = IPhone(name='IPhoneFrameIndex', **argsdev)
+                streams[kdev].prepare()
 
     elif node_name == "presentation":
         from neurobooth_os.iout import marker_stream
@@ -78,13 +82,17 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
 
     elif node_name == "dummy_acq": 
         from neurobooth_os.mock import mock_device_streamer as mock_dev
-
+        from neurobooth_os.iout.iphone import IPhone
+        
         for kdev, argsdev in kwarg_alldevs.items():
             if "Intel" in kdev:
                 streams[kdev] = mock_dev.MockCamera(**argsdev)
             elif "Mbient" in kdev:
                 streams[kdev] = mock_dev.MockMbient(**argsdev)
                 streams[kdev].start()
+            elif "IPhone"in kdev:
+                streams[kdev] = IPhone(name='IPhoneFrameIndex', **argsdev)
+                streams[kdev].prepare()
 
     elif node_name == "dummy_stm":
         from neurobooth_os.iout import marker_stream
@@ -114,7 +122,7 @@ def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=5, **kwarg):
 def close_streams(streams):
     for k in list(streams):
         print(f"Closing {k} stream")
-        if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
+        if k.split("_")[0] in ["hiFeed", "Intel", "FLIR", "IPhone"]:
             streams[k].close()
         else:
             streams[k].stop()
