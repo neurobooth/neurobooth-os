@@ -60,7 +60,7 @@ def mock_stm_routine(host, port, conn):
                 streams = reconnect_streams(streams)
             else:
                 streams = start_lsl_threads("dummy_stm", collection_id, conn=conn)
- 
+
             print("UPDATOR:-Connect-")
 
         elif "present" in data:   
@@ -76,16 +76,16 @@ def mock_stm_routine(host, port, conn):
                 if task not in task_func_dict.keys():
                     print(f"Task {task} not implemented")
                     continue
-  
+
                 # get task and params
                 tsk_fun = task_func_dict[task]['obj']
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
                 
                 # Do not record if intro instructions
                 if "intro_" in task:
-                      res = tsk_fun(**this_task_kwargs)
-                      res.run(**this_task_kwargs)
-                      continue                    
+                    res = tsk_fun(**this_task_kwargs)
+                    res.run(**this_task_kwargs)
+                    continue                    
                 
                 t_obs_id = task_func_dict[task]['t_obs_id']
                 tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
