@@ -3,6 +3,8 @@ import os
 import sys
 from time import time, sleep
 from collections import OrderedDict
+import cv2
+import numpy as np
 
 import neurobooth_os
 from neurobooth_os import config
@@ -21,6 +23,7 @@ def Main():
 
     streams = {}
     lowFeed_running = False
+    recording = False
     for data, connx in get_client_messages(s1):
 
         if "vis_stream" in data:
@@ -52,8 +55,16 @@ def Main():
             devs = list(streams.keys())
             print("UPDATOR:-Connect-")
 
-        elif "dev_param_update" in data:
-            None
+        elif "frame_preview" in data and not recording:
+            if not any("IPhone" in s for s in streams):
+                print('no iphone')
+                connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
+                continue
+
+            frame = streams[[i for i in streams if 'IPhone' in i][0]].frame_preview()
+            frame_prefix=b'::BYTES::'+str(len(frame)).encode('utf-8')+b'::'
+            frame=frame_prefix+frame
+            connx.send(frame)
 
         elif "record_start" in data:  
             # "record_start::filename::task_id" FILENAME = {subj_id}_{obs_id}
@@ -67,6 +78,7 @@ def Main():
                         streams[k].start(fname)
             msg = "ACQ_devices_ready"
             connx.send(msg.encode("ascii"))
+            recording = True
 
         elif "record_stop" in data:
             # print("Closing recording")
@@ -75,6 +87,7 @@ def Main():
                     streams[k].stop()
             msg = "ACQ_devices_stoped"
             connx.send(msg.encode("ascii"))
+            recording = False
 
         elif data in ["close", "shutdown"]:
             # print("Closing devices")

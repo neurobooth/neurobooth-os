@@ -3,7 +3,8 @@ from email import message_from_string
 from functools import partial
 from logging import raiseExceptions
 from multiprocessing import Condition
-
+import matplotlib
+matplotlib.use('TKAgg')
 import socket
 import json
 import struct
@@ -112,8 +113,8 @@ class IPhone:
                     return False
                     #raise IPhoneError(f'Message has incorrect key: {key} not allowed. {message}')
             msgType=message['MessageType']
-        print(f'Initial State: {self._state}')
-        print(f'Message: {msgType}')
+        # print(f'Initial State: {self._state}')
+        # print(f'Message: {msgType}')
         #validate whether the transition is valid
         allowed_trans=self.STATE_TRANSITIONS[self._state]
         if msgType in allowed_trans:
@@ -123,7 +124,7 @@ class IPhone:
             self.disconnect()
             return False
             #raise IPhoneError(f'Message {msgType} is not valid in the state {self._state}.')
-        print(f'Outcome State:{self._state}')
+        # print(f'Outcome State:{self._state}')
         return True
 
     def _message(self,msg_type,ts='',msg=''):
@@ -290,11 +291,11 @@ class IPhone:
 
         if msg['MessageType']=='@STARTTIMESTAMP':
             self.fcount=0
-            print([self.fcount, float(msg['TimeStamp']), time.time()])
+            # print([self.fcount, float(msg['TimeStamp']), time.time()])
             self.outlet.push_sample([self.fcount, float(msg['TimeStamp']), time.time()])       
         elif msg['MessageType'] in ['@INPROGRESSTIMESTAMP','@STOPTIMESTAMP']:
             self.fcount+=self.notifyonframe
-            print([self.fcount, float(msg['TimeStamp']), time.time()])
+            # print([self.fcount, float(msg['TimeStamp']), time.time()])
             self.outlet.push_sample([self.fcount, float(msg['TimeStamp']), time.time()])       
 
     def createOutlet(self):
@@ -386,8 +387,13 @@ if __name__ == "__main__":
     import time
     # Creating and starting mock streams:
     iphone = IPhone("iphone")
-    iphone.prepare()
+    config={'NOTIFYONFRAME':'1',
+                            'VIDEOQUALITY':'AVAssetExportPresetHighestQuality',
+                            'USECAMERAFACING':'BACK','FPS':'60'}
+    iphone.prepare(config=config)
 
+    # frame = iphone.frame_preview()
+    
     streamargs = {'name': "IPhoneFrameIndex"}
     recording_folder = ""
     subject = "007"
@@ -397,7 +403,7 @@ if __name__ == "__main__":
     session.start_recording()    
     iphone.start(subject + f"_task_obs_1_{time.time()}")
     
-    time.sleep(300)
+    time.sleep(10)
 
     iphone.stop()
     session.stop_recording()
@@ -406,7 +412,8 @@ if __name__ == "__main__":
     import glob
     import numpy as np
     
-    fname = glob.glob(f"{subject}/recording_R00*.xdf")[-1]
+    path = 'd:\\projects\\Github\\neurobooth-os\\neurobooth_os\\iout'
+    fname = glob.glob(f"{path}/{subject}/recording_R0*.xdf")[-1]
     data, header = pyxdf.load_xdf(fname)
 
     ts = data[0]['time_series']
@@ -415,6 +422,7 @@ if __name__ == "__main__":
     
     df_pc = np.diff(ts_pc)
     df_ip = np.diff(ts_ip)
+    xxx
     import matplotlib.pyplot as plt
     plt.figure()
     plt.plot(df_pc)
@@ -426,11 +434,16 @@ if __name__ == "__main__":
 
     plt.show()
     
-    plt.hist(np.diff(ts_pc[1:])-np.diff(ts_ip[1:]))
+    plt.figure()
+    plt.hist(np.diff(ts_pc[1:])-np.diff(ts_ip[1:]), 20)
+    
+    print( 'mean diff diff ', np.mean(np.abs(np.diff(ts_pc[1:])-np.diff(ts_ip[1:]))))
     
     tstmp = data[0]['time_stamps']
     plt.hist(np.diff(tstmp[1:])-np.diff(ts_ip[1:]))
     
+    plt.figure()
+    plt.hist(df_ip, 50)
 """
 
     MOCK=False
