@@ -141,13 +141,27 @@ def node_info(node_name):
 
 
 def wait_socket_data(s, wait_time=None):
-
+    from neurobooth_os.iout.iphone import IPhone
+    iphone_for_bytesrecv=IPhone("iphone_bytesrecv")
     tic = time()
     while True:
         r, _, _ = select.select([s], [], [s], 1)
         if r:
             data = s.recv(1024)
-            return data.decode("utf-8")
+            if data.startswith(b'::BYTES::'):
+                split_data=data.split(b'::')
+                split_data_len=int(split_data[2].decode('utf-8'))
+                current_data=split_data[3]
+                remainder_len=(split_data_len-len(current_data))
+                # print('first socket received')
+                # print('Current data len: ', len(current_data))
+                # print('Remainder len: ', remainder_len)
+                remainder_data=iphone_for_bytesrecv.recvall(s,remainder_len)
+                data=current_data+remainder_data
+                # print('all socket received')
+            else:
+                data = data.decode("utf-8")
+            return data
 
         if wait_time is not None:
             if time() - tic > wait_time:
