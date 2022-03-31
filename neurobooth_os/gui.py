@@ -12,9 +12,10 @@ import time
 import threading
 from optparse import OptionParser
 from datetime import datetime
+import cv2
+import numpy as np
 
 import PySimpleGUI as sg
-from gevent import config
 import liesl
 
 import neurobooth_os.main_control_rec as ctr_rec
@@ -243,6 +244,13 @@ def _plot_realtime(window, plttr, inlets):
     else:
         plttr.start(inlets)
 
+def _request_frame_preview(window, nodes):
+    frame= socket_message("frame_preview", nodes[0], wait_data=True)
+    nparr = np.frombuffer(frame, np.uint8)
+    img_np = cv2.imdecode(nparr, flags=1) 
+    img_rz = cv2.resize(img_np, [1080//4, 1920//4])
+    img_b = cv2.imencode('.png', img_rz)[1].tobytes()
+    window['iphone'].update(data=img_b)
 
 def _update_button_status(window, statecolors, button_name, inlets, folder_session):
     if button_name in list(statecolors):
@@ -252,8 +260,9 @@ def _update_button_status(window, statecolors, button_name, inlets, folder_sessi
             session = None
             # Signal start LSL session if both servers devices are ready:
             if button_name == "-Connect-" and color == "green":
-                session =  _start_lsl_session(window, inlets, folder_session) 
-            window[button_name].Update(button_color=('black', color))
+                session =  _start_lsl_session(window, inlets, folder_session)
+                window['-frame_preview-'].update(visible=True)
+            window[button_name].Update(button_color=('black', color))            
             return session
 
 
@@ -360,7 +369,7 @@ def gui(remote=False, database='neurobooth'):
         elif event == '-Connect-':
             vidf_mrkr, event, values = _prepare_devices(window, nodes, collection_id,
                                                         tech_obs_log)
-
+    
         elif event == 'plot':
             _plot_realtime(window, plttr, inlets)
 
@@ -428,6 +437,9 @@ def gui(remote=False, database='neurobooth'):
     # Conditionals handling inlets for plotting and recording
     ##################################################################################
     
+        elif event == '-frame_preview-':
+            _request_frame_preview(window, nodes)
+        
         # Print LSL inlet names in GUI
         if inlet_keys != list(inlets):
             inlet_keys = list(inlets)

@@ -123,7 +123,7 @@ def _make_tasks_checkbox(task_list):
     return field_tasks
     
     
-def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
+def _main_layout(sess_info, remote=False, frame_sz=(270, 480)):
     frame_cam = np.ones(frame_sz)
     imgbytes = cv2.imencode('.png', frame_cam)[1].tobytes()
     sg.theme('Dark Grey 9')
@@ -176,8 +176,9 @@ def _main_layout(sess_info, remote=False, frame_sz=(320, 240)):
          _space(5), _lay_butt('Terminate servers', 'Shut Down'),
          ]]
 
-    layout_col2 = [[sg.Image(data=imgbytes, key='Webcam', size=frame_sz)],
-                   [_space()], [_space()], [_space()], [_space()],
+    layout_col2 = [[sg.Image(data=imgbytes, key='iphone', size=frame_sz)],
+                   [sg.Button('IPhone preview', button_color=('white', 'black'), key='-frame_preview-', visible=False)],
+                   [_space()], [_space()], [_space()],
                    [sg.Text('', justification='left', k="task_title")],
                    [sg.Text('', k="task_running", justification='left', size=(20, 1))],
                    [_space()], [_space()], [_space()], [_space()],
