@@ -98,7 +98,7 @@ class MOT(Task_Eyetracker):
         self.mycircle["d"] = d
         repulsion = self.mycircle["z"] * self.mycircle["r"]
         # enforce proximity limits
-        for i in range(numCircles -1):
+        for i in range(1, numCircles -1):
             # reposition each circle until outside repulsion area of all other circles
             tooClose = True
             while tooClose:
@@ -107,11 +107,14 @@ class MOT(Task_Eyetracker):
                 self.mycircle["y"][i] = random.random() * (self.paperSize - 2.0 * self.mycircle["r"]) + self.mycircle["r"]
     
                 # repulsion distance defaults to 5 times the circle's radius
-                for j in range(i+1, numCircles):
+                tooClose = False
+                for j in range(i):
+                    if i == j:
+                        continue
                     dist = math.sqrt((self.mycircle["x"][i] - self.mycircle["x"][j])**2 + (self.mycircle["y"][i] - self.mycircle["y"][j])**2)
-                    if dist > ( 5 * self.mycircle["r"]):
+                    if dist < ( 5 * self.mycircle["r"]):
                         # print(i, j, dist)
-                        tooClose = False
+                        tooClose = True
                         break
     
         # when done, update the circles on the DOM
@@ -155,7 +158,7 @@ class MOT(Task_Eyetracker):
             newY = oldY + velocityY
     
             # avoid collisions
-            for j in range(i, numCircles):
+            for j in range(numCircles):#i, numCircles):
                 # skip self
                 if j == i: 
                     continue
@@ -263,8 +266,6 @@ class MOT(Task_Eyetracker):
         
     def showMovingDots(self, frame):
 
-        
-            
         numTargets = frame['n_targets']
         self.mycircle['speed'] = frame['speed']
         duration = frame['duration']
@@ -280,7 +281,6 @@ class MOT(Task_Eyetracker):
             self.present_stim(self.trial_info_msg())
         else:
             self.win.flip()
-        
         
         # initialize the dots, flashgreen colors
         countDown = core.CountdownTimer()
@@ -357,7 +357,7 @@ class MOT(Task_Eyetracker):
                 # rewind frame sequence by one frame, so same frame is displayed again
                 frameSequence.insert(0, frame)
                 
-                msg_alert = "You took too long to respond!\n Remember: once the movement stops,\n" +\
+                msg_alert = "You took too long to respond!\nRemember: once the movement stops,\n" +\
                                       "click the dots that flashed." 
                 msg_stim = self.my_textbox2(msg_alert)                
                 self.present_stim([self.continue_msg, msg_stim], 'space')
@@ -434,7 +434,6 @@ class MOT(Task_Eyetracker):
         else:
             self.present_stim([visual.ImageStim(self.win, image=op.join(self.rootdir, 'task_complete.png'), pos=(0, 0), units='deg')])  
             self.win.flip()
-              
     
     
     def setFrameSequence(self):
@@ -450,7 +449,7 @@ class MOT(Task_Eyetracker):
         self.continue_msg = visual.ImageStim(self.win, image=op.join(self.rootdir, 'continue.png'), pos=(0, 0), units='deg')
         
         # set the random generator's seed
-        s = self.seed;
+        s = self.seed
     
         frame_type = [
             "begin",
@@ -459,7 +458,7 @@ class MOT(Task_Eyetracker):
             "message",
             "practice",
             "message",
-            "practice"];
+            "practice"]
     
         frame_message = [
             testMessage["begin"],
@@ -488,9 +487,8 @@ class MOT(Task_Eyetracker):
         # test 3 dots
         frame_type = ["message","test","test","test","test","test","test"]
         frame_message = [testMessage["targets3"],s, s+1, s+2, s+3, s+4, s+5,s+6]
-           
+
         frame_speed = [0,1,2,3,4,5,6]
-    
         for i in range(len(frame_type)):            
             frameSequence.append(
                     {
@@ -527,6 +525,8 @@ class MOT(Task_Eyetracker):
                         "duration": self.duration,
                         "message": frame_message[i]
                     })
+        
+        frameSequence = frameSequence[6:]
         return frameSequence
     
     
