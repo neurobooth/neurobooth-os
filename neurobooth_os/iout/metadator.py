@@ -54,56 +54,56 @@ def get_conn(remote=False, database='neurobooth'):
 
 
 def get_study_ids(conn):
-    table_study = Table('study', conn=conn)
+    table_study = Table('nb_study', conn=conn)
     studies_df = table_study.query()
     study_ids = studies_df.index.values.tolist()
     return study_ids
 
 
 def get_subject_ids(conn, first_name, last_name):
-    table_subject = Table('subject', conn=conn)
+    table_subject = Table('nb_subject', conn=conn)
     subject_df = table_subject.query(
         where=f"LOWER(first_name_birth)=LOWER('{first_name}') AND LOWER(last_name_birth)=LOWER('{last_name}')")
     return subject_df
 
 
 def get_collection_ids(study_id, conn):
-    table_study = Table('study', conn=conn)
+    table_study = Table('nb_study', conn=conn)
     studies_df = table_study.query()
     collection_ids = studies_df.loc[study_id, "collection_ids"]
     return collection_ids
 
 
 def get_tasks(collection_id, conn):
-    table_collection = Table('collection', conn=conn)
+    table_collection = Table('nb_collection', conn=conn)
     collection_df = table_collection.query(where=f"collection_id = '{collection_id}'")
     tasks_ids, = collection_df["tech_obs_array"]
     return tasks_ids
 
 
 def _new_tech_log_dict(application_id="neurobooth_os"):
-    """Create a new tech_obs_log dict."""
-    tech_obs_log = OrderedDict()
-    tech_obs_log["subject_id"] = ""
-    tech_obs_log["study_id"] = ""
-    tech_obs_log["tech_obs_id"] = ""
-    tech_obs_log["staff_id"] = ""
-    tech_obs_log["application_id"] = "neurobooth_os"
-    tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
-    tech_obs_log["event_array"] = []  # marker_name:timestamp
-    tech_obs_log["collection_id"] = ""
-    return tech_obs_log  # XXX: tech_obs_log_dict
+    """Create a new log_task dict."""
+    log_task = OrderedDict()
+    log_task["subject_id"] = ""
+    log_task["study_id"] = ""
+    log_task["tech_obs_id"] = ""
+    log_task["staff_id"] = ""
+    log_task["application_id"] = "neurobooth_os"
+    log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
+    log_task["event_array"] = []  # marker_name:timestamp
+    log_task["collection_id"] = ""
+    return log_task  # XXX: log_task_dict
 
 
 def _make_new_tech_obs_row(conn, subject_id):
-    table = Table("tech_obs_log", conn=conn)
+    table = Table("log_task", conn=conn)
     return table.insert_rows([(subject_id,)], cols=['subject_id'])
 
 
-def _fill_tech_obs_row(tech_obs_id, dict_vals, conn):  # XXX: dict_vals -> tech_obs_log_dict
+def _fill_tech_obs_row(tech_obs_id, dict_vals, conn):  # XXX: dict_vals -> log_task_dict
     # tech_obs_id = str
     # dict_vals = dict with key-vals to fill row
-    table = Table("tech_obs_log", conn=conn)
+    table = Table("log_task", conn=conn)
     vals = list(dict_vals.values())
     table.update_row(tech_obs_id, tuple(vals), cols=list(dict_vals))
 
@@ -115,7 +115,7 @@ def _get_task_param(tech_obs_id, conn):
         The tech_obs_id
     """
     # tech_obs_data, stimulus, instruction
-    table_tech_obs = Table('tech_obs_data', conn=conn)
+    table_tech_obs = Table('nb_task', conn=conn)
     tech_obs_df = table_tech_obs.query(where=f"tech_obs_id = '{tech_obs_id}'")
     devices_ids, = tech_obs_df["device_id_array"]
     sens_ids, = tech_obs_df["sensor_id_array"]
@@ -131,7 +131,7 @@ def _get_instruction_kwargs(instruction_id, conn):
     """Get dictionary from instruction table."""
     if instruction_id is None:
         return {}
-    table = Table('instruction', conn=conn)
+    table = Table('nb_instruction', conn=conn)
     instr = table.query(where=f"instruction_id = '{instruction_id}'")
     dict_instr = instr.iloc[0].to_dict()
     #remove unnecessary fields
@@ -141,7 +141,7 @@ def _get_instruction_kwargs(instruction_id, conn):
 
 def _get_stimulus_kwargs(stimulus_id, conn):
     """Get task parameters from database."""
-    table_stimulus = Table('stimulus', conn)
+    table_stimulus = Table('nb_stimulus', conn)
     stimulus_df = table_stimulus.query(where=f"stimulus_id = '{stimulus_id}'")
     stim_file, = stimulus_df["stimulus_file"]
 
@@ -164,14 +164,14 @@ def _get_stimulus_kwargs(stimulus_id, conn):
 
 
 def _get_sensor_kwargs(sens_id, conn):
-    table_sens = Table('sensor', conn=conn)
+    table_sens = Table('nb_sensor', conn=conn)
     tech_obs_df = table_sens.query(where=f"sensor_id = '{sens_id}'")
     param = tech_obs_df.iloc[0].to_dict()
     return param
 
 
 def get_dev_sn(dev_id, conn):
-    table_sens = Table('device', conn=conn)
+    table_sens = Table('nb_device', conn=conn)
     device_df = table_sens.query(where=f"device_id = '{dev_id}'")
     sn = device_df["device_sn"]
     if len(sn) == 0:
