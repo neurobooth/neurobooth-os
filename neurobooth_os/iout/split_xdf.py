@@ -34,14 +34,14 @@ def compute_clocks_diff():
     return time_offset
 
 
-def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None, folder=''):
+def split_sens_files(fname, log_task_id=None, tech_obs_id=None, conn=None, folder=''):
     """Split xdf file per sensor
 
     Parameters
     ----------
     fname : str
         name of the file to split
-    tech_obs_log_id : str, optional
+    log_task_id : str, optional
         task log id for the database, by default None. If conn not None, it can not be None. 
     tech_obs_id : str, optional
         task id for the database, by default None. If conn not None, it can not be None. 
@@ -63,7 +63,7 @@ def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None, f
     marker = [d for d in data if d['info']['name'] == ["Marker"]]
 
     if conn is not None:
-        table_sens_log = Table("sensor_file_log", conn=conn)
+        table_sens_log = Table("log_sensor_file", conn=conn)
         _, devices_ids, _, _ = meta._get_task_param(tech_obs_id, conn)
     # get video filenames if videofiles marker present
     videofiles = {}
@@ -114,11 +114,11 @@ def split_sens_files(fname, tech_obs_log_id=None, tech_obs_id=None, conn=None, f
                 head = f"{head}, {videofiles.get(name)}"
             # print(f"Videofile name: {head}")
         
-        if tech_obs_log_id is not None:
+        if log_task_id is not None:
             for sens_id in sensors_id:
-                cols = ["tech_obs_log_id", "true_temporal_resolution", "true_spatial_resolution",
+                cols = ["log_task_id", "true_temporal_resolution", "true_spatial_resolution",
                  "file_start_time", "file_end_time", "device_id", "sensor_id", 'sensor_file_path']
-                vals = [(tech_obs_log_id, temp_res, None, start_time, end_time, device_id, sens_id,
+                vals = [(log_task_id, temp_res, None, start_time, end_time, device_id, sens_id,
                  "{" + head + "}")]
                 table_sens_log.insert_rows(vals, cols)
 

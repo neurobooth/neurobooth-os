@@ -53,7 +53,7 @@ def _process_received_data(serv_data, window):
             window.write_event_value('-update_butt-', elem)
 
         elif "Initiating task:" in data_row:
-            # Initiating task:task_id:obs_id:tech_obs_log_id:tsk_strt_time
+            # Initiating task:task_id:obs_id:log_task_id:tsk_strt_time
             _, task_id, obs_id, obs_log_id, tsk_strt_time = data_row.split(":")
             window.write_event_value('task_initiated', f"['{task_id}', '{obs_id}', '{obs_log_id}', '{tsk_strt_time}']")
 
@@ -107,14 +107,14 @@ def _get_collections(window, conn, study_id):
     window["collection_id"].update(values=collection_ids)
     return collection_ids
 
-def _save_session(window, tech_obs_log, staff_id, subject_id, first_name,
+def _save_session(window, log_task, staff_id, subject_id, first_name,
                   last_name, tasks):
     """Save session."""
-    tech_obs_log["staff_id"] = staff_id
-    tech_obs_log["subject_id"] = subject_id
-    tech_obs_log["subject_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
+    log_task["staff_id"] = staff_id
+    log_task["subject_id"] = subject_id
+    log_task["subject_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
 
-    subject_id_date = tech_obs_log["subject_id-date"]
+    subject_id_date = log_task["subject_id-date"]
 
     window.close()
 
@@ -266,7 +266,7 @@ def _update_button_status(window, statecolors, button_name, inlets, folder_sessi
             return session
 
 
-def _prepare_devices(window, nodes, collection_id, tech_obs_log):
+def _prepare_devices(window, nodes, collection_id, log_task):
     """Prepare devices"""
     window['-Connect-'].Update(button_color=('black', 'red'))
     event, values = window.read(.1)
@@ -278,7 +278,7 @@ def _prepare_devices(window, nodes, collection_id, tech_obs_log):
 
     nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:
-        socket_message(f"prepare:{collection_id}:{str(tech_obs_log)}", node)
+        socket_message(f"prepare:{collection_id}:{str(log_task)}", node)
     
     return vidf_mrkr, event, values
 
@@ -311,7 +311,7 @@ def gui(remote=False, database='neurobooth'):
     window = _win_gen(_init_layout, conn)
 
     plttr = stream_plotter()
-    tech_obs_log = meta._new_tech_log_dict()
+    log_task = meta._new_tech_log_dict()
     stream_ids, inlets = {}, {}
     plot_elem, inlet_keys = [], []
 
@@ -328,7 +328,7 @@ def gui(remote=False, database='neurobooth'):
         ############################################################
         if event == "study_id":
             study_id = values[event]
-            tech_obs_log["study_id"] = study_id
+            log_task["study_id"] = study_id
             collection_ids = _get_collections(window, conn, study_id)
 
         elif event == 'find_subject':
@@ -343,7 +343,7 @@ def gui(remote=False, database='neurobooth'):
 
         elif event == "collection_id":
             collection_id = values[event]
-            tech_obs_log["collection_id"] = collection_id
+            log_task["collection_id"] = collection_id
             tasks = _get_tasks(window, conn, collection_id)
 
         elif event == "_init_sess_save_":
@@ -351,7 +351,7 @@ def gui(remote=False, database='neurobooth'):
                 sg.PopupError('No task combo')
             else:
                 sess_info = _save_session(window,
-                                          tech_obs_log, values['staff_id'],
+                                          log_task, values['staff_id'],
                                           subject_id, first_name, last_name, tasks)
                 # Open new layout with main window
                 window = _win_gen(_main_layout, sess_info, remote)
@@ -368,7 +368,7 @@ def gui(remote=False, database='neurobooth'):
         # Turn on devices
         elif event == '-Connect-':
             vidf_mrkr, event, values = _prepare_devices(window, nodes, collection_id,
-                                                        tech_obs_log)
+                                                        log_task)
     
         elif event == 'plot':
             _plot_realtime(window, plttr, inlets)
@@ -406,7 +406,7 @@ def gui(remote=False, database='neurobooth'):
             
         # Signal a task started: record LSL data and update gui
         elif event == 'task_initiated':
-            # event values -> f"['{task_id}', '{t_obs_id}', '{tech_obs_log_id}, '{tsk_strt_time}']
+            # event values -> f"['{task_id}', '{t_obs_id}', '{log_task_id}, '{tsk_strt_time}']
             task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
             rec_fname = _record_lsl(window, session, sess_info['subject_id_date'], task_id,
                                     t_obs_id, obs_log_id, tsk_strt_time)

@@ -105,10 +105,10 @@ sens_yeti["Yeti_mic_1"] = {
     "file_type": "xdf"
 }
 
-insert_to_table('sensor', list(sens_yeti.values()))
+insert_to_table('nb_sensor', list(sens_yeti.values()))
 
 for sens in [sens_intel, sens_mbient, sens_FLIR]:
-    insert_to_table('sensor', list(sens.values()))
+    insert_to_table('nb_sensor', list(sens.values()))
 
 # eyelink
 
@@ -120,7 +120,7 @@ sens_Eyelink["Eyelink_sens_1"] = {
     "spatial_res_y": None,
     "file_type": "edf"
 }
-insert_to_table('sensor', list(sens_Eyelink.values()))
+insert_to_table('nb_sensor', list(sens_Eyelink.values()))
 
 ############# DEVICES #############
 
@@ -161,7 +161,7 @@ for intel in ["intel1", "intel2", "intel3"]:
     }
     dev_intels.append(dev_intel_info)
 
-insert_to_table('device', dev_intels)
+insert_to_table('nb_device', dev_intels)
 
 
 # Mbient
@@ -189,7 +189,7 @@ for k, mac in cfg.mbient_macs.items():
     except BaseException:
         continue
 
-insert_to_table('device', dev_mbient)
+insert_to_table('nb_device', dev_mbient)
 
 # FLIR camera
 system = PySpin.System.GetInstance()
@@ -206,7 +206,7 @@ dev_FLIR_info = {
     "sensor_id_array": make_id_array(sens_FLIR)
 }
 
-insert_to_table('device', [dev_FLIR_info])
+insert_to_table('nb_device', [dev_FLIR_info])
 
 # Yeti mic
 audio = pyaudio.PyAudio()
@@ -234,7 +234,7 @@ dev_Yeti_info = {
     "sensor_id_array": make_id_array(sens_yeti)
 }
 
-insert_to_table('device', [dev_Yeti_info])
+insert_to_table('nb_device', [dev_Yeti_info])
 
 pc_name = socket.gethostname()
 
@@ -257,4 +257,4 @@ if pc_name == "stm":
         "sensor_id_array": make_id_array(sens_Eyelink)
     }
 
-    insert_to_table('device', [dev_Eyelink_info])
+    insert_to_table('nb_device', [dev_Eyelink_info])

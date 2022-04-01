@@ -19,25 +19,25 @@ def insert_mock_rows(conn_mock):
     """
     table_ids = list_tables(conn_mock)
 
-    table = Table('study', conn_mock)
+    table = Table('nb_study', conn_mock)
     table.insert_rows([('mock_study', 'mock_study', '{mock_collection}', 0)],
                         cols=['study_id', 'study_title', 'collection_ids', 'IRB_protocol_number'])
 
-    table = Table('collection', conn_mock)
+    table = Table('nb_collection', conn_mock)
     table.insert_rows([('mock_collection', '{mock_obs_1}')],
                       cols=['collection_id', 'tech_obs_array'])
 
-    table = Table('stimulus', conn_mock)
+    table = Table('nb_stimulus', conn_mock)
     table.insert_rows([('mock_task_1', 'description', 2, 5,                        
                         'mock.mock_task.py::MockTask()', 'mp4')],
                         cols=['stimulus_id', 'stimulus_description', 'num_iterations', "duration",
                          'stimulus_file', 'stimulus_filetype'])
 
-    Table('instruction', conn_mock).insert_rows(
+    Table('nb_instruction', conn_mock).insert_rows(
         [('mock_instruction_id', "mock task, follow the instructions",)],
         cols=['instruction_id', 'instruction_text'])
 
-    table = Table('tech_obs_data', conn_mock)
+    table = Table('nb_task', conn_mock)
     table.insert_rows([('mock_obs_1', 'mock_instruction_id', 'mock_task_1',
                         '{mock_Mbient_1,mock_Mbient_2, mock_Intel_1, IPhone_dev_1}',                        
                         ('{{mock_Mbient_acc_1, mock_Mbient_grad_1},'
@@ -48,7 +48,7 @@ def insert_mock_rows(conn_mock):
                          cols=["tech_obs_id", "instruction_id", "stimulus_id", "device_id_array",
                           "sensor_id_array", "feature_of_interest" ])
 
-    table = Table('device', conn_mock)
+    table = Table('nb_device', conn_mock)
     cols = ['device_id', 'device_sn', 'wearable_bool', 'device_location',
             'device_name', 'device_make', 'device_model', 'device_firmware',
             'sensor_id_array']
@@ -68,7 +68,7 @@ def insert_mock_rows(conn_mock):
                         '{IPhone_sens_1}')], cols=cols)
 
 
-    table = Table('sensor', conn_mock)
+    table = Table('nb_sensor', conn_mock)
     cols = ['sensor_id', 'temporal_res', 'spatial_res_x', 'spatial_res_y',
             'file_type', 'laterality']
     table.insert_rows([('mock_sens_1', 100, None, None, 'edf', None)], cols=cols)

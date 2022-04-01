@@ -60,7 +60,7 @@ def prepare_feedback(nodes=("acquisition", "presentation")):
 
 def prepare_devices(collection_id="mvp_025", nodes=("acquisition", "presentation")):
     # prepares devices, collection_id can be just colletion name but also
-    # "collection_id:str(tech_obs_log)"
+    # "collection_id:str(log_task)"
     nodes = _get_nodes(nodes)
     for node in nodes:
         socket_message(f"prepare:{collection_id}", node)
