@@ -34,7 +34,7 @@ def compute_clocks_diff():
     return time_offset
 
 
-def split_sens_files(fname, log_task_id=None, tech_obs_id=None, conn=None, folder=''):
+def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''):
     """Split xdf file per sensor
 
     Parameters
@@ -43,7 +43,7 @@ def split_sens_files(fname, log_task_id=None, tech_obs_id=None, conn=None, folde
         name of the file to split
     log_task_id : str, optional
         task log id for the database, by default None. If conn not None, it can not be None. 
-    tech_obs_id : str, optional
+    task_id : str, optional
         task id for the database, by default None. If conn not None, it can not be None. 
     conn : callable
         Connector to the database, if None does not insert rows, by default None
@@ -64,7 +64,7 @@ def split_sens_files(fname, log_task_id=None, tech_obs_id=None, conn=None, folde
 
     if conn is not None:
         table_sens_log = Table("log_sensor_file", conn=conn)
-        _, devices_ids, _, _ = meta._get_task_param(tech_obs_id, conn)
+        _, devices_ids, _, _ = meta._get_task_param(task_id, conn)
     # get video filenames if videofiles marker present
     videofiles = {}
     if 'videofiles' in [d['info']['name'][0] for d in data]:
@@ -83,8 +83,8 @@ def split_sens_files(fname, log_task_id=None, tech_obs_id=None, conn=None, folde
         device_id = dev_data['info']['desc'][0]["device_id"][0]
         sensors_id = eval(dev_data['info']['desc'][0]["sensor_ids"][0])
 
-        # Only log and split devices in tech_obs DB
-        if tech_obs_id is not None and device_id not in devices_ids:
+        # Only log and split devices in task DB
+        if task_id is not None and device_id not in devices_ids:
             # print(f"Skipping {name} not in tech obs device list: {devices_ids}")
             continue
         
