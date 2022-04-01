@@ -86,9 +86,9 @@ def delete_mock_rows(conn_mock):
     conn_mock : instance of psychopg2.connection
         The connection object to the mock database.
     """
-    table_ids = ['study', 'collection', 'task_data', 'device',
-                    'sensor', 'stimulus', 'instruction']
-    primary_keys = ['study_id', 'collection_id', 'task_id',
+    table_ids = ['nb_study', 'nb_collection', 'nb_device',
+                 'nb_sensor', 'nb_stimulus', 'nb_instruction']
+    primary_keys = ['study_id', 'collection_id',
                     'device_id', 'sensor_id', 'stimulus_id', 'instruction_id']
     for table_id, pk in zip(table_ids, primary_keys):
         table = Table(table_id, conn_mock)
