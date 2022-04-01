@@ -246,6 +246,11 @@ def _plot_realtime(window, plttr, inlets):
 
 def _request_frame_preview(window, nodes):
     frame= socket_message("frame_preview", nodes[0], wait_data=True)
+    
+    # If frame just error massage, return
+    if len(frame) < 100:
+        return
+    
     nparr = np.frombuffer(frame, np.uint8)
     img_np = cv2.imdecode(nparr, flags=1) 
     img_rz = cv2.resize(img_np, [1080//4, 1920//4])
