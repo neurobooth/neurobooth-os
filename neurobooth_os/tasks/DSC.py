@@ -70,7 +70,9 @@ class DSC(Task_Eyetracker):
     def run(self, **kwargs):
         self.win.color = "white"
         self.win.flip()
+        self.sendMessage(self.marker_task_start, to_marker=True, add_event=True) 
         self.nextTrial()
+        self.sendMessage(self.marker_task_end, to_marker=True, add_event=True) 
         self.io.quit()
 
 
@@ -184,7 +186,7 @@ class DSC(Task_Eyetracker):
                     s.draw()
                 self.win.flip()
 
-                self.send_marker("Trial-start")
+                self.sendMessage(self.marker_trial_start)                
                 self.sendMessage("TRIALID", to_marker=False)
                 
                 trialClock = core.Clock()
@@ -200,7 +202,7 @@ class DSC(Task_Eyetracker):
                     key = event.getKeys(keyList=['1', '2', '3'], timeStamped=True)
                     if key:
                         kvl = key[0][0]
-                        self.sendMessage("Trial-res_0")
+                        self.sendMessage(self.marker_response_start)
                         self.tmbUI["rt"] = trialClock.getTime()
                         self.tmbUI["response"] = ["key", key[0][0]]
                         self.tmbUI["downTimestamp"] = key[0][1]
@@ -219,20 +221,19 @@ class DSC(Task_Eyetracker):
                             ss.draw()
                         self.win.flip()
                         response_events = self.keyboard.waitForReleases()                       
-                        self.sendMessage("Trial-res_1")
+                        self.sendMessage(self.marker_response_end)
                         break
 
                 if timed_out:
                     print("timed out")
                     self.tmbUI["status"] = "timeout"
                     self.tmbUI["response"] = ["key", ""]
-                self.sendMessage("Trial-end")
+                self.sendMessage(self.marker_trial_end)
                 self.onreadyUI(frame)
 
 
         # all test trials (excluding practice and timeouts)
-        tmp1 = [r for r in self.results
-                if r["type"] != 'practice' and r["state"] != 'timeout']
+        tmp1 = [r for r in self.results if r["type"] != 'practice' and r["state"] != 'timeout']
 
         # all correct rts
         tmp2 = [r['rt'] for r in tmp1 if r["correct"]]
@@ -294,7 +295,7 @@ class DSC(Task_Eyetracker):
         frameType = ["begin",
                      "message",
                      "message",
-                      "message",
+                     "message",
                      "practice",
                      "practice",
                      "practice",

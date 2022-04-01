@@ -20,8 +20,8 @@ class Passage_Reading(Task):
     def present_task(self, prompt=True, duration=0, **kwargs):
         fname = op.join(neurobooth_os.__path__[0], 'tasks/assets/passage_reading_1536x864.jpg')
         screen = utils.create_image_screen(self.win, fname)
-        self.present_text(screen=screen, msg='task', audio=None, wait_time=5)
+        self.show_text(screen=screen, msg='Task', audio=None, wait_time=5)
         
         if prompt:
-            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
+            self.show_text(screen=self.press_task_screen, msg='Task-continue-repeat', func=self.present_task,
                             waitKeys=False)   

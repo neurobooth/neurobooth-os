@@ -106,8 +106,10 @@ def play_video(win, mov, wait_time=1, stop=True):
                 continue
             if stop:
                 mov.stop()
+                mov.seek(0)
             else:
                 mov.pause()
+                mov.seek(0)
             break
 
 def rewind_video(win, mov):

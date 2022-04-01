@@ -22,19 +22,14 @@ def my_textbox2(win, text, pos=(0, 0), size=(None, None)):
     return tbx
 
 
-def welcome_screen(with_audio=True, win=None):
+def welcome_screen(win=None):
     if win is None:
         win = utl.make_win(full_screen=False)
 
     fname = op.join(neurobooth_os.__path__[0], 'tasks/assets/welcome.jpg')
     welcome = visual.ImageStim(win, image=fname, units='pix')
-    if with_audio:
-        fname = op.join(neurobooth_os.__path__[0], 'tasks/assets/welcome.wav')
-        welcome_audio = sound.Sound(fname, secs=-1, stereo=True, hamming=True,
-                                    name='welcome_instructions')
-    else:
-        welcome_audio = None
-    utl.present(win, welcome, welcome_audio, 0, waitKeys=True, first_screen=True)
+
+    utl.present(win, welcome, waitKeys=True, first_screen=True)
 
     win.winHandle.activate()
     return win

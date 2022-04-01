@@ -30,7 +30,7 @@ class Saccade(Task_Eyetracker):
         self.jitter_percent = jitter_percent
         self.pointer_size_deg = target_size
         self.pointer_size_pixel = deg2pix(self.pointer_size_deg, self.subj_screendist_cm, self.pixpercm)
-        # [-amp_x, amp_y]
+
         if direction == 'horizontal':
             self.movement_pars = [self.amplitude_pixel, 0]
         elif direction == 'vertical':
@@ -40,12 +40,12 @@ class Saccade(Task_Eyetracker):
 
     def run(self, prompt=True, **kwargs):
         self.present_instructions(prompt)        
-        self.run_trials()
+        self.run_trials(prompt)
         self.present_complete()
         self.close()
 
-                                              
-    def run_trials(self):
+
+    def run_trials(self, prompt=True):
         """ Run a smooth pursuit trial"""
 
         # Parse the movement pattern parameters
@@ -55,9 +55,6 @@ class Saccade(Task_Eyetracker):
 
         # Take the tracker offline
         self.setOfflineMode()
-
-        # Send the standard "TRIALID" message to mark the start of a trial
-        self.sendMessage("TRIALID")
 
         # Record_status_message : show some info on the Host PC
         self.sendCommand("record_status_message 'Pursuit task'")
@@ -72,7 +69,8 @@ class Saccade(Task_Eyetracker):
         #                        int(self.mon_size[1] / 2.0 - 0), 0, 1])
         self.win.color = (0, 0, 0)
         self.win.flip()
- 
+        
+        self.sendMessage("TRIALID")
         # Start recording
         self.startRecording()
 
@@ -80,11 +78,11 @@ class Saccade(Task_Eyetracker):
         pylink.msecDelay(100)
 
         # Send a message to mark movement onset
-        frame = 0
+        self.sendMessage(self.marker_task_start)
+
         for index in range(self.ntrials):
 
             self.target.pos = (0, 0)
-            self.target.size = self.pointer_size_pixel
             self.target.draw()
             self.win.flip()
             self.send_target_loc(self.target.pos)
@@ -92,42 +90,37 @@ class Saccade(Task_Eyetracker):
             core.wait(self.wait_center + self.jitter_percent*self.wait_center*np.random.random(1)[0])
 
             self.target.pos = (tar_x, tar_y)
-            self.target.size = self.pointer_size_pixel
             self.target.draw()
             self.win.flip()
-            self.send_target_loc(self.target.pos)
-            
-            flip_time = core.getTime()
-            frame += 1
-            if frame == 1:
-                self.sendMessage('Movement onset')
-                move_start = core.getTime()           
-
-
-            time_elapsed = flip_time - move_start
+            self.send_target_loc(self.target.pos)          
 
             # update the target position
             tar_x = self.trial_sign[index] * amp_x 
             tar_y = self.trial_sign[index] * amp_y 
 
             core.wait(self.wait_offset + self.jitter_percent*self.wait_offset*np.random.random(1)[0])
+    
         # clear the window
-
         self.win.color = (0, 0, 0)
         self.win.flip()
 
         # Stop recording
         self.setOfflineMode()
-        # self.et.paused = True
 
+        self.sendMessage(self.marker_task_end)
+        
         # Send trial variables to record in the EDF data file
         self.sendMessage(f"!V TRIAL_VAR amp_x {amp_x:.2f}")
         self.sendMessage(f"!V TRIAL_VAR amp_y {amp_y:.2f}")
-        pylink.pumpDelay(2)  # give the tracker a break
+        pylink.pumpDelay(1)  # give the tracker a break
         self.sendMessage(f"!V TRIAL_VAR ntrials {self.ntrials:.2f}")
 
         # Send a 'TRIAL_RESULT' message to mark the end of the trial
         self.sendMessage('TRIAL_RESULT')
+        
+        if prompt:
+            self.show_text(screen=self.press_task_screen, msg='Task-continue-repeat', func=self.run_trials,
+                          waitKeys=False)
 
 if __name__ == "__main__":
     
