@@ -41,11 +41,11 @@ class Task():
         self.marker_task_end = 'Task_end'
         self.marker_trial_start = 'Trial_start'
         self.marker_trial_end = 'Trial_end'
-        self.marker_trial_Nth_start = 'Trial_{}_start'
-        self.marker_trial_Nth_end = 'Trial_{}_end'
         self.marker_response_start = 'Response_start'
         self.marker_response_end = 'Response_end'
-        
+#         self.marker_trial_start_Nth = 'Trial_start_{}'
+#         self.marker_trial_end_Nth = 'Trial_end_{}'
+
         #self.path_instruction_video = op.join(cfg.paths['video_tasks'], instruction_file)
         self.path_instruction_video = instruction_file
         self.full_screen = full_screen
