@@ -29,12 +29,16 @@ class Fixation_Target(Task_Eyetracker):
         self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
         if sum(self.target.size):
             self.send_target_loc(self.target.pos)
-        self.present_text(screen=self.target, msg='task', audio=None, wait_time=duration, waitKeys=False)
-        
+            
+        # Send event to eyetracker and to LSL separately
+        self.sendMessage(self.marker_task_start, False)
+        self.show_text(screen=self.target, msg='Task', audio=None, wait_time=duration, waitKeys=False)
+        self.sendMessage(self.marker_task_end, False)
+
         if prompt:
             func_kwargs = locals()
             del func_kwargs['self']
-            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
+            self.show_text(screen=self.press_task_screen, msg='Task-continue-repeat', func=self.present_task,
                           func_kwargs=func_kwargs, waitKeys=False)
 
 
@@ -43,18 +47,28 @@ class Fixation_Target_Multiple(Task_Eyetracker):
         super().__init__(**kwargs)
     
     def present_task(self, prompt=True, duration=3, trial_pos=[(0,0), (0,15)], target_size=.7, **kwargs):
+
+        
+        self.sendMessage(self.marker_task_start)
         self.countdown_task()
+        
         for pos in trial_pos:
             self.target.pos = [self.deg_2_pix(pos[0]), self.deg_2_pix(pos[1])] 
             self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
             if sum(self.target.size):
                 self.send_target_loc(self.target.pos)
-            self.present_text(screen=self.target, msg='trial', audio=None, wait_time=duration, waitKeys=False)
+                
+            # Send event to eyetracker and to LSL separately
+            self.sendMessage(self.marker_trial_start, False)
+            self.show_text(screen=self.target, msg='Trial', audio=None, wait_time=duration, waitKeys=False)
+            self.sendMessage(self.marker_trial_end, False)
+            
+        self.sendMessage(self.marker_task_end)
         
         if prompt:
             func_kwargs = locals()
             del func_kwargs['self']
-            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
+            self.show_text(screen=self.press_task_screen, msg='Task-continue-repeat', func=self.present_task,
                           func_kwargs=func_kwargs, waitKeys=False)
 
 
@@ -64,26 +78,32 @@ class Fixation_Target_sidetrials(Task_Eyetracker):
     
     def present_task(self, prompt=True, duration=3, target_pos=(-10,10), target_size=.7, trial_intruct=['trial 1', 'trial 2'], **kwargs):
         
+        self.sendMessage(self.marker_task_start)
+
         for nth, trl in enumerate(trial_intruct):            
             msg = utils.create_text_screen(self.win, trl  + "\n\n\nPress CONTINUE")
-            self.send_marker(f"trial_{nth}-start", True)
-            utils.present(self.win, msg)
-        
-            self.countdown_task()
+            utils.present(self.win, msg)        
+            self.countdown_task()            
+            
             self.target.pos = [self.deg_2_pix(target_pos[0]), self.deg_2_pix(target_pos[1])]  
             self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
             if sum(self.target.size):
                 self.send_target_loc(self.target.pos)
-            self.present_text(screen=self.target, msg='task', audio=None, wait_time=duration, waitKeys=False)
+                
+            # Send event to eyetracker and to LSL separately
+            self.sendMessage(self.marker_trial_start, False)
+            self.show_text(screen=self.target, msg='Trial', audio=None, wait_time=duration, waitKeys=False)
+            self.sendMessage(self.marker_trial_end, False)
             
             msg = utils.create_text_screen(self.win, "Task on one side ended")
             utils.present(self.win, msg, wait_time=2, waitKeys=False)
-            self.send_marker(f"trial_{nth}-end", True)
             
+        self.sendMessage(self.marker_task_end)
+
         if prompt:
             func_kwargs = locals()
             del func_kwargs['self']
-            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
+            self.show_text(screen=self.press_task_screen, msg='Task-continue-repeat', func=self.present_task,
                           func_kwargs=func_kwargs, waitKeys=False)
             
 
