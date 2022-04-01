@@ -26,7 +26,7 @@ database, nodes, host_ctr, port_ctr = _get_ports(remote, database=database)
 
 steps = list()
 stream_ids, inlets = dict(), dict()
-tech_obs_log = meta._new_tech_log_dict()
+log_task = meta._new_tech_log_dict()
 
 start_window = MockWindow(['first_name', 'last_name', 'dob', 'collection_id',
                            'tasks', 'select_subject'])
@@ -39,14 +39,14 @@ conn = meta.get_conn(remote=remote, database=database)
 subject_df = _find_subject(start_window, conn, first_name, last_name)
 first_name, last_name, subject_id = _select_subject(start_window, subject_df)
 
-tech_obs_log["study_id"] = study_id
+log_task["study_id"] = study_id
 collection_ids = _get_collections(start_window, conn, study_id)
 
-tech_obs_log["collection_id"] = collection_id
+log_task["collection_id"] = collection_id
 tasks = _get_tasks(start_window, conn, collection_id)
 
 sess_info = _save_session(start_window,
-                          tech_obs_log, staff_id,
+                          log_task, staff_id,
                           subject_id, first_name, last_name, tasks)
 
 ####### MAIN WINDOW #########
@@ -57,7 +57,7 @@ _start_servers(main_window, conn, nodes, remote=remote)
 if not remote:
     time.sleep(5)
 vidf_mrkr, _, _ = _prepare_devices(main_window, nodes, collection_id,
-                                   tech_obs_log)
+                                   log_task)
 
 # Start LSL streams
 n_nodes_ready = 0
