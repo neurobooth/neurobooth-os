@@ -45,7 +45,7 @@ def mock_stm_routine(host, port, conn):
             log_task = eval(data.replace(f"prepare:{collection_id}:", ""))
             subject_id_date = log_task["subject_id-date"]
 
-            ses_folder = f"{config.paths['data_out']}{subject_id_date}"
+            ses_folder = os.path.join(config.paths['data_out'], subject_id_date)
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
