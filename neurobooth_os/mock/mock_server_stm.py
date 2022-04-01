@@ -88,7 +88,7 @@ def mock_stm_routine(host, port, conn):
                     continue                    
                 
                 t_obs_id = task_func_dict[task]['t_obs_id']
-                log_task_id = meta._make_new_tech_obs_row(conn, subj_id)
+                log_task_id = meta._make_new_task_row(conn, subj_id)
                 log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
                 tsk_strt_time = datetime.now().strftime("%Hh-%Mm-%Ss")
 
@@ -108,10 +108,10 @@ def mock_stm_routine(host, port, conn):
                 socket_message("record_stop", "dummy_acq", wait_data=15)
                 print(f"Finished task:{task}")
                 
-                # Log tech_obs to database
-                log_task["tech_obs_id"] = t_obs_id
+                # Log task to database
+                log_task["task_id"] = t_obs_id
                 log_task['event_array'] =  str(events).replace("'", '"') if events is not None else "event:datestamp"
-                meta._fill_tech_obs_row(log_task_id, log_task, conn)
+                meta._fill_task_row(log_task_id, log_task, conn)
                 
                 # Check if pause requested, continue or stop
                 data = get_data_timeout(s1, .1)

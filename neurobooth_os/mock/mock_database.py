@@ -25,7 +25,7 @@ def insert_mock_rows(conn_mock):
 
     table = Table('nb_collection', conn_mock)
     table.insert_rows([('mock_collection', '{mock_obs_1}')],
-                      cols=['collection_id', 'tech_obs_array'])
+                      cols=['collection_id', 'task_array'])
 
     table = Table('nb_stimulus', conn_mock)
     table.insert_rows([('mock_task_1', 'description', 2, 5,                        
@@ -45,7 +45,7 @@ def insert_mock_rows(conn_mock):
                          '{mock_Intel_rgb_1, mock_Intel_depth_1}},'
                          '{IPhone_sens_1, ""}')
                          , "hand")], 
-                         cols=["tech_obs_id", "instruction_id", "stimulus_id", "device_id_array",
+                         cols=["task_id", "instruction_id", "stimulus_id", "device_id_array",
                           "sensor_id_array", "feature_of_interest" ])
 
     table = Table('nb_device', conn_mock)
@@ -86,9 +86,9 @@ def delete_mock_rows(conn_mock):
     conn_mock : instance of psychopg2.connection
         The connection object to the mock database.
     """
-    table_ids = ['study', 'collection', 'tech_obs_data', 'device',
+    table_ids = ['study', 'collection', 'task_data', 'device',
                     'sensor', 'stimulus', 'instruction']
-    primary_keys = ['study_id', 'collection_id', 'tech_obs_id',
+    primary_keys = ['study_id', 'collection_id', 'task_id',
                     'device_id', 'sensor_id', 'stimulus_id', 'instruction_id']
     for table_id, pk in zip(table_ids, primary_keys):
         table = Table(table_id, conn_mock)

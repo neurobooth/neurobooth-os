@@ -7,7 +7,7 @@
 
     "collection":{
         "collection_id":"mock_collection",
-        "tech_obs_array": "{mock_obs_1}"
+        "task_array": "{mock_obs_1}"
 
     },
 
@@ -26,9 +26,9 @@
         }
     },
 
-    "tech_obs_data":{
+    "task_data":{
         "mock_obs_1": {
-            "tech_obs_id":"mock_obs_1",
+            "task_id":"mock_obs_1",
             "instruction_id":10, 
             "stimulus_id":"mock_task_1", 
             "device_id_array":"{mock_Mbient_1,mock_Mbient_2, mock_Intel_1}",
