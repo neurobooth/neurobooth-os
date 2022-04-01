@@ -64,7 +64,7 @@ class Pursuit(Task_Eyetracker):
         
         # self.doDriftCorrect([int(tar_x + self.mon_size[0] / 2.0),
         #                        int(self.mon_size[1] / 2.0 - tar_y), 0, 1])
- 
+
         # Start recording
         self.startRecording()
 
@@ -72,6 +72,7 @@ class Pursuit(Task_Eyetracker):
         pylink.msecDelay(100)
 
         # Send a message to mark movement onset
+        self.sendMessage(self.marker_task_start)
         frame = 0
         time_array = []
         while True:
@@ -115,12 +116,14 @@ class Pursuit(Task_Eyetracker):
         # Stop recording
         self.setOfflineMode()
         # self.et.paused = True
-
+        
+        self.sendMessage(self.marker_task_end)
+        
         # Send trial variables to record in the EDF data file
         self.sendMessage(f"!V TRIAL_VAR amp_x {amp_x:.2f}")
         self.sendMessage(f"!V TRIAL_VAR amp_y {amp_y:.2f}")
         self.sendMessage(f"!V TRIAL_VAR phase_x {phase_x:.2f}")
-        pylink.pumpDelay(2)  # give the tracker a break
+        pylink.pumpDelay(1)  # give the tracker a break
         self.sendMessage(f"!V TRIAL_VAR phase_y {phase_y:.2f}")
         self.sendMessage(f"!V TRIAL_VAR freq_x {freq_x:.2f}")
         self.sendMessage(f"!V TRIAL_VAR freq_y {freq_y:.2f}")
@@ -132,7 +135,7 @@ class Pursuit(Task_Eyetracker):
         if prompt:
             func_kwargs_func = {'prompt': prompt,
                                 'movement_pars': movement_pars}
-            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.run_trial,
+            self.show_text(screen=self.press_task_screen, msg='Task-continue-repeat', func=self.run_trial,
                           func_kwargs=func_kwargs_func, waitKeys=False)
 
 if __name__ == "__main__":

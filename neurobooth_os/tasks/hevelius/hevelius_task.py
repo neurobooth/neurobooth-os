@@ -2,18 +2,18 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import, division
+import json
+import os.path as op
 
-import numpy as np
 import pylink
-from numpy.random import shuffle
-from psychopy import visual, core, data, event, logging
+from psychopy import visual, core, data, event
 from psychopy.constants import NOT_STARTED, STARTED, FINISHED
 from psychopy.hardware import keyboard
+
 from neurobooth_os.tasks import utils
 from neurobooth_os.tasks.task import Task_Eyetracker
 import neurobooth_os
-import json
-import os.path as op
+
 
 class hevelius_task(Task_Eyetracker):
 
@@ -24,10 +24,11 @@ class hevelius_task(Task_Eyetracker):
         self.path_out = path
         self.subj_id = subj_id
         # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
-        self.filename = self.path_out + f'{self.subj_id}_MouseTask_results'
+        self.filename = self.path_out + f'{self.subj_id}_Hevelius_results'
         self.frameTolerance = 0.001  # how close to onset before 'same' frame
         self.rep = ''  # repeated task num to add to filename
         self.trial_data_fname = trial_data_fname
+        
         with open(op.join(neurobooth_os.__path__[0], self.trial_data_fname)) as f:
             self.trials_data = json.load(f)
         self.record_psychopy = record_psychopy
@@ -65,29 +66,29 @@ class hevelius_task(Task_Eyetracker):
         # # Recording database
         self.startRecording()
         pylink.msecDelay(100)
+        
         self.run_blocks(practice_blocks, 'Practice ')
         text_practice_done = 'Thank you for completing Practice Session \n\tPlease press:\n\t"Continue" to the task'
         continue_screen = utils.create_text_screen(self.win, text_practice_done)
-        self.present_text(continue_screen, msg='Practice session completed')
+        self.show_text(continue_screen, msg='Practice session completed')
+        
+        self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
         self.run_blocks(trials_blocks, '')
-        self.sendMessage('EyeTracking Done')
+        self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
 
         if prompt:
             func_kwargs_func = {'prompt': prompt}
             self.rep += "_I"
-            self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.run,
+            self.show_text(screen=self.press_task_screen, msg='Task-continue-repeat', func=self.run,
                               func_kwargs=func_kwargs_func, waitKeys=False)
         self.present_complete()
         return self.events
 
     def run_blocks(self, blocks, block_type):
         for index, block in enumerate(blocks):
-            print('block start')
-#             self.sendMessage(f"TRIALID {index+1}")
-#             self.sendMessage(block_type + ' Block {} of {}'.format(index+1,  len(blocks)))
             text_continue = block_type + 'Block {} of {} \n\tPlease press:\n\t"Continue" to advance'.format(index + 1, len(blocks))
             continue_screen = utils.create_text_screen(self.win, text_continue)
-            self.present_text(continue_screen, msg=block_type + ' Block {} of {}'.format(index+1,  len(blocks)))
+            self.show_text(continue_screen, msg=block_type + ' Block {} of {}'.format(index+1,  len(blocks)))
             self.run_trials(self.trials_data[block], block_type)
             utils.change_win_color(self.win, 'grey')
 
@@ -97,8 +98,6 @@ class hevelius_task(Task_Eyetracker):
         # create a default keyboard (e.g. to check for escape)
         defaultKeyboard = keyboard.Keyboard()
         mouse = event.Mouse(win=self.win)
-
-        # An ExperimentHandler isn't essential but helps with data saving
 
         # An ExperimentHandler isn't essential but helps with data saving
         thisExp = data.ExperimentHandler(name=self.subj_id, version='', runtimeInfo=None,
@@ -145,6 +144,9 @@ class hevelius_task(Task_Eyetracker):
 
         for index, thisTrial in enumerate(trials):
             self.sendMessage(block_type + 'Task {} of {}'.format(index + 1, len(locs)))
+            
+            if 'Practice' not in block_type:
+                self.sendMessage(self.marker_trial_start)
             #self.screen_text.text = block_type + 'Task {} of {}'.format(index + 1, len(locs))
 
             # abbreviate parameter names if possible (e.g. rgb = thisTrial.rgb)
@@ -225,18 +227,9 @@ class hevelius_task(Task_Eyetracker):
                     for obj in [polygon]:
                         if obj.contains(mouse):
                             onTarget = 1
-                    # if onTarget:
-                    #     self.sendMessage('mouse_in_target_1')
+
                     self.sendMessage(str({'button':mouse.getPressed()[0], 'x':x, 'y':y, 'time':core.getTime(), 'in':onTarget}))
 
-                    # if onTarget and not was_inside:
-                    #     self.sendMessage('mouse_in_target_1')
-                    #     was_inside = True
-                    # elif was_inside and not onTarget:
-                    #     self.sendMessage('mouse_off_target_0')
-                    #     was_inside = False
-                        
-                        
                     buttons = mouse.getPressed()
                     if buttons != prevButtonState:  # button state changed?
                         prevButtonState = buttons
@@ -276,6 +269,9 @@ class hevelius_task(Task_Eyetracker):
                     self.win.flip()
 
             # -------Ending Routine "trial"-------
+            if 'Practice' not in block_type:
+                self.sendMessage(self.marker_trial_end)
+                
             for thisComponent in trialComponents:
                 if hasattr(thisComponent, "setAutoDraw"):
                     thisComponent.setAutoDraw(False)
@@ -303,7 +299,7 @@ class hevelius_task(Task_Eyetracker):
             # the Routine "trial" was not non-slip safe, so reset the non-slip timer
             routineTimer.reset()
             thisExp.nextEntry()
-        print('block end')
+
 
         # these shouldn't be strictly necessary (should auto-save)
         if self.record_psychopy:
