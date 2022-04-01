@@ -45,7 +45,7 @@ def get_task_funcs(collection_id, conn):
 
     Returns
     -------
-    dict with task objects, tech_obs_id, task arguments
+    dict with task objects, task_id, task arguments
         dict containing key task name and value callable task
     """
 
