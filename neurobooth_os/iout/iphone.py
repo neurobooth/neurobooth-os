@@ -3,8 +3,7 @@ from email import message_from_string
 from functools import partial
 from logging import raiseExceptions
 from multiprocessing import Condition
-import matplotlib
-matplotlib.use('TKAgg')
+
 import socket
 import json
 import struct
