@@ -39,18 +39,18 @@ def mock_stm_routine(host, port, conn):
     for data, connx in get_client_messages(s1, port=port, host=host):
 
         if "prepare" in data:
-            # data = "prepare:collection_id:str(tech_obs_log_dict)"
+            # data = "prepare:collection_id:str(log_task_dict)"
 
             collection_id = data.split(":")[1]
-            tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
-            subject_id_date = tech_obs_log["subject_id-date"]
+            log_task = eval(data.replace(f"prepare:{collection_id}:", ""))
+            subject_id_date = log_task["subject_id-date"]
 
-            ses_folder = f"{config.paths['data_out']}{subject_id_date}"
+            ses_folder = os.path.join(config.paths['data_out'], subject_id_date)
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
             # delete subj_date as not present in DB
-            del tech_obs_log["subject_id-date"]
+            del log_task["subject_id-date"]
 
             task_func_dict = get_task_funcs(collection_id, conn)
             task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
@@ -88,12 +88,12 @@ def mock_stm_routine(host, port, conn):
                     continue                    
                 
                 t_obs_id = task_func_dict[task]['t_obs_id']
-                tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
-                tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
+                log_task_id = meta._make_new_task_row(conn, subj_id)
+                log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
                 tsk_strt_time = datetime.now().strftime("%Hh-%Mm-%Ss")
 
                 # Signal CTR to start LSL rec
-                print(f"Initiating task:{task}:{t_obs_id}:{tech_obs_log_id}:{tsk_strt_time}")
+                print(f"Initiating task:{task}:{t_obs_id}:{log_task_id}:{tsk_strt_time}")
                 sleep(1)
 
                  # Start/Stop rec in ACQ and run task
@@ -108,10 +108,10 @@ def mock_stm_routine(host, port, conn):
                 socket_message("record_stop", "dummy_acq", wait_data=15)
                 print(f"Finished task:{task}")
                 
-                # Log tech_obs to database
-                tech_obs_log["tech_obs_id"] = t_obs_id
-                tech_obs_log['event_array'] =  str(events).replace("'", '"') if events is not None else "event:datestamp"
-                meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)
+                # Log task to database
+                log_task["task_id"] = t_obs_id
+                log_task['event_array'] =  str(events).replace("'", '"') if events is not None else "event:datestamp"
+                meta._fill_task_row(log_task_id, log_task, conn)
                 
                 # Check if pause requested, continue or stop
                 data = get_data_timeout(s1, .1)

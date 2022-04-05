@@ -42,18 +42,18 @@ def Main():
                 print("Already running screen feed")
 
         elif "prepare" in data:
-            # data = "prepare:collection_id:str(tech_obs_log_dict)"
+            # data = "prepare:collection_id:str(log_task_dict)"
 
             collection_id = data.split(":")[1]
-            tech_obs_log = eval(data.replace(f"prepare:{collection_id}:", ""))
-            subject_id_date = tech_obs_log["subject_id-date"]
+            log_task = eval(data.replace(f"prepare:{collection_id}:", ""))
+            subject_id_date = log_task["subject_id-date"]
 
             ses_folder = f"{config.paths['data_out']}{subject_id_date}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
             # delete subj_date as not present in DB
-            del tech_obs_log["subject_id-date"]
+            del log_task["subject_id-date"]
 
             task_func_dict = get_task_funcs(collection_id, conn)
             task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
@@ -112,20 +112,20 @@ def Main():
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
                 
                 # Do not record if intro instructions"
-                if "intro_" in task:
+                if "intro_" in task or "pause_" in task:
                     tsk_fun.run(**this_task_kwargs)
                     continue                    
                 
                 t_obs_id = task_func_dict[task]['t_obs_id']
-                tech_obs_log_id = meta._make_new_tech_obs_row(conn, subj_id)
-                tech_obs_log["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
+                log_task_id = meta._make_new_task_row(conn, subj_id)
+                log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
                 tsk_strt_time = datetime.now().strftime("%Hh-%Mm-%Ss")
 
                 # Signal CTR to start LSL rec
-                print(f"Initiating task:{task}:{t_obs_id}:{tech_obs_log_id}:{tsk_strt_time}")
+                print(f"Initiating task:{task}:{t_obs_id}:{log_task_id}:{tsk_strt_time}")
                 sleep(1)
 
-                # Start eyetracker if device in tech_obs 
+                # Start eyetracker if device in task 
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
                     # if not streams['Eyelink'].calibrated:
                     #     streams['Eyelink'].calibrate()
@@ -147,10 +147,10 @@ def Main():
                 socket_message("record_stop", "acquisition", wait_data=15)
                 print(f"Finished task:{task}")
 
-                # Log tech_obs to database
-                tech_obs_log["tech_obs_id"] = t_obs_id
-                tech_obs_log['event_array'] = str(events).replace("'", '"') if events is not None else "event:datestamp"
-                meta._fill_tech_obs_row(tech_obs_log_id, tech_obs_log, conn)     
+                # Log task to database
+                log_task["task_id"] = t_obs_id
+                log_task['event_array'] = str(events).replace("'", '"') if events is not None else "event:datestamp"
+                meta._fill_task_row(log_task_id, log_task, conn)     
                 
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
                     if 'calibration_task' not in task:
@@ -193,7 +193,8 @@ def Main():
                     screen_feed.stop()
                     # print("Closing screen mirroring")
                     screen_running = False
-                # print("Closing Stim server")
+                sys.stdout = sys.stdout.terminal
+                s1.close()
                 break
 
         elif "time_test" in data:
@@ -203,9 +204,10 @@ def Main():
         else:
             print(data)
 
-    s1.close()
-    sys.stdout = sys.stdout.terminal
     win.close()
+    exit()
+    
+    
 
 
 Main()

@@ -3,9 +3,8 @@ from email import message_from_string
 from functools import partial
 from logging import raiseExceptions
 from multiprocessing import Condition
-from smtpd import DebuggingServer
 import matplotlib
-matplotlib.use('TKAgg')
+
 import socket
 import json
 import struct
@@ -548,64 +547,3 @@ if __name__ == "__main__":
     plt.figure()
     plt.hist(df_ip, 50)
     
-"""
-
-    MOCK=False
-
-    iphone=IPhone('123456',sess_id='')
-    iphone.handshake() # Sends "@STANDBY" -> waits for "@READY" 
-    #iphone.dumpall('/Users/dmitry/data/tmp')
-#    time.sleep(10)
-
-#    video=iphone.dump('data_file_mar23_10')
-#    f=open('/Users/dmitry/data/tmp/video_mar28_1.mp4','wb')
-#    f.write(video)
-#    f.close()
-    
-
-#     image=iphone.frame_preview()
-#     f=open('image_mar28_frame_preview.png','wb')
-#     f.write(image)
-#     f.close()
-
-#     iphone.start_recording('data_file_mar30_2000') # Starts Listening thread. Sends "@START" -> expects "@STARTTIMESTAMP"
-# #    iphone.frame_preview()
-#     time.sleep(5) # 30 sec sleep - in the meantime Listening thread catches "@INPROGRESSTIMESTAMP"
-#     iphone.stop_recording() #Sends "@STOP" -> expects "@STOPTIMESTAMP". Closes the Listening thread
-#     # iphone.disconnect()
-#     iphone.disconnect()
-#     exit(0)   
-#    iphone.handshake()
-    iphone.start_recording('data_file_mar28_4000') # Starts Listening thread. Sends "@START" -> expects "@STARTTIMESTAMP"
-    #iphone.handshake()
-    time.sleep(5) # 30 sec sleep - in the meantime Listening thread catches "@INPROGRESSTIMESTAMP"
-    iphone.stop_recording() #Sends "@STOP" -> expects "@STOPTIMESTAMP". Closes the Listening thread
- #   iphone.disconnect()
-
- #   iphone.handshake()
-    # iphone.stop_recording()
-    iphone.start_recording('data_file_mar28_3000') # Starts Listening thread. Sends "@START" -> expects "@STARTTIMESTAMP"
-    time.sleep(5) # 30 sec sleep - in the meantime Listening thread catches "@INPROGRESSTIMESTAMP"
-    iphone.stop_recording() #Sends "@STOP" -> expects "@STOPTIMESTAMP". Closes the Listening thread
-    iphone.disconnect()
-
-    print(iphone._allmessages)
-
-    #video=iphone.dump('STEVEN_FILE2022')
-    #f=open('video.mp4','wb')
-    #video=json.dumps(video).encode('utf-8')
-
-    #f.write(video)
-    #f.close()
-    #iphone.disconnect()
-    
-
-
-'''        print(filelist)
-        for fname in filelist:
-            video,version,type,tag=self._getpacket()
-            f=open(folder+'/'+fname,'wb')
-            f.write(video)
-            f.close()
-'''
-"""
