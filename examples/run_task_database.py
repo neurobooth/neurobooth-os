@@ -22,7 +22,7 @@ from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_s
 # %%
 # Define parameters
 subj_id = "test"
-collection_id = "demo" 
+collection_id = "mvp_030" 
 use_instruction_videos = True  # False if instruction videos not available
 
 # %%
