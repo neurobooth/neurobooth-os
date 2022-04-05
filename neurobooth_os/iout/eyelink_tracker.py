@@ -190,3 +190,5 @@ class EyeTracker():
         if self.recording:
             self.stop()
         self.tk.close()
+
+

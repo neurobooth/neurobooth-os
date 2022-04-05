@@ -112,7 +112,7 @@ def Main():
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
                 
                 # Do not record if intro instructions"
-                if "intro_" in task:
+                if "intro_" in task or "pause_" in task:
                     tsk_fun.run(**this_task_kwargs)
                     continue                    
                 
@@ -193,7 +193,8 @@ def Main():
                     screen_feed.stop()
                     # print("Closing screen mirroring")
                     screen_running = False
-                # print("Closing Stim server")
+                sys.stdout = sys.stdout.terminal
+                s1.close()
                 break
 
         elif "time_test" in data:
@@ -203,9 +204,10 @@ def Main():
         else:
             print(data)
 
-    s1.close()
-    sys.stdout = sys.stdout.terminal
     win.close()
+    exit()
+    
+    
 
 
 Main()
