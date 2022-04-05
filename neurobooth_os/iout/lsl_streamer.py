@@ -63,8 +63,11 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
                 streams[kdev] = MicStream(**argsdev)
                 streams[kdev].start()
             elif "IPhone"in kdev:
+                success = False
                 streams[kdev] = IPhone(name='IPhoneFrameIndex', **argsdev)
-                streams[kdev].prepare()
+                success = streams[kdev].prepare()
+                if not success and streams.get(kdev) is not None:
+                    del streams[kdev]
 
     elif node_name == "presentation":
         from neurobooth_os.iout import marker_stream
@@ -91,8 +94,11 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
                 streams[kdev] = mock_dev.MockMbient(**argsdev)
                 streams[kdev].start()
             elif "IPhone"in kdev:
+                success = False
                 streams[kdev] = IPhone(name='IPhoneFrameIndex', **argsdev)
-                streams[kdev].prepare()
+                success = streams[kdev].prepare()
+                if not success and streams.get(kdev) is not None:
+                    del streams[kdev]
 
     elif node_name == "dummy_stm":
         from neurobooth_os.iout import marker_stream

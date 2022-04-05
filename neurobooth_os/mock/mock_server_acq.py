@@ -59,8 +59,9 @@ def mock_acq_routine(host, port, conn):
 
         elif "frame_preview" in data and not recording:
             if not any("IPhone" in s for s in streams):
-                print('no iphone')
-                connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
+                msg = "ERROR: no iphone in LSL streams"
+                print(msg)
+                connx.send(msg.encode('utf-8'))
                 continue
 
             frame = streams[[i for i in streams if 'IPhone' in i][0]].frame_preview()
