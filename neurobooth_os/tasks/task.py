@@ -173,7 +173,21 @@ class Task_countdown(Task):
             self.present_text(screen=self.press_task_screen, msg='task-continue-repeat', func=self.present_task,
                             func_kwargs=func_kwargs, waitKeys=False)
 
-            
+class Task_pause(Task):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+    def run(self, slide_image='end_slide_3_7_22.jpg', wait_key='return', **kwargs):
+        # slide_image : filename image in tasks/assets
+        
+        self.screen = visual.ImageStim(self.win, image=op.join(self.root_pckg, 'tasks', 'assets', slide_image),
+                                                pos=(0, 0), units='deg')
+        
+        self.screen.draw()
+        self.win.flip()
+        event.waitKeys(keyList=wait_key)
+        self.win.flip()
+        
 class Task_Eyetracker(Task):
     def __init__(self, eye_tracker=None,
                  target_size=7,  **kwargs):
@@ -259,10 +273,10 @@ class Introduction_Task(Task):
         self.present_instructions(prompt=False)
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
     # task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
     # task.run() 
 
-    task = Task_countdown(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
-    task.run(prompt=True, duration=3)
+    # task = Task_countdown(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
+    # task.run(prompt=True, duration=3)
