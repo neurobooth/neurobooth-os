@@ -90,14 +90,20 @@ def Main():
             recording = False
 
         elif data in ["close", "shutdown"]:
-            # print("Closing devices")
+            if "shutdown" in data:
+                print("Closing devices")
+                sys.stdout = sys.stdout.terminal
+                s1.close()
+                
             streams = close_streams(streams)
-
+            print("Devices closed")
+            
             if "shutdown" in data:
                 if lowFeed_running:
                     lowFeed.close()
                     lowFeed_running = False
                     print("Closing RTD cam")
+
                 break
 
         elif "time_test" in data:
@@ -106,10 +112,7 @@ def Main():
 
         else:
             print(data)
-
-    sleep(.5)
-    s1.close()
-    sys.stdout = sys.stdout.terminal
+        
 
 
 Main()
