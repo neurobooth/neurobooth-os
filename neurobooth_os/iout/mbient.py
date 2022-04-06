@@ -82,15 +82,20 @@ class Sensor:
 
     def setup(self):
         libmetawear.mbl_mw_settings_set_connection_parameters(self.device.board, 7.5, 7.5, 0, 6000)
-        sleep(1.5)
+        sleep(1)
 
         libmetawear.mbl_mw_acc_set_odr(self.device.board, self.acc_hz)
         libmetawear.mbl_mw_acc_set_range(self.device.board, 16.0)
         libmetawear.mbl_mw_acc_write_acceleration_config(self.device.board)
         
-        libmetawear.mbl_mw_gyro_bmi160_set_odr(self.device.board, self.gyro_hz)        
-        libmetawear.mbl_mw_gyro_bmi160_set_range(self.device.board, 2000)
-        libmetawear.mbl_mw_gyro_bmi160_write_config(self.device.board)
+        try:  # MMRS only
+            libmetawear.mbl_mw_gyro_bmi270_set_odr(self.device.board, self.gyro_hz)        
+            libmetawear.mbl_mw_gyro_bmi270_set_range(self.device.board, 2000)
+            libmetawear.mbl_mw_gyro_bmi270_write_config(self.device.board)
+        except:  # MMR1, MMR and MMC only
+            libmetawear.mbl_mw_gyro_bmi160_set_odr(self.device.board, self.gyro_hz)        
+            libmetawear.mbl_mw_gyro_bmi160_set_range(self.device.board, 2000)
+            libmetawear.mbl_mw_gyro_bmi160_write_config(self.device.board)
         
         e = Event()
 
@@ -104,7 +109,11 @@ class Sensor:
         self.callback = cbindings.FnVoid_VoidP_DataP(self.data_handler)
 
         acc = libmetawear.mbl_mw_acc_get_acceleration_data_signal(self.device.board)
-        gyro = libmetawear.mbl_mw_gyro_bmi160_get_rotation_data_signal(self.device.board)
+        
+        try:  # MMRS only
+            gyro = libmetawear.mbl_mw_gyro_bmi270_get_rotation_data_signal(self.device.board)
+        except:  # MMR1, MMR and MMC only
+            gyro = libmetawear.mbl_mw_gyro_bmi160_get_rotation_data_signal(self.device.board)
 
         signals = (c_void_p * 1)()
         signals[0] = gyro
@@ -136,7 +145,11 @@ class Sensor:
     def start(self):
         # print(f"Started mbient{self.dev_name}")
         libmetawear.mbl_mw_acc_enable_acceleration_sampling(self.device.board)
-        libmetawear.mbl_mw_gyro_bmi160_enable_rotation_sampling(self.device.board)
+        try:  # MMRS only
+            libmetawear.mbl_mw_gyro_bmi270_enable_rotation_sampling(self.device.board)
+        except:  # MMR1, MMR and MMC only
+            libmetawear.mbl_mw_gyro_bmi160_enable_rotation_sampling(self.device.board)
+        
 
         # Vibrate for 7 secs and then start aqc
         if self.buzz_time:
@@ -146,20 +159,32 @@ class Sensor:
         # print ("Acquisition started")
         self.streaming = True
         libmetawear.mbl_mw_acc_start(self.device.board)
-        libmetawear.mbl_mw_gyro_bmi160_start(self.device.board)
+        try:  # MMRS only
+            libmetawear.mbl_mw_gyro_bmi160_start(self.device.board)
+        except:  # MMR1, MMR and MMC only        
+            libmetawear.mbl_mw_gyro_bmi160_start(self.device.board)
 
     def stop(self):
         e = Event()
         # stop sampling
-        libmetawear.mbl_mw_acc_stop(self.device.board)
-        libmetawear.mbl_mw_gyro_bmi160_stop(self.device.board)        
+        libmetawear.mbl_mw_acc_stop(self.device.board)               
         libmetawear.mbl_mw_acc_disable_acceleration_sampling(self.device.board)
-        libmetawear.mbl_mw_gyro_bmi160_disable_rotation_sampling(self.device.board)
         
+        try:  # MMRS only
+            libmetawear.mbl_mw_gyro_bmi270_stop(self.device.board) 
+            libmetawear.mbl_mw_gyro_bmi270_disable_rotation_sampling(self.device.board)
+        except:  # MMR1, MMR and MMC only
+            libmetawear.mbl_mw_gyro_bmi160_stop(self.device.board) 
+            libmetawear.mbl_mw_gyro_bmi160_disable_rotation_sampling(self.device.board)
+            
         # unsubscribe
         acc = libmetawear.mbl_mw_acc_get_acceleration_data_signal(self.device.board)
         libmetawear.mbl_mw_datasignal_unsubscribe(acc)
-        gyr = libmetawear.mbl_mw_gyro_bmi160_get_rotation_data_signal(self.device.board)
+                
+        try:  # MMRS only
+            gyr = libmetawear.mbl_mw_gyro_bmi270_get_rotation_data_signal(self.device.board)
+        except:  # MMR1, MMR and MMC only
+            gyr = libmetawear.mbl_mw_gyro_bmi160_get_rotation_data_signal(self.device.board)        
         libmetawear.mbl_mw_datasignal_unsubscribe(gyr)
         
         # disconnect
@@ -171,27 +196,12 @@ class Sensor:
         
     def close(self):
         self.stop()
-        # self.device.on_disconnect = lambda status: print(f"Mbient {self.dev_name} disconnected!")
-        # Stops data logging
-        # print("stop logging")
-        # libmetawear.mbl_mw_logging_stop(self.device.board)
-        # Clear the logger of saved entries
-        # print("Erase logger")
-        # libmetawear.mbl_mw_logging_clear_entries(self.device.board)
-        # Remove all macros on the flash memory
-        # print("Erase macros")
-        # libmetawear.mbl_mw_macro_erase_all(self.device.board)
-        # Restarts the board after performing garbage collection
-        # print("Clear  macros")
-        # libmetawear.mbl_mw_debug_reset_after_gc(self.device.board)
-        # print("Disconnect")
-        # libmetawear.mbl_mw_debug_disconnect(self.device.board)
-        # self.device.disconnect()
+
 
 
 if __name__ == "__main__":
 
-    mac = "EE:99:D8:9D:69:5F" #
+    mac ="FE:AB:CF:19:7A:CB" # "E5:F6:FB:6D:11:8A" #"E8:95:D6:F7:39:D2" #
     mbt = Sensor(mac)
     mbt.start()
     sleep(3)
