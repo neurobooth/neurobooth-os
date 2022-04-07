@@ -55,7 +55,7 @@ class MOT(Task_Eyetracker):
         self.win.flip()
         self.background = [visual.Rect(self.win, width=self.paperSize, height=self.paperSize, lineColor='black', fillColor='white', units='pix')]
         # create the trials chain
-        self.setFrameSequence()
+        self.frameSequence = self.setFrameSequence()
         
     def trial_info_msg(self, msg_type= None):
         if msg_type == 'practice':
@@ -68,7 +68,6 @@ class MOT(Task_Eyetracker):
         
         
     def my_textbox2(self, text, pos=(0, 0), size=(None, None)):
-         
         tbx = TextBox2(self.win, pos=pos, color='black', units='deg', lineSpacing=.9,
                         letterHeight=1, text=text, font="Arial",  # size=(20, None),
                         borderColor=None, fillColor=None, editable=False, alignment='center')
@@ -206,6 +205,7 @@ class MOT(Task_Eyetracker):
             # now we update the DOM elements
             circle[i].pos = [ newX - self.paperSize//2, newY - self.paperSize//2]
             circle[i].draw()
+            self.send_target_loc(circle[i].pos, target_name=f"target_{i}")
         return circle
     
     
@@ -235,7 +235,8 @@ class MOT(Task_Eyetracker):
                         # Check not clicked on previous circle
                         if i in [clk[0] for clk in clicks]:
                             continue
-                        x, y = mouse.getPos()                    
+                        x, y = mouse.getPos()  
+                        self.sendMessage(self.marker_response_start)                  
                         clicks.append([i, x, y, time_click])                        
                         n_clicks += 1                        
                         mouse.mouseClock = core.Clock()
@@ -307,7 +308,6 @@ class MOT(Task_Eyetracker):
         clock  = core.Clock()
         while clock.getTime() < duration:
             circle = self.moveCircles(circle)
-            # self.background.draw()
             if frame_type == 'test':
                 self.present_stim(self.background + circle + self.trial_info_msg())
             else:
@@ -336,8 +336,10 @@ class MOT(Task_Eyetracker):
             
             if frame['type'] == "practice":
                 self.trial_info_str = f"Click the {frame['n_targets']} dots that were green"
+                self.sendMessage(self.marker_practice_trial_start)
             elif frame['type'] == "test":
                 self.trial_info_str = f"Click {frame['n_targets']} dots"
+                self.sendMessage(self.marker_trial_start)
             else:
                 circle = self.showMovingDots(frame)
                 continue
@@ -350,6 +352,12 @@ class MOT(Task_Eyetracker):
             self.present_stim(self.background + circle + msg_stim)
             
             clicks, ncorrect, rt =  self.clickHandler(circle, frame['n_targets'],  frame['type'])
+            
+            if frame['type'] == "test":
+                self.sendMessage(self.marker_trial_end)
+            elif frame['type'] == "practice":
+                self.sendMessage(self.marker_practice_trial_start)
+                
             time.sleep(.5)
             
             state = 'click'                
@@ -529,10 +537,9 @@ class MOT(Task_Eyetracker):
     
     
     def run(self, **kwargs):     
-        frameSequence = self.setFrameSequence()
-        self.run_trials(frameSequence)
+        self.win.color = "white"
+        self.win.flip()
+        self.sendMessage(self.marker_task_start, to_marker=True, add_event=True) 
+        self.run_trials(self.frameSequence)
+        self.sendMessage(self.marker_task_end, to_marker=True, add_event=True) 
 
-
-
-# mot = MOT()
-# mot.run()
