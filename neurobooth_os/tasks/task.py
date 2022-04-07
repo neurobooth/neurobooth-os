@@ -41,6 +41,8 @@ class Task():
         self.marker_task_end = 'Task_end'
         self.marker_trial_start = 'Trial_start'
         self.marker_trial_end = 'Trial_end'
+        self.marker_practice_trial_start = 'PracticeTrial_start'
+        self.marker_practice_trial_end = 'PracticeTrial_end'
         self.marker_response_start = 'Response_start'
         self.marker_response_end = 'Response_end'
 #         self.marker_trial_start_Nth = 'Trial_start_{}'

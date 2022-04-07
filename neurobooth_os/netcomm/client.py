@@ -143,25 +143,39 @@ def node_info(node_name):
     return host, port
 
 
+def _socket_receive_data(sock, pack_len):
+    # Helper function to recv n bytes or return None if EOF is hit
+    fragments = []
+    MAX_RECV = 130992
+    buff_recv=0 
+    while True: 
+        bytes_to_pull = pack_len
+        if (pack_len - buff_recv) < MAX_RECV:
+            bytes_to_pull = pack_len - buff_recv            
+        packet = sock.recv(bytes_to_pull)
+        buff_recv += len(packet)
+        fragments.append(packet)
+        if buff_recv >= pack_len :
+            break
+    data=b''.join(fragments)
+    return data
+
+
 def wait_socket_data(s, wait_time=None):
-    from neurobooth_os.iout.iphone import IPhone
-    iphone_for_bytesrecv=IPhone("iphone_bytesrecv")
+
     tic = time()
     while True:
         r, _, _ = select.select([s], [], [s], 1)
         if r:
             data = s.recv(1024)
             if data.startswith(b'::BYTES::'):
-                split_data=data.split(b'::')
-                split_data_len=int(split_data[2].decode('utf-8'))
-                current_data=split_data[3]
-                remainder_len=(split_data_len-len(current_data))
-                # print('first socket received')
-                # print('Current data len: ', len(current_data))
-                # print('Remainder len: ', remainder_len)
-                remainder_data=iphone_for_bytesrecv.recvall(s,remainder_len)
-                data=current_data+remainder_data
-                # print('all socket received')
+                split_data = data.split(b'::')
+                split_data_len = int(split_data[2].decode('utf-8'))
+                current_data = split_data[3]
+                remainder_len = (split_data_len-len(current_data))
+                remainder_data = _socket_receive_data(s,remainder_len)
+                data = current_data+remainder_data
+
             else:
                 data = data.decode("utf-8")
             return data
