@@ -271,7 +271,7 @@ class Introduction_Task(Task):
         self.present_instructions(prompt=False)
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
     # task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
     # task.run() 
