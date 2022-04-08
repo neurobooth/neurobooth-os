@@ -90,7 +90,7 @@ def Main():
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
                 task_func_dict[task]['obj'] = tsk_fun(**this_task_kwargs)
 
-            win = welcome_screen(with_audio=False, win=win)
+            win = welcome_screen(win=win)
             # When win is created, stdout pipe is reset
             if not hasattr(sys.stdout, 'terminal'):
                 sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
