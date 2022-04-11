@@ -284,8 +284,8 @@ class IPhone:
         self.usbmux=USBMux()
         if not self.usbmux.devices:
             self.usbmux.process(0.1)
-        for dev in self.usbmux.devices:
-            print(dev)
+        # for dev in self.usbmux.devices:
+        #     print(dev)
         if len(self.usbmux.devices)==1:
             self.device=self.usbmux.devices[0]
             try:
