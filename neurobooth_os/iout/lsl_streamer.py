@@ -132,9 +132,7 @@ def close_streams(streams):
             streams[k].close()
         else:
             streams[k].stop()
-        del streams[k]
-        print('closed ', {k})
-        time.sleep(2)
+        # del streams[k]
     return streams
 
 

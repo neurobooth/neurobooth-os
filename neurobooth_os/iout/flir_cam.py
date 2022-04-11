@@ -14,7 +14,7 @@ import threading
 import uuid
 
 import cv2
-import pyspin as  PySpin
+import PySpin
 from pylsl import StreamInfo, StreamOutlet
 import skvideo
 import skvideo.io
@@ -181,6 +181,7 @@ if __name__ == "__main__":
     flir = VidRec_Flir()
     flir.start()
     time.sleep(10)
+    flir.close()
     flir.close()
     tdiff = np.diff(flir.stamp) / 1e6
     plt.figure(), plt.hist(tdiff, 50)
