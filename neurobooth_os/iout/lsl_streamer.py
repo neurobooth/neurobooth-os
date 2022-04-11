@@ -133,12 +133,14 @@ def close_streams(streams):
         else:
             streams[k].stop()
         del streams[k]
+        print('closed ', {k})
+        time.sleep(2)
     return streams
 
 
 def reconnect_streams(streams):
     for k in list(streams):
-        if k.split("_")[0] in ["hiFeed", "Intel", "FLIR"]:
+        if k.split("_")[0] in ["hiFeed", "Intel", "FLIR", "IPhone"]:
             continue
 
         if not streams[k].streaming:

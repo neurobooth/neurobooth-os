@@ -92,8 +92,7 @@ def Main():
         elif data in ["close", "shutdown"]:
             if "shutdown" in data:
                 print("Closing devices")
-                sys.stdout = sys.stdout.terminal
-                s1.close()
+
                 
             streams = close_streams(streams)
             print("Devices closed")
@@ -112,7 +111,9 @@ def Main():
 
         else:
             print(data)
-        
-
+            
+    sleep(10)
+    sys.stdout = sys.stdout.terminal
+    s1.close()
 
 Main()
