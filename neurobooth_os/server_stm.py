@@ -62,7 +62,7 @@ def Main():
                 print("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
-                streams = start_lsl_threads("presentation", collection_id, win=win)
+                streams = start_lsl_threads("presentation", collection_id, win=win, conn=conn)
 
             print("UPDATOR:-Connect-")
             
