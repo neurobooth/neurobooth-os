@@ -397,9 +397,11 @@ class IPhone:
         self.streaming=True
         filename += "_IPhone"
         filename = op.split(filename)[-1]
+        self.lsl_print(f"-new_filename-:{self.streamName}:{filename}.mov") 
+        time.sleep(.05)
+        self.lsl_print(f"-new_filename-:{self.streamName}:{filename}.json") 
         self.start_recording(filename)
-        self.lsl_print(f"-new_filename-:{self.streamName}:{filename}")  
-        
+
     def stop(self):
         self.stop_recording()
         self.streaming=False
