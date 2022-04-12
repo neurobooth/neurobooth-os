@@ -182,6 +182,7 @@ if __name__ == "__main__":
     flir.start()
     time.sleep(10)
     flir.close()
+    flir.close()
     tdiff = np.diff(flir.stamp) / 1e6
     plt.figure(), plt.hist(tdiff, 50)
     plt.figure(), plt.plot(tdiff)
