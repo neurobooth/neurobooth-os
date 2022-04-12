@@ -42,7 +42,7 @@ class Saccade(Task_Eyetracker):
         self.present_instructions(prompt)        
         self.run_trials(prompt)
         self.present_complete(last_task)
-        self.close()
+        return self.events
 
 
     def run_trials(self, prompt=True):

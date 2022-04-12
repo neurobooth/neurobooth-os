@@ -30,7 +30,7 @@ class Pursuit(Task_Eyetracker):
         self.present_instructions(prompt)        
         self.run_trial(prompt, self.mov_pars)
         self.present_complete(last_task)
-        self.close()
+        return self.events
                                               
     def run_trial(self, prompt, movement_pars):
         """ Run a smooth pursuit trial
