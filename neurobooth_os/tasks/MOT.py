@@ -80,8 +80,18 @@ class MOT(Task_Eyetracker):
         self.win.flip()
         if key_resp is not None:
             event.waitKeys(keyList=key_resp)
+    
         
-        
+    def run(self, last_task=False, **kwargs):     
+        self.win.color = "white"
+        self.win.flip()
+        self.sendMessage(self.marker_task_start, to_marker=True, add_event=True) 
+        self.run_trials(self.frameSequence)
+        self.sendMessage(self.marker_task_end, to_marker=True, add_event=True) 
+        self.present_complete(last_Task)
+        return self.events
+    
+    
     # initialize the dots
     def setup_dots(self, numCircles):
         
@@ -436,13 +446,6 @@ class MOT(Task_Eyetracker):
         df_out.to_csv(out_fname)
         
         
-        # Close win if just created for the task
-        if self.win_temp:
-            self.win.close()
-        else:
-            self.present_stim([visual.ImageStim(self.win, image=op.join(self.rootdir, 'task_complete.png'), pos=(0, 0), units='deg')])  
-            self.win.flip()
-    
     
     def setFrameSequence(self):
         testMessage ={            
@@ -536,10 +539,3 @@ class MOT(Task_Eyetracker):
         return frameSequence
     
     
-    def run(self, last_task=False, **kwargs):     
-        self.win.color = "white"
-        self.win.flip()
-        self.sendMessage(self.marker_task_start, to_marker=True, add_event=True) 
-        self.run_trials(self.frameSequence)
-        self.sendMessage(self.marker_task_end, to_marker=True, add_event=True) 
-        self.present_complete(last_Task)
