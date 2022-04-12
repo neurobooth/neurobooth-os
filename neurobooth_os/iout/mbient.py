@@ -165,8 +165,7 @@ class Sensor:
             libmetawear.mbl_mw_gyro_bmi160_start(self.device.board)
 
     def stop(self):
-        e = Event()
-        
+        e = Event()        
         self.device.on_disconnect = lambda s: e.set()
         libmetawear.mbl_mw_debug_reset(self.device.board)
         print("Stopped ", self.dev_name)
@@ -221,6 +220,7 @@ if __name__ == "__main__":
     
     for mbt in mbts:
         mbt.stop()
+
     # sleep(1)
     # mbt.close()
 

@@ -41,6 +41,8 @@ class Task():
         self.marker_task_end = 'Task_end'
         self.marker_trial_start = 'Trial_start'
         self.marker_trial_end = 'Trial_end'
+        self.marker_practice_trial_start = 'PracticeTrial_start'
+        self.marker_practice_trial_end = 'PracticeTrial_end'
         self.marker_response_start = 'Response_start'
         self.marker_response_end = 'Response_end'
 #         self.marker_trial_start_Nth = 'Trial_start_{}'
@@ -269,7 +271,7 @@ class Introduction_Task(Task):
         self.present_instructions(prompt=False)
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
     # task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
     # task.run() 
