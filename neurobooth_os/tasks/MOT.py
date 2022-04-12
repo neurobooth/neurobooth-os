@@ -536,10 +536,10 @@ class MOT(Task_Eyetracker):
         return frameSequence
     
     
-    def run(self, **kwargs):     
+    def run(self, last_task=False, **kwargs):     
         self.win.color = "white"
         self.win.flip()
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True) 
         self.run_trials(self.frameSequence)
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True) 
-
+        self.present_complete(last_Task)

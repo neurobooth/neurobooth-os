@@ -40,7 +40,7 @@ class hevelius_task(Task_Eyetracker):
         newloc[1] = int(offset['y'] - loc[1])
         return newloc
 
-    def run(self, prompt=False, **kwargs):
+    def run(self, prompt=False, last_Task=False, **kwargs):
 
         practice_blocks = sorted(list(filter(lambda x: x.startswith('practice'), list(self.trials_data.keys()))))
         trials_blocks = sorted(list(filter(lambda x: x.startswith('block'), list(self.trials_data.keys()))))
@@ -83,7 +83,7 @@ class hevelius_task(Task_Eyetracker):
             self.rep += "_I"
             self.show_text(screen=self.press_task_screen, msg='Task-continue-repeat', func=self.run,
                               func_kwargs=func_kwargs_func, waitKeys=False)
-        self.present_complete()
+        self.present_complete(last_Task)
         return self.events
 
     def run_blocks(self, blocks, block_type):

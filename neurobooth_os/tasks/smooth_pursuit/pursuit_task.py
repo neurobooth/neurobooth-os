@@ -26,10 +26,10 @@ class Pursuit(Task_Eyetracker):
         # [amp_x, amp_y, phase_x, phase_y, angular_freq_x, angular_freq_y]
         self.mov_pars = [self.amplitude_pixel, 0, deg2rad(start_phase_deg), 0, self.angular_freq, self.angular_freq]
 
-    def run(self, prompt=True, **kwargs):
+    def run(self, prompt=True, last_task=False, **kwargs):
         self.present_instructions(prompt)        
         self.run_trial(prompt, self.mov_pars)
-        self.present_complete()
+        self.present_complete(last_task)
         self.close()
                                               
     def run_trial(self, prompt, movement_pars):
