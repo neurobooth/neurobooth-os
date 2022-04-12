@@ -75,6 +75,7 @@ class DSC(Task_Eyetracker):
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True) 
         self.io.quit()
         self.present_complete(last_Task)
+        return self.events
 
 
     def my_textbox2(self, text, pos=(0, 0), size=(None, None)):
@@ -256,8 +257,6 @@ class DSC(Task_Eyetracker):
                    ]
 
             present_msg(mes, self.win, key_resp="space")
-        else:
-            self.present_complete()
 
 
         # SAVE RESULTS to file
