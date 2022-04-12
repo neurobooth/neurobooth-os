@@ -45,6 +45,8 @@ class hevelius_task(Task_Eyetracker):
         practice_blocks = sorted(list(filter(lambda x: x.startswith('practice'), list(self.trials_data.keys()))))
         trials_blocks = sorted(list(filter(lambda x: x.startswith('block'), list(self.trials_data.keys()))))
 
+        utils.change_win_color(self.win, 'grey')
+
         self.present_instructions(prompt)
         self.screen_text = visual.TextStim(win=self.win, name='',
                                            text='',
