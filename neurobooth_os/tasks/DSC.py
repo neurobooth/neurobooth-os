@@ -38,7 +38,7 @@ def present_msg(elems, win, key_resp="space"):
 
 
 class DSC(Task_Eyetracker):
-    def __init__(self, path="", subj_id="test", duration=90, **kwargs):
+    def __init__(self, path="", subj_id="test", duration=10, **kwargs):
         super().__init__(**kwargs)
    
         self.testVersion = 'DSC_simplified_oneProbe_2019'
@@ -74,7 +74,7 @@ class DSC(Task_Eyetracker):
         self.nextTrial()
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True) 
         self.io.quit()
-        self.present_complete(last_Task)
+        self.present_complete(last_task)
         return self.events
 
 
