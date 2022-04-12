@@ -65,13 +65,20 @@ def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''
     if conn is not None:
         table_sens_log = Table("log_sensor_file", conn=conn)
         _, devices_ids, _, _ = meta._get_task_param(task_id, conn)
+
     # get video filenames if videofiles marker present
     videofiles = {}
     if 'videofiles' in [d['info']['name'][0] for d in data]:
         vid_data = [v for v in data if v['info']['name'] == ['videofiles']]
         # video file marker format is ["streamName, fname.mov"]
-        videofiles = {d[0].split(",")[0] : d[0].split(",")[1] for d in vid_data[0]['time_series'] 
-                        if d[0]!= ''}
+        for d in vid_data[0]['time_series']:
+            if d[0] == '':
+                continue
+            stream_id, file_id = d[0].split(",")  
+            if videofiles.get(stream_id) is not None:
+                videofiles[stream_id] += f", {file_id}"
+            else:
+                videofiles[stream_id] = file_id
 
     files = []
     # Loop over each sensor

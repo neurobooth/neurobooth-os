@@ -155,7 +155,7 @@ def _main_layout(sess_info, remote=False, frame_sz=(270, 480)):
         [_space()],
 
         [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left', k="_title_notes_"),
-         sg.Multiline(key='notes', default_text='', size=(64, 10)), _space()],
+         sg.Multiline(key='notes', default_text='', size=(64, 5)), _space()],
         [_space(), sg.Combo([task_mapping(t)[0] for t in sess_info['tasks'].split(", ")],
          k="_notes_taskname_"), sg.ReadFormButton('Save', key="_save_notes_")],
         [_space()]
