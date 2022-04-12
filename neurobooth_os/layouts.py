@@ -174,7 +174,8 @@ def _main_layout(sess_info, remote=False, frame_sz=(270, 480)):
         [_space(5), sg.ReadFormButton('Start', button_color=('white', 'black')),
          _space(5), _lay_butt('Pause', 'Pause tasks'),
          _space(5), _lay_butt('Terminate servers', 'Shut Down'),
-         ]]
+         ],
+         [_space()]]
 
     layout_col2 = [[sg.Image(data=imgbytes, key='iphone', size=frame_sz)],
                    [sg.Button('IPhone preview', button_color=('white', 'black'), key='-frame_preview-', visible=False)],

@@ -50,7 +50,7 @@ def Main():
                 # print("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
-                streams = start_lsl_threads("acquisition", collection_id)
+                streams = start_lsl_threads("acquisition", collection_id, conn=conn)
 
             devs = list(streams.keys())
             print("UPDATOR:-Connect-")
@@ -84,26 +84,25 @@ def Main():
             # print("Closing recording")
             for k in streams.keys():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
-                    streams[k].stop()
+                    if task_devs_kw[task].get(k):
+                        streams[k].stop()
             msg = "ACQ_devices_stoped"
             connx.send(msg.encode("ascii"))
             recording = False
 
         elif data in ["close", "shutdown"]:
             if "shutdown" in data:
-                print("Closing devices")
+                sys.stdout = sys.stdout.terminal
                 sys.stdout = sys.stdout.terminal
                 s1.close()
                 
             streams = close_streams(streams)
-            print("Devices closed")
-            
+
             if "shutdown" in data:
                 if lowFeed_running:
                     lowFeed.close()
                     lowFeed_running = False
                     print("Closing RTD cam")
-
                 break
 
         elif "time_test" in data:
@@ -112,7 +111,5 @@ def Main():
 
         else:
             print(data)
-        
-
 
 Main()

@@ -142,6 +142,7 @@ class IPhone:
         self._wait_for_reply_cond=Condition()
         self._msg_latest={}
         self._timeout_cond=5
+        self.streaming = False
         self.streamName = 'IPhoneFrameIndex'
         self.oulet_id = str(uuid.uuid4())
         self.outlet = self.createOutlet()
@@ -270,8 +271,6 @@ class IPhone:
                 #payload= self._socket_recv(payload_size)
                 payload = self.sock.recv(payload_size)
 
-#PROCESS TAG 1 and 2
-        #Tag  = 0
             msg=self._json_unwrap(payload)
             self._validate_message(msg,tag)
             return msg,version,type,tag
@@ -285,8 +284,8 @@ class IPhone:
         self.usbmux=USBMux()
         if not self.usbmux.devices:
             self.usbmux.process(0.1)
-        for dev in self.usbmux.devices:
-            print(dev)
+        # for dev in self.usbmux.devices:
+        #     print(dev)
         if len(self.usbmux.devices)==1:
             self.device=self.usbmux.devices[0]
             try:
@@ -380,9 +379,11 @@ class IPhone:
 
         print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
         return StreamOutlet(info)
+
     @debug_lsl
     def lsl_push_sample(self,*args):
         self.outlet.push_sample(*args)
+
     @debug_lsl
     def lsl_print(self,*args):
         print(*args)      
@@ -396,9 +397,11 @@ class IPhone:
         self.streaming=True
         filename += "_IPhone"
         filename = op.split(filename)[-1]
+        self.lsl_print(f"-new_filename-:{self.streamName}:{filename}.mov") 
+        time.sleep(.05)
+        self.lsl_print(f"-new_filename-:{self.streamName}:{filename}.json") 
         self.start_recording(filename)
-        self.lsl_print(f"-new_filename-:{self.streamName}:{filename}")  
-        
+
     def stop(self):
         self.stop_recording()
         self.streaming=False
@@ -423,6 +426,7 @@ class IPhone:
                             'USECAMERAFACING':'BACK','FPS':'120'}
             self.notifyonframe=int(config['NOTIFYONFRAME'])
             connected=self.handshake(config)
+            self.streaming = True
             return connected
         
     def dump(self,filename):
@@ -448,6 +452,7 @@ class IPhone:
         if self._listen_thread.is_alive():
             raise IPhoneError('Cannot stop the recording thread')
         self.connected=False
+        self.streaming = False
         return True
 
     def dumpall_getfilelist(self):
