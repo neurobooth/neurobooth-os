@@ -71,7 +71,7 @@ for task in tasks:
 print(f"Media loading took {time.time() - t0} for {len(tasks)} tasks")
 # %%
 # Loop over each task and present it
-win = welcome_screen(with_audio=False, win=win)
+win = welcome_screen(win=win)
 for task in tasks:
     this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
     task_func_dict[task]['obj'].run(**this_task_kwargs)

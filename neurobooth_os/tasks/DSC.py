@@ -67,13 +67,14 @@ class DSC(Task_Eyetracker):
         self.setup(self.win)
 
 
-    def run(self, **kwargs):
+    def run(self, last_task=False, **kwargs):
         self.win.color = "white"
         self.win.flip()
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True) 
         self.nextTrial()
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True) 
         self.io.quit()
+        self.present_complete(last_Task)
 
 
     def my_textbox2(self, text, pos=(0, 0), size=(None, None)):
