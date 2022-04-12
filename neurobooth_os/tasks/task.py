@@ -28,7 +28,7 @@ class Task():
             instruction_file=None,
             marker_outlet=None,
             win=None,
-            full_screen=False,
+            full_screen=False,            
             text_continue_repeat=utils.text_continue_repeat,
             text_continue=utils.text_continue,
             text_practice_screen = utils.text_practice_screen,
@@ -94,6 +94,8 @@ class Task():
         self.task_screen = utils.create_text_screen(self.win, text_task)
         self.end_screen = visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/task_complete.png'),
                                                 pos=(0, 0), units='deg')
+        self.end_tasks =  visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/end_slide_3_7_22.png'),
+                                                pos=(0, 0), units='deg')
 
     def send_marker(self, msg=None, add_event=False):
         if self.with_lsl:
@@ -142,8 +144,12 @@ class Task():
             self.show_text(screen=self.press_task_screen, msg='Task-continue-repeat', func=self.present_task,
                               waitKeys=False)
 
-    def present_complete(self):
-        self.show_text(screen=self.end_screen, msg='Completed-task', audio=None, wait_time=0, waitKeys=False)
+    def present_complete(self, last_task=False):
+        if last_task:
+            screen = self.end_tasks
+        else:
+            screen = self.end_screen
+        self.show_text(screen=screen, msg='Completed-task', audio=None, wait_time=0, waitKeys=False)
         self.close()
         
     # Close videos and win if just created for the task
@@ -154,10 +160,10 @@ class Task():
         if self.win_temp:
             self.win.close()
 
-    def run(self, prompt=True, duration=0, **kwargs):
+    def run(self, prompt=True, duration=0, last_task=False, **kwargs):
         self.present_instructions(prompt)
         self.present_task(prompt, duration, **kwargs)
-        self.present_complete()
+        self.present_complete(last_task)
         return self.events
 
 

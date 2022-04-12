@@ -99,10 +99,11 @@ def Main():
             task_calib = [t for t in tasks if 'calibration_task' in t]
             # Show calibration instruction video only the first time
             calib_instructions = True
+            last_task = False
             
             while len(tasks):
                 task = tasks.pop(0)
-                
+                                   
                 if task not in task_func_dict.keys():
                     print(f"Task {task} not implemented")
                     continue
@@ -143,6 +144,9 @@ def Main():
                 # print(resp)
                 sleep(.5)
 
+                if len(tasks) == 0:
+                    this_task_kwargs.update({'last_task' : True})
+                    
                 events = tsk_fun.run(**this_task_kwargs)
                 socket_message("record_stop", "acquisition", wait_data=15)
                 print(f"Finished task:{task}")
