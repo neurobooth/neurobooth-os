@@ -30,39 +30,32 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
     sg.set_options(element_padding=(0, 0),)
     layout = [
         [sg.Text('First name:', pad=((0, 0), 0), justification='left'),
-         sg.Input(key='first_name', size=(44, 1),
-                  background_color='white', text_color='black')],
+         sg.Input(key='first_name', size=(44, 1), background_color='white', text_color='black')],
         [_space()],
 
         [sg.Text('Last name:', pad=((0, 0), 0), justification='left'),
-         sg.Input(key='last_name', size=(44, 1),
-                  background_color='white', text_color='black')],
+         sg.Input(key='last_name', size=(44, 1), background_color='white', text_color='black')],
         [_space()],
 
-        [sg.Button('Find subject', button_color='white', key='find_subject',
-                   enable_events=True)],
+        [sg.Button('Find subject', button_color='white', key='find_subject', enable_events=True)],
         [_space()],
 
         [sg.Listbox([], size=(30, 10), key='dob')],
         [_space()],
 
-        [sg.Button('Select subject', button_color='white', key='select_subject',size=(30, 1),
-                   enable_events=True)],
+        [sg.Button('Select subject', button_color='white', key='select_subject',size=(30, 1), enable_events=True)],
         [_space()],
 
         [sg.Text('Staff ID:', pad=((0, 0), 0), justification='left'),
-         sg.Input(default_text="AN", key='staff_id', size=(44, 1),
-                  background_color='white', text_color='black')],
+         sg.Input( key='staff_id', size=(44, 1),background_color='white', text_color='black')],
         [_space()],
 
         [sg.T("Study ID"),
-         sg.Combo(meta.get_study_ids(conn), key='study_id',
-                  enable_events=True, size=(44, 1), readonly=True)],
+         sg.Combo(meta.get_study_ids(conn), key='study_id', enable_events=True, size=(44, 1), readonly=True)],
         [_space()],  
 
         [sg.T("Collection ID"),
-         sg.Combo("", key='collection_id', enable_events=True, size=(44, 1),
-                  readonly=True)],
+         sg.Combo("", key='collection_id', enable_events=True, size=(44, 1), readonly=True)],
         [_space()],   
 
         [sg.Text('Task combo: '), sg.Combo("",  size=(64, 1), key="tasks", readonly=True)],
@@ -156,7 +149,7 @@ def _main_layout(sess_info, remote=False, frame_sz=(270, 480)):
 
         [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left', k="_title_notes_"),
          sg.Multiline(key='notes', default_text='', size=(64, 10)), _space()],
-        [_space(), sg.Combo([task_mapping(t)[0] for t in sess_info['tasks'].split(", ")],
+        [_space(), sg.Combo(["All tasks"]+[task_mapping(t)[0] for t in sess_info['tasks'].split(", ")],
          k="_notes_taskname_"), sg.ReadFormButton('Save', key="_save_notes_")],
         [_space()]
 
