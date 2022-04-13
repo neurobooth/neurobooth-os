@@ -93,7 +93,6 @@ def Main():
         elif data in ["close", "shutdown"]:
             if "shutdown" in data:
                 sys.stdout = sys.stdout.terminal
-                sys.stdout = sys.stdout.terminal
                 s1.close()
                 
             streams = close_streams(streams)
