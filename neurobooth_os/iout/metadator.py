@@ -250,6 +250,8 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
         kwarg["sample_rate"] = int(info['sensors'][k]['temporal_res'])
     elif "Mouse" in dev_id:
         return kwarg
+    elif "IPhone" in dev_id:
+        k, = info['sensors'].keys()        
     else:
         print(f"Device id parameters not found for {dev_id} in map_database_to_deviceclass")
 
@@ -267,11 +269,9 @@ def _get_device_kwargs(task_id, conn):
         dev_id_param["SN"] = get_dev_sn(dev_id, conn)
 
         dev_id_param["sensors"] = {}
-
         for sens_id in dev_sens_ids:
-            if sens_id == "":
-                continue
-            dev_id_param["sensors"][sens_id] = _get_sensor_kwargs(sens_id, conn)
+            if len(sens_id) :                
+                dev_id_param["sensors"][sens_id] = _get_sensor_kwargs(sens_id, conn)
 
         kwarg = map_database_to_deviceclass(dev_id, dev_id_param)
 
@@ -283,10 +283,10 @@ def _get_device_kwargs_by_task(collection_id, conn):
     # Get devices kwargs for all the tasks
     # outputs dict with keys = stimulus_id, vals = dict with dev parameters
 
-    task = get_tasks(collection_id, conn)
+    tasks = get_tasks(collection_id, conn)
 
     tasks_kwarg = OrderedDict()
-    for task in task:
+    for task in tasks:
         stim_id, *_ = _get_task_param(task, conn)
         task_kwarg = _get_device_kwargs(task, conn)
         tasks_kwarg[stim_id] = task_kwarg
