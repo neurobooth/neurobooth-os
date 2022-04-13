@@ -14,7 +14,7 @@ import threading
 import uuid
 
 import cv2
-import pyspin as  PySpin
+import PySpin
 from pylsl import StreamInfo, StreamOutlet
 import skvideo
 import skvideo.io
