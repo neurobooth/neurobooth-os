@@ -128,7 +128,7 @@ def _main_layout(sess_info, remote=False, frame_sz=(270, 480)):
         console_output = [_space(3)]
     else:
         console_output = [sg.Text('Console \n Output:', pad=((0, 0), 0), justification='left',
-                 auto_size_text=True), sg.Output(key='-OUTPUT-', size=(90, 30))]
+                 auto_size_text=True), sg.Output(key='-OUTPUT-', size=(90, 28))]
     # console_output = [_space(3)]
     subject_text = (f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}' +
                     f' {sess_info["last_name"]}')
@@ -148,7 +148,7 @@ def _main_layout(sess_info, remote=False, frame_sz=(270, 480)):
         [_space()],
 
         [sg.Text('RC Notes:', pad=((0, 0), 0), justification='left', k="_title_notes_"),
-         sg.Multiline(key='notes', default_text='', size=(64, 10)), _space()],
+         sg.Multiline(key='notes', default_text='', size=(64, 8)), _space()],
         [_space(), sg.Combo(["All tasks"]+[task_mapping(t)[0] for t in sess_info['tasks'].split(", ")],
          k="_notes_taskname_"), sg.ReadFormButton('Save', key="_save_notes_")],
         [_space()]
@@ -187,15 +187,16 @@ def _main_layout(sess_info, remote=False, frame_sz=(270, 480)):
 
 def _win_gen(layout, *args):
     window = sg.Window("Neurobooth",
-                       layout(*args), 
-                       # keep_on_top=True,
+                       layout(*args),
+                       size=(1000, 1045),
+                       keep_on_top=False,
                        resizable=True,
-                       location=(0, 0),
+                       location=(-7, 0),
                        default_element_size=(10, 1),
                        text_justification='l',
                        auto_size_text=False,
                        auto_size_buttons=False,
-                       no_titlebar=False,
+                    #    no_titlebar=False,
                        grab_anywhere=False,
                        default_button_element_size=(12, 1))
     return window

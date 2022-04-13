@@ -253,7 +253,7 @@ def _request_frame_preview(window, nodes):
     
     nparr = np.frombuffer(frame, np.uint8)
     img_np = cv2.imdecode(nparr, flags=1) 
-    img_rz = cv2.resize(img_np, [1080//4, 1920//4])
+    img_rz = cv2.resize(img_np, (1080//4, 1920//4))
     img_b = cv2.imencode('.png', img_rz)[1].tobytes()
     window['iphone'].update(data=img_b)
 
@@ -354,6 +354,8 @@ def gui(remote=False, database='neurobooth'):
         elif event == "_init_sess_save_":
             if values["tasks"] == "":
                 sg.PopupError('No task combo')
+            elif values['staff_id'] == "":
+                sg.PopupError('No staff ID')
             else:
                 sess_info = _save_session(window,
                                           log_task, values['staff_id'],
