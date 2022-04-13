@@ -354,6 +354,8 @@ def gui(remote=False, database='neurobooth'):
         elif event == "_init_sess_save_":
             if values["tasks"] == "":
                 sg.PopupError('No task combo')
+            elif values['staff_id'] == "":
+                sg.PopupError('No staff ID')
             else:
                 sess_info = _save_session(window,
                                           log_task, values['staff_id'],
@@ -394,9 +396,15 @@ def gui(remote=False, database='neurobooth'):
             if not op.exists(f"{cfg.paths['data_out']}/{sess_info['subject_id_date']}"):
                 os.mkdir(f"{cfg.paths['data_out']}/{sess_info['subject_id_date']}")
 
-            write_task_notes(sess_info['subject_id_date'],
-                             sess_info['staff_id'],
-                             values['_notes_taskname_'], values['notes'])
+            if values['_notes_taskname_'] == "All tasks":
+                for task in sess_info['tasks'].split(', '):
+                    if not any([i in task for i in ['intro', 'pause']]):
+                        write_task_notes(sess_info['subject_id_date'],
+                             sess_info['staff_id'], task, values['notes'])
+            else:
+                write_task_notes(sess_info['subject_id_date'], sess_info['staff_id'],
+                                values['_notes_taskname_'], values['notes'])
+
             window["notes"].Update('')
 
         # Shut down the other servers and stops plotting
