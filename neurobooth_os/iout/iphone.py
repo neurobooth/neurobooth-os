@@ -145,7 +145,7 @@ class IPhone:
         self.streaming = False
         self.streamName = 'IPhoneFrameIndex'
         self.oulet_id = str(uuid.uuid4())
-        self.outlet = self.createOutlet()
+        
         
     def _validate_message(self,message,tag):
         
@@ -426,7 +426,9 @@ class IPhone:
                             'USECAMERAFACING':'BACK','FPS':'120'}
             self.notifyonframe=int(config['NOTIFYONFRAME'])
             connected=self.handshake(config)
-            self.streaming = True
+            if connected:
+                self.outlet = self.createOutlet()
+                self.streaming = True
             return connected
         
     def dump(self,filename):
@@ -494,8 +496,7 @@ if __name__ == "__main__":
     if not iphone.prepare(config=config):
         print('Could not connect to iphone')
 
-
-    # frame = iphone.frame_preview()
+    frame = iphone.frame_preview()
     
     streamargs = {'name': "IPhoneFrameIndex"}
     recording_folder = ""
