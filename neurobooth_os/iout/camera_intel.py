@@ -111,3 +111,4 @@ class VidRec_Intel():
     def close(self):
         self.previewing = False
         self.stop()
+        self.config = []

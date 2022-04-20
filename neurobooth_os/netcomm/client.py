@@ -47,9 +47,9 @@ def socket_message(message, node_name, wait_data=False):
     try:
         data = connect()
     except (TimeoutError, ConnectionRefusedError):
-        print(f"{node_name} socket connexion timed out, trying to restart server")
+        # print(f"{node_name} socket connexion timed out, trying to restart server")
         try:
-            pid = start_server(node_name)
+            # pid = start_server(node_name)
             data = connect()
         except Exception as e:
             print(e)
