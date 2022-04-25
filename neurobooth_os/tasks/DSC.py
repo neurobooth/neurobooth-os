@@ -63,13 +63,17 @@ class DSC(Task_Eyetracker):
             self.io = launchHubServer()
 
         self.keyboard = self.io.devices.keyboard
-
+            
         self.setup(self.win)
 
 
-    def run(self, last_task=False, **kwargs):
+    def run(self, prompt=True, last_task=False, **kwargs):
+        
+        self.present_instructions(prompt) 
+                
         self.win.color = "white"
         self.win.flip()
+        
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True) 
         self.nextTrial()
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True) 
@@ -89,9 +93,6 @@ class DSC(Task_Eyetracker):
         self.tmbUI["UIevents"] = ['keys']
         self.tmbUI['UIelements'] = ['resp1', 'resp2', 'resp3']
         self.tmbUI['highlight'] = "red"
-
-        self.win.color = "white"
-        self.win.flip()
 
         # create the trials chain
         self.setFrameSequence()
@@ -188,7 +189,10 @@ class DSC(Task_Eyetracker):
                     s.draw()
                 self.win.flip()
 
-                self.sendMessage(self.marker_trial_start)                
+                if frame["type"] == "practice":
+                     self.sendMessage(self.marker_practice_trial_end)
+                 else:
+                     self.sendMessage(self.marker_trial_start)                
                 self.sendMessage("TRIALID", to_marker=False)
                 
                 trialClock = core.Clock()
@@ -230,7 +234,11 @@ class DSC(Task_Eyetracker):
                     print("timed out")
                     self.tmbUI["status"] = "timeout"
                     self.tmbUI["response"] = ["key", ""]
-                self.sendMessage(self.marker_trial_end)
+                    
+                if frame["type"] == "practice":
+                     self.sendMessage(self.marker_practice_trial_end)
+                 else:
+                     self.sendMessage(self.marker_trial_end)
                 self.onreadyUI(frame)
 
 
@@ -328,6 +336,7 @@ class DSC(Task_Eyetracker):
                     "digit": frameDigit[i],
                     "source":  op.join(self.rootdir, f'images/{frameSymbol[i]}.gif')
                 })
+            
 
 
 if __name__ == "__main__":

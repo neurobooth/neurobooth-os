@@ -82,7 +82,8 @@ class MOT(Task_Eyetracker):
             event.waitKeys(keyList=key_resp)
     
         
-    def run(self, last_task=False, **kwargs):     
+    def run(self, prompt=True, last_task=False, **kwargs):     
+        self.present_instructions(prompt) 
         self.win.color = "white"
         self.win.flip()
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True) 
@@ -347,9 +348,12 @@ class MOT(Task_Eyetracker):
             if frame['type'] == "practice":
                 self.trial_info_str = f"Click the {frame['n_targets']} dots that were green"
                 self.sendMessage(self.marker_practice_trial_start)
+                self.sendMessage(f"number targets:{frame['n_targets']}") 
+                
             elif frame['type'] == "test":
                 self.trial_info_str = f"Click {frame['n_targets']} dots"
                 self.sendMessage(self.marker_trial_start)
+                self.sendMessage(f"number targets:{frame['n_targets']}") 
             else:
                 circle = self.showMovingDots(frame)
                 continue
@@ -366,7 +370,7 @@ class MOT(Task_Eyetracker):
             if frame['type'] == "test":
                 self.sendMessage(self.marker_trial_end)
             elif frame['type'] == "practice":
-                self.sendMessage(self.marker_practice_trial_start)
+                self.sendMessage(self.marker_practice_trial_end)
                 
             time.sleep(.5)
             

@@ -34,6 +34,7 @@ class Task():
             text_practice_screen = utils.text_practice_screen,
             text_task=utils.text_task,
             text_end=utils.text_end,
+            countdown=None
             **kwargs):
 
         # Common markers
@@ -86,8 +87,10 @@ class Task():
                                                 pos=(0, 0), units='deg')
         self.press_task_screen = visual.ImageStim(self.win, image=op.join(self.root_pckg,'tasks/assets/task_end.png'),
                                                 pos=(0, 0), units='deg')
+        if countdown is None:
+            countdown = 'countdown_2021_11_22.mp4'
         self.countdown_video = visual.MovieStim3(win=self.win, filename= op.join(neurobooth_os.__path__[0], 'tasks',
-                                                                  'assets', 'countdown_2021_11_22.mp4'), noAudio=False)
+                                                                  'assets', countdown), noAudio=False)
         
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
