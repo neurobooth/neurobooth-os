@@ -31,7 +31,7 @@ class Sensor:
         # Setup outlet stream infos
         self.oulet_id = str(uuid.uuid4())
         self.stream_mbient = StreamInfo(name=f'mbient_{self.dev_name}', type='acc',
-                                        channel_count=7, channel_format='float32',
+                                        channel_count=7, channel_format='double64',
                                         source_id=self.oulet_id)
 
         col_names = ["time_stamp", "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z"]

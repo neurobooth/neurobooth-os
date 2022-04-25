@@ -77,7 +77,7 @@ class VidRec_Flir():
     def createOutlet(self):
         self.streamName = 'FlirFrameIndex'
         self.oulet_id = str(uuid.uuid4())
-        info = StreamInfo(name=self.streamName, type='videostream', channel_format='int32',
+        info = StreamInfo(name=self.streamName, type='videostream', channel_format='double64',
             channel_count=2, source_id=self.oulet_id)
 
         info.desc().append_child_value("device_id", self.device_id)
@@ -148,7 +148,7 @@ class VidRec_Flir():
             except BaseException:
                 print(f"Reopening FLIR {self.device_index} stream already closed")
                 self.outlet = self.createOutlet(self.video_filename)
-                self.outlet.push_sample([self.frame_counter])
+                self.outlet.push_sample([self.frame_counter, tsmp])
 
             # self.video_out.write(im_conv_d)
             self.frame_counter += 1
