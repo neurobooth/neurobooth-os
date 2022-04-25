@@ -191,7 +191,7 @@ class DSC(Task_Eyetracker):
 
                 if frame["type"] == "practice":
                      self.sendMessage(self.marker_practice_trial_end)
-                 else:
+                else:
                      self.sendMessage(self.marker_trial_start)                
                 self.sendMessage("TRIALID", to_marker=False)
                 
@@ -237,7 +237,7 @@ class DSC(Task_Eyetracker):
                     
                 if frame["type"] == "practice":
                      self.sendMessage(self.marker_practice_trial_end)
-                 else:
+                else:
                      self.sendMessage(self.marker_trial_end)
                 self.onreadyUI(frame)
 
