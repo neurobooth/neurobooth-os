@@ -154,6 +154,7 @@ def Main():
                 # Log task to database
                 log_task["task_id"] = t_obs_id
                 log_task['event_array'] = str(events).replace("'", '"') if events is not None else "event:datestamp"
+                       
                 meta._fill_task_row(log_task_id, log_task, conn)     
                 
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
