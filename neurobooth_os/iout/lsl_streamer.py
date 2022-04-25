@@ -52,6 +52,9 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
             if "Intel" in kdev:
                 streams[kdev] = VidRec_Intel(**argsdev)
             elif "Mbient" in kdev:
+                # Don't connect mbients from STM
+                if any([d in kdev for d in ["Mbient_LF", "Mbient_BK"]]):
+                    continue
                 streams[kdev] = connect_mbient(**argsdev)
                 if streams[kdev] is None:
                     del streams[kdev]

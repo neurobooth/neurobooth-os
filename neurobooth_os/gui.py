@@ -421,17 +421,18 @@ def gui(remote=False, database='neurobooth'):
         # Signal a task started: record LSL data and update gui
         elif event == 'task_initiated':
             # event values -> f"['{task_id}', '{t_obs_id}', '{log_task_id}, '{tsk_strt_time}']
+            window['-frame_preview-'].update(visible=False)
             task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
             rec_fname = _record_lsl(window, session, sess_info['subject_id_date'], task_id,
                                     t_obs_id, obs_log_id, tsk_strt_time, nodes[1])
-
+            
         # Signal a task ended: stop LSL recording and update gui
         elif event == 'task_finished':
             task_id = values['task_finished']
             
             _stop_lsl_and_save(window, session, conn,
                                rec_fname, task_id, obs_log_id, t_obs_id, sess_info['subject_id_date'])
-            print("Xdf data converted to HDF5")
+             window['-frame_preview-'].update(visible=True)
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":            
