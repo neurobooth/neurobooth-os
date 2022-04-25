@@ -162,13 +162,15 @@ def _start_lsl_session(window, inlets, folder=''):
 
 
 def _record_lsl(window, session, subject_id, task_id, t_obs_id, obs_log_id,
-                tsk_strt_time):
+                tsk_strt_time, presentation_node):
 
     print(f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}")
 
     # Start LSL recording
     rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
     session.start_recording(rec_fname)
+    
+    socket_message("lsl_recording", presentation_node)
 
     window["task_title"].update("Running Task:")
     window["task_running"].update(task_id, background_color="red")
@@ -422,7 +424,7 @@ def gui(remote=False, database='neurobooth'):
             # event values -> f"['{task_id}', '{t_obs_id}', '{log_task_id}, '{tsk_strt_time}']
             task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
             rec_fname = _record_lsl(window, session, sess_info['subject_id_date'], task_id,
-                                    t_obs_id, obs_log_id, tsk_strt_time)
+                                    t_obs_id, obs_log_id, tsk_strt_time, nodes[1])
 
         # Signal a task ended: stop LSL recording and update gui
         elif event == 'task_finished':
@@ -446,9 +448,9 @@ def gui(remote=False, database='neurobooth'):
         elif event == "-OUTLETID-":
             _create_lsl_inlet(stream_ids, values[event], inlets)
 
-    ##################################################################################
-    # Conditionals handling inlets for plotting and recording
-    ##################################################################################
+        ##################################################################################
+        # Conditionals handling inlets for plotting and recording
+        ##################################################################################
     
         elif event == '-frame_preview-':
             _request_frame_preview(window, nodes)

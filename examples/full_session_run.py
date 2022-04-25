@@ -83,7 +83,7 @@ while True:
     if event == 'task_initiated':
         task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(value)
         rec_fname = _record_lsl(main_window, session, sess_info['subject_id_date'], task_id,
-                                t_obs_id, obs_log_id, tsk_strt_time)
+                                t_obs_id, obs_log_id, tsk_strt_time, nodes[1])
 
     elif event == "-new_filename-":
         vidf_mrkr.push_sample([value])
