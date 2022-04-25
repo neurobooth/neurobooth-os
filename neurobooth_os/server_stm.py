@@ -122,14 +122,15 @@ def Main():
                 log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
                 tsk_strt_time = datetime.now().strftime("%Hh-%Mm-%Ss")
 
-                # Signal CTR to start LSL rec
+                # Signal CTR to start LSL rec and wait for start confiramtion
                 print(f"Initiating task:{task}:{t_obs_id}:{log_task_id}:{tsk_strt_time}")
-                sleep(1)
-
+                ctr_msg = None
+                while ctr_msg != "lsl_recording":
+                    ctr_msg = get_data_timeout(s1, 2)
+                    print('Waiting CTR to start lsl rec, ', ctr_msg)
+                
                 # Start eyetracker if device in task 
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
-                    # if not streams['Eyelink'].calibrated:
-                    #     streams['Eyelink'].calibrate()
                     fname = f"{config.paths['data_out']}{subject_id_date}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
                     
                     # if not calibration record with start method

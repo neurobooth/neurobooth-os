@@ -82,6 +82,14 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
             elif 'Mouse' in kdev:
                 streams['mouse'] = MouseStream(**argsdev)
                 streams['mouse'].start()
+            
+            elif any([d in kdev for d in ["Mbient_LF", "Mbient_BK"]]):
+                streams[kdev] = connect_mbient(**argsdev)
+                if streams[kdev] is None:
+                    del streams[kdev]
+                else:
+                    streams[kdev].start()
+                    
 
     elif node_name == "dummy_acq": 
         from neurobooth_os.mock import mock_device_streamer as mock_dev
