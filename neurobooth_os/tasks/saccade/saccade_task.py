@@ -70,7 +70,7 @@ class Saccade(Task_Eyetracker):
         self.win.color = (0, 0, 0)
         self.win.flip()
         
-        self.sendMessage("TRIALID")
+        # self.sendMessage("TRIALID")
         # Start recording
         # self.startRecording()
 
