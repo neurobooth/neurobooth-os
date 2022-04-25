@@ -432,7 +432,7 @@ def gui(remote=False, database='neurobooth'):
             
             _stop_lsl_and_save(window, session, conn,
                                rec_fname, task_id, obs_log_id, t_obs_id, sess_info['subject_id_date'])
-             window['-frame_preview-'].update(visible=True)
+            window['-frame_preview-'].update(visible=True)
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":            
