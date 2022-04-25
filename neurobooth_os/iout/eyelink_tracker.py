@@ -5,7 +5,7 @@ import threading
 
 import pylink
 from psychopy import visual, monitors
-from pylsl import StreamInfo, StreamOutlet
+from pylsl import StreamInfo, StreamOutlet, local_clock
 
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
@@ -42,7 +42,7 @@ class EyeTracker():
 
         # Setup outlet stream info
         self.oulet_id = str(uuid.uuid4())
-        self.stream_info = StreamInfo('EyeLink','Gaze', 12, self.sample_rate, 'float32', self.oulet_id)
+        self.stream_info = StreamInfo('EyeLink','Gaze', 13, self.sample_rate, 'double64', self.oulet_id)
         self.stream_info.desc().append_child_value("fps", str(self.sample_rate))
         self.stream_info.desc().append_child_value("device_id", self.device_id)
         self.stream_info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
@@ -146,34 +146,42 @@ class EyeTracker():
         self.paused = False
         old_sample = None
         values = []
+        self.timestamps = []
         while self.recording:
             if self.paused:
-                time.sleep(.1)
+                # time.sleep(.1)
                 continue
 
-            smp = self.tk.getNewestSample()
+            t1 = local_clock()
+            t2 = local_clock()
+                
+            smp = self.tk.getNewestSample()  # check smp object, see et.tk.getNextData()
 
-            if smp is not None and old_sample != smp:
-                    
-                ppd = smp.getPPD()
-                timestamp = smp.getTime()
-                values = [0, 0, 0, 0, 0, 0, smp.getTargetX(), smp.getTargetY(), smp.getTargetDistance(),
-                          ppd[0], ppd[1], timestamp]
+            if smp is not None:
+                if old_sample is None or old_sample.getTime() != smp.getTime():                       
+                        
+                    ppd = smp.getPPD()
+                    timestamp = smp.getTime()
+                    timestamp_local = local_clock()
+                    self.timestamps.append(timestamp)
+                    values = [0, 0, 0, 0, 0, 0, smp.getTargetX(), smp.getTargetY(), smp.getTargetDistance(),
+                              ppd[0], ppd[1], timestamp, timestamp_local]
+    
+                    # Grab gaze & pupil size data
+                    if smp.isRightSample():
+                        gaze = smp.getRightEye().getGaze()                   
+                        pupil = smp.getRightEye().getPupilSize()  # pupil size
+                        values[:3] = [gaze[0], gaze[1], pupil]
+                    if smp.isLeftSample():
+                        gaze = smp.getLeftEye().getGaze()
+                        pupil = smp.getLeftEye().getPupilSize()
+                        values[3:6] = [gaze[0], gaze[1], pupil]
+                                            
+                    self.outlet.push_sample(values)
+                    old_sample = smp
 
-                # Grab gaze & pupil size data
-                if smp.isRightSample():
-                    gaze = smp.getRightEye().getGaze()                   
-                    pupil = smp.getRightEye().getPupilSize()  # pupil size
-                    values[:3] = [gaze[0], gaze[1], pupil]
-                if smp.isLeftSample():
-                    gaze = smp.getLeftEye().getGaze()
-                    pupil = smp.getLeftEye().getPupilSize()
-                    values[3:6] = [gaze[0], gaze[1], pupil]
-                                        
-                self.outlet.push_sample(values)
-                old_sample = smp
-
-            time.sleep(.0005)
+            while t2-t1 < 1/(self.sample_rate*3):
+                t2 =local_clock()
 
         self.tk.stopRecording()
         self.tk.closeDataFile()
@@ -192,3 +200,11 @@ class EyeTracker():
         self.tk.close()
 
 
+# et = EyeTracker()
+# et.start()
+# time.sleep(20)
+# et.stop()
+
+# import matplotlib.pyplot as plt
+# import numpy as np
+# plt.plot(np.diff(et.timestamps))
