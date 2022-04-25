@@ -85,13 +85,13 @@ def _new_tech_log_dict(application_id="neurobooth_os"):
     """Create a new log_task dict."""
     log_task = OrderedDict()
     log_task["subject_id"] = ""
-    log_task["study_id"] = ""
+    # log_task["study_id"] = ""
     log_task["task_id"] = ""
-    log_task["staff_id"] = ""
-    log_task["application_id"] = "neurobooth_os"
+    # log_task["staff_id"] = ""
+    # log_task["application_id"] = "neurobooth_os"
     log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
     log_task["event_array"] = []  # marker_name:timestamp
-    log_task["collection_id"] = ""
+    # log_task["collection_id"] = ""
     return log_task  # XXX: log_task_dict
 
 

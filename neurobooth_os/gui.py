@@ -110,7 +110,6 @@ def _get_collections(window, conn, study_id):
 def _save_session(window, log_task, staff_id, subject_id, first_name,
                   last_name, tasks):
     """Save session."""
-    log_task["staff_id"] = staff_id
     log_task["subject_id"] = subject_id
     log_task["subject_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
 
@@ -335,7 +334,7 @@ def gui(remote=False, database='neurobooth'):
         ############################################################
         if event == "study_id":
             study_id = values[event]
-            log_task["study_id"] = study_id
+            # log_task["study_id"] = study_id
             collection_ids = _get_collections(window, conn, study_id)
 
         elif event == 'find_subject':
@@ -350,7 +349,7 @@ def gui(remote=False, database='neurobooth'):
 
         elif event == "collection_id":
             collection_id = values[event]
-            log_task["collection_id"] = collection_id
+            # log_task["collection_id"] = collection_id
             tasks = _get_tasks(window, conn, collection_id)
 
         elif event == "_init_sess_save_":
