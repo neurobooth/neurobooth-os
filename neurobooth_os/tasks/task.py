@@ -34,7 +34,7 @@ class Task():
             text_practice_screen = utils.text_practice_screen,
             text_task=utils.text_task,
             text_end=utils.text_end,
-            countdown=None
+            countdown=None,
             **kwargs):
 
         # Common markers
