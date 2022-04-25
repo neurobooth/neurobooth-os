@@ -126,7 +126,7 @@ def Main():
                 print(f"Initiating task:{task}:{t_obs_id}:{log_task_id}:{tsk_strt_time}")
                 ctr_msg = None
                 while ctr_msg != "lsl_recording":
-                    ctr_msg = get_data_timeout(s1, 2)
+                    ctr_msg = get_data_timeout(s1, 3)
                     print('Waiting CTR to start lsl rec, ', ctr_msg)
                 
                 # Start eyetracker if device in task 
@@ -143,7 +143,7 @@ def Main():
                 resp = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
                                     "acquisition", wait_data=10)
                 # print(resp)
-                sleep(.5)
+                sleep(.2)
 
                 if len(tasks) == 0:
                     this_task_kwargs.update({'last_task' : True})
@@ -162,7 +162,6 @@ def Main():
                     if 'calibration_task' not in task:
                         streams['Eyelink'].stop()
                 
-                sleep(2)
                 # Check if pause requested, unpause or stop
                 data = get_data_timeout(s1, .1)
                 if data == "pause tasks":
@@ -191,16 +190,16 @@ def Main():
             presented = True
 
         elif data in ["close", "shutdown"]:
+            if "shutdown" in data:
+                sys.stdout = sys.stdout.terminal
+                s1.close()
+                
             streams = close_streams(streams)
-            # print("Closing devices")
 
             if "shutdown" in data:
                 if screen_running:
                     screen_feed.stop()
-                    # print("Closing screen mirroring")
                     screen_running = False
-                sys.stdout = sys.stdout.terminal
-                s1.close()
                 break
 
         elif "time_test" in data:
