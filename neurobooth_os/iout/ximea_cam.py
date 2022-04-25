@@ -52,7 +52,7 @@ class VidRec_Ximea():
         info = StreamInfo(
             name=streamName,
             type='videostream',
-            channel_format='int32',
+            channel_format='double64',
             channel_count=2,
             source_id=self.oulet_id)
         info.desc().append_child_value("videoFile", filename)
