@@ -67,7 +67,7 @@ class hevelius_task(Task_Eyetracker):
 
         # # Recording database
         self.startRecording()
-        pylink.msecDelay(100)
+        # pylink.msecDelay(100)
         
         self.run_blocks(practice_blocks, 'Practice ')
         text_practice_done = 'Thank you for completing Practice Session \n\tPlease press:\n\t"Continue" to the task'
