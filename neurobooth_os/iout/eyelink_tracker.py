@@ -6,6 +6,7 @@ import threading
 import pylink
 from psychopy import visual, monitors
 from pylsl import StreamInfo, StreamOutlet, local_clock
+from psychopy import core 
 
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
@@ -130,7 +131,6 @@ class EyeTracker():
         print(f"-new_filename-:{self.streamName}:{op.split(filename)[-1]}")
         self.fname_temp = "name8chr.edf"
         self.tk.openDataFile(self.fname_temp)
-        # self.outlet = StreamOutlet(self.stream_info)
         self.streaming = True
 
         pylink.beginRealTimeMode(100)
@@ -146,14 +146,15 @@ class EyeTracker():
         self.paused = False
         old_sample = None
         values = []
-        self.timestamps = []
+        self.timestamps_et = []
+        self.timestamps_local = []
         while self.recording:
             if self.paused:
                 # time.sleep(.1)
                 continue
 
             t1 = local_clock()
-            t2 = local_clock()
+            t2 = t1
                 
             smp = self.tk.getNewestSample()  # check smp object, see et.tk.getNextData()
 
@@ -163,7 +164,9 @@ class EyeTracker():
                     ppd = smp.getPPD()
                     timestamp = smp.getTime()
                     timestamp_local = local_clock()
-                    self.timestamps.append(timestamp)
+                    # self.timestamps_et.append(timestamp)
+                    # self.timestamps_local.append(timestamp_local)
+                    
                     values = [0, 0, 0, 0, 0, 0, smp.getTargetX(), smp.getTargetY(), smp.getTargetDistance(),
                               ppd[0], ppd[1], timestamp, timestamp_local]
     
@@ -180,8 +183,8 @@ class EyeTracker():
                     self.outlet.push_sample(values)
                     old_sample = smp
 
-            while t2-t1 < 1/(self.sample_rate*3):
-                t2 =local_clock()
+                    while t2-t1 < 1/(self.sample_rate*4):
+                        t2 =local_clock()
 
         self.tk.stopRecording()
         self.tk.closeDataFile()
@@ -200,11 +203,21 @@ class EyeTracker():
         self.tk.close()
 
 
-# et = EyeTracker()
-# et.start()
-# time.sleep(20)
-# et.stop()
 
-# import matplotlib.pyplot as plt
-# import numpy as np
-# plt.plot(np.diff(et.timestamps))
+if __name__ == "__main__":
+    et = EyeTracker()
+    et.start()
+    core.wait(30)
+    et.stop()
+    et.win.close()
+    
+    import matplotlib.pyplot as plt
+    import numpy as np
+    
+    timestamps_et = [e/1000 for e in et.timestamps_et]
+    plt.figure()
+    plt.plot(np.diff(timestamps_et))
+    plt.plot(np.diff(et.timestamps_local), alpha=.5)
+    
+    print(f'ET fps {1/np.mean(np.diff(timestamps_et))}, lsl fps {1/np.mean(np.diff(et.timestamps_local))}')
+    print(f'ET samples {len(timestamps_et)}, lsl samples {len(et.timestamps_local)}')
