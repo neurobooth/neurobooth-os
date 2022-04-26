@@ -164,8 +164,8 @@ class EyeTracker():
                     ppd = smp.getPPD()
                     timestamp = smp.getTime()
                     timestamp_local = local_clock()
-                    # self.timestamps_et.append(timestamp)
-                    # self.timestamps_local.append(timestamp_local)
+                    self.timestamps_et.append(timestamp)
+                    self.timestamps_local.append(timestamp_local)
                     
                     values = [0, 0, 0, 0, 0, 0, smp.getTargetX(), smp.getTargetY(), smp.getTargetDistance(),
                               ppd[0], ppd[1], timestamp, timestamp_local]
@@ -208,6 +208,7 @@ if __name__ == "__main__":
     et = EyeTracker()
     et.start()
     core.wait(30)
+    # pylink.msecDelay(10000)
     et.stop()
     et.win.close()
     
