@@ -423,7 +423,7 @@ class IPhone:
                 self.notifyonframe=10
                 config={'NOTIFYONFRAME':str(self.notifyonframe),
                             'VIDEOQUALITY':'1920x1080',
-                            'USECAMERAFACING':'BACK','FPS':'120'}
+                            'USECAMERAFACING':'BACK','FPS':'240'}
             self.notifyonframe=int(config['NOTIFYONFRAME'])
             connected=self.handshake(config)
             if connected:
