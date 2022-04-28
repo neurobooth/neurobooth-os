@@ -223,7 +223,7 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
         for k in info['sensors'].keys():
             if "acc" in k:
                 kwarg["acc_hz"] = int(info['sensors'][k]['temporal_res'])
-            elif "gra" in k:
+            elif "gyro" in k:
                 kwarg["gyro_hz"] = int(info['sensors'][k]['temporal_res'])
 
     elif "FLIR_blackfly" in dev_id:

@@ -28,6 +28,12 @@ class Sensor:
         self.acc_hz = acc_hz
         self.gyro_hz = gyro_hz
 
+
+
+        self.setup()
+        print(f"-OUTLETID-:mbient_{self.dev_name}:{self.oulet_id}")
+
+    def createOutlet(self):
         # Setup outlet stream infos
         self.oulet_id = str(uuid.uuid4())
         self.stream_mbient = StreamInfo(name=f'mbient_{self.dev_name}', type='acc',
@@ -38,27 +44,8 @@ class Sensor:
         self.stream_mbient.desc().append_child_value("col_names", str(col_names))
         self.stream_mbient.desc().append_child_value("device_id", device_id)
         self.stream_mbient.desc().append_child_value("sensor_ids", str(sensor_ids))
-
-        self.setup()
-        print(f"-OUTLETID-:mbient_{self.dev_name}:{self.oulet_id}")
-
-    def createOutlet(self, filename):
-        streamName = 'XimeaFrameIndex'
-        self.oulet_id = str(uuid.uuid4())
-        info = StreamInfo(
-            name=streamName,
-            type='videostream',
-            channel_format='int32',
-            channel_count=2,
-            source_id=self.oulet_id)
-        info.desc().append_child_value("videoFile", filename)
-
-        info.desc().append_child_value("col_vals", str(self.frameSize))
-        info.desc().append_child_value("serial_number", self.serial_num)
-        info.desc().append_child_value("fps_rgb", str(self.fps))
-        info.desc().append_child_value("device_model_id", self.cam.get_device_name().decode())
-        print(f"-OUTLETID-:{streamName}:{self.oulet_id}")
-        return StreamOutlet(info)
+        
+        return StreamOutlet(self.stream_mbient)
 
     def connect(self):
         self.device = self.connector(self.mac)
@@ -104,7 +91,7 @@ class Sensor:
             e.set()
         fn_wrapper = cbindings.FnVoid_VoidP_VoidP(processor_created)
 
-        self.outlet = StreamOutlet(self.stream_mbient)
+        self.outlet = self.createOutlet()
 
         self.callback = cbindings.FnVoid_VoidP_DataP(self.data_handler)
 
@@ -207,6 +194,8 @@ class Sensor:
 
 if __name__ == "__main__":
 
+    macs =  ["D7:B0:7E:C2:A1:23", "DA:B0:96:E4:7F:A3"]
+    
     macs =  [ "E5:F6:FB:6D:11:8A" , "E8:95:D6:F7:39:D2", "FE:AB:CF:19:7A:CB"] #["FE:AB:CF:19:7A:CB"] # [ "E5:F6:FB:6D:11:8A" , "E8:95:D6:F7:39:D2"] # "FE:AB:CF:19:7A:CB",
     mbts = []
     for mac in macs:
