@@ -86,11 +86,17 @@ def present(win, screen, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=
             event.waitKeys()
     if audio is not None:
         audio.play()
-    core.wait(wait_time)
+    countdown(wait_time)
     if waitKeys:
         event.waitKeys()
 
-
+def countdown(period):
+    t1 = local_clock()
+    t2 = t1
+    
+    while t2-t1 < period:
+        t2 =local_clock()
+    
 def play_video(win, mov, wait_time=1, stop=True):
     clock  = core.Clock()
     if mov.status == visual.FINISHED:
