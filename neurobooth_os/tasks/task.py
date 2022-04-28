@@ -131,7 +131,7 @@ class Task():
         mySound = sound.Sound(1000, 0.2)
         utils.play_video(self.win, self.countdown_video, wait_time=4, stop=False)
         mySound.play()
-        core.wait(.22)
+        utils.countdown(.22)
 
     def present_instructions(self, prompt=True):
         self.show_video(video=self.instruction_video, msg='Intructions')
@@ -179,7 +179,7 @@ class Task_countdown(Task):
         
         self.send_marker(self.marker_task_start, True)
         self.win.flip()
-        core.wait(duration+2)
+        utils.countdown(duration+2)
         self.send_marker(self.marker_task_end, True)
         
         if prompt:
