@@ -27,7 +27,8 @@ class Sensor:
         self.buzz_time = buzz_time_sec * 1000
         self.acc_hz = acc_hz
         self.gyro_hz = gyro_hz
-
+        self.device_id = device_id
+        self.sensor_ids = sensor_ids
 
 
         self.setup()
@@ -42,8 +43,8 @@ class Sensor:
 
         col_names = ["time_stamp", "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z"]
         self.stream_mbient.desc().append_child_value("col_names", str(col_names))
-        self.stream_mbient.desc().append_child_value("device_id", device_id)
-        self.stream_mbient.desc().append_child_value("sensor_ids", str(sensor_ids))
+        self.stream_mbient.desc().append_child_value("device_id", self.device_id)
+        self.stream_mbient.desc().append_child_value("sensor_ids", str( self.sensor_ids))
         
         return StreamOutlet(self.stream_mbient)
 
