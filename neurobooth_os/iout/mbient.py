@@ -29,7 +29,7 @@ class Sensor:
         self.gyro_hz = gyro_hz
         self.device_id = device_id
         self.sensor_ids = sensor_ids
-
+        self.nsmpl = []
 
         self.setup()
         print(f"-OUTLETID-:mbient_{self.dev_name}:{self.oulet_id}")
@@ -66,6 +66,7 @@ class Sensor:
             values[1].z]
 
         self.outlet.push_sample(vals)
+        self.nsmpl.append(values)
         # print("acc: (%.4f,%.4f,%.4f), gyro; (%.4f,%.4f,%.4f)" % (values[0].x, values[0].y, values[0].z, values[1].x, values[1].y, values[1].z))
 
     def setup(self):
@@ -197,7 +198,7 @@ def reset_mbient(mac, dev_name="mbient"):
     # connect
     device = MetaWear(mac)
     device.connect()
-    print("Connected to {device.address} {dev_name} over " + ("USB" if device.usb.is_connected else "BLE"))
+    print(f"Connected to {device.address} {dev_name} over " + ("USB" if device.usb.is_connected else "BLE"))
     
     # stop logging
     libmetawear.mbl_mw_logging_stop(device.board)
@@ -228,7 +229,7 @@ def reset_mbient(mac, dev_name="mbient"):
     sleep(1.0)
     
     device.disconnect()
-    print("{dev_name} reset and disconnected")
+    print(f"{dev_name} reset and disconnected")
     sleep(1.0)
 
 
