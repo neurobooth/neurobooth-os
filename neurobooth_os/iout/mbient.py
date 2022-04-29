@@ -193,13 +193,54 @@ class Sensor:
 
 
 
+def reset_mbient(mac, dev_name="mbient"):
+    # connect
+    device = MetaWear(mac)
+    device.connect()
+    print("Connected to {device.address} {dev_name} over " + ("USB" if device.usb.is_connected else "BLE"))
+    
+    # stop logging
+    libmetawear.mbl_mw_logging_stop(device.board)
+    sleep(1.0)
+    
+    # flush cache if mms
+    libmetawear.mbl_mw_logging_flush_page(device.board)
+    sleep(1.0)
+    
+    # clear logger
+    libmetawear.mbl_mw_logging_clear_entries(device.board)
+    sleep(1.0)
+    
+    # remove events
+    libmetawear.mbl_mw_event_remove_all(device.board)
+    sleep(1.0)
+    
+    # erase macros
+    libmetawear.mbl_mw_macro_erase_all(device.board)
+    sleep(1.0)
+    
+    # debug and garbage collect
+    libmetawear.mbl_mw_debug_reset_after_gc(device.board)
+    sleep(1.0)
+    
+    # delete timer and processors
+    libmetawear.mbl_mw_debug_disconnect(device.board)
+    sleep(1.0)
+    
+    device.disconnect()
+    print("{dev_name} reset and disconnected")
+    sleep(1.0)
+
+
 if __name__ == "__main__":
 
     macs =  ["D7:B0:7E:C2:A1:23", "DA:B0:96:E4:7F:A3"]
     
-    macs =  [ "E5:F6:FB:6D:11:8A" , "E8:95:D6:F7:39:D2", "FE:AB:CF:19:7A:CB"] #["FE:AB:CF:19:7A:CB"] # [ "E5:F6:FB:6D:11:8A" , "E8:95:D6:F7:39:D2"] # "FE:AB:CF:19:7A:CB",
+    macs =  [ "E5:F6:FB:6D:11:8A" , "E8:95:D6:F7:39:D2", "FE:07:3E:37:F5:9C"] #["FE:AB:CF:19:7A:CB"] # [ "E5:F6:FB:6D:11:8A" , "E8:95:D6:F7:39:D2"] # "FE:AB:CF:19:7A:CB",
     mbts = []
+    
     for mac in macs:
+        sleep(1.0)
         mbt= Sensor(mac)
         mbt.start()
         mbts.append(mbt)
