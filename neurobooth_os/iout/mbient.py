@@ -236,7 +236,7 @@ def reset_mbient(mac, dev_name="mbient"):
 if __name__ == "__main__":
 
     macs =  ["D7:B0:7E:C2:A1:23", "DA:B0:96:E4:7F:A3"]
-    
+
     macs =  [ "E5:F6:FB:6D:11:8A" , "E8:95:D6:F7:39:D2", "FE:07:3E:37:F5:9C"] #["FE:AB:CF:19:7A:CB"] # [ "E5:F6:FB:6D:11:8A" , "E8:95:D6:F7:39:D2"] # "FE:AB:CF:19:7A:CB",
     mbts = []
     
