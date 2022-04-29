@@ -118,8 +118,8 @@ def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
     return streams
 
 
-def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=5, **kwarg):
-    from neurobooth_os.iout.mbient import Sensor
+def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=3, **kwarg):
+    from neurobooth_os.iout.mbient import Sensor, reset_mbient
 
     tinx = 0
     print(f"Trying to connect mbient {dev_name}, mac {mac}")
@@ -131,7 +131,10 @@ def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=5, **kwarg):
             print(f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries {e}")
             tinx += 1            
             if tinx >= try_nmax:
-                print(f"Failed to connect mbient {dev_name}")
+                try: 
+                    reset_mbient(mac, dev_name)
+                except:
+                    print(f"Failed to connect mbient {dev_name}")
                 break
             time.sleep(1)
 
