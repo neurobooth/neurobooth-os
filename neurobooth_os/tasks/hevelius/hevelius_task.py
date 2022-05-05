@@ -46,7 +46,9 @@ class hevelius_task(Task_Eyetracker):
         trials_blocks = sorted(list(filter(lambda x: x.startswith('block'), list(self.trials_data.keys()))))
 
         utils.change_win_color(self.win, 'grey')
-
+        
+        # self.setOfflineMode()
+        
         self.present_instructions(prompt)
         self.screen_text = visual.TextStim(win=self.win, name='',
                                            text='',
@@ -66,7 +68,7 @@ class hevelius_task(Task_Eyetracker):
                                            anchorVert='top')
 
         # # Recording database
-        self.startRecording()
+        # self.startRecording()
         # pylink.msecDelay(100)
         
         self.run_blocks(practice_blocks, 'Practice ')
