@@ -84,12 +84,12 @@ def present(win, screen, audio=None, wait_time=0, win_color=(0, 0, 0), waitKeys=
         screen.draw()
         win.flip()
         if first_screen:
-            event.waitKeys()
+            get_keys()
     if audio is not None:
         audio.play()
     countdown(wait_time)
     if waitKeys:
-        event.waitKeys()
+        get_keys()
 
 def countdown(period):
     t1 = local_clock()
@@ -97,7 +97,19 @@ def countdown(period):
     
     while t2-t1 < period:
         t2 =local_clock()
-    
+
+
+def get_keys(keyList=()):
+    # Wait for keys checking every 5 ms
+    while True:
+        press =  event.getKeys()
+        if press:
+            if keyList and press in keyList:
+                    return press
+            else:
+                return press   
+        countdown(.005)
+        
 def play_video(win, mov, wait_time=1, stop=True):
     clock  = core.Clock()
     if mov.status == visual.FINISHED:
@@ -120,7 +132,7 @@ def play_video(win, mov, wait_time=1, stop=True):
             break
 
 def rewind_video(win, mov):
-    key = event.waitKeys(keyList=['space', 'r'])
+    key = get_keys(keyList=['space', 'r'])
     if key == ["space"]:
         mov.stop()
         return False
@@ -131,14 +143,14 @@ def rewind_video(win, mov):
         return True
 
 def repeat_advance():
-    key = event.waitKeys(keyList=['space', 'r'])
+    key = get_keys(keyList=['space', 'r'])
     if key == ["space"]:
         return False
     elif key == ['r']:
         return True
 
 def advance():
-    key = event.waitKeys(keyList=['space'])
+    key = get_keys(keyList=['space'])
     if key == ["space"]:
         return True
 

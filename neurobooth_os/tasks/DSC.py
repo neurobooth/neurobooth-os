@@ -34,7 +34,7 @@ def present_msg(elems, win, key_resp="space"):
     for e in elems:
         e.draw()
     win.flip()
-    event.waitKeys(keyList=key_resp)
+    utils.get_keys(keyList=[key_resp])
 
 
 class DSC(Task_Eyetracker):
@@ -81,7 +81,13 @@ class DSC(Task_Eyetracker):
         self.present_complete(last_task)
         return self.events
 
-
+    def wait_release(self, keys=None):
+        while True:
+            rels = self.keyboard.getReleases(keys=keys)
+            if len(rels):
+                return rels
+        
+        
     def my_textbox2(self, text, pos=(0, 0), size=(None, None)):
         tbx = TextBox2(self.win, pos=pos, color='black', units='deg', lineSpacing=.9,
                        letterHeight=1, text=text, font="Arial",  # size=(20, None),
@@ -190,7 +196,7 @@ class DSC(Task_Eyetracker):
                 self.win.flip()
 
                 if frame["type"] == "practice":
-                     self.sendMessage(self.marker_practice_trial_end)
+                     self.sendMessage(self.marker_practice_trial_start)
                 else:
                      self.sendMessage(self.marker_trial_start)                
                 self.sendMessage("TRIALID", to_marker=False)
@@ -226,7 +232,7 @@ class DSC(Task_Eyetracker):
                         for ss in stim:
                             ss.draw()
                         self.win.flip()
-                        response_events = self.keyboard.waitForReleases()                       
+                        response_events = self.wait_release()                       
                         self.sendMessage(self.marker_response_end)
                         break
 
@@ -348,7 +354,7 @@ if __name__ == "__main__":
     customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
     win = visual.Window(
     [1920, 1080],   
-    fullscr=True ,  
+    fullscr=False ,  
     monitor=customMon,
     units='pix',    
     color='white' 
@@ -356,3 +362,4 @@ if __name__ == "__main__":
 
     self = DSC(win=win)
     self.run() 
+    win.close()
