@@ -2,6 +2,7 @@ import os.path as op
 import time
 import uuid
 import threading
+import numpy as np
 
 import pylink
 from psychopy import visual, monitors
@@ -150,7 +151,10 @@ class EyeTracker():
         self.timestamps_local = []
         while self.recording:
             if self.paused:
-                # time.sleep(.1)
+                t1 = local_clock()
+                t2 = t1
+                while t2-t1 < 1/(self.sample_rate*4):
+                    t2 =local_clock()
                 continue
 
             t1 = local_clock()
@@ -183,9 +187,12 @@ class EyeTracker():
                     self.outlet.push_sample(values)
                     old_sample = smp
 
-                    while t2-t1 < 1/(self.sample_rate*4):
-                        t2 =local_clock()
+            while t2-t1 < 1/(self.sample_rate*4):
+                t2 =local_clock()
 
+        fps_et = np.mean(1/np.diff(self.timestamps_et))
+        fps_lcl = np.mean(1/np.diff(self.timestamps_local))
+        print(f"ET number of samples {len(self.timestamps_et)}, fps et: {fps_et}, fps local: {fps_lcl}")
         self.tk.stopRecording()
         self.tk.closeDataFile()
 

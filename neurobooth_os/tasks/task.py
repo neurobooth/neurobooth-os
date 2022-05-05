@@ -201,7 +201,7 @@ class Task_pause(Task):
         
         self.screen.draw()
         self.win.flip()
-        event.waitKeys(keyList=wait_key)
+        utils.get_keys(keyList=[wait_key])
         self.win.flip()
         
 class Task_Eyetracker(Task):
