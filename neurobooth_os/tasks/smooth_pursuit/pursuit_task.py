@@ -27,7 +27,7 @@ class Pursuit(Task_Eyetracker):
         self.mov_pars = [self.amplitude_pixel, 0, deg2rad(start_phase_deg), 0, self.angular_freq, self.angular_freq]
 
     def run(self, prompt=True, last_task=False, **kwargs):
-        self.setOfflineMode()
+        # self.setOfflineMode()
         self.present_instructions(prompt)        
         self.run_trial(prompt, self.mov_pars)
         self.present_complete(last_task)
@@ -49,7 +49,7 @@ class Pursuit(Task_Eyetracker):
 
         # Record_status_message : show some info on the Host PC
         # self.sendCommand("record_status_message 'Pursuit task'")
-        self.startRecording()
+        # self.startRecording()
         
         self.countdown_task()
         
