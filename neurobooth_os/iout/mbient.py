@@ -160,6 +160,7 @@ class Sensor:
         print("Stopped ", self.dev_name)
         self.streaming = False
         e.wait()
+        print(self.dev_name, len(self.nsmpl))
         
         # # stop sampling
         # libmetawear.mbl_mw_acc_stop(self.device.board)               

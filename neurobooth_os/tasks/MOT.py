@@ -22,7 +22,7 @@ from neurobooth_os.tasks import Task_Eyetracker
 
 
 class MOT(Task_Eyetracker):
-    def __init__(self, path="", subj_id="test", duration=90, **kwargs):
+    def __init__(self, path="", subj_id="test", duration=5, **kwargs):
         super().__init__(**kwargs)
         
         self.path_out = path
@@ -79,7 +79,7 @@ class MOT(Task_Eyetracker):
             e.draw()
         self.win.flip()
         if key_resp is not None:
-            event.waitKeys(keyList=key_resp)
+            utils.get_keys(keyList=[key_resp])
     
         
     def run(self, prompt=True, last_task=False, **kwargs):     
@@ -305,7 +305,7 @@ class MOT(Task_Eyetracker):
                 self.present_stim(self.background + circle + self.trial_info_msg())
             else:
                 self.present_stim(self.background + circle)        
-            core.wait(.1)
+            utils.countdown(.1)
 
             for n in range(numTargets):
                 circle[n].color = 'black'
@@ -314,7 +314,7 @@ class MOT(Task_Eyetracker):
                 self.present_stim(self.background + circle + self.trial_info_msg())
             else:
                 self.present_stim(self.background + circle)
-            core.wait(.1)
+            utils.countdown(.1)
 
         clock  = core.Clock()
         while clock.getTime() < duration:
@@ -372,7 +372,7 @@ class MOT(Task_Eyetracker):
             elif frame['type'] == "practice":
                 self.sendMessage(self.marker_practice_trial_end)
                 
-            time.sleep(.5)
+            utils.countdown(.5)
             
             state = 'click'                
             if rt == 'timeout':
