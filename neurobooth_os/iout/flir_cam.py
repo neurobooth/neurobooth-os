@@ -29,7 +29,7 @@ class VidRec_Flir():
     #              camSN="20522874", exposure=4500, gain=20, gamma=.6,
     #              device_id="FLIR_blackfly_1", sensor_ids=['FLIR_rgb_1'], fd= .5):
     def __init__(self, 
-                 sizex=500, sizey=800, fps=196,
+                 sizex=548, sizey=800, fps=195, offsetX=528, offsetY=152,
                  camSN="20522874", exposure=4500, gain=20, gamma=.6,
                  device_id="FLIR_blackfly_1", sensor_ids=['FLIR_rgb_1'], fd= 1):
         # not currently using sizex, sizey --> need to update to use these parameters
@@ -45,9 +45,14 @@ class VidRec_Flir():
         self.device_id = device_id
         self.sensor_ids = sensor_ids
         self.fd = fd
+        self.sizex = sizex
+        self.sizey = sizey
+        self.offsetX = offsetX
+        self.offsetY = offsetY
         self.recording = False
         self.get_cam()
         self.setup_cam()
+
 
         self.image_queue = queue.Queue(0)
         self.outlet = self.createOutlet()
@@ -63,6 +68,13 @@ class VidRec_Flir():
         self.cam.AcquisitionMode.SetValue(PySpin.AcquisitionMode_Continuous)
         self.cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
 
+        self.cam.AcquisitionFrameRate.SetValue(self.fps)
+        self.cam.Height.SetValue(self.sizey)
+        self.cam.Width.SetValue(self.sizex)
+        self.cam.OffsetX.SetValue(self.offsetX)
+        self.cam.OffsetY.SetValue(self.offsetY)
+          
+        
         self.cam.ExposureTime.SetValue(self.exposure)
         self.cam.Gamma.SetValue(self.gamma)
         self.cam.Gain.SetValue(self.gain)
@@ -135,8 +147,7 @@ class VidRec_Flir():
         self.frame_counter = 0
         self.save_thread = threading.Thread(target=self.camCaptureVid)
         self.save_thread.start()
-        # print(f"FLIR recording {self.video_filename}")
-        t0 = time.time()
+
         self.stamp = []
         while self.recording:
             im, tsmp = self.imgage_proc()
