@@ -29,7 +29,7 @@ class Sensor:
         self.gyro_hz = gyro_hz
         self.device_id = device_id
         self.sensor_ids = sensor_ids
-        self.nsmpl = []
+        self.nsmpl = 0
 
         self.setup()
         print(f"-OUTLETID-:mbient_{self.dev_name}:{self.oulet_id}")
@@ -66,7 +66,7 @@ class Sensor:
             values[1].z]
 
         self.outlet.push_sample(vals)
-        self.nsmpl.append(values)
+        self.nsmpl += 1
         # print("acc: (%.4f,%.4f,%.4f), gyro; (%.4f,%.4f,%.4f)" % (values[0].x, values[0].y, values[0].z, values[1].x, values[1].y, values[1].z))
 
     def setup(self):
@@ -161,33 +161,6 @@ class Sensor:
         self.streaming = False
         e.wait()
         
-        # # stop sampling
-        # libmetawear.mbl_mw_acc_stop(self.device.board)               
-        # libmetawear.mbl_mw_acc_disable_acceleration_sampling(self.device.board)
-        
-        # try:  # MMRS only
-        #     libmetawear.mbl_mw_gyro_bmi270_stop(self.device.board) 
-        #     libmetawear.mbl_mw_gyro_bmi270_disable_rotation_sampling(self.device.board)
-        # except:  # MMR1, MMR and MMC only
-        #     libmetawear.mbl_mw_gyro_bmi160_stop(self.device.board) 
-        #     libmetawear.mbl_mw_gyro_bmi160_disable_rotation_sampling(self.device.board)
-            
-        # # unsubscribe
-        # acc = libmetawear.mbl_mw_acc_get_acceleration_data_signal(self.device.board)
-        # libmetawear.mbl_mw_datasignal_unsubscribe(acc)
-                
-        # try:  # MMRS only
-        #     gyr = libmetawear.mbl_mw_gyro_bmi270_get_rotation_data_signal(self.device.board)
-        # except:  # MMR1, MMR and MMC only
-        #     gyr = libmetawear.mbl_mw_gyro_bmi160_get_rotation_data_signal(self.device.board)        
-        # libmetawear.mbl_mw_datasignal_unsubscribe(gyr)
-        
-        # # disconnect
-        # self.device.on_disconnect = lambda s: e.set()
-        # libmetawear.mbl_mw_debug_reset(self.device.board)
-        # print("Stopping ", self.dev_name)
-        # self.streaming = False
-        # e.wait()
         
     def close(self):
         self.stop()
@@ -234,24 +207,39 @@ def reset_mbient(mac, dev_name="mbient"):
 
 
 if __name__ == "__main__":
-
-    macs =  ["D7:B0:7E:C2:A1:23", "DA:B0:96:E4:7F:A3"]
-
-    macs =  [ "E5:F6:FB:6D:11:8A" , "E8:95:D6:F7:39:D2", "FE:07:3E:37:F5:9C"] #["FE:AB:CF:19:7A:CB"] # [ "E5:F6:FB:6D:11:8A" , "E8:95:D6:F7:39:D2"] # "FE:AB:CF:19:7A:CB",
-    mbts = []
+    import numpy as np
+    mbients = {"LF": "DA:B0:96:E4:7F:A3",
+             "LH": "E8:95:D6:F7:39:D2",
+             "RF": "E5:F6:FB:6D:11:8A",
+             "RH": "FE:07:3E:37:F5:9C",
+             "BK": "D7:B0:7E:C2:A1:23"
+             }
     
+    
+    macs = ["E5:F6:FB:6D:11:8A"]  
+    macs =  [  mbients['LH'],mbients["RF"]]#0-, mbients["RF"],  mbients["RH"]]    
+    mbts = []
+
     for mac in macs:
         sleep(1.0)
         mbt= Sensor(mac)
-        mbt.start()
+        
         mbts.append(mbt)
     
+    for mac in macs:
+        mbt.start()
+        
     print("recording...")
-    sleep(5)
+    sleep(30)
     print("finished recording...")
     
     for mbt in mbts:
         mbt.stop()
+
+    for s in mbts:
+        print(f"num samples:{s.nsmpl}")
+        # print(f"num samples:{len(s.nsmpl)}, Fps median:{int(np.median(1/np.diff(s.nsmpl)))}, mean:{int(np.mean(1/np.diff(s.nsmpl)))}")
+
 
     # sleep(1)
     # mbt.close()
