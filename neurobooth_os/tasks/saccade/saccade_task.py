@@ -63,7 +63,12 @@ class Saccade(Task_Eyetracker):
 
         # Take the tracker offline
         # self.setOfflineMode()
-
+        
+        self.countdown_task()
+        
+        # Send a message to mark movement onset
+        self.sendMessage(self.marker_task_start)
+        
         # Record_status_message : show some info on the Host PC
         # self.sendCommand("record_status_message 'Pursuit task'")
 
@@ -82,11 +87,6 @@ class Saccade(Task_Eyetracker):
         # Start recording
         # self.startRecording()
 
-        # Wait for 100 ms to cache some samples
-        # pylink.msecDelay(100)
-
-        # Send a message to mark movement onset
-        self.sendMessage(self.marker_task_start)
 
         for index in range(self.ntrials):
 

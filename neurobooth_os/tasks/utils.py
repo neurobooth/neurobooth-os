@@ -104,10 +104,11 @@ def get_keys(keyList=()):
     while True:
         press =  event.getKeys()
         if press:
-            if keyList and press in keyList:
-                    return press
-            else:
-                return press   
+            if not keyList:
+                return press
+            elif any([k in keyList for k in press]):
+                return press 
+                   
         countdown(.005)
         
 def play_video(win, mov, wait_time=1, stop=True):
