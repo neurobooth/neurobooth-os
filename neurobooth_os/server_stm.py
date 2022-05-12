@@ -67,10 +67,12 @@ def Main():
             print("UPDATOR:-Connect-")
             
 
-        elif "present" in data:  # -> "present:TASKNAME:subj_id"
+        elif "present" in data:  # -> "present:TASKNAME:subj_id:session_id"
             # task_name can be list of task1-task2-task3
             
-            tasks, subj_id = data.split(":")[1:]
+            tasks, subj_id, session_id = data.split(":")[1:]
+            log_task['log_session_id'] = session_id
+
             task_karg ={"win": win,
                         "path": config.paths['data_out'] + f"{subject_id_date}/",
                         "subj_id": subject_id_date,
@@ -99,7 +101,6 @@ def Main():
             task_calib = [t for t in tasks if 'calibration_task' in t]
             # Show calibration instruction video only the first time
             calib_instructions = True
-            last_task = False
             
             while len(tasks):
                 task = tasks.pop(0)
@@ -122,7 +123,7 @@ def Main():
                 log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
                 tsk_strt_time = datetime.now().strftime("%Hh-%Mm-%Ss")
 
-                # Signal CTR to start LSL rec and wait for start confiramtion
+                # Signal CTR to start LSL rec and wait for start confirmation
                 print(f"Initiating task:{task}:{t_obs_id}:{log_task_id}:{tsk_strt_time}")
                 ctr_msg = None
                 while ctr_msg != "lsl_recording":

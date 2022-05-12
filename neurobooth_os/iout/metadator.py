@@ -81,23 +81,52 @@ def get_tasks(collection_id, conn):
     return tasks_ids
 
 
-def _new_tech_log_dict(application_id="neurobooth_os"):
+def _new_tech_log_dict():
     """Create a new log_task dict."""
     log_task = OrderedDict()
     log_task["subject_id"] = ""
-    # log_task["study_id"] = ""
     log_task["task_id"] = ""
-    # log_task["staff_id"] = ""
-    # log_task["application_id"] = "neurobooth_os"
+    log_task["session_id"] = ""
+    log_task["log_session_id"] = ""
+    log_task["task_notes_file"] = ""
+    log_task["task_output_files"] = "{}"
     log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
     log_task["event_array"] = []  # marker_name:timestamp
-    # log_task["collection_id"] = ""
-    return log_task  # XXX: log_task_dict
+    return log_task
+
+
+def _new_session_log_dict(application_id="neurobooth_os"):
+    """Create a new session_log dict."""
+    session_log = OrderedDict()
+    session_log["subject_id"] = ""
+    session_log["study_id"] = ""
+    session_log["staff_id"] = ""
+    session_log["collection_id"] = ""
+    session_log["application_id"] = application_id
+    session_log["date"] = datetime.now().strftime("%Y-%m-%d")
+    return session_log 
 
 
 def _make_new_task_row(conn, subject_id):
     table = Table("log_task", conn=conn)
     return table.insert_rows([(subject_id,)], cols=['subject_id'])
+
+
+def _make_session_id(conn, session_log):
+    "Gets or creates session id"
+
+    table = Table("log_session", conn=conn)
+    task_df = table.query(where=f"subject_id = '{session_log['subject_id']}' AND date = '{session_log['date']}'" +\
+        f" AND collection_id = '{session_log['collection_id']}'")
+
+    # Check if session already exists
+    if len(task_df):
+        assert len(task_df)<2, "More than one 'session_id' found"
+        return task_df.index[0]
+    # Create new session log otherwise
+    vals = list(session_log.values())
+    session_id = table.insert_rows([tuple(vals)], cols=list(session_log)) 
+    return session_id
 
 
 def _fill_task_row(task_id, dict_vals, conn):  # XXX: dict_vals -> log_task_dict

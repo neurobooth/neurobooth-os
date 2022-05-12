@@ -124,12 +124,12 @@ def _save_session(window, log_task, staff_id, subject_id, first_name,
 
 ########## Task-related functions ############
 
-def _start_task_presentation(window, tasks, subject_id, steps, node):
+def _start_task_presentation(window, tasks, subject_id, session_id, steps, node):
     """Present tasks"""
     window['Start'].Update(button_color=('black', 'yellow'))
     if len(tasks) > 0:
         running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
-        socket_message(f"present:{running_task}:{subject_id}", node)
+        socket_message(f"present:{running_task}:{subject_id}:{session_id}", node)
         steps.append("task_started")
     else:
         sg.PopupError('No task selected')
@@ -318,6 +318,7 @@ def gui(remote=False, database='neurobooth'):
 
     plttr = stream_plotter()
     log_task = meta._new_tech_log_dict()
+    log_sess = meta._new_session_log_dict()
     stream_ids, inlets = {}, {}
     plot_elem, inlet_keys = [], []
 
@@ -334,7 +335,7 @@ def gui(remote=False, database='neurobooth'):
         ############################################################
         if event == "study_id":
             study_id = values[event]
-            # log_task["study_id"] = study_id
+            log_sess["study_id"] = study_id
             collection_ids = _get_collections(window, conn, study_id)
 
         elif event == 'find_subject':
@@ -344,12 +345,13 @@ def gui(remote=False, database='neurobooth'):
         elif event == 'select_subject':
             if window['dob'].get_indexes():               
                 first_name, last_name, subject_id = _select_subject(window, subject_df)
+                log_sess["subject_id"] = subject_id
             else:
                 sg.popup('No subject selected')
 
         elif event == "collection_id":
             collection_id = values[event]
-            # log_task["collection_id"] = collection_id
+            log_sess["collection_id"] = collection_id
             tasks = _get_tasks(window, conn, collection_id)
 
         elif event == "_init_sess_save_":
@@ -358,6 +360,7 @@ def gui(remote=False, database='neurobooth'):
             elif values['staff_id'] == "":
                 sg.PopupError('No staff ID')
             else:
+                log_sess['staff_id'] = values['staff_id']
                 sess_info = _save_session(window,
                                           log_task, values['staff_id'],
                                           subject_id, first_name, last_name, tasks)
@@ -382,8 +385,9 @@ def gui(remote=False, database='neurobooth'):
             _plot_realtime(window, plttr, inlets)
 
         elif event == 'Start':
+            session_id = meta._make_session_id(log_sess)
             tasks = [k for k, v in values.items() if "task" in k and v is True]
-            _start_task_presentation(window, tasks, sess_info['subject_id'], steps,
+            _start_task_presentation(window, tasks, sess_info['subject_id'], session_id, steps,
                                      node=nodes[1])
 
         elif event == "Pause tasks":

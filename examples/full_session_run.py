@@ -27,6 +27,8 @@ database, nodes, host_ctr, port_ctr = _get_ports(remote, database=database)
 steps = list()
 stream_ids, inlets = dict(), dict()
 log_task = meta._new_tech_log_dict()
+log_sess = meta._new_session_log_dict()
+log_sess['staff_id'] = staff_id
 
 start_window = MockWindow(['first_name', 'last_name', 'dob', 'collection_id',
                            'tasks', 'select_subject'])
@@ -38,11 +40,11 @@ conn = meta.get_conn(remote=remote, database=database)
 ####### START WINDOW #########
 subject_df = _find_subject(start_window, conn, first_name, last_name)
 first_name, last_name, subject_id = _select_subject(start_window, subject_df)
-
-log_task["study_id"] = study_id
+log_sess['subject_id'] = subject_id
+log_sess["study_id"] = study_id
 collection_ids = _get_collections(start_window, conn, study_id)
 
-log_task["collection_id"] = collection_id
+log_sess["collection_id"] = collection_id
 tasks = _get_tasks(start_window, conn, collection_id)
 
 sess_info = _save_session(start_window,
@@ -69,11 +71,12 @@ while True:
     elif event == "-update_butt-":
         n_nodes_ready += 1
         if n_nodes_ready == 2:
+            session_id = meta._make_session_id(log_sess)
             session = _start_lsl_session(main_window, inlets, sess_info['subject_id_date'])
             break
 
 tasks_selected = tasks.split(", ")
-_start_task_presentation(main_window, tasks_selected, sess_info['subject_id'], steps,
+_start_task_presentation(main_window, tasks_selected, sess_info['subject_id'], session_id, steps,
                          node=nodes[1])
 
 n_tasks_finished = 0
