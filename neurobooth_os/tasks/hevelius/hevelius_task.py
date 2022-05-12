@@ -97,7 +97,7 @@ class hevelius_task(Task_Eyetracker):
             utils.change_win_color(self.win, 'grey')
 
     def run_trials(self, block, block_type):
-        self.screen_text.setAutoDraw(False)
+        # self.screen_text.setAutoDraw(False)
         utils.change_win_color(self.win, 'white')
         # create a default keyboard (e.g. to check for escape)
         defaultKeyboard = keyboard.Keyboard()

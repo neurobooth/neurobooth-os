@@ -179,8 +179,8 @@ class IPhone:
             self._state=allowed_trans[msgType]
         else:
             print(f'Message {msgType} is not valid in the state {self._state}.')
-            self.disconnect()
-            return False
+            # self.disconnect()
+            # return False
             #raise IPhoneError(f'Message {msgType} is not valid in the state {self._state}.')
         debug_print(f'Outcome State:{self._state}')
         return True

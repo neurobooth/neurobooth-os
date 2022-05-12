@@ -24,7 +24,7 @@ def Main():
 
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    win = utl.make_win(full_screen=False)
+    win = utl.make_win(full_screen=True)
     conn = meta.get_conn()
 
     streams, screen_running, presented = {}, False, False
@@ -191,6 +191,7 @@ def Main():
 
         elif data in ["close", "shutdown"]:
             if "shutdown" in data:
+                win.close()
                 sys.stdout = sys.stdout.terminal
                 s1.close()
                 
@@ -209,7 +210,7 @@ def Main():
         else:
             print(data)
 
-    win.close()
+    
     exit()
     
     
