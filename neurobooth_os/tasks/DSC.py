@@ -86,6 +86,7 @@ class DSC(Task_Eyetracker):
             rels = self.keyboard.getReleases(keys=keys)
             if len(rels):
                 return rels
+            utils.countdown(.001)
         
         
     def my_textbox2(self, text, pos=(0, 0), size=(None, None)):
@@ -235,6 +236,7 @@ class DSC(Task_Eyetracker):
                         response_events = self.wait_release()                       
                         self.sendMessage(self.marker_response_end)
                         break
+                    utils.countdown(.001)                    
 
                 if timed_out:
                     print("timed out")
