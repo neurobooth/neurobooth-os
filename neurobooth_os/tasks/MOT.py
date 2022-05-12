@@ -191,7 +191,7 @@ class MOT(Task_Eyetracker):
                             newY = oldY + velocityY             
                     else:
                         break
-                    if timeout == 10000:
+                    if timeout == 1000:
                         print(f'time out {j} {i} d = {dist}')
                         
             # enforce elastic boundaries
@@ -266,6 +266,7 @@ class MOT(Task_Eyetracker):
     
                         break
             prevButtonState = buttons
+            utils.countdown(.001)
             
             if  rt > self.clickTimeout:
                 rt = 'timeout'
@@ -543,3 +544,22 @@ class MOT(Task_Eyetracker):
         return frameSequence
     
     
+
+if __name__ == "__main__":
+    from psychopy import sound, core, event, monitors, visual, monitors
+
+    monitor_width=55 
+    monitor_distance=60
+    mon = monitors.getAllMonitors()[0]
+    customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
+    win = visual.Window(
+    [1920, 1080],   
+    fullscr=False ,  
+    monitor=customMon,
+    units='pix',    
+    color='white' 
+    )
+
+    self = MOT(win=win)
+    self.run() 
+    win.close()
