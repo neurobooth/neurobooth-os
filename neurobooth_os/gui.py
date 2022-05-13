@@ -385,7 +385,7 @@ def gui(remote=False, database='neurobooth'):
             _plot_realtime(window, plttr, inlets)
 
         elif event == 'Start':
-            session_id = meta._make_session_id(log_sess)
+            session_id = meta._make_session_id(conn, log_sess)
             tasks = [k for k, v in values.items() if "task" in k and v is True]
             _start_task_presentation(window, tasks, sess_info['subject_id'], session_id, steps,
                                      node=nodes[1])
@@ -436,12 +436,14 @@ def gui(remote=False, database='neurobooth'):
             
             _stop_lsl_and_save(window, session, conn,
                                rec_fname, task_id, obs_log_id, t_obs_id, sess_info['subject_id_date'])
+            
+            write_task_notes(sess_info['subject_id_date'], sess_info['staff_id'],
+                                task_id, "")
             window['-frame_preview-'].update(visible=True)
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":            
             vidf_mrkr.push_sample([values[event]])
-            print(f"PICKED videfilename mark {values[event]}")
 
         # Update colors for: -init_servs-, -Connect-, Start buttons
         elif event == "-update_butt-":

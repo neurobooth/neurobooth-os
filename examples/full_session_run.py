@@ -71,7 +71,7 @@ while True:
     elif event == "-update_butt-":
         n_nodes_ready += 1
         if n_nodes_ready == 2:
-            session_id = meta._make_session_id(log_sess)
+            session_id = meta._make_session_id(conn, log_sess)
             session = _start_lsl_session(main_window, inlets, sess_info['subject_id_date'])
             break
 

@@ -86,10 +86,9 @@ def _new_tech_log_dict():
     log_task = OrderedDict()
     log_task["subject_id"] = ""
     log_task["task_id"] = ""
-    log_task["session_id"] = ""
     log_task["log_session_id"] = ""
     log_task["task_notes_file"] = ""
-    log_task["task_output_files"] = "{}"
+    log_task["task_output_files"] = None
     log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
     log_task["event_array"] = []  # marker_name:timestamp
     return log_task
