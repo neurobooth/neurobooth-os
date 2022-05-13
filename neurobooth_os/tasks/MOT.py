@@ -445,10 +445,10 @@ class MOT(Task_Eyetracker):
         # SAVE RESULTS to file
         df_res = pd.DataFrame(results)
         df_out = pd.DataFrame.from_dict(outcomes, orient='index', columns=['vals'])
-        res_fname = self.path_out + f'{self.subj_id}_{self.task_name}_results.csv'
-        out_fname = self.path_out + f'{self.subj_id}_{self.task_name}_outcomes.csv'
-        df_res.to_csv(res_fname)
-        df_out.to_csv(out_fname)
+        res_fname = f'{self.subj_id}_{self.task_name}_results.csv'
+        out_fname = f'{self.subj_id}_{self.task_name}_outcomes.csv'
+        df_res.to_csv(self.path_out + res_fname)
+        df_out.to_csv(self.path_out + out_fname)
         self.task_files = '{' + f"{res_fname}, {out_fname}" + '}'
         
         

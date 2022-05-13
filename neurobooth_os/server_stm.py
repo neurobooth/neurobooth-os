@@ -204,7 +204,10 @@ def Main():
             if "shutdown" in data:
                 sys.stdout = sys.stdout.terminal
                 s1.close()
-                win.close()
+                try:
+                    win.close()
+                except OSError:
+                    pass
                 
             streams = close_streams(streams)
 
