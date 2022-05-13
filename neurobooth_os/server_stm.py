@@ -120,7 +120,7 @@ def Main():
                     continue                                    
                 
                 log_task_id = meta._make_new_task_row(conn, subj_id)
-                log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
+                log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ','
                 tsk_strt_time = datetime.now().strftime("%Hh-%Mm-%Ss")
                 
                 # Signal CTR to start LSL rec and wait for start confirmation
@@ -164,13 +164,18 @@ def Main():
                 print(f"Finished task:{task}")
 
                 # Log task to database
+                log_task["date_times"] += datetime.now().strftime("%Y-%m-%d %H:%M:%S")  + '}'
                 log_task["task_id"] = t_obs_id
                 log_task['event_array'] = str(events).replace("'", '"') if events is not None else "event:datestamp"
                 log_task["task_notes_file"] = f"{subject_id_date}-{task}-notes.txt"
-                if tsk_fun.task_files is None and not log_task.get("task_output_files", False):
-                    del log_task["task_output_files"]
-                else:
+                
+            
+                if tsk_fun.task_files is not None:
                     log_task["task_output_files"] = tsk_fun.task_files
+                else:                                
+                    if log_task.get("task_output_files", "empty") != "empty":
+                        del log_task["task_output_files"]
+                    
                 meta._fill_task_row(log_task_id, log_task, conn)     
                                
                 # Check if pause requested, unpause or stop
@@ -204,10 +209,6 @@ def Main():
             if "shutdown" in data:
                 sys.stdout = sys.stdout.terminal
                 s1.close()
-                try:
-                    win.close()
-                except OSError:
-                    pass
                 
             streams = close_streams(streams)
 
@@ -224,10 +225,9 @@ def Main():
         else:
             print(data)
 
-    
+    win.close()
     exit()
     
     
-
 
 Main()
