@@ -50,6 +50,7 @@ class Task():
 #         self.marker_trial_end_Nth = 'Trial_end_{}'
 
         #self.path_instruction_video = op.join(cfg.paths['video_tasks'], instruction_file)
+        self.task_files = None
         self.path_instruction_video = instruction_file
         self.full_screen = full_screen
         self.events = []

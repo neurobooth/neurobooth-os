@@ -22,10 +22,11 @@ from neurobooth_os.tasks import Task_Eyetracker
 
 
 class MOT(Task_Eyetracker):
-    def __init__(self, path="", subj_id="test", duration=90, **kwargs):
+    def __init__(self, path="", subj_id="test", task_name="MOT", duration=90, **kwargs):
         super().__init__(**kwargs)
         
         self.path_out = path
+        self.task_name = task_name
         self.subj_id = subj_id
         self.mycircle = {"x":[],       # circle x
                         "y":[],       # circle y
@@ -444,10 +445,11 @@ class MOT(Task_Eyetracker):
         # SAVE RESULTS to file
         df_res = pd.DataFrame(results)
         df_out = pd.DataFrame.from_dict(outcomes, orient='index', columns=['vals'])
-        res_fname = self.path_out + f'{self.subj_id}_MOT_results.csv'
-        out_fname = self.path_out + f'{self.subj_id}_MOT_outcomes.csv'
+        res_fname = self.path_out + f'{self.subj_id}_{self.task_name}_results.csv'
+        out_fname = self.path_out + f'{self.subj_id}_{self.task_name}_outcomes.csv'
         df_res.to_csv(res_fname)
         df_out.to_csv(out_fname)
+        self.task_files = '{' + f"{res_fname}, {out_fname}" + '}'
         
         
     
