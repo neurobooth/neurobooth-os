@@ -166,8 +166,8 @@ def Main():
                 # Log task to database
                 log_task["task_id"] = t_obs_id
                 log_task['event_array'] = str(events).replace("'", '"') if events is not None else "event:datestamp"
-                log_task["task_notes_file"] = f"{task_karg['path']}/{subject_id_date}-{task}-notes.txt"
-                if tsk_fun.task_files is None:
+                log_task["task_notes_file"] = f"{subject_id_date}-{task}-notes.txt"
+                if tsk_fun.task_files is None and not log_task.get("task_output_files", False):
                     del log_task["task_output_files"]
                 else:
                     log_task["task_output_files"] = tsk_fun.task_files
