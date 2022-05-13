@@ -141,7 +141,7 @@ def Main():
                         streams['Eyelink'].start(fname)
                 
                 # Start rec in ACQ and run task
-                resp = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
+                _ = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
                                     "acquisition", wait_data=10)
                 sleep(.2)
 
@@ -151,20 +151,28 @@ def Main():
                 this_task_kwargs["subj_id"] += '_'+ tsk_strt_time
 
                 events = tsk_fun.run(**this_task_kwargs)
-                socket_message("record_stop", "acquisition", wait_data=15)
+
+                # Stop rec in ACQ 
+                _ = socket_message("record_stop", "acquisition", wait_data=15)
+
+                # Stop eyetracker
+                if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
+                    if 'calibration_task' not in task:
+                        streams['Eyelink'].stop()
+
+                # Signal CTR to start LSL rec and wait for start confirmation
                 print(f"Finished task:{task}")
 
                 # Log task to database
                 log_task["task_id"] = t_obs_id
                 log_task['event_array'] = str(events).replace("'", '"') if events is not None else "event:datestamp"
                 log_task["task_notes_file"] = f"{task_karg['path']}/{subject_id_date}-{task}-notes.txt"
-                log_task["task_output_files"] = tsk_fun.task_files
+                if tsk_fun.task_files is None:
+                    del log_task["task_output_files"]
+                else:
+                    log_task["task_output_files"] = tsk_fun.task_files
                 meta._fill_task_row(log_task_id, log_task, conn)     
-                
-                if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
-                    if 'calibration_task' not in task:
-                        streams['Eyelink'].stop()
-                
+                               
                 # Check if pause requested, unpause or stop
                 data = get_data_timeout(s1, .1)
                 if data == "pause tasks":
@@ -196,6 +204,7 @@ def Main():
             if "shutdown" in data:
                 sys.stdout = sys.stdout.terminal
                 s1.close()
+                win.close()
                 
             streams = close_streams(streams)
 
@@ -212,7 +221,7 @@ def Main():
         else:
             print(data)
 
-    win.close()
+    
     exit()
     
     
