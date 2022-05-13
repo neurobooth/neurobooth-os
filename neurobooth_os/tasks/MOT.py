@@ -83,7 +83,8 @@ class MOT(Task_Eyetracker):
             event.waitKeys(keyList=key_resp)
     
         
-    def run(self, prompt=True, last_task=False, **kwargs):     
+    def run(self, prompt=True, last_task=False, subj_id='test', **kwargs):
+        self.subj_id = subj_id   
         self.present_instructions(prompt) 
         self.win.color = "white"
         self.win.flip()
