@@ -69,7 +69,7 @@ class stream_plotter():
         self.pltotting_ts = True
         self.inlets = inlets
 
-        if any([True for k in ['Mouse', "mbient", "Audio"] if any(k in v for v in list(inlets))]):       
+        if any([True for k in ['Mouse', "mbient", "Audio", "EyeLink"] if any(k in v for v in list(inlets))]):       
             print("starting thread update_ts")
             self.thread_ts = threading.Thread(target=self.update_ts, daemon=True)
             self.thread_ts.start()
@@ -85,10 +85,13 @@ class stream_plotter():
         
     def update_ts(self):
         self.inlets_plt = [v for v in list(self.inlets) 
-                            if any([i in v for i in ['Mouse', "mbient", "Audio"]])]
+                            if any([i in v for i in ['Mouse', "mbient", "Audio", "EyeLink"]])]
                             
         plt.ion()
-        fig, axs = plt.subplots(len(self.inlets_plt), 1, sharex=False, figsize=(9.16, 9.93))        
+        fig, axs = plt.subplots(len(self.inlets_plt), 1, sharex=False, figsize=(9.16, 9.93))  
+        for ax_ith, nm in enumerate(self.inlets_plt):
+              axs[ax_ith].set_title(nm)
+
         axs[-1].set_xticks([])
         mngr = plt.get_current_fig_manager()        
         mngr.window.setGeometry(1015, 30, 905, 1005)        
@@ -116,7 +119,9 @@ class stream_plotter():
                 elif "mbient" in nm:
                     tv = [[np.mean(itv[1:4]), np.mean(itv[4:])] for itv in tv]
                 elif "Audio" in nm:
-                    tv = [[np.mean(itv)]for itv in tv]
+                    tv = [[np.max(itv)]for itv in tv]
+                elif "EyeLink" in nm:
+                    tv = [[itv[0], itv[3]] for itv in tv]
                 tv, ts = np.array(tv), np.array(ts)
 
                 if not hasattr(inlet, "line"):

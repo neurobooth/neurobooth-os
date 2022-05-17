@@ -38,10 +38,11 @@ def present_msg(elems, win, key_resp="space"):
 
 
 class DSC(Task_Eyetracker):
-    def __init__(self, path="", subj_id="test", duration=10, **kwargs):
+    def __init__(self, path="", subj_id="test", task_name="DSC", duration=10, **kwargs):
         super().__init__(**kwargs)
    
         self.testVersion = 'DSC_simplified_oneProbe_2019'
+        self.task_name = task_name
         self.path_out = path
         self.subj_id = subj_id
         self.frameSequence = []
@@ -67,8 +68,9 @@ class DSC(Task_Eyetracker):
         self.setup(self.win)
 
 
-    def run(self, prompt=True, last_task=False, **kwargs):
+    def run(self, prompt=True, last_task=False, subj_id="test", **kwargs):
         
+        self.subj_id = subj_id
         self.present_instructions(prompt) 
                 
         self.win.color = "white"
@@ -279,10 +281,11 @@ class DSC(Task_Eyetracker):
         df_res = pd.DataFrame(self.results)
         df_out = pd.DataFrame.from_dict(self.outcomes, orient='index', columns=['vals'])
         
-        res_fname = self.path_out + f'{self.subj_id}_DSC_results.csv'
-        out_fname = self.path_out + f'{self.subj_id}_DSC_outcomes.csv'
-        df_res.to_csv(res_fname)
-        df_out.to_csv(out_fname)
+        res_fname = f'{self.subj_id}_{self.task_name}_results.csv'
+        out_fname = f'{self.subj_id}_{self.task_name}_outcomes.csv' 
+        df_res.to_csv(self.path_out + res_fname)
+        df_out.to_csv(self.path_out + out_fname)
+        self.task_files = '{' + f"{res_fname}, {out_fname}" + '}'
 
         # Close win if just created for the task
         if self.win_temp:

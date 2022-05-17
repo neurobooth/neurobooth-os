@@ -211,7 +211,7 @@ def write_task_notes(subject_id, staff_id, task_name, task_notes):
         The RC ID
     task_name : str
         The task name.
-    task_notes : dict
+    task_notes : str
         The task notes.
     """
 
