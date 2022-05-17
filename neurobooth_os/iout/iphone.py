@@ -102,7 +102,7 @@ class IPhone:
                         '#READY':{'@START':'#START','@PREVIEW':'#PREVIEW','@DUMPALL':'#DUMPALL','@DUMP':'#DUMP','@DUMPSUCCESS':'#READY','@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
                         '#START':{'@STARTTIMESTAMP':'#RECORDING','@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
                         '#RECORDING':{'@INPROGRESSTIMESTAMP':'#RECORDING','@STOP':'#STOP','@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
-                        '#STOP':{'@STOPTIMESTAMP':'#READY','@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
+                        '#STOP':{'@STOPTIMESTAMP':'#READY','@INPROGRESSTIMESTAMP':'#STOP', '@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
                         '#ERROR':{'@DISCONNECT':'#DISCONNECTED'}
                     }
     MESSAGE_TYPES=[]
@@ -179,8 +179,8 @@ class IPhone:
             self._state=allowed_trans[msgType]
         else:
             print(f'Message {msgType} is not valid in the state {self._state}.')
-            # self.disconnect()
-            # return False
+            self.disconnect()
+            return False
             #raise IPhoneError(f'Message {msgType} is not valid in the state {self._state}.')
         debug_print(f'Outcome State:{self._state}')
         return True
