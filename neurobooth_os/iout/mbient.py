@@ -159,7 +159,7 @@ class Sensor:
         libmetawear.mbl_mw_debug_reset(self.device.board)
         print("Stopped ", self.dev_name)
         self.streaming = False
-        e.wait()
+        e.wait(10)
         
         
     def close(self):
