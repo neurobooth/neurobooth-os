@@ -207,6 +207,7 @@ def Main():
 
         elif data in ["close", "shutdown"]:
             if "shutdown" in data:
+                win.close()
                 sys.stdout = sys.stdout.terminal
                 s1.close()
                 
@@ -225,7 +226,7 @@ def Main():
         else:
             print(data)
 
-    win.close()
+    
     exit()
     
     
