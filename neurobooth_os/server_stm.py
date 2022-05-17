@@ -67,10 +67,12 @@ def Main():
             print("UPDATOR:-Connect-")
             
 
-        elif "present" in data:  # -> "present:TASKNAME:subj_id"
+        elif "present" in data:  # -> "present:TASKNAME:subj_id:session_id"
             # task_name can be list of task1-task2-task3
             
-            tasks, subj_id = data.split(":")[1:]
+            tasks, subj_id, session_id = data.split(":")[1:]
+            log_task['log_session_id'] = session_id
+
             task_karg ={"win": win,
                         "path": config.paths['data_out'] + f"{subject_id_date}/",
                         "subj_id": subject_id_date,
@@ -99,7 +101,6 @@ def Main():
             task_calib = [t for t in tasks if 'calibration_task' in t]
             # Show calibration instruction video only the first time
             calib_instructions = True
-            last_task = False
             
             while len(tasks):
                 task = tasks.pop(0)
@@ -111,27 +112,27 @@ def Main():
                 # get task and params
                 tsk_fun = task_func_dict[task]['obj']
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
-                
+                t_obs_id = task_func_dict[task]['t_obs_id']                
+
                 # Do not record if intro instructions"
                 if "intro_" in task or "pause_" in task:
                     tsk_fun.run(**this_task_kwargs)
-                    continue                    
+                    continue                                    
                 
-                t_obs_id = task_func_dict[task]['t_obs_id']
                 log_task_id = meta._make_new_task_row(conn, subj_id)
-                log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '}'
+                log_task["date_times"] = '{'+ datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ','
                 tsk_strt_time = datetime.now().strftime("%Hh-%Mm-%Ss")
-
-                # Signal CTR to start LSL rec and wait for start confiramtion
+                
+                # Signal CTR to start LSL rec and wait for start confirmation
                 print(f"Initiating task:{task}:{t_obs_id}:{log_task_id}:{tsk_strt_time}")
                 ctr_msg = None
                 while ctr_msg != "lsl_recording":
-                    ctr_msg = get_data_timeout(s1, 3)
+                    ctr_msg = get_data_timeout(s1, 4)
                     print('Waiting CTR to start lsl rec, ', ctr_msg)
                 
                 # Start eyetracker if device in task 
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
-                    fname = f"{config.paths['data_out']}{subject_id_date}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
+                    fname = f"{task_karg['path']}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
                     
                     # if not calibration record with start method
                     if 'calibration_task' in task:
@@ -140,28 +141,43 @@ def Main():
                         streams['Eyelink'].start(fname)
                 
                 # Start rec in ACQ and run task
-                resp = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
+                _ = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
                                     "acquisition", wait_data=10)
-                # print(resp)
                 sleep(.2)
 
                 if len(tasks) == 0:
                     this_task_kwargs.update({'last_task' : True})
-                    
-                events = tsk_fun.run(**this_task_kwargs)
-                socket_message("record_stop", "acquisition", wait_data=15)
-                print(f"Finished task:{task}")
+                this_task_kwargs["task_name"] = t_obs_id
+                this_task_kwargs["subj_id"] += '_'+ tsk_strt_time
 
-                # Log task to database
-                log_task["task_id"] = t_obs_id
-                log_task['event_array'] = str(events).replace("'", '"') if events is not None else "event:datestamp"
-                       
-                meta._fill_task_row(log_task_id, log_task, conn)     
-                
+                events = tsk_fun.run(**this_task_kwargs)
+
+                # Stop rec in ACQ 
+                _ = socket_message("record_stop", "acquisition", wait_data=15)
+
+                # Stop eyetracker
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
                     if 'calibration_task' not in task:
                         streams['Eyelink'].stop()
+
+                # Signal CTR to start LSL rec and wait for start confirmation
+                print(f"Finished task:{task}")
+
+                # Log task to database
+                log_task["date_times"] += datetime.now().strftime("%Y-%m-%d %H:%M:%S")  + '}'
+                log_task["task_id"] = t_obs_id
+                log_task['event_array'] = str(events).replace("'", '"') if events is not None else "event:datestamp"
+                log_task["task_notes_file"] = f"{subject_id_date}-{task}-notes.txt"
                 
+            
+                if tsk_fun.task_files is not None:
+                    log_task["task_output_files"] = tsk_fun.task_files
+                else:                                
+                    if log_task.get("task_output_files", "empty") != "empty":
+                        del log_task["task_output_files"]
+                    
+                meta._fill_task_row(log_task_id, log_task, conn)     
+                               
                 # Check if pause requested, unpause or stop
                 data = get_data_timeout(s1, .1)
                 if data == "pause tasks":
@@ -191,6 +207,7 @@ def Main():
 
         elif data in ["close", "shutdown"]:
             if "shutdown" in data:
+                win.close()
                 sys.stdout = sys.stdout.terminal
                 s1.close()
                 
@@ -209,10 +226,9 @@ def Main():
         else:
             print(data)
 
-    win.close()
+    
     exit()
     
     
-
 
 Main()

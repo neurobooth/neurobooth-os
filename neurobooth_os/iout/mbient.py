@@ -160,8 +160,8 @@ class Sensor:
         print("Stopped ", self.dev_name)
         self.streaming = False
         e.wait(10)
-        
-        
+        print(self.dev_name, len(self.nsmpl))
+
     def close(self):
         self.stop()
 

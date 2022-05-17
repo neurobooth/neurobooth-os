@@ -52,7 +52,7 @@ def socket_message(message, node_name, wait_data=False):
             # pid = start_server(node_name)
             data = connect()
         except Exception as e:
-            pass
+            return
             # print(e)
 
     return data

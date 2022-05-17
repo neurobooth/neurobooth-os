@@ -22,10 +22,11 @@ from neurobooth_os.tasks import Task_Eyetracker
 
 
 class MOT(Task_Eyetracker):
-    def __init__(self, path="", subj_id="test", duration=90, **kwargs):
+    def __init__(self, path="", subj_id="test", task_name="MOT", duration=90, **kwargs):
         super().__init__(**kwargs)
         
         self.path_out = path
+        self.task_name = task_name
         self.subj_id = subj_id
         self.mycircle = {"x":[],       # circle x
                         "y":[],       # circle y
@@ -38,7 +39,7 @@ class MOT(Task_Eyetracker):
         self.duration = 5        # desired duration of trial in s
         
         self.paperSize = 500        # size of stimulus graphics page
-        self.clickTimeout = 10   # timeout for clicking on targets
+        self.clickTimeout = 30   # timeout for clicking on targets
         self.seed = 2               # URL parameter: if we want a particular random number generator seed
         self.trialCount = 0
         self.score = 0        
@@ -79,10 +80,11 @@ class MOT(Task_Eyetracker):
             e.draw()
         self.win.flip()
         if key_resp is not None:
-            event.waitKeys(keyList=key_resp)
+            utils.get_keys(keyList=[key_resp])
     
         
-    def run(self, prompt=True, last_task=False, **kwargs):     
+    def run(self, prompt=True, last_task=False, subj_id='test', **kwargs):
+        self.subj_id = subj_id   
         self.present_instructions(prompt) 
         self.win.color = "white"
         self.win.flip()
@@ -191,7 +193,7 @@ class MOT(Task_Eyetracker):
                             newY = oldY + velocityY             
                     else:
                         break
-                    if timeout == 10000:
+                    if timeout == 1000:
                         print(f'time out {j} {i} d = {dist}')
                         
             # enforce elastic boundaries
@@ -266,6 +268,7 @@ class MOT(Task_Eyetracker):
     
                         break
             prevButtonState = buttons
+            utils.countdown(.001)
             
             if  rt > self.clickTimeout:
                 rt = 'timeout'
@@ -305,7 +308,7 @@ class MOT(Task_Eyetracker):
                 self.present_stim(self.background + circle + self.trial_info_msg())
             else:
                 self.present_stim(self.background + circle)        
-            core.wait(.1)
+            utils.countdown(.1)
 
             for n in range(numTargets):
                 circle[n].color = 'black'
@@ -314,7 +317,7 @@ class MOT(Task_Eyetracker):
                 self.present_stim(self.background + circle + self.trial_info_msg())
             else:
                 self.present_stim(self.background + circle)
-            core.wait(.1)
+            utils.countdown(.1)
 
         clock  = core.Clock()
         while clock.getTime() < duration:
@@ -372,7 +375,7 @@ class MOT(Task_Eyetracker):
             elif frame['type'] == "practice":
                 self.sendMessage(self.marker_practice_trial_end)
                 
-            time.sleep(.5)
+            utils.countdown(.5)
             
             state = 'click'                
             if rt == 'timeout':
@@ -444,10 +447,11 @@ class MOT(Task_Eyetracker):
         # SAVE RESULTS to file
         df_res = pd.DataFrame(results)
         df_out = pd.DataFrame.from_dict(outcomes, orient='index', columns=['vals'])
-        res_fname = self.path_out + f'{self.subj_id}_MOT_results.csv'
-        out_fname = self.path_out + f'{self.subj_id}_MOT_outcomes.csv'
-        df_res.to_csv(res_fname)
-        df_out.to_csv(out_fname)
+        res_fname = f'{self.subj_id}_{self.task_name}_results.csv'
+        out_fname = f'{self.subj_id}_{self.task_name}_outcomes.csv'
+        df_res.to_csv(self.path_out + res_fname)
+        df_out.to_csv(self.path_out + out_fname)
+        self.task_files = '{' + f"{res_fname}, {out_fname}" + '}'
         
         
     
@@ -543,3 +547,22 @@ class MOT(Task_Eyetracker):
         return frameSequence
     
     
+
+if __name__ == "__main__":
+    from psychopy import sound, core, event, monitors, visual, monitors
+
+    monitor_width=55 
+    monitor_distance=60
+    mon = monitors.getAllMonitors()[0]
+    customMon = monitors.Monitor('demoMon', width=monitor_width, distance=monitor_distance)
+    win = visual.Window(
+    [1920, 1080],   
+    fullscr=False ,  
+    monitor=customMon,
+    units='pix',    
+    color='white' 
+    )
+
+    self = MOT(win=win)
+    self.run() 
+    win.close()

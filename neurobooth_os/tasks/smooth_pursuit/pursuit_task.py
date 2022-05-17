@@ -27,6 +27,7 @@ class Pursuit(Task_Eyetracker):
         self.mov_pars = [self.amplitude_pixel, 0, deg2rad(start_phase_deg), 0, self.angular_freq, self.angular_freq]
 
     def run(self, prompt=True, last_task=False, **kwargs):
+        # self.setOfflineMode()
         self.present_instructions(prompt)        
         self.run_trial(prompt, self.mov_pars)
         self.present_complete(last_task)
@@ -45,15 +46,16 @@ class Pursuit(Task_Eyetracker):
         # Parse the movement pattern parameters
         amp_x, amp_y, phase_x, phase_y, freq_x, freq_y = movement_pars
 
-        # Take the tracker offline
-        # self.setOfflineMode()
-
-        # Send the standard "TRIALID" message to mark the start of a trial
-        # self.sendMessage("TRIALID")
 
         # Record_status_message : show some info on the Host PC
         # self.sendCommand("record_status_message 'Pursuit task'")
-
+        # self.startRecording()
+        
+        self.countdown_task()
+        
+        # Send a message to mark movement onset
+        self.sendMessage(self.marker_task_start)
+        
         # Drift check/correction, params, x, y, draw_target, allow_setup
         tar_x = amp_x * sin(phase_x)
         tar_y = amp_y * sin(phase_y)
@@ -62,17 +64,8 @@ class Pursuit(Task_Eyetracker):
         self.win.flip()
         self.send_target_loc(self.target.pos)
         
-        # self.doDriftCorrect([int(tar_x + self.mon_size[0] / 2.0),
-        #                        int(self.mon_size[1] / 2.0 - tar_y), 0, 1])
 
-        # Start recording
-        # self.startRecording()
 
-        # Wait for 100 ms to cache some samples
-        # pylink.msecDelay(100)
-
-        # Send a message to mark movement onset
-        self.sendMessage(self.marker_task_start)
         frame = 0
         time_array = []
         while True:
@@ -145,6 +138,6 @@ if __name__ == "__main__":
 
     tstmp = task.time_array
     plt.figure()
-    plt.hist(tstmp, 30)
+    plt.hist(tstmp, 15)
     plt.figure()
     plt.plot(tstmp )
