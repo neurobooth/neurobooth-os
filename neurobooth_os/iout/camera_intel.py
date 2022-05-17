@@ -46,9 +46,12 @@ class VidRec_Intel():
         self.pipeline = rs.pipeline()
         self.config.enable_stream(rs.stream.depth, self.frameSize[0][0],
                                   self.frameSize[0][1], rs.format.z16, self.fps[0])
-        self.config.enable_stream(rs.stream.color, self.frameSize[1][0],
-                                  self.frameSize[1][1], rs.format.rgb8, self.fps[1])
+        if fps_depth:
+            self.config.enable_stream(rs.stream.color, self.frameSize[1][0],
+                                      self.frameSize[1][1], rs.format.rgb8, self.fps[1])
+        
 
+        
         self.outlet = self.createOutlet()
 
     @catch_exception
@@ -85,8 +88,13 @@ class VidRec_Intel():
     def record(self):
         self.recording = True
         self.frame_counter = 0
-        # print(f"Intel {self.device_index} recording {self.video_filename}")
         self.pipeline.start(self.config)
+        
+        # Avoid autoexposure frame drops
+        dev = self.pipeline.get_active_profile().get_device()
+        sens = dev.first_color_sensor()
+        sens.set_option(rs.option.auto_exposure_priority, 0.0)
+        
         while self.recording:
             frame = self.pipeline.wait_for_frames()
             self.n = frame.get_frame_number()
