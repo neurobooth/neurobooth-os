@@ -6,6 +6,10 @@ from collections import OrderedDict
 from datetime import datetime
 import copy 
 
+from psychopy import prefs
+prefs.hardware['audioLib'] = ['PTB']
+prefs.hardware['audioLatencyMode'] = 3
+
 import neurobooth_os
 from neurobooth_os import config
 from neurobooth_os.iout.screen_capture import ScreenMirror

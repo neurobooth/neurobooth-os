@@ -129,7 +129,7 @@ class Task():
         self.send_marker(f"{msg}_end", True)
 
     def countdown_task(self):
-        mySound = sound.Sound(1000, 0.2)
+        mySound = sound.Sound(1000, 0.2, stereo=True)
         utils.play_video(self.win, self.countdown_video, wait_time=4, stop=False)
         mySound.play()
         utils.countdown(.22)

@@ -13,8 +13,8 @@ import os.path as op
 
 from pylsl import local_clock
 from psychopy import visual
-from psychopy import prefs
-prefs.hardware['audioLib'] = ['pyo']
+# from psychopy import prefs
+# prefs.hardware['audioLib'] = ['pyo']
 
 
 text_continue_repeat = 'Please press:\n\t"Continue" to advance' + \
