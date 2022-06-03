@@ -2,6 +2,7 @@ import os.path as op
 import time
 import uuid
 import threading
+import subprocess
 import numpy as np
 
 import pylink
@@ -126,8 +127,17 @@ class EyeTracker():
         prompt_msg.draw()
         self.win.flip()
         
-        
-    def start(self, filename="TEST.EDF"):
+    def edf_to_ascii(self):        
+        fname_asc = self.filename.replace(".edf", ".asc")
+        if not op.exists(fname_asc):
+            pout = subprocess.run(['edf2asc.exe', self.filename], shell=True)
+            if not pout.stderr:
+                print(f"-new_filename-:{self.streamName}:{op.split(fname_asc)[-1]}")
+        else:
+            print(f"FILE {fname_asc} already exists")
+        return
+
+    def start(self, filename="TEST.edf"):
         self.filename = filename        
         print(f"-new_filename-:{self.streamName}:{op.split(filename)[-1]}")
         self.fname_temp = "name8chr.edf"
@@ -202,6 +212,7 @@ class EyeTracker():
             self.stream_thread.join()
             # print("Eyelink stoped recording, downaloading edf")
             self.tk.receiveDataFile(self.fname_temp, self.filename)
+            self.edf_to_ascii()
             self.streaming = False
 
     def close(self):
@@ -212,9 +223,10 @@ class EyeTracker():
 
 
 if __name__ == "__main__":
+    from neurobooth_os.tasks.utils import countdown
     et = EyeTracker()
     et.start()
-    core.wait(30)
+    countdown(10)
     # pylink.msecDelay(10000)
     et.stop()
     et.win.close()
