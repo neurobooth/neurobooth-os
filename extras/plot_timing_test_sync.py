@@ -33,8 +33,10 @@ def _get_mrk_traces(mdata):
 
 path = r'Z:\data'
 proc_data_path = 'Z:\processed_data'
-session_id = '100064_2022-05-27'
-session_time = '_17h-23m-41s'
+session_id = '100080_2022-06-03'
+session_time = '_15h-38m-30s'
+
+# session_time = '_15h-01m-19s'
 
 fnames = []
 for (dirpath, dirnames, filenames) in os.walk(os.path.join(path, session_id)):
@@ -93,6 +95,13 @@ for ix,ky in enumerate(data.keys()):
         audio_tstmp = data[ky]['device_data']['time_stamps']
         audio_ts = data[ky]['device_data']['time_series']
         chunk_len = audio_ts.shape[1]
+        
+        if chunk_len %2:
+            chunk_len -= 1
+            time_mic = [ t[0] for t in audio_ts]
+            audio_ts = audio_ts[:, 1:]
+            ax.plot(audio_tstmp,time_mic, 'y--', label='audio clock')
+            
 
         # restructure audio data
         audio_tstmp = np.insert(audio_tstmp, 0, audio_tstmp[0] - np.diff(audio_tstmp).mean())
