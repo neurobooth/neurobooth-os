@@ -57,7 +57,7 @@ class Sensor:
         values = parse_value(data, n_elem=2)
         # pylsl.local_clock()
         vals = [
-            local_clock(),
+            data.contents.epoch,
             values[0].x,
             values[0].y,
             values[0].z,
@@ -71,6 +71,7 @@ class Sensor:
 
     def setup(self):
         libmetawear.mbl_mw_settings_set_connection_parameters(self.device.board, 7.5, 7.5, 0, 6000)
+        libmetawear.mbl_mw_settings_set_tx_power(self.device.board, 4)
         sleep(1)
 
         libmetawear.mbl_mw_acc_set_odr(self.device.board, self.acc_hz)
@@ -198,6 +199,9 @@ def reset_mbient(mac, dev_name="mbient"):
     sleep(1.0)
     
     # delete timer and processors
+    libmetawear.mbl_mw_debug_disconnect(device.board)
+    sleep(1.0)
+
     libmetawear.mbl_mw_debug_disconnect(device.board)
     sleep(1.0)
     

@@ -44,12 +44,13 @@ class VidRec_Intel():
         self.config = rs.config()
         self.config.enable_device(self.serial_num)
         self.pipeline = rs.pipeline()
-        self.config.enable_stream(rs.stream.depth, self.frameSize[0][0],
-                                  self.frameSize[0][1], rs.format.z16, self.fps[0])
-        if fps_depth:
-            self.config.enable_stream(rs.stream.color, self.frameSize[1][0],
-                                      self.frameSize[1][1], rs.format.rgb8, self.fps[1])
         
+        self.config.enable_stream(rs.stream.color, self.frameSize[0][0],
+                                  self.frameSize[0][1], rs.format.rgb8, self.fps[0])
+        
+        if fps_depth:
+            self.config.enable_stream(rs.stream.depth, self.frameSize[1][0],
+                                  self.frameSize[1][1], rs.format.z16, self.fps[1])
 
         
         self.outlet = self.createOutlet()
