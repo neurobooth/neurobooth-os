@@ -10,7 +10,7 @@ from neurobooth_os import config
 from neurobooth_os.iout import metadator as meta
 
 
-def start_lsl_threads(node_name, collection_id="mvp_025", win=None, conn=None):
+def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
     """ Initiate devices and LSL streams based on databased parameters.
 
     Parameters

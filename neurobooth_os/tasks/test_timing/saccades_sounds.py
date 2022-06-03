@@ -4,16 +4,21 @@ Created on Wed Nov 03 08:00:23 2021
 
 @author: Sheraz Khan: sheraz@khansheraz.com
 """
+from psychopy import prefs
+prefs.hardware['audioLib'] = ['PTB']
+prefs.hardware['audioLatencyMode'] = 3
+
 from math import sin, pi
 import os.path as op
-from psychopy import core 
-import pylink
-import neurobooth_os
-from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
-from psychopy import sound
-from neurobooth_os.tasks.task import Task_Eyetracker
 import numpy as np
 from pylsl import  local_clock
+from psychopy import core, sound
+import pylink
+
+import neurobooth_os
+from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
+from neurobooth_os.tasks.task import Task_Eyetracker
+
 
 def countdown(period):
     t1 = local_clock()
@@ -65,60 +70,63 @@ class Saccade_synch(Task_Eyetracker):
 
         # Wait for 100 ms to cache some samples
         # pylink.msecDelay(100)
-        mySound = sound.Sound(1000, 0.1)
+        mySound = sound.Sound(1000, 0.1, stereo=True)
 
         # Send a message to mark movement onset
         self.sendMessage(self.marker_task_start)
         previous_pos = 480
         colors_v = ['green', 'red', 'blue']
         col_ix = 1
-        for _ in range(self.ntrials):
+        n_nosound=0
+        for ix in range(self.ntrials):
 
-            mySound = sound.Sound(1000, 0.1)
-
+            # mySound = sound.Sound(1000, 0.1)
             self.win.color = 'green'
             self.win.flip()
+            if ix >= n_nosound : mySound.play(when=self.win.getFutureFlipTime(clock='ptb'))
             self.target.pos = (0, 0)
             self.target.draw()
             self.win.flip()
-            mySound.play()
+            self.sendMessage(self.marker_trial_start)
             self.send_target_loc(self.target.pos)
 
             countdown(self.wait_center)
             
             
-            mySound = sound.Sound(1000, 0.1)
-            mySound.play()
+            # mySound = sound.Sound(1000, 0.1)            
             self.win.color = 'red'
             self.win.flip()
+            if ix >= n_nosound: mySound.play()
             self.target.pos = (-480, 0)
             self.target.draw()      
             self.win.flip()
+            self.sendMessage(self.marker_trial_start)
             self.send_target_loc(self.target.pos)          
 
             countdown(self.wait_center)
             
             
-            mySound = sound.Sound(1000, 0.1)
-            
+            # mySound = sound.Sound(1000, 0.1)            
             self.win.color = 'green'
             self.win.flip()
+            if ix >= n_nosound: mySound.play(when=self.win.getFutureFlipTime(clock='ptb'))
             self.target.pos = (0, 0)
             self.target.draw()
             self.win.flip()
-            mySound.play()
+            self.sendMessage(self.marker_trial_start)
             self.send_target_loc(self.target.pos)
 
             countdown(self.wait_center)
             
             
-            mySound = sound.Sound(1000, 0.1)
-            mySound.play()
+            # mySound = sound.Sound(1000, 0.1)
             self.win.color = 'blue'
             self.win.flip()
+            if ix >= n_nosound : mySound.play()
             self.target.pos = (480, 0)
             self.target.draw()      
             self.win.flip()
+            self.sendMessage(self.marker_trial_start)
             self.send_target_loc(self.target.pos)          
 
             countdown(self.wait_center)
