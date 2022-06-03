@@ -1,4 +1,4 @@
-from pylsl import StreamInfo, StreamOutlet
+from pylsl import StreamInfo, StreamOutlet, local_clock
 import pyaudio
 import numpy as np
 import threading
@@ -20,6 +20,7 @@ class MicStream():
         # Create audio object
         audio = pyaudio.PyAudio()
         self.p = audio
+        self.last_time = local_clock()
         # Get Blue Yeti mic device ID
         info = audio.get_host_api_info_by_index(0)
         for i in range(info.get('deviceCount')):
@@ -42,7 +43,7 @@ class MicStream():
 
         # Setup outlet stream infos
         self.oulet_id = str(uuid.uuid4())
-        self.stream_info_audio = StreamInfo('Audio', 'Experimental', CHUNK, RATE / CHUNK,
+        self.stream_info_audio = StreamInfo('Audio', 'Experimental', CHUNK+1, RATE / CHUNK,
                                             'int16', self.oulet_id)
 
         self.stream_info_audio.desc().append_child_value("fps", str(self.fps))
@@ -54,10 +55,11 @@ class MicStream():
         self.streaming = False
         self.stream_on = False
         self.tic = 0
+        self.outlet_audio = StreamOutlet(self.stream_info_audio)
 
     def start(self):
         # Create outlets
-        self.outlet_audio = StreamOutlet(self.stream_info_audio)
+        
         self.streaming = True
         self.stream_on = True
         if self.save_on_disk:
@@ -68,9 +70,17 @@ class MicStream():
 
     def stream(self):
         print("Microphone stream opened")
+        self.last_time = int( local_clock() * 10e3)
         while self.streaming:
             data = self.stream_in.read(self.CHUNK)
             decoded = np.frombuffer(data, 'int16')
+            
+            tlocal = int((local_clock()*10e3))            
+            tdiff = tlocal - self.last_time
+            self.last_time = tlocal
+            
+            decoded = np.hstack((np.array(tdiff), decoded))         
+                               
             if self.save_on_disk:
                 self.frames_raw.append(data)
                 self.frames.append(decoded)

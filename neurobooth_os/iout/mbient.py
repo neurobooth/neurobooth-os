@@ -71,7 +71,7 @@ class Sensor:
 
     def setup(self):
         libmetawear.mbl_mw_settings_set_connection_parameters(self.device.board, 7.5, 7.5, 0, 6000)
-        libmetawear.mbl_mw_settings_set_tx_power(self.device.board, 4)
+        libmetawear.mbl_mw_settings_set_tx_power(self.device.board, 8)
         sleep(1)
 
         libmetawear.mbl_mw_acc_set_odr(self.device.board, self.acc_hz)

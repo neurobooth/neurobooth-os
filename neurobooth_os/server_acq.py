@@ -76,6 +76,11 @@ def Main():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]: 
                     if task_devs_kw[task].get(k):
                         streams[k].start(fname)
+            
+            for k in streams.keys():
+                if  "Mic_Yeti" in k:
+                    streams[k].start()
+                    
             msg = "ACQ_devices_ready"
             connx.send(msg.encode("ascii"))
             recording = True
@@ -86,6 +91,11 @@ def Main():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
                     if task_devs_kw[task].get(k):
                         streams[k].stop()
+                        
+            for k in streams.keys():
+                if  "Mic_Yeti" in k:
+                    streams[k].stop()
+                    
             msg = "ACQ_devices_stoped"
             connx.send(msg.encode("ascii"))
             recording = False

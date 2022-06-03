@@ -9,7 +9,26 @@ import time
 from neurobooth_os import config
 from neurobooth_os.iout import metadator as meta
 
+from mbientlab.warble import BleScanner
+from time import sleep
 
+
+
+
+def scann_BLE():
+    print("scanning for devices...")
+    devices = {}
+    def handler(result):
+        devices[result.mac] = result.name
+    
+    BleScanner.set_handler(handler)
+    BleScanner.start()
+    
+    sleep(10.0)
+    BleScanner.stop()
+        
+    
+    
 def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
     """ Initiate devices and LSL streams based on databased parameters.
 
@@ -40,6 +59,8 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
     kwarg_alldevs = {}
     for dc in kwarg_devs.values():
         kwarg_alldevs.update(dc)
+        
+    scann_BLE()
 
     streams = {}
     if node_name == "acquisition":
@@ -53,7 +74,7 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
                 streams[kdev] = VidRec_Intel(**argsdev)
             elif "Mbient" in kdev:
                 # Don't connect mbients from STM
-                if any([d in kdev for d in ["Mbient_LF", "Mbient_BK"]]):                    
+                if any([d in kdev for d in ["Mbient_LF", "Mbient_RF"]]):                    
                     continue
                 streams[kdev] = connect_mbient(**argsdev)
                 if streams[kdev] is None:
@@ -64,7 +85,7 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
                 streams[kdev] = VidRec_Flir(**argsdev)
             elif "Mic_Yeti" in kdev:
                 streams[kdev] = MicStream(**argsdev)
-                streams[kdev].start()
+                # streams[kdev].start()
             elif "IPhone"in kdev:
                 success = False
                 streams[kdev] = IPhone(name='IPhoneFrameIndex', **argsdev)
@@ -86,7 +107,7 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
                 streams['mouse'] = MouseStream(**argsdev)
                 streams['mouse'].start()
             
-            elif any([d in kdev for d in ["Mbient_LF", "Mbient_BK"]]):
+            elif any([d in kdev for d in ["Mbient_LF", "Mbient_RF"]]):
                 streams[kdev] = connect_mbient(**argsdev)
                 if streams[kdev] is None:
                     del streams[kdev]
