@@ -67,6 +67,9 @@ def _process_received_data(serv_data, window):
             event, stream_name, filename = data_row.split(":")
             window.write_event_value(event, f"{stream_name},{filename}")
             
+        elif "RuntimeError: Could not connect to tracker"in data_row:
+            window.write_event_value("no_eyetracker", "Eyetracker not found")
+            
 
 ########## Database functions ############
 
@@ -453,6 +456,11 @@ def gui(remote=False, database='neurobooth'):
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
             _create_lsl_inlet(stream_ids, values[event], inlets)
+        
+        elif event == "no_eyetracker":
+            sg.PopupError('Eyetracker not found! \n Servers will be terminated. Connect the eyetracker and start again')
+            window.write_event_value('Shut Down', 'Shut Down')
+             
 
         ##################################################################################
         # Conditionals handling inlets for plotting and recording
