@@ -30,7 +30,7 @@ class Sensor:
         self.device_id = device_id
         self.sensor_ids = sensor_ids
         self.nsmpl = 0
-
+        self.lsl_push = False
         self.setup()
         print(f"-OUTLETID-:mbient_{self.dev_name}:{self.oulet_id}")
 
@@ -64,14 +64,17 @@ class Sensor:
             values[1].x,
             values[1].y,
             values[1].z]
-
-        self.outlet.push_sample(vals)
+        
+        if self.lsl_push:
+            self.outlet.push_sample(vals)
         self.nsmpl += 1
         # print("acc: (%.4f,%.4f,%.4f), gyro; (%.4f,%.4f,%.4f)" % (values[0].x, values[0].y, values[0].z, values[1].x, values[1].y, values[1].z))
 
     def setup(self):
         libmetawear.mbl_mw_settings_set_connection_parameters(self.device.board, 7.5, 7.5, 0, 6000)
-        libmetawear.mbl_mw_settings_set_tx_power(self.device.board, 8)
+        libmetawear.mbl_mw_settings_set_tx_power(self.device.board, 4)
+        tx = libmetawear.mbl_mw_settings_get_power_status_data_signal(self.device.board)
+        print(tx)
         sleep(1)
 
         libmetawear.mbl_mw_acc_set_odr(self.device.board, self.acc_hz)
@@ -157,7 +160,8 @@ class Sensor:
     def stop(self):
         e = Event()        
         self.device.on_disconnect = lambda s: e.set()
-        libmetawear.mbl_mw_debug_reset(self.device.board)
+        self.device.disconnect()
+        # libmetawear.mbl_mw_debug_reset(self.device.board)
         print("Stopped ", self.dev_name)
         self.streaming = False
         e.wait(10)
@@ -221,7 +225,7 @@ if __name__ == "__main__":
     
     
     macs = ["E5:F6:FB:6D:11:8A"]  
-    macs =  [  mbients['LH'],mbients["RF"]]#0-, mbients["RF"],  mbients["RH"]]    
+    macs =  [  mbients['LH']]# ,mbients["RF"]]#0-, mbients["RF"],  mbients["RH"]]    
     mbts = []
 
     for mac in macs:
@@ -229,7 +233,7 @@ if __name__ == "__main__":
         mbt= Sensor(mac)
         
         mbts.append(mbt)
-    
+    ss
     for mac in macs:
         mbt.start()
         
