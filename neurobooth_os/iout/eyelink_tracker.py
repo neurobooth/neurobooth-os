@@ -70,7 +70,12 @@ class EyeTracker():
         self.connect_tracker()
 
     def connect_tracker(self):
-        self.tk = pylink.EyeLink(self.IP)
+        try:
+            self.tk = pylink.EyeLink(self.IP)
+        except RuntimeError:
+            print("RuntimeError: Could not connect to tracker at")
+            return
+        
         if self.IP is not None:
             self.tk.setAddress(self.IP)
         # # Open an EDF data file on the Host PC
