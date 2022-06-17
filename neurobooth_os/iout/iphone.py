@@ -355,16 +355,16 @@ class IPhone:
             self._allmessages.append({'message':msg,'ctr_timestamp':str(datetime.now()),'tag':tag})
 
         if msg['MessageType']=='@STARTTIMESTAMP':
-            self.fcount=0
-            debug_print([self.fcount, float(msg['TimeStamp']), time.time()])
-            #self.outlet.push_sample([self.fcount, float(msg['TimeStamp']), time.time()])       
-            self.lsl_push_sample([self.fcount, float(msg['TimeStamp']), time.time()])       
+            self.fcount= float(msg['TimeStamp']['FrameNumber'])
+            debug_print([self.fcount, float(msg['TimeStamp']), time.time()])     
+            self.lsl_push_sample([self.fcount, float(msg['TimeStamp']['Timestamp']), time.time()])   
+            print([self.fcount, float(msg['TimeStamp']['Timestamp']), time.time()])
         elif msg['MessageType'] in ['@INPROGRESSTIMESTAMP','@STOPTIMESTAMP']:
-            self.fcount=int(msg['Message'])
-            debug_print([self.fcount, float(msg['TimeStamp']), time.time()])
-            #self.outlet.push_sample([self.fcount, float(msg['TimeStamp']), time.time()])  
+            self.fcount= float(msg['TimeStamp']['FrameNumber'])
+            debug_print([self.fcount, float(msg['TimeStamp']['Timestamp']), time.time()])
             self.lsl_push_sample([self.fcount, float(msg['TimeStamp']), time.time()])            
-    
+            print([self.fcount, float(msg['TimeStamp']['Timestamp']), time.time()])
+            
     @debug_lsl
     def createOutlet(self):
 
@@ -420,10 +420,12 @@ class IPhone:
             self.connected=True
         else:
             if config is None:
-                self.notifyonframe=10
+                self.notifyonframe=1
                 config={'NOTIFYONFRAME':str(self.notifyonframe),
-                            'VIDEOQUALITY':'1920x1080',
-                            'USECAMERAFACING':'BACK','FPS':'240'}
+                        'VIDEOQUALITY':'1920x1080',
+                        'USECAMERAFACING':'BACK',
+                        'FPS':'240',
+                        "BRIGHTNESS": "50" }
             self.notifyonframe=int(config['NOTIFYONFRAME'])
             connected=self.handshake(config)
             if connected:
@@ -490,8 +492,10 @@ if __name__ == "__main__":
     #                        'USECAMERAFACING':'BACK','FPS':'120 or 240'}
     iphone = IPhone("iphone")
     config={'NOTIFYONFRAME':'1',
-                            'VIDEOQUALITY':'1920x1080',
-                            'USECAMERAFACING':'BACK','FPS':'240'}
+            'VIDEOQUALITY':'1920x1080',
+            'USECAMERAFACING':'BACK',
+            'FPS':'240',
+            'BRIGHTNESS':'50'}
     
     if not iphone.prepare(config=config):
         print('Could not connect to iphone')
@@ -520,7 +524,7 @@ if __name__ == "__main__":
     import numpy as np
     
     subject = "007"
-    path = 'd:\\projects\\Github\\neurobooth-os\\neurobooth_os\\iout'
+    path = r'C:\neurobooth-eel\007'
     fname = glob.glob(f"{subject}/recording_R0*.xdf")[-1]
     data, header = pyxdf.load_xdf(fname)
 

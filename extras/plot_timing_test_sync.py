@@ -33,8 +33,9 @@ def _get_mrk_traces(mdata):
 
 path = r'Z:\data'
 proc_data_path = 'Z:\processed_data'
-session_id = '100080_2022-06-03'
-session_time = '_15h-38m-30s'
+session_id = '100064_2022-06-17'
+session_time = '_15h-12m-06s'
+
 
 # session_time = '_15h-01m-19s'
 
@@ -69,6 +70,7 @@ data_cols['Intel_D455_1'] = [0,1,2]
 data_cols['Intel_D455_2'] = [0,1,2]
 data_cols['Intel_D455_3'] = [0,1,2]
 data_cols['Mic'] = []
+data_cols['Mbient_RH'] = [1,2,3]
 
 legend_dict=dict()
 legend_dict['Eyelink'] = ['R_gazeX']#, 'R_gazeY', 'L_gazeX', 'L_gazeY',]
@@ -81,6 +83,16 @@ fig, ax = plt.subplots(1, sharex=True, figsize=[20,5])
 
 for ix,ky in enumerate(data.keys()):
     if ky == "Eyelink":
+        ax.plot(data[ky]['device_data']['time_stamps'], data[ky]['device_data']['time_series'][:, data_cols[ky]], color='magenta', label='R_gaze_X')
+        marker_ts, target_x, target_y = _get_target_traces(data[ky]['marker'])
+        
+        trig_ts = _get_mrk_traces(data[ky]['marker'])
+        ax.plot(marker_ts, target_x, drawstyle='steps-post', ls='--', label='Target_X', color='black')
+        
+        for tx in trig_ts:
+            ax.axvline(tx)
+        #ax.plot(marker_ts, target_y, drawstyle='steps-post', ls='--', label='Target_Y', color='')
+    if ky == "Mbient_RH":
         ax.plot(data[ky]['device_data']['time_stamps'], data[ky]['device_data']['time_series'][:, data_cols[ky]], color='magenta', label='R_gaze_X')
         marker_ts, target_x, target_y = _get_target_traces(data[ky]['marker'])
         

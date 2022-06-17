@@ -5,6 +5,7 @@ from time import time, sleep
 from collections import OrderedDict
 import cv2
 import numpy as np
+from pylsl import local_clock
 
 import neurobooth_os
 from neurobooth_os import config
@@ -13,6 +14,15 @@ from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import (start_lsl_threads, close_streams,
                                              reconnect_streams, connect_mbient)
 import neurobooth_os.iout.metadator as meta
+
+
+def countdown(period):
+    t1 = local_clock()
+    t2 = t1
+    
+    while t2-t1 < period:
+        t2 =local_clock()
+
 
 def Main():
     os.chdir(neurobooth_os.__path__[0])
@@ -76,10 +86,16 @@ def Main():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]: 
                     if task_devs_kw[task].get(k):
                         streams[k].start(fname)
+            countdown(1)  # wait until intel finishes turn on so mic and mbient LSL times not affected
             
             for k in streams.keys():
                 if  "Mic_Yeti" in k:
                     streams[k].start()
+                    
+            countdown(2)  # wait until intel finishes turn on so mic and mbient LSL times not affected
+            for k in streams.keys():
+                if  "Mbient" in k:
+                    streams[k].lsl_push = True
                     
             msg = "ACQ_devices_ready"
             connx.send(msg.encode("ascii"))
@@ -91,10 +107,12 @@ def Main():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
                     if task_devs_kw[task].get(k):
                         streams[k].stop()
-                        
+            
             for k in streams.keys():
                 if  "Mic_Yeti" in k:
                     streams[k].stop()
+                elif  "Mbient" in k:
+                    streams[k].lsl_push = False
                     
             msg = "ACQ_devices_stoped"
             connx.send(msg.encode("ascii"))
