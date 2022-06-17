@@ -458,7 +458,7 @@ def gui(remote=False, database='neurobooth'):
             _create_lsl_inlet(stream_ids, values[event], inlets)
         
         elif event == "no_eyetracker":
-            sg.PopupError('Eyetracker not found! \n Servers will be terminated. Connect the eyetracker and start again')
+            sg.PopupError('Eyetracker not found! \nServers will be terminated, wait utill are closed.\nThen, connect the eyetracker and start again')
             window.write_event_value('Shut Down', 'Shut Down')
              
 
