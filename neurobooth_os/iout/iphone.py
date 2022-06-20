@@ -17,7 +17,7 @@ import uuid
 from neurobooth_os.iout.usbmux import  USBMux
 
 global DEBUG_IPHONE
-DEBUG_IPHONE='default' # 'default', 'verbatim' , 'verbatim_no_lsl', 'default_no_lsl'
+DEBUG_IPHONE= 'default' # 'default', 'verbatim' , 'verbatim_no_lsl', 'default_no_lsl'
  
 if DEBUG_IPHONE in ['default','verbatim']:
     from pylsl import StreamInfo, StreamOutlet
@@ -77,7 +77,7 @@ class IPhoneListeningThread(threading.Thread):
     def run(self):
         while self._running:
             try:
-                msg,version,type,resp_tag=self._iphone._getpacket()                
+                msg,version,type,resp_tag=self._iphone._getpacket()     
                 self._iphone._process_message(msg,resp_tag)
                 if resp_tag==0:
                     debug_print(f'Listener received: {msg}')
@@ -173,6 +173,9 @@ class IPhone:
             msgType=message['MessageType']
         debug_print(f'Initial State: {self._state}')
         debug_print(f'Message: {msgType}')
+        # if msgType in ['@STARTTIMESTAMP', '@INPROGRESSTIMESTAMP','@STOPTIMESTAMP']:
+        #     print('Correct msg type')
+        #     debug_print(f'Message: {message}')
         #validate whether the transition is valid
         allowed_trans=self.STATE_TRANSITIONS[self._state]
         if msgType in allowed_trans:
@@ -214,7 +217,7 @@ class IPhone:
             self.disconnect()
             return False
                #do transition through validate_message
-        self._process_message(msg,self.tag)
+        self._process_message(msg,self.tag)        
         payload=self._json_wrap(msg).encode('utf-8')
         payload_size=len(payload)
         packet=struct.pack("!IIII",self.VERSION,self.TYPE_MESSAGE,self.tag,payload_size)+payload
@@ -354,16 +357,12 @@ class IPhone:
             self._wait_for_reply_cond.release()
             self._allmessages.append({'message':msg,'ctr_timestamp':str(datetime.now()),'tag':tag})
 
-        if msg['MessageType']=='@STARTTIMESTAMP':
-            self.fcount= float(msg['TimeStamp']['FrameNumber'])
-            debug_print([self.fcount, float(msg['TimeStamp']), time.time()])     
-            self.lsl_push_sample([self.fcount, float(msg['TimeStamp']['Timestamp']), time.time()])   
-            print([self.fcount, float(msg['TimeStamp']['Timestamp']), time.time()])
-        elif msg['MessageType'] in ['@INPROGRESSTIMESTAMP','@STOPTIMESTAMP']:
-            self.fcount= float(msg['TimeStamp']['FrameNumber'])
-            debug_print([self.fcount, float(msg['TimeStamp']['Timestamp']), time.time()])
-            self.lsl_push_sample([self.fcount, float(msg['TimeStamp']), time.time()])            
-            print([self.fcount, float(msg['TimeStamp']['Timestamp']), time.time()])
+        if msg['MessageType'] in ['@STARTTIMESTAMP', '@INPROGRESSTIMESTAMP','@STOPTIMESTAMP']:
+            finfo =  eval(msg['TimeStamp'])
+            self.fcount = int(finfo['FrameNumber'])
+            debug_print([self.fcount, float(finfo['Timestamp']), time.time()])
+            self.lsl_push_sample([self.fcount, float(finfo['Timestamp']), time.time()])         
+            # print([self.fcount, float(msg['TimeStamp']['Timestamp']), time.time()])
             
     @debug_lsl
     def createOutlet(self):
@@ -512,7 +511,7 @@ if __name__ == "__main__":
     #iphone.start('mov120_1')
     iphone.start(subject + f"_task_obs_1_{time.time()}")
     
-    time.sleep(10)
+    time.sleep(1)
 
     iphone.stop()
     liesl_sesion_stop(session)
