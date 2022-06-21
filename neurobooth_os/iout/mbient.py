@@ -51,7 +51,7 @@ class Sensor:
     def connect(self):
         self.device = self.connector(self.mac)
         self.device.connect()
-        # print(f"Mbient {self.dev_name} connected")
+        self.device.on_disconnect = lambda status: print(f'WARNING {self.dev_name} diconected prematurely')
 
     def data_handler(self, ctx, data):
         values = parse_value(data, n_elem=2)
@@ -159,7 +159,7 @@ class Sensor:
 
     def stop(self):
         e = Event()        
-        self.device.on_disconnect = lambda s: e.set()
+        self.device.on_disconnect = lambda status: e.set()
         self.device.disconnect()
         # libmetawear.mbl_mw_debug_reset(self.device.board)
         print("Stopped ", self.dev_name)
