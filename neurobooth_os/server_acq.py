@@ -95,6 +95,8 @@ def Main():
             countdown(2)  # wait until intel finishes turn on so mic and mbient LSL times not affected
             for k in streams.keys():
                 if  "Mbient" in k:
+                    if not streams[k].device.is_connected:
+                        streams[k].setup()
                     streams[k].lsl_push = True
                     
             msg = "ACQ_devices_ready"
