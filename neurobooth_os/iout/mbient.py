@@ -10,7 +10,14 @@ from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings
 from pylsl import StreamInfo, StreamOutlet, local_clock
 
 
-states = []
+
+def countdown(period):
+    t1 = local_clock()
+    t2 = t1
+    
+    while t2-t1 < period:
+        t2 =local_clock()
+
 
 
 class Sensor:
@@ -51,8 +58,21 @@ class Sensor:
     def connect(self):
         self.device = self.connector(self.mac)
         self.device.connect()
-        self.device.on_disconnect = lambda status: print(f'WARNING {self.dev_name} diconected prematurely')
-
+        self.device.on_disconnect = lambda status: print(f'WARNING {self.dev_name} diconnected prematurely')
+        
+    def try_reconnect(self, time_wait=.5):
+        print(f'WARNING {self.dev_name} diconnected prematurely')
+        try:
+            self.connect()
+        except:
+            print(f'Failed to reconnect {self.dev_name}, trying in {time_wait}')
+            countdown(time_wait)
+            try:
+                self.connect()
+            except:
+                print(f'Failed to reconnect {self.dev_name}... bye')
+        return self.device.is_connected
+    
     def data_handler(self, ctx, data):
         values = parse_value(data, n_elem=2)
         # pylsl.local_clock()
@@ -70,9 +90,9 @@ class Sensor:
         self.nsmpl += 1
         # print("acc: (%.4f,%.4f,%.4f), gyro; (%.4f,%.4f,%.4f)" % (values[0].x, values[0].y, values[0].z, values[1].x, values[1].y, values[1].z))
 
-    def setup(self):
+    def setup(self, create_outlet=True):
         libmetawear.mbl_mw_settings_set_connection_parameters(self.device.board, 7.5, 7.5, 0, 6000)
-        libmetawear.mbl_mw_settings_set_tx_power(self.device.board, 4)
+        libmetawear.mbl_mw_settings_set_tx_power(self.device.board, 8)
         tx = libmetawear.mbl_mw_settings_get_power_status_data_signal(self.device.board)
         print(tx)
         sleep(1)
@@ -96,8 +116,9 @@ class Sensor:
             self.processor = pointer
             e.set()
         fn_wrapper = cbindings.FnVoid_VoidP_VoidP(processor_created)
-
-        self.outlet = self.createOutlet()
+        
+        if create_outlet:
+            self.outlet = self.createOutlet()
 
         self.callback = cbindings.FnVoid_VoidP_DataP(self.data_handler)
 

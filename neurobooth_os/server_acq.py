@@ -97,7 +97,9 @@ def Main():
                 if  "Mbient" in k:
                     try:
                         if not streams[k].device.is_connected:
-                            streams[k].setup()
+                            isconn = streams[k].try_reconnect()
+                            if isconn:
+                                streams[k].setup(create_outlet=False)                                
                     except  Exception as e:
                         print(e)
                         pass
