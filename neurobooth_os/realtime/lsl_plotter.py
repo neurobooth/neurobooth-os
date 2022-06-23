@@ -117,9 +117,13 @@ class stream_plotter():
                     clicks = [[its, itv[-1]] for itv, its in zip(tv, ts)if itv[-1] != 0]
                     tv = [itv[:-1] for itv in tv]
                 elif "mbient" in nm:
-                    tv = [[np.mean(itv[1:4]), np.mean(itv[4:])] for itv in tv]
+                    # tv = [[np.mean(itv[1:4]), np.mean(itv[4:])] for itv in tv]
+                    tv = [[np.mean(itv[1:4])] for itv in tv]
                 elif "Audio" in nm:
-                    tv = [[np.max(itv)]for itv in tv]
+                    if len(tv[0]) % 2:
+                        tv = [[np.max(itv[1:])] for itv in tv]
+                    else:
+                        tv = [[np.max(itv)] for itv in tv]
                 elif "EyeLink" in nm:
                     tv = [[itv[0], itv[3]] for itv in tv]
                 tv, ts = np.array(tv), np.array(ts)
