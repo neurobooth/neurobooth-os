@@ -6,8 +6,8 @@ Created on Fri May 27 14:49:22 2022
 """
 
 from mbientlab.metawear import MetaWear, libmetawear
-from time import sleep, time
-
+from time import sleep
+from neurobooth_os.iout.lsl_streamer import scann_BLE
 
 def connect(device):
     
@@ -65,7 +65,7 @@ if __name__ == '__main__':
         }
     
     print('resetting mbients (will take ~ 1 min)...')
-
+    scann_BLE(2)
     for k, v in macs.items():
         success = reset_dev(v)
         if not success:

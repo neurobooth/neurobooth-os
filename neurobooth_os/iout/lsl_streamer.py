@@ -15,7 +15,7 @@ from time import sleep
 
 
 
-def scann_BLE():
+def scann_BLE(sleep_period=10):
     print("scanning for devices...")
     devices = {}
     def handler(result):
@@ -24,7 +24,7 @@ def scann_BLE():
     BleScanner.set_handler(handler)
     BleScanner.start()
     
-    sleep(10.0)
+    sleep(sleep_period)
     BleScanner.stop()
         
     
