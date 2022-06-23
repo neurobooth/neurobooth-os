@@ -58,7 +58,7 @@ class Sensor:
     def connect(self):
         self.device = self.connector(self.mac)
         self.device.connect()
-        self.device.on_disconnect = lambda status: print(f'WARNING {self.dev_name} diconnected prematurely')
+        self.device.on_disconnect = lambda status: self.try_reconnect()
         
     def try_reconnect(self, time_wait=.5):
         print(f'WARNING {self.dev_name} diconnected prematurely')

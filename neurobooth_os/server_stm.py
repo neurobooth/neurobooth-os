@@ -147,7 +147,19 @@ def Main():
                 # Start rec in ACQ and run task
                 _ = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
                                     "acquisition", wait_data=10)
-                sleep(.2)
+                
+                # mbient check connectin and start streaming
+                for k in streams.keys():
+                    if  "Mbient" in k:
+                        try:
+                            if not streams[k].device.is_connected:
+                                isconn = streams[k].try_reconnect()
+                                if isconn:
+                                    streams[k].setup(create_outlet=False)                                
+                        except  Exception as e:
+                            print(e)
+                            pass
+                        streams[k].lsl_push = True
 
                 if len(tasks) == 0:
                     this_task_kwargs.update({'last_task' : True})
@@ -158,7 +170,12 @@ def Main():
 
                 # Stop rec in ACQ 
                 _ = socket_message("record_stop", "acquisition", wait_data=15)
-
+                
+                # mbient stop streaming
+                for k in streams.keys():
+                    if  "Mbient" in k:
+                        streams[k].lsl_push = False
+                    
                 # Stop eyetracker
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
                     if 'calibration_task' not in task:
