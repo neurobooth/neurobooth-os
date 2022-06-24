@@ -67,8 +67,12 @@ def _process_received_data(serv_data, window):
             event, stream_name, filename = data_row.split(":")
             window.write_event_value(event, f"{stream_name},{filename}")
             
-        elif "RuntimeError: Could not connect to tracker"in data_row:
-            window.write_event_value("no_eyetracker", "Eyetracker not found")
+        elif "RuntimeError: Could not connect to tracker" in data_row:
+            window.write_event_value("no_eyetracker", 'Eyetracker not found! \nServers will be ' +\
+                                     'terminated, wait utill are closed.\nThen, connect the eyetracker and start again')
+            
+        elif "-WARNING mbient-" in data_row:
+            window.write_event_value("mbient_disconnected", f"{data_row}, \nconsider repeating the task")
             
 
 ########## Database functions ############
@@ -458,9 +462,12 @@ def gui(remote=False, database='neurobooth'):
             _create_lsl_inlet(stream_ids, values[event], inlets)
         
         elif event == "no_eyetracker":
-            sg.PopupError('Eyetracker not found! \nServers will be terminated, wait utill are closed.\nThen, connect the eyetracker and start again')
+            sg.PopupError(values[event])
             window.write_event_value('Shut Down', 'Shut Down')
-             
+            
+        elif event == "mbient_disconnected":
+             sg.PopupError(values[event])
+         
 
         ##################################################################################
         # Conditionals handling inlets for plotting and recording

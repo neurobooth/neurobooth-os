@@ -58,10 +58,16 @@ class Sensor:
     def connect(self):
         self.device = self.connector(self.mac)
         self.device.connect()
-        self.device.on_disconnect = lambda status: self.try_reconnect()
+        self.device.on_disconnect = lambda status: self.try_reconnect(
+            message=f'-WARNING mbient- {self.dev_name} diconnected prematurely')
         
-    def try_reconnect(self, time_wait=.5):
-        print(f'WARNING {self.dev_name} diconnected prematurely')
+    def try_reconnect(self, time_wait=.5, message=None):
+        
+        if message is None:
+            print(f'WARNING {self.dev_name} is diconnected prematurely')
+        else:
+            print(message)
+            
         try:
             self.connect()
         except:
