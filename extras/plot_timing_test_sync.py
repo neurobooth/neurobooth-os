@@ -58,7 +58,7 @@ for device in devices:
         if device in file:
             data.update({device: read_hdf5(os.path.join(path, session_id, file))})
 
-devices = ['Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3']
+devices = ['Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3', 'Flir', 'IPhone']
 for device in devices:
     for file in rgb_files:
         if device in file:
@@ -69,6 +69,8 @@ data_cols['Eyelink'] = [0]#,1,3,4]
 data_cols['Intel_D455_1'] = [0,1,2]
 data_cols['Intel_D455_2'] = [0,1,2]
 data_cols['Intel_D455_3'] = [0,1,2]
+data_cols['Flir'] = [0,1,2]
+data_cols['IPhone'] = [0,1,2]
 data_cols['Mic'] = []
 data_cols['Mbient_RH'] = [1,2,3]
 
@@ -77,6 +79,8 @@ legend_dict['Eyelink'] = ['R_gazeX']#, 'R_gazeY', 'L_gazeX', 'L_gazeY',]
 legend_dict['Intel_D455_1'] = ['R', 'G', 'B']
 legend_dict['Intel_D455_2'] = ['R', 'G', 'B']
 legend_dict['Intel_D455_3'] = ['R', 'G', 'B']
+legend_dict['Flir'] = ['R', 'G', 'B']
+legend_dict['IPhone'] = ['R', 'G', 'B']
 legend_dict['Mic'] = ['amplitude']
 
 fig, ax = plt.subplots(1, sharex=True, figsize=[20,5])
@@ -125,7 +129,7 @@ for ix,ky in enumerate(data.keys()):
 
         # plot audio data
         ax.plot(audio_tstmp_full, audio_ts_full+1000, label='Amplitude', alpha=0.5)
-    if "Intel_D455_2" in ky:
+    if  any([ky in k for k in ["Intel_D455_2", 'IPhone', 'Flir']]):
         ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 0]-np.nanmean(data[ky]['device_data']['time_series'][:, 0])+20)*50, color='red', label='red 2')
         ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 1]-np.nanmean(data[ky]['device_data']['time_series'][:, 1])+20)*50, color='green', label='green 2')
         ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 2]-np.nanmean(data[ky]['device_data']['time_series'][:, 2])+20)*50, color='blue', label='blue 2')

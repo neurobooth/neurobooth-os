@@ -1,5 +1,6 @@
 """Run full session without PySimpleGUI."""
 import time
+from datetime import datetime
 from neurobooth_os.netcomm import node_info
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.main_control_rec as ctr_rec
@@ -13,12 +14,12 @@ from neurobooth_os.gui import (_find_subject, _select_subject, _get_tasks,
 from neurobooth_os.mock import MockWindow
 
 ####### PARAMETERS #########
-remote = True
-database = 'mock_neurobooth'
+remote = False
+database = 'neurobooth'
 staff_id = 'AN'
 first_name, last_name = "Anna", "Luddy"
-study_id = "mock_study"  # 'mock_study'
-collection_id = "mock_collection"
+study_id = "test_study" # 'mock_study'
+collection_id = "testing" 
 
 
 ####### PREPARE WINDOWS #########
@@ -41,10 +42,12 @@ conn = meta.get_conn(remote=remote, database=database)
 subject_df = _find_subject(start_window, conn, first_name, last_name)
 first_name, last_name, subject_id = _select_subject(start_window, subject_df)
 log_sess['subject_id'] = subject_id
+log_task['subject_id-date'] =  f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
 log_sess["study_id"] = study_id
 collection_ids = _get_collections(start_window, conn, study_id)
 
 log_sess["collection_id"] = collection_id
+
 tasks = _get_tasks(start_window, conn, collection_id)
 
 sess_info = _save_session(start_window,
