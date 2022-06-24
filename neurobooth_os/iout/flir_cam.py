@@ -61,24 +61,28 @@ class VidRec_Flir():
         self.system = PySpin.System.GetInstance()
         cam_list = self.system.GetCameras()
         self.cam = cam_list.GetBySerial(self.serial_num)
-
+    
+    def try_setval(self, funct, val):
+        try:
+            funct(val)
+        except:
+            print("Flair {val} couldn't be changed")
+        
     def setup_cam(self):
         self.cam.Init()
         self.open = True
-        self.cam.AcquisitionMode.SetValue(PySpin.AcquisitionMode_Continuous)
-        self.cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
-
-        self.cam.AcquisitionFrameRate.SetValue(self.fps)
-        self.cam.Height.SetValue(self.sizey)
-        self.cam.Width.SetValue(self.sizex)
-        self.cam.OffsetX.SetValue(self.offsetX)
-        self.cam.OffsetY.SetValue(self.offsetY)
-          
         
-        self.cam.ExposureTime.SetValue(self.exposure)
-        self.cam.Gamma.SetValue(self.gamma)
-        self.cam.Gain.SetValue(self.gain)
-        self.cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Once)
+        self.try_setval(self.cam.AcquisitionMode.SetValue, PySpin.AcquisitionMode_Continuous)
+        self.try_setval(self.cam.ExposureAuto.SetValue, PySpin.ExposureAuto_Off)
+        self.try_setval(self.cam.AcquisitionFrameRate.SetValue, self.fps)
+        self.try_setval(self.cam.Height.SetValue, self.sizey)
+        self.try_setval(self.cam.Width.SetValue, self.sizex)
+        self.try_setval(self.cam.OffsetX.SetValue, self.offsetX)
+        self.try_setval(self.cam.OffsetY.SetValue, self.offsetY)        
+        self.try_setval(self.cam.ExposureTime.SetValue, self.exposure)
+        self.try_setval(self.cam.Gamma.SetValue, self.gamma)
+        self.try_setval(self.cam.Gain.SetValue, self.gain)
+        self.try_setval(self.cam.BalanceWhiteAuto.SetValue, PySpin.BalanceWhiteAuto_Once)
 
         s_node_map = self.cam.GetTLStreamNodeMap()
         handling_mode = PySpin.CEnumerationPtr(s_node_map.GetNode('StreamBufferHandlingMode'))
