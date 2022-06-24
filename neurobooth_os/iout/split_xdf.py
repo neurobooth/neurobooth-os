@@ -57,7 +57,7 @@ def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''
     """
 
     # Read xdf file
-    data, header = pyxdf.load_xdf(fname)
+    data, header = pyxdf.load_xdf(fname, dejitter_timestamps=False)
 
     # Find marker stream to add in to each h5 file
     marker = [d for d in data if d['info']['name'] == ["Marker"]]
