@@ -71,7 +71,14 @@ class Sensor:
                 self.connect()
             except:
                 print(f'Failed to reconnect {self.dev_name}... bye')
-        return self.device.is_connected
+                
+        isconn =  self.device.is_connected
+        if isconn:
+            try:
+                self.setup(create_outlet=False)  
+            except:
+                print(f"Couldn't setup for {self.dev_name}")
+        return isconn
     
     def data_handler(self, ctx, data):
         values = parse_value(data, n_elem=2)
