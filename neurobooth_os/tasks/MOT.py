@@ -39,7 +39,7 @@ class MOT(Task_Eyetracker):
         self.duration = 5        # desired duration of trial in s
         
         self.paperSize = 500        # size of stimulus graphics page
-        self.clickTimeout = 30   # timeout for clicking on targets
+        self.clickTimeout = 60   # timeout for clicking on targets
         self.seed = 2               # URL parameter: if we want a particular random number generator seed
         self.trialCount = 0
         self.score = 0        
