@@ -17,6 +17,7 @@ from h5io import write_hdf5
 
 from neurobooth_os.iout import metadator as meta
 from neurobooth_terra import Table
+from neurobooth_os.config import paths
 
 
 def compute_clocks_diff():
@@ -164,20 +165,26 @@ def get_xdf_name(session, fname_prefix):
 
 
 def create_h5_from_csv(dont_split_xdf_fpath, conn):
+    # dont_split_xdf_fpath : path where split_tohdf5.csv is located
+    # connn = connectore to db
     lines_todo = []
     fname = os.path.join(dont_split_xdf_fpath, "split_tohdf5.csv")
     import csv
 
     # red file and slit to hf5 in the same directory
-    with open(dont_split_xdf_fpath, newline='') as csvfile:
+    with open(fname, newline='') as csvfile:
         lines = csv.reader(csvfile, delimiter=',', quotechar='|')
     
         for row in lines:
+            # change to NAS path if necessary
+            if not os.path.exists(row[0]):
+                row[0] = row[0].replace(paths['data_out'][:-1], paths['nas'])
             out = split_sens_files(row[0], task_id=row[1], conn=conn)
+
             if len(out) == 0:
                 lines_todo.append(row)
 
     # rewrite file in case some xdf didn't get split
-    with open(fname, "r") as f:
+    with open(fname, "w") as f:
         for lns in lines_todo:                
             f.write(f"{lns[0]},{lns[1]}")
