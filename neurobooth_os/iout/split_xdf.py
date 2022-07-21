@@ -4,7 +4,7 @@
 # License: BSD-3-Clause
 # Split xdf file per sensor
 
-
+import os
 import pyxdf
 import pylsl
 import time
@@ -34,7 +34,7 @@ def compute_clocks_diff():
     return time_offset
 
 
-def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''):
+def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder='', dont_split_xdf_fpath=None):
     """Split xdf file per sensor
 
     Parameters
@@ -55,7 +55,7 @@ def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''
     files : list
         list of files for each stream
     """
-
+    t0 = time.time()
     # Read xdf file
     data, header = pyxdf.load_xdf(fname, dejitter_timestamps=False)
 
@@ -80,6 +80,9 @@ def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''
             else:
                 videofiles[stream_id] = file_id
 
+    if dont_split_xdf_fpath is not None:
+        with open(os.path.join(dont_split_xdf_fpath, "split_tohdf5.csv" ), "a+") as f:
+                f.write(f"{fname},{task_id}")
     files = []
     # Loop over each sensor
     for dev_data in data:
@@ -99,7 +102,10 @@ def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''
         data_sens = {'marker': marker[0], 'device_data': dev_data}
         head, ext = op.splitext(fname)
         fname_full = f"{head}-{device_id}-{sensors}.hdf5"
-        write_hdf5(fname_full, data_sens, overwrite=True)
+
+        if dont_split_xdf_fpath is  None:
+            write_hdf5(fname_full, data_sens, overwrite=True)
+
         # print(f"Saving stream {name} to {fname_full}")
         files.append(fname_full)
         _, head = op.split(fname_full)
@@ -128,7 +134,7 @@ def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''
                 vals = [(log_task_id, temp_res, None, start_time, end_time, device_id, sens_id,
                  "{" + head + "}")]
                 table_sens_log.insert_rows(vals, cols)
-
+    print(f"SPLIT XDF {task_id} took: {time.time() - t0}")
     return files
 
 def get_xdf_name(session, fname_prefix):
@@ -155,3 +161,23 @@ def get_xdf_name(session, fname_prefix):
     run_str = "_R{0:03d}".format(count)
     final_fname = str(fname.with_name(base_stem + run_str).with_suffix(".xdf"))
     return final_fname
+
+
+def create_h5_from_csv(dont_split_xdf_fpath, conn):
+    lines_todo = []
+    fname = os.path.join(dont_split_xdf_fpath, "split_tohdf5.csv")
+    import csv
+
+    # red file and slit to hf5 in the same directory
+    with open(dont_split_xdf_fpath, newline='') as csvfile:
+        lines = csv.reader(csvfile, delimiter=',', quotechar='|')
+    
+        for row in lines:
+            out = split_sens_files(row[0], task_id=row[1], conn=conn)
+            if len(out) == 0:
+                lines_todo.append(row)
+
+    # rewrite file in case some xdf didn't get split
+    with open(fname, "r") as f:
+        for lns in lines_todo:                
+            f.write(f"{lns[0]},{lns[1]}")
