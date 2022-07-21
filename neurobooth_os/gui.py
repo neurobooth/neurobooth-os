@@ -14,6 +14,7 @@ from optparse import OptionParser
 from datetime import datetime
 import cv2
 import numpy as np
+import psutil
 
 import PySimpleGUI as sg
 import liesl
@@ -197,20 +198,27 @@ def _create_lsl_inlet(stream_ids, outlet_values, inlets):
 def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, obs_log_id,
                        t_obs_id, folder):
     """Stop LSL stream and save"""
-
+    t0 = time.time()
+    # print("memory: ", psutil.virtual_memory())
     # Stop LSL recording
     session.stop_recording()
-
+    print(f"CTR Stop session took: {time.time() - t0}")
     window["task_running"].update(task_id, background_color="green")
     window['Start'].Update(button_color=('black', 'green'))
 
     xdf_fname = get_xdf_name(session, rec_fname)
-    
+    t0 = time.time()
+    if any([ tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]]):
+        dont_split_xdf_fpath = "C:/Users/CTR/Desktop/temp"
+    else:
+        dont_split_xdf_fpath = None
     # split xdf in a thread
     xdf_split = threading.Thread(target=split_sens_files,
-                                    args=(xdf_fname, obs_log_id, t_obs_id, conn, folder,),
+                                    args=(xdf_fname, obs_log_id, t_obs_id, conn, folder, dont_split_xdf_fpath,),
                                     daemon=True)
     xdf_split.start()
+    print(f"CTR xdf_split threading took: {time.time() - t0}")
+    
    
 
 ######### Server communication ############
