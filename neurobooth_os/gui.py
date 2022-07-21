@@ -209,7 +209,7 @@ def _stop_lsl_and_save(window, session, conn, rec_fname, task_id, obs_log_id,
     xdf_fname = get_xdf_name(session, rec_fname)
     t0 = time.time()
     if any([ tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]]):
-        dont_split_xdf_fpath = "C:/Users/CTR/Desktop/temp"
+        dont_split_xdf_fpath = "C:/neurobooth"
     else:
         dont_split_xdf_fpath = None
     # split xdf in a thread
@@ -470,11 +470,11 @@ def gui(remote=False, database='neurobooth'):
             _create_lsl_inlet(stream_ids, values[event], inlets)
         
         elif event == "no_eyetracker":
-            sg.PopupError(values[event])
+            sg.PopupError(values[event],  non_blocking=True)
             window.write_event_value('Shut Down', 'Shut Down')
             
         elif event == "mbient_disconnected":
-             sg.PopupError(values[event])
+             sg.PopupError(values[event], non_blocking=True)
          
 
         ##################################################################################
