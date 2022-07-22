@@ -82,13 +82,14 @@ def task_mapping(task_name):
         task_name
     """
 
-    tasks = {"DSC_task_1": 'Symbol Digit Matching Task',
-             "mouse_task_1": 'Mouse Task',
-             'timing_test_1': 'Time testing',
-             "pursuit_task_1": "Pursuit",
-             "sit_to_stand_task_1": "Sit to stand"
-             }
+    # tasks = {"DSC_task_1": 'Symbol Digit Matching Task',
+    #          "mouse_task_1": 'Mouse Task',
+    #          'timing_test_1': 'Time testing',
+    #          "pursuit_task_1": "Pursuit",
+    #          "sit_to_stand_task_1": "Sit to stand"
+    #          }
 
+    tasks = {}  # Don't map as notes finelanme changes
     if tasks.get(task_name):
         name_present = tasks[task_name]
     else:
