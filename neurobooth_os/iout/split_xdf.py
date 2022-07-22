@@ -83,7 +83,7 @@ def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''
 
     if dont_split_xdf_fpath is not None:
         with open(os.path.join(dont_split_xdf_fpath, "split_tohdf5.csv" ), "a+") as f:
-                f.write(f"{fname},{task_id}")
+                f.write(f"{fname},{task_id}\n")
     files = []
     # Loop over each sensor
     for dev_data in data:
@@ -171,7 +171,7 @@ def create_h5_from_csv(dont_split_xdf_fpath, conn):
     fname = os.path.join(dont_split_xdf_fpath, "split_tohdf5.csv")
     import csv
 
-    # red file and slit to hf5 in the same directory
+    # read file and split to hdf5 in the same directory
     with open(fname, newline='') as csvfile:
         lines = csv.reader(csvfile, delimiter=',', quotechar='|')
     
