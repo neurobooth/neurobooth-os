@@ -85,7 +85,7 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
                 streams[kdev] = VidRec_Flir(**argsdev)
             elif "Mic_Yeti" in kdev:
                 streams[kdev] = MicStream(**argsdev)
-                # streams[kdev].start()
+                streams[kdev].start()
             elif "IPhone"in kdev:
                 success = False
                 streams[kdev] = IPhone(name='IPhoneFrameIndex', **argsdev)
