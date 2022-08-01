@@ -79,20 +79,18 @@ def Main():
         elif "record_start" in data:  
             # "record_start::filename::task_id" FILENAME = {subj_id}_{obs_id}
             print("Starting recording")
+            t0 = time()
             fname, task = data.split("::")[1:]  
             fname = f"{config.paths['data_out']}{subject_id_date}/{fname}"
 
             for k in streams.keys():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]: 
-                    if task_devs_kw[task].get(k):
-                        streams[k].start(fname)
-            countdown(1)  # wait until intel finishes turn on so mic and mbient LSL times not affected
-            
-            for k in streams.keys():
-                if  "Mic_Yeti" in k:
-                    streams[k].start()
-                    
-            countdown(2)  # wait until intel finishes turn on so mic and mbient LSL times not affected
+                    if task_devs_kw[task].get(k):   
+                        try:
+                            streams[k].start(fname)
+                        except:
+                            continue
+                        
             for k in streams.keys():
                 if  "Mbient" in k:
                     try:
@@ -101,25 +99,19 @@ def Main():
                     except  Exception as e:
                         print(e)
                         pass
-                    streams[k].lsl_push = True
-                    
+            print(f'Device start took {time() - t0:.2f}')
             msg = "ACQ_devices_ready"
             connx.send(msg.encode("ascii"))
             recording = True
 
         elif "record_stop" in data:
-            # print("Closing recording")
+            t0 = time()
             for k in streams.keys():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
                     if task_devs_kw[task].get(k):
                         streams[k].stop()
             
-            for k in streams.keys():
-                if  "Mic_Yeti" in k:
-                    streams[k].stop()
-                elif  "Mbient" in k:
-                    streams[k].lsl_push = False
-                    
+            print(f'Device stop took {time() - t0:.2f}')
             msg = "ACQ_devices_stoped"
             connx.send(msg.encode("ascii"))
             recording = False
