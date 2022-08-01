@@ -12,6 +12,7 @@ import uuid
 import functools
 import warnings
 
+from pylsl import local_clock
 import pyrealsense2 as rs
 from pylsl import StreamInfo, StreamOutlet
 
@@ -88,7 +89,7 @@ class VidRec_Intel():
     @catch_exception
     def record(self):
         self.recording = True
-        self.frame_counter = 0
+        self.frame_counter = 1
         self.pipeline.start(self.config)
         
         # Avoid autoexposure frame drops
@@ -96,10 +97,20 @@ class VidRec_Intel():
         sens = dev.first_color_sensor()
         sens.set_option(rs.option.auto_exposure_priority, 0.0)
         
+        self.toffset = time() - local_clock()
+        
         while self.recording:
-            frame = self.pipeline.wait_for_frames()
+            frame = self.pipeline.wait_for_frames(timeout_ms=1000)
+            # frame = self.pipeline.poll_for_frames()
+            # if not frame:
+            #     continue
+            # else:
+            #     print(f" frame {self.frame_counter} in intel {self.device_index}")
             self.n = frame.get_frame_number()
+            # self.ftsmp = frame.get_timestamp()
+            # self.tsmp = (self.ftsmp - self.toffset)*1e-3
             try:
+                # self.outlet.push_sample([self.frame_counter, self.n], timestamp= self.tsmp)
                 self.outlet.push_sample([self.frame_counter, self.n])
             except BaseException:
                 print("Reopening intel stream already closed")
@@ -107,6 +118,7 @@ class VidRec_Intel():
                 self.outlet.push_sample([self.frame_counter, self.n])
 
             self.frame_counter += 1
+            # countdown(1/(4*self.fps[0]))
 
         self.pipeline.stop()
         # print(f"Intel {self.device_index} recording ended, total frames captured: {self.n}, pushed lsl indexes: {self.frame_counter}")
@@ -121,3 +133,13 @@ class VidRec_Intel():
         self.previewing = False
         self.stop()
         self.config = []
+
+
+
+def countdown(period):
+    t1 = local_clock()
+    t2 = t1
+    
+    while t2-t1 < period:
+        t2 =local_clock()
+        
