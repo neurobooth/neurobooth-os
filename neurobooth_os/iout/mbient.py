@@ -37,7 +37,6 @@ class Sensor:
         self.device_id = device_id
         self.sensor_ids = sensor_ids
         self.nsmpl = 0
-        self.lsl_push = False
         self.setup()
         print(f"-OUTLETID-:mbient_{self.dev_name}:{self.oulet_id}")
 
@@ -88,7 +87,6 @@ class Sensor:
     
     def data_handler(self, ctx, data):
         values = parse_value(data, n_elem=2)
-        # pylsl.local_clock()
         vals = [
             data.contents.epoch,
             values[0].x,
@@ -97,12 +95,10 @@ class Sensor:
             values[1].x,
             values[1].y,
             values[1].z]
-        
-        if self.lsl_push:
-            self.outlet.push_sample(vals)
-        self.nsmpl += 1
-        # print("acc: (%.4f,%.4f,%.4f), gyro; (%.4f,%.4f,%.4f)" % (values[0].x, values[0].y, values[0].z, values[1].x, values[1].y, values[1].z))
 
+        self.outlet.push_sample(vals)
+        self.nsmpl += 1
+       
     def setup(self, create_outlet=True):
         libmetawear.mbl_mw_settings_set_connection_parameters(self.device.board, 7.5, 7.5, 0, 6000)
         libmetawear.mbl_mw_settings_set_tx_power(self.device.board, 8)
