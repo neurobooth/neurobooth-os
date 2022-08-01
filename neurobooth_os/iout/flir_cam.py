@@ -66,7 +66,7 @@ class VidRec_Flir():
         try:
             funct(val)
         except:
-            print("Flair {val} couldn't be changed")
+            print(f"Flair {val} couldn't be changed")
         
     def setup_cam(self):
         self.cam.Init()
