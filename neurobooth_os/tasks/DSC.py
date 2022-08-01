@@ -38,7 +38,7 @@ def present_msg(elems, win, key_resp="space"):
 
 
 class DSC(Task_Eyetracker):
-    def __init__(self, path="", subj_id="test", task_name="DSC", duration=10, **kwargs):
+    def __init__(self, path="", subj_id="test", task_name="DSC", duration=60, **kwargs):
         super().__init__(**kwargs)
    
         self.testVersion = 'DSC_simplified_oneProbe_2019'
@@ -214,9 +214,14 @@ class DSC(Task_Eyetracker):
                 trialClock = core.Clock()
                 timed_out = True
                 while countDown.getTime() > 0:
-                    key = event.getKeys(keyList=['1', '2', '3'], timeStamped=True)
+                    key = event.getKeys(keyList=['1', '2', '3', 'q'], timeStamped=True)                        
                     if key:
                         kvl = key[0][0]
+                        if kvl == 'q':
+                            print("DSC Task aborted")
+                            self.frameSequence = []
+                            break
+                    
                         self.sendMessage(self.marker_response_start)
                         self.tmbUI["rt"] = trialClock.getTime()
                         self.tmbUI["response"] = ["key", key[0][0]]

@@ -22,7 +22,8 @@ from neurobooth_os.tasks import Task_Eyetracker
 
 
 class MOT(Task_Eyetracker):
-    def __init__(self, path="", subj_id="test", task_name="MOT", duration=90, **kwargs):
+    def __init__(self, path="", subj_id="test", task_name="MOT", numCircles=10,
+                 time_presentation=3, trial_duration= 5, clickTimeout=60, **kwargs):
         super().__init__(**kwargs)
         
         self.path_out = path
@@ -36,11 +37,14 @@ class MOT(Task_Eyetracker):
                         "noise": 15,  # motion direction noise in deg
                         "speed": 2}  # circle speed in pixels/frame
         self.numCircles = 10        # total # of circles
-        self.duration = 5        # desired duration of trial in s
+        self.duration = trial_duration        # desired duration of trial in s
+        self.time_presentation = time_presentation
         
-        self.paperSize = 500        # size of stimulus graphics page
-        self.clickTimeout = 30   # timeout for clicking on targets
+        self.clickTimeout = clickTimeout   # timeout for clicking on targets
         self.seed = 2               # URL parameter: if we want a particular random number generator seed
+        self.paperSize = 500        # size of stimulus graphics page
+
+        
         self.trialCount = 0
         self.score = 0        
         self.trial_info_str = ''
@@ -84,12 +88,17 @@ class MOT(Task_Eyetracker):
     
         
     def run(self, prompt=True, last_task=False, subj_id='test', **kwargs):
+        
+        # Check if run previously, create framesequence again
+        if len(self.frameSequence) == 0:
+            self.frameSequence = self.setFrameSequence()
+            
         self.subj_id = subj_id   
         self.present_instructions(prompt) 
         self.win.color = "white"
         self.win.flip()
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True) 
-        self.run_trials(self.frameSequence)
+        self.run_trials()
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True) 
         self.present_complete(last_task)
         return self.events
@@ -277,7 +286,13 @@ class MOT(Task_Eyetracker):
         return clicks, ncorrect, rt
                 
     
-        
+    def abort_task(self, keys=["q"]):
+        press = event.getKeys(keyList=keys)
+        if press:
+            print("pressed ", press)
+            self.frameSequence = []
+            return True
+        return False
         
     def showMovingDots(self, frame):
 
@@ -299,7 +314,7 @@ class MOT(Task_Eyetracker):
         
         # initialize the dots, flashgreen colors
         countDown = core.CountdownTimer()
-        countDown.add(1.5)
+        countDown.add(self.time_presentation)
 
         while countDown.getTime() > 0:
             for n in range(numTargets):
@@ -318,7 +333,11 @@ class MOT(Task_Eyetracker):
             else:
                 self.present_stim(self.background + circle)
             utils.countdown(.1)
-
+            abort = self.abort_task()
+            if abort:
+                print("MOT Task aborted")
+                break
+                        
         clock  = core.Clock()
         while clock.getTime() < duration:
             circle = self.moveCircles(circle)
@@ -330,14 +349,14 @@ class MOT(Task_Eyetracker):
         return  circle
         
         
-    def run_trials(self, frameSequence):
+    def run_trials(self):
         results = []
 
         total = 0
         practiceErr = 0
-        while len(frameSequence):
+        while len(self.frameSequence):
             # read the frame sequence one frame at a time
-            frame = frameSequence.pop(0)
+            frame = self.frameSequence.pop(0)
     
             # check if it's the startup frame
             if frame["type"] in ["begin", "message"]:                
@@ -380,7 +399,7 @@ class MOT(Task_Eyetracker):
             state = 'click'                
             if rt == 'timeout':
                 # rewind frame sequence by one frame, so same frame is displayed again
-                frameSequence.insert(0, frame)
+                self.frameSequence.insert(0, frame)
                 
                 msg_alert = "You took too long to respond!\nRemember: once the movement stops,\n" +\
                                       "click the dots that flashed." 
@@ -400,7 +419,7 @@ class MOT(Task_Eyetracker):
                     
                     if practiceErr < 2:  # up to 2 practice errors                    
                         # rewind frame sequence by one frame, so same frame is displayed again
-                        frameSequence.insert(0, frame)
+                        self.frameSequence.insert(0, frame)
                         msg = "Let's try again. \nWhen the movement stops," +\
                             f"click the {frame['n_targets']} dots that flashed."
                         
@@ -441,7 +460,7 @@ class MOT(Task_Eyetracker):
         
         outcomes = {}
         outcomes["score"] = self.score
-        outcomes["correct"] = round(self.score / total, 3)
+        outcomes["correct"] = round(self.score / total, 3) if total else 0
         outcomes["rtTotal"] = round(sum(rtTotal), 1)
     
         # SAVE RESULTS to file

@@ -81,6 +81,7 @@ def Main():
                         "path": config.paths['data_out'] + f"{subject_id_date}/",
                         "subj_id": subject_id_date,
                         "marker_outlet": streams['marker'],
+                        "prompt" : True
                         }
             if streams.get('Eyelink'):
                     task_karg["eye_tracker"] = streams['Eyelink']
@@ -112,12 +113,12 @@ def Main():
                 if task not in task_func_dict.keys():
                     print(f"Task {task} not implemented")
                     continue
-
+                
+                t0 = t00 = time()
                 # get task and params
                 tsk_fun = task_func_dict[task]['obj']
                 this_task_kwargs = {**task_karg, **task_func_dict[task]['kwargs']}
                 t_obs_id = task_func_dict[task]['t_obs_id']                
-
                 # Do not record if intro instructions"
                 if "intro_" in task or "pause_" in task:
                     tsk_fun.run(**this_task_kwargs)
@@ -128,11 +129,12 @@ def Main():
                 tsk_strt_time = datetime.now().strftime("%Hh-%Mm-%Ss")
                 
                 # Signal CTR to start LSL rec and wait for start confirmation
+                t0 = time()
                 print(f"Initiating task:{task}:{t_obs_id}:{log_task_id}:{tsk_strt_time}")
                 ctr_msg = None
                 while ctr_msg != "lsl_recording":
                     ctr_msg = get_data_timeout(s1, 4)
-                    print('Waiting CTR to start lsl rec, ', ctr_msg)
+                print(f"Waiting for CTR took: {time() -t0}")
                 
                 # Start eyetracker if device in task 
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
@@ -143,6 +145,7 @@ def Main():
                         this_task_kwargs.update({"fname": fname, "instructions":calib_instructions})
                     else:
                         streams['Eyelink'].start(fname)
+
                 
                 # Start rec in ACQ and run task
                 _ = socket_message(f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
@@ -158,17 +161,19 @@ def Main():
                             print(e)
                             pass
                         streams[k].lsl_push = True
-
+                
                 if len(tasks) == 0:
                     this_task_kwargs.update({'last_task' : True})
                 this_task_kwargs["task_name"] = t_obs_id
                 this_task_kwargs["subj_id"] += '_'+ tsk_strt_time
-
+                
+                print(f"Total TASK WAIT start took: {time() - t00}")
                 events = tsk_fun.run(**this_task_kwargs)
 
                 # Stop rec in ACQ 
+                t0 = t00 = time()
                 _ = socket_message("record_stop", "acquisition", wait_data=15)
-                
+                print(f"ACQ stop took: {time() -t0}")
                 # mbient stop streaming
                 for k in streams.keys():
                     if  "Mbient" in k:
@@ -178,10 +183,11 @@ def Main():
                 if streams.get('Eyelink') and any('Eyelink' in d for d in list(task_devs_kw[task])):
                     if 'calibration_task' not in task:
                         streams['Eyelink'].stop()
+        
 
                 # Signal CTR to start LSL rec and wait for start confirmation
                 print(f"Finished task:{task}")
-
+  
                 # Log task to database
                 log_task["date_times"] += datetime.now().strftime("%Y-%m-%d %H:%M:%S")  + '}'
                 log_task["task_id"] = t_obs_id
@@ -196,7 +202,9 @@ def Main():
                         del log_task["task_output_files"]
                     
                 meta._fill_task_row(log_task_id, log_task, conn)     
-                               
+                
+                print(f"Total TASK WAIT stop took: {time() - t00}")
+                
                 # Check if pause requested, unpause or stop
                 data = get_data_timeout(s1, .1)
                 if data == "pause tasks":
