@@ -125,7 +125,7 @@ class VidRec_Flir():
         self.video_thread.start()
 
     def imgage_proc(self):
-        im = self.cam.GetNextImage(1000)
+        im = self.cam.GetNextImage(2000)
         tsmp = im.GetTimeStamp()
         imgarr = im.GetNDArray()
         im_conv = cv2.demosaicing(imgarr, cv2.COLOR_BayerBG2BGR)
@@ -154,7 +154,12 @@ class VidRec_Flir():
 
         self.stamp = []
         while self.recording:
-            im, tsmp = self.imgage_proc()
+            # Exception for failed waiting self.cam.GetNextImage(1000)
+            try:
+                im, tsmp = self.imgage_proc()
+            except:
+                continue
+            
             self.image_queue.put(im)
             self.stamp.append(tsmp)
 
