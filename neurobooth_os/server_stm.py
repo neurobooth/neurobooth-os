@@ -160,8 +160,7 @@ def Main():
                         except  Exception as e:
                             print(e)
                             pass
-                        streams[k].lsl_push = True
-                
+
                 if len(tasks) == 0:
                     this_task_kwargs.update({'last_task' : True})
                 this_task_kwargs["task_name"] = t_obs_id
