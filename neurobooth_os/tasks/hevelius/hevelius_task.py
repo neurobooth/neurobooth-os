@@ -194,6 +194,11 @@ class hevelius_task(Task_Eyetracker):
             frameN = -1
             # -------Run Routine "trial"-------
             while continueRoutine:
+                press = event.getKeys(keyList=['q'])
+                if press:
+                    polygon.setAutoDraw(False)
+                    self.win.flip()
+                    return 
                 # get current time
                 t = trialClock.getTime()
                 tThisFlip = self.win.getFutureFlipTime(clock=trialClock)
@@ -304,6 +309,9 @@ class hevelius_task(Task_Eyetracker):
             routineTimer.reset()
             thisExp.nextEntry()
 
+       
+        
+            
 
         # these shouldn't be strictly necessary (should auto-save)
         if self.record_psychopy:
@@ -314,4 +322,4 @@ class hevelius_task(Task_Eyetracker):
 if __name__ == "__main__":
 
     task = hevelius_task( record_psychopy=False, full_screen=False, blocks=2, num_iterations=2)
-    task.run()
+    task.run(prompt=True)

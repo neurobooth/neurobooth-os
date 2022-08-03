@@ -38,7 +38,7 @@ def present_msg(elems, win, key_resp="space"):
 
 
 class DSC(Task_Eyetracker):
-    def __init__(self, path="", subj_id="test", task_name="DSC", duration=10, **kwargs):
+    def __init__(self, path="", subj_id="test", task_name="DSC", duration=60, **kwargs):
         super().__init__(**kwargs)
    
         self.testVersion = 'DSC_simplified_oneProbe_2019'
@@ -55,6 +55,8 @@ class DSC(Task_Eyetracker):
         self.rootdir = op.join(neurobooth_os.__path__[0], 'tasks', 'DSC')
         self.tot_time = duration
         self.showresults = False
+        self.rep = ''  # repeated task num to add to filename
+        self.task_files = ""
 
         try:
             self.io = launchHubServer()
@@ -70,6 +72,14 @@ class DSC(Task_Eyetracker):
 
     def run(self, prompt=True, last_task=False, subj_id="test", **kwargs):
         
+        self.results = []  # array to store trials details and responses
+        self.outcomes = {} # object containing outcome variables
+        self.testStart = 0
+        
+        # Check if run previously, create framesequence again
+        if len(self.frameSequence) == 0:
+            self.setFrameSequence()
+            
         self.subj_id = subj_id
         self.present_instructions(prompt) 
                 
@@ -79,6 +89,13 @@ class DSC(Task_Eyetracker):
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True) 
         self.nextTrial()
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True) 
+        
+        if prompt:
+            func_kwargs_func = {'prompt': prompt}
+            self.rep += "_I"
+            self.show_text(screen=self.press_task_screen, msg='Task-continue-repeat', func=self.run,
+                              func_kwargs=func_kwargs_func, waitKeys=False)
+            
         self.io.quit()
         self.present_complete(last_task)
         return self.events
@@ -214,9 +231,14 @@ class DSC(Task_Eyetracker):
                 trialClock = core.Clock()
                 timed_out = True
                 while countDown.getTime() > 0:
-                    key = event.getKeys(keyList=['1', '2', '3'], timeStamped=True)
+                    key = event.getKeys(keyList=['1', '2', '3', 'q'], timeStamped=True)                        
                     if key:
                         kvl = key[0][0]
+                        if kvl == 'q':
+                            print("DSC Task aborted")
+                            self.frameSequence = []
+                            break
+                    
                         self.sendMessage(self.marker_response_start)
                         self.tmbUI["rt"] = trialClock.getTime()
                         self.tmbUI["response"] = ["key", key[0][0]]
@@ -281,12 +303,16 @@ class DSC(Task_Eyetracker):
         df_res = pd.DataFrame(self.results)
         df_out = pd.DataFrame.from_dict(self.outcomes, orient='index', columns=['vals'])
         
-        res_fname = f'{self.subj_id}_{self.task_name}_results.csv'
-        out_fname = f'{self.subj_id}_{self.task_name}_outcomes.csv' 
+        res_fname = f'{self.subj_id}_{self.task_name}_results{self.rep}.csv'
+        out_fname = f'{self.subj_id}_{self.task_name}_outcomes{self.rep}.csv' 
         df_res.to_csv(self.path_out + res_fname)
         df_out.to_csv(self.path_out + out_fname)
-        self.task_files = '{' + f"{res_fname}, {out_fname}" + '}'
-
+        if len(self.task_files):
+            self.task_files = self.task_files[-1] + f", {res_fname}, {out_fname}" + '}'
+        else:
+            self.task_files += '{' + f"{res_fname}, {out_fname}" + '}'
+        
+        
         # Close win if just created for the task
         if self.win_temp:
             self.win.close()
