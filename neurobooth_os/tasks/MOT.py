@@ -36,20 +36,21 @@ class MOT(Task_Eyetracker):
                         "z":4,        # circle repulsion radius
                         "noise": 15,  # motion direction noise in deg
                         "speed": 2}  # circle speed in pixels/frame
-        self.numCircles = 10        # total # of circles
-        self.duration = trial_duration        # desired duration of trial in s
-        self.time_presentation = time_presentation
         
+        self.numCircles = numCircles        # total # of circles
+        self.duration = trial_duration        # desired duration of trial in s
+        self.time_presentation = time_presentation  # duration green dots presentation        
         self.clickTimeout = clickTimeout   # timeout for clicking on targets
+        
         self.seed = 2               # URL parameter: if we want a particular random number generator seed
         self.paperSize = 500        # size of stimulus graphics page
 
-        
         self.trialCount = 0
         self.score = 0        
         self.trial_info_str = ''
         self.rootdir = op.join(neurobooth_os.__path__[0], 'tasks', 'MOT')
-        
+        self.rep = ''
+        self.task_files = ''
         self.setup(self.win)
         
 
@@ -62,6 +63,7 @@ class MOT(Task_Eyetracker):
         # create the trials chain
         self.frameSequence = self.setFrameSequence()
         
+
     def trial_info_msg(self, msg_type= None):
         if msg_type == 'practice':
             msg = self.trial_info_str
@@ -89,6 +91,9 @@ class MOT(Task_Eyetracker):
         
     def run(self, prompt=True, last_task=False, subj_id='test', **kwargs):
         
+        self.score = 0  
+        self.abort = False
+        
         # Check if run previously, create framesequence again
         if len(self.frameSequence) == 0:
             self.frameSequence = self.setFrameSequence()
@@ -99,7 +104,14 @@ class MOT(Task_Eyetracker):
         self.win.flip()
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True) 
         self.run_trials()
-        self.sendMessage(self.marker_task_end, to_marker=True, add_event=True) 
+        self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)         
+        
+        if prompt:
+            func_kwargs_func = {'prompt': prompt}
+            self.rep += "_I"
+            self.show_text(screen=self.press_task_screen, msg='Task-continue-repeat', func=self.run,
+                              func_kwargs=func_kwargs_func, waitKeys=False)
+            
         self.present_complete(last_task)
         return self.events
     
@@ -228,6 +240,7 @@ class MOT(Task_Eyetracker):
             circle[i].pos = [ newX - self.paperSize//2, newY - self.paperSize//2]
             circle[i].draw()
             self.send_target_loc(circle[i].pos, target_name=f"target_{i}")
+            
         return circle
     
     
@@ -279,6 +292,11 @@ class MOT(Task_Eyetracker):
             prevButtonState = buttons
             utils.countdown(.001)
             
+            aborted = self.abort_task()
+            if aborted:
+                rt = 'aborted'
+                break
+            
             if  rt > self.clickTimeout:
                 rt = 'timeout'
                 break
@@ -289,8 +307,8 @@ class MOT(Task_Eyetracker):
     def abort_task(self, keys=["q"]):
         press = event.getKeys(keyList=keys)
         if press:
-            print("pressed ", press)
             self.frameSequence = []
+            self.abort = True
             return True
         return False
         
@@ -333,10 +351,11 @@ class MOT(Task_Eyetracker):
             else:
                 self.present_stim(self.background + circle)
             utils.countdown(.1)
+            
             abort = self.abort_task()
             if abort:
                 print("MOT Task aborted")
-                break
+                return  circle
                         
         clock  = core.Clock()
         while clock.getTime() < duration:
@@ -345,6 +364,11 @@ class MOT(Task_Eyetracker):
                 self.present_stim(self.background + circle + self.trial_info_msg())
             else:
                 self.present_stim(self.background + circle)
+                
+            abort = self.abort_task()
+            if abort:
+                print("MOT Task aborted")
+                return  circle
                 
         return  circle
         
@@ -382,6 +406,8 @@ class MOT(Task_Eyetracker):
             
             clockDuration = core.Clock()
             circle = self.showMovingDots(frame)
+            if self.abort:
+                continue
             trueDuration = round(clockDuration.getTime(), 2)
             
             msg_stim = self.trial_info_msg(frame['type'])
@@ -413,7 +439,7 @@ class MOT(Task_Eyetracker):
                 if frame['type'] == "test" and self.trialCount > 0:
                     self.trialCount -= 1
                     
-            elif frame['type'] == 'practice':
+            elif frame['type'] == 'practice' and rt != 'aborted':
                 msg = f"You got {ncorrect} of {frame['n_targets']} dots correct."
                 if ncorrect < frame['n_targets']:
                     
@@ -428,6 +454,11 @@ class MOT(Task_Eyetracker):
                     practiceErr = 0
                 msg_stim = self.my_textbox2(msg)
                 self.present_stim([self.continue_msg,  msg_stim], 'space')
+                
+            elif rt == 'aborted':
+                state = 'aborted'
+                rt = 0
+                ncorrect = 0
 
             frame['rt'] = rt
             frame["ncorrect"] = ncorrect
@@ -456,7 +487,7 @@ class MOT(Task_Eyetracker):
     
         # the sequence is empty, we are done!
     
-        rtTotal = [r['rt'] for r in results if r["type"]=='practice' and r['state']!='timeout']
+        rtTotal = [r['rt'] for r in results if r["type"]!='practice' and r['state']!='timeout' and r['state']!='aborted']
         
         outcomes = {}
         outcomes["score"] = self.score
@@ -466,13 +497,16 @@ class MOT(Task_Eyetracker):
         # SAVE RESULTS to file
         df_res = pd.DataFrame(results)
         df_out = pd.DataFrame.from_dict(outcomes, orient='index', columns=['vals'])
-        res_fname = f'{self.subj_id}_{self.task_name}_results.csv'
-        out_fname = f'{self.subj_id}_{self.task_name}_outcomes.csv'
+        res_fname = f'{self.subj_id}_{self.task_name}_results{self.rep}.csv'
+        out_fname = f'{self.subj_id}_{self.task_name}_outcomes{self.rep}.csv'
         df_res.to_csv(self.path_out + res_fname)
         df_out.to_csv(self.path_out + out_fname)
-        self.task_files = '{' + f"{res_fname}, {out_fname}" + '}'
         
-        
+        if len(self.task_files):
+            self.task_files = self.task_files[-1] + f", {res_fname}, {out_fname}" + '}'
+        else:
+            self.task_files += '{' + f"{res_fname}, {out_fname}" + '}'
+
     
     def setFrameSequence(self):
         testMessage ={            
