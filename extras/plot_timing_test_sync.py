@@ -16,7 +16,7 @@ def _get_target_traces(mdata):
             y_coord.append(int(l[4]))
 
     ctrl_ts = mdata['time_stamps'][ts_ix]
-    return ctrl_ts, x_coord, y_coord
+    return ctrl_ts , x_coord, y_coord
 
 def _get_mrk_traces(mdata):
     ts_ix = []
@@ -26,17 +26,28 @@ def _get_mrk_traces(mdata):
            
     ctrl_ts = mdata['time_stamps'][ts_ix]
     return ctrl_ts
+
+
+def normalize(x):
+    return (x - np.nanmean(x))/np.nanstd(x)
+            
+def offset(ts):
+    # ts -= ts[0]
+    return ts
 #path = r'C:\Users\siddh\Desktop\lab_projects\Neurobooth_Explorer\data'
 #proc_data_path = r'C:\Users\siddh\Desktop\lab_projects\Neurobooth_Explorer\processed_data'
 
 
-
+# vid = 'Z:/data/100059_2022-07-08/100059_2022-07-08_15h-36m-32s_timing_test_obs_intel2.bag'
 path = r'Z:\data'
 proc_data_path = 'Z:\processed_data'
-session_id = '100064_2022-06-17'
-session_time = '_15h-12m-06s'
+session_id = '100059_2022-08-05'
+session_time = '_15h-02m-40s'
 
+# session_time = '_14h-41m-51s'
 
+# session_id = '100059_2022-07-08'
+# session_time = '_15h-36m-32s'
 # session_time = '_15h-01m-19s'
 
 fnames = []
@@ -58,7 +69,7 @@ for device in devices:
         if device in file:
             data.update({device: read_hdf5(os.path.join(path, session_id, file))})
 
-devices = ['Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3', 'Flir', 'IPhone']
+devices = ['Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3', 'FLIR', 'IPhone']
 for device in devices:
     for file in rgb_files:
         if device in file:
@@ -87,21 +98,21 @@ fig, ax = plt.subplots(1, sharex=True, figsize=[20,5])
 
 for ix,ky in enumerate(data.keys()):
     if ky == "Eyelink":
-        ax.plot(data[ky]['device_data']['time_stamps'], data[ky]['device_data']['time_series'][:, data_cols[ky]], color='magenta', label='R_gaze_X')
+        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, data_cols[ky]]), color='magenta', label='R_gaze_X')
         marker_ts, target_x, target_y = _get_target_traces(data[ky]['marker'])
         
         trig_ts = _get_mrk_traces(data[ky]['marker'])
-        ax.plot(marker_ts, target_x, drawstyle='steps-post', ls='--', label='Target_X', color='black')
+        ax.plot(offset(marker_ts), normalize(target_x), drawstyle='steps-post', ls='--', label='Target_X', color='black')
         
         for tx in trig_ts:
             ax.axvline(tx)
         #ax.plot(marker_ts, target_y, drawstyle='steps-post', ls='--', label='Target_Y', color='')
     if ky == "Mbient_RH":
-        ax.plot(data[ky]['device_data']['time_stamps'], data[ky]['device_data']['time_series'][:, data_cols[ky]], color='magenta', label='R_gaze_X')
+        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, data_cols[ky]]), color='magenta', label='R_gaze_X')
         marker_ts, target_x, target_y = _get_target_traces(data[ky]['marker'])
         
         trig_ts = _get_mrk_traces(data[ky]['marker'])
-        ax.plot(marker_ts, target_x, drawstyle='steps-post', ls='--', label='Target_X', color='black')
+        ax.plot(offset(marker_ts, normalize(target_x)), drawstyle='steps-post', ls='--', label='Target_X', color='black')
         
         for tx in trig_ts:
             ax.axvline(tx)
@@ -116,7 +127,7 @@ for ix,ky in enumerate(data.keys()):
             chunk_len -= 1
             time_mic = [ t[0] for t in audio_ts]
             audio_ts = audio_ts[:, 1:]
-            ax.plot(audio_tstmp,time_mic, 'y--', label='audio clock')
+            ax.plot(offset(audio_tstmp), normalize(time_mic), 'y--', label='audio clock')
             
 
         # restructure audio data
@@ -128,17 +139,33 @@ for ix,ky in enumerate(data.keys()):
         audio_ts_full = np.hstack(audio_ts)
 
         # plot audio data
-        ax.plot(audio_tstmp_full, audio_ts_full+1000, label='Amplitude', alpha=0.5)
-    if  any([ky in k for k in ["Intel_D455_2", 'IPhone', 'Flir']]):
-        ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 0]-np.nanmean(data[ky]['device_data']['time_series'][:, 0])+20)*50, color='red', label='red 2')
-        ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 1]-np.nanmean(data[ky]['device_data']['time_series'][:, 1])+20)*50, color='green', label='green 2')
-        ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 2]-np.nanmean(data[ky]['device_data']['time_series'][:, 2])+20)*50, color='blue', label='blue 2')
-    if "Intel_D455_9" in ky:
-        ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 0]-np.nanmean(data[ky]['device_data']['time_series'][:, 0])+50)*20, color='darkred', label='red 3')
-        ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 1]-np.nanmean(data[ky]['device_data']['time_series'][:, 1])+50)*20, color='darkgreen', label='green 3')
-        ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 2]-np.nanmean(data[ky]['device_data']['time_series'][:, 2])+50)*20, color='darkblue', label='blue 3')
+        ax.plot(offset(audio_tstmp_full), normalize(audio_ts_full), label='Amplitude', alpha=0.5)
+    # if  any([ky in k for k in ["Intel_D455_2", 'IPhone', 'Flir']]):
+    if  any([ky in k for k in ["Intel_D455_2"]]):        
+        
+        # ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 0]-np.nanmean(data[ky]['device_data']['time_series'][:, 0])+20)*50, color='red', label=ky+'_red')
+        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 2]), color='blue', label=ky+'_blue')
+        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 1]), color='green', label=ky+'_green')
+        # ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 2]-np.nanmean(data[ky]['device_data']['time_series'][:, 2])+20)*50, color='blue', label=ky+'_blue')
+    if "Intel_D455_3" in ky:
+    #     ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 0]-np.nanmean(data[ky]['device_data']['time_series'][:, 0])+50)*20, color='darkred',  label=ky+'_red')
+        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 2]), color='lightblue', label=ky+'_blue')
+        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 1]), color='lightgreen', label=ky+'_green')
+    #     ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 2]-np.nanmean(data[ky]['device_data']['time_series'][:, 2])+50)*20, color='darkblue', label=ky+'_blue')
+  
+    if "Intel_D455_1" in ky:
+   #     ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 0]-np.nanmean(data[ky]['device_data']['time_series'][:, 0])+50)*20, color='darkred',  label=ky+'_red')
+       ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 2]), color='darkblue', label=ky+'_blue')
+       ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 1]), color='darkgreen', label=ky+'_green')
+   #     ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 2]-np.nanmean(data[ky]['device_data']['time_series'][:, 2])+50)*20, color='darkblue', label=ky+'_blue')
+
+    if "FLIR" in ky:
+        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 2]), ls='--',  color='darkblue', label=ky+'_blue')
+        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 1]), ls='--',  color='darkgreen', label=ky+'_green')
+        # ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 2]-np.nanmean(data[ky]['device_data']['time_series'][:, 2])+50)*20, ls='--',  color='darkblue', label=ky+'_blue')
 
 
 
-ax.legend()
+
+ax.legend(bbox_to_anchor=(1.,1), loc='upper left')
 plt.show()
