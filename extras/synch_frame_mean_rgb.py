@@ -132,9 +132,6 @@ def convert_bag_2_avi(video_filename, fname_bag, fps_rgb, size_rgb, fps_depth, s
     # config.enable_stream(rs.stream.depth, rs.format.z16, fps_depth)
     config.enable_stream(rs.stream.color, rs.format.rgb8, fps_rgb)
 
-    pipeline.start(config)
-
-
     fourcc = cv2.VideoWriter_fourcc( *'MJPG')
     # Create opencv window to render image in
     video_out = cv2.VideoWriter(video_filename, fourcc, fps_rgb, size_rgb)
@@ -142,14 +139,16 @@ def convert_bag_2_avi(video_filename, fname_bag, fps_rgb, size_rgb, fps_depth, s
     # Create colorizer object
     # colorizer = rs.colorizer()
     align = rs.align(rs.stream.color)
-
+    
+    pipeline.start(config)
+    
     ix = 0
     frame_ix = []
     # Streaming loop
     while True:
         # Get frameset of depth
         try:
-            frames = pipeline.wait_for_frames(timeout_ms=1000)
+            frames = pipeline.poll_for_frames(timeout_ms=1000)
             frame_ix.append(frames.get_frame_number())
         except RuntimeError:
             break
