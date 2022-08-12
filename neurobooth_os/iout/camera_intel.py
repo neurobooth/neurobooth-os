@@ -73,8 +73,8 @@ class VidRec_Intel():
     def createOutlet(self):
         self.streamName = f'IntelFrameIndex_cam{self.device_index}'
         self.outlet_id = str(uuid.uuid4())
-        info = StreamInfo(name=self.streamName, type='videostream', channel_format='int32',
-                          channel_count=2, source_id=self.outlet_id)
+        info = StreamInfo(name=self.streamName, type='videostream', channel_format='double64',
+                          channel_count=4, source_id=self.outlet_id)
 
         info.desc().append_child_value("device_id", self.device_id)
         info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
@@ -109,13 +109,14 @@ class VidRec_Intel():
             self.n = frame.get_frame_number()
             # self.ftsmp = frame.get_timestamp()
             # self.tsmp = (self.ftsmp - self.toffset)*1e-3
+            self.tsmp = frame.get_timestamp()
             try:
                 # self.outlet.push_sample([self.frame_counter, self.n], timestamp= self.tsmp)
-                self.outlet.push_sample([self.frame_counter, self.n])
+                self.outlet.push_sample([self.frame_counter, self.n, self.tsmp, time()])
             except BaseException:
                 print("Reopening intel stream already closed")
                 self.outlet = self.createOutlet(self.name)
-                self.outlet.push_sample([self.frame_counter, self.n])
+                self.outlet.push_sample([self.frame_counter, self.n, self.tsmp, time()])
 
             self.frame_counter += 1
             # countdown(1/(4*self.fps[0]))
