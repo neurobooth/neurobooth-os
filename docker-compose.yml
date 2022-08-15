@@ -1,0 +1,10 @@
+services:
+  jupyter:
+    build: .
+    image: neurobooth-os
+    working_dir: /opt/neurobooth-os
+    command: jupyter lab --ip=0.0.0.0 --no-browser --port=8888 --NotebookApp.token='' --NotebookApp.password='' --NotebookApp.allow_origin='*' --allow-root
+    ports:
+      - 8888:8888
+    volumes:
+      - ./:/opt/neurobooth-os
