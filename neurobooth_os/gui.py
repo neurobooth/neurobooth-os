@@ -306,7 +306,7 @@ def _prepare_devices(window, nodes, collection_id, log_task):
 
 def _get_ports(remote, database='neurobooth'):
     if remote:
-        database = "mock_neurobooth"
+        database = "mock_neurobooth_1"
         nodes = ('dummy_acq', 'dummy_stm')
         host_ctr, port_ctr = node_info("dummy_ctr")
     else:
