@@ -1,3 +1,6 @@
+
+Create username STM, ACQ, CTR for each corresponding computer, then change the computer name to stm, acq and ctr respectively.
+
 Enabling Remote WMI for a domain user
 This process allows a domain user to access WMI information remotely via a script.
 This domain account will  have no other access to the servers.
