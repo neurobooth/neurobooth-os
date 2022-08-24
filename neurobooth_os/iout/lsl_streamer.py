@@ -81,17 +81,17 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
                     del streams[kdev]
                 else:
                     streams[kdev].start()
-            elif "FLIR" in kdev:
-                streams[kdev] = VidRec_Flir(**argsdev)
+            # elif "FLIR" in kdev:
+            #     streams[kdev] = VidRec_Flir(**argsdev)
             elif "Mic_Yeti" in kdev:
                 streams[kdev] = MicStream(**argsdev)
                 streams[kdev].start()
-            elif "IPhone"in kdev:
-                success = False
-                streams[kdev] = IPhone(name='IPhoneFrameIndex', **argsdev)
-                success = streams[kdev].prepare()
-                if not success and streams.get(kdev) is not None:
-                    del streams[kdev]
+            # elif "IPhone"in kdev:
+            #     success = False
+            #     streams[kdev] = IPhone(name='IPhoneFrameIndex', **argsdev)
+            #     success = streams[kdev].prepare()
+            #     if not success and streams.get(kdev) is not None:
+            #         del streams[kdev]
 
     elif node_name == "presentation":
         from neurobooth_os.iout import marker_stream
