@@ -28,7 +28,7 @@ def Main():
     os.chdir(neurobooth_os.__path__[0])
 
     sys.stdout = NewStdout("ACQ",  target_node="control", terminal_print=True)
-    conn = meta.get_conn()
+    conn = meta.get_conn(database='mock_neurobooth_1')  # TODO: hardcoded, move line after "prepare"
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     streams = {}

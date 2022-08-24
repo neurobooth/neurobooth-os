@@ -12,7 +12,7 @@ prefs.hardware['audioLatencyMode'] = 3
 
 import neurobooth_os
 from neurobooth_os import config
-from neurobooth_os.iout.screen_capture import ScreenMirror
+# from neurobooth_os.iout.screen_capture import ScreenMirror
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
 from neurobooth_os.iout import metadator as meta
 
@@ -28,7 +28,7 @@ def Main():
 
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    win = utl.make_win(full_screen=True)
+    win = utl.make_win(full_screen=False)
     conn = meta.get_conn()
 
     streams, screen_running, presented = {}, False, False
@@ -37,8 +37,8 @@ def Main():
 
         if "scr_stream" in data:
             if not screen_running:
-                screen_feed = ScreenMirror()
-                screen_feed.start()
+                # screen_feed = ScreenMirror()
+                # screen_feed.start()
                 # print("Stim screen feed running")
                 screen_running = True
             else:
