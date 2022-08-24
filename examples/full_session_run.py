@@ -15,11 +15,11 @@ from neurobooth_os.mock import MockWindow
 
 ####### PARAMETERS #########
 remote = False
-database = 'neurobooth'
+database = 'mock_neurobooth_1'
 staff_id = 'AN'
 first_name, last_name = "Anna", "Luddy"
-study_id = "test_study" # 'mock_study'
-collection_id = "testing" 
+study_id = "study1" # 'mock_study'
+collection_id = "mvp_030" 
 
 
 ####### PREPARE WINDOWS #########
