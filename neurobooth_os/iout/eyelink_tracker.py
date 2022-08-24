@@ -21,11 +21,11 @@ class EyeTracker():
             calibration_type="HV5",
             win=None,
             with_lsl=True,
-            ip='192.168.100.15',
+            ip='192.168.100.1',
             device_id="Eyelink_1",
             sensor_ids=['Eyelink_sens_1']):
         
-        self.IP = ip
+        self.IP = '192.168.100.1' #ip
         self.sample_rate = sample_rate
         self.device_id = device_id
         self.sensor_ids = sensor_ids
@@ -73,7 +73,7 @@ class EyeTracker():
         try:
             self.tk = pylink.EyeLink(self.IP)
         except RuntimeError:
-            print("RuntimeError: Could not connect to tracker at")
+            print("RuntimeError: Could not connect to tracker at", self.IP)
             return
         
         if self.IP is not None:
