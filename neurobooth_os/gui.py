@@ -326,7 +326,7 @@ def gui(remote=False, database='neurobooth'):
     database : str
         The database name
     """
-    database, nodes, host_ctr, port_ctr = _get_ports(remote, database='neurobooth')
+    database, nodes, host_ctr, port_ctr = _get_ports(remote, database=database)
 
     conn = meta.get_conn(remote=remote, database=database)
     window = _win_gen(_init_layout, conn)
