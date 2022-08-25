@@ -46,7 +46,7 @@ def Main():
                 print("Already running low feed video streaming")
 
         elif "prepare" in data:
-            # data = "prepare:collection_id:str(log_task_dict)"
+            # data = "prepare:collection_id:database:str(log_task_dict)"
             collection_id = data.split(":")[1]
             log_task = eval(data.replace(f"prepare:{collection_id}:", ""))
             subject_id_date = log_task['subject_id-date']

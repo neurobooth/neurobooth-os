@@ -287,7 +287,7 @@ def _update_button_status(window, statecolors, button_name, inlets, folder_sessi
             return session
 
 
-def _prepare_devices(window, nodes, collection_id, log_task):
+def _prepare_devices(window, nodes, collection_id, log_task, database):
     """Prepare devices"""
     window['-Connect-'].Update(button_color=('black', 'red'))
     event, values = window.read(.1)
@@ -299,7 +299,7 @@ def _prepare_devices(window, nodes, collection_id, log_task):
 
     nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:
-        socket_message(f"prepare:{collection_id}:{str(log_task)}", node)
+        socket_message(f"prepare:{collection_id}:{database}:{str(log_task)}", node)
     
     return vidf_mrkr, event, values
 
@@ -394,7 +394,7 @@ def gui(remote=False, database='neurobooth'):
         # Turn on devices
         elif event == '-Connect-':
             vidf_mrkr, event, values = _prepare_devices(window, nodes, collection_id,
-                                                        log_task)
+                                                        log_task, database)
     
         elif event == 'plot':
             _plot_realtime(window, plttr, inlets)
