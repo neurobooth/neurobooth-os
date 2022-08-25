@@ -502,7 +502,7 @@ def main():
     parser = OptionParser()
     parser.add_option("-r", "--remote", dest="remote", action="store_true",
                       default=False, help="Access database using remote connection")
-    parser.add_option("-d", "--database", dest="database", action="store_true", type="string",
+    parser.add_option("-d", "--database", dest="database", type="string",
                       default="neurobooth", help="Specify which database to connect")
     (options, args) = parser.parse_args()
     gui(remote=options.remote, database=options.database)
