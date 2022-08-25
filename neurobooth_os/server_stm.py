@@ -29,7 +29,6 @@ def Main():
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     win = utl.make_win(full_screen=False)
-    conn = meta.get_conn()
 
     streams, screen_running, presented = {}, False, False
 
@@ -51,7 +50,8 @@ def Main():
             collection_id = data.split(":")[1]
             log_task = eval(data.replace(f"prepare:{collection_id}:", ""))
             subject_id_date = log_task["subject_id-date"]
-
+            database_name= data.split(":")[2]
+            conn = meta.get_conn(database=database_name)
             ses_folder = f"{config.paths['data_out']}{subject_id_date}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
