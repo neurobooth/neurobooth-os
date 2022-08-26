@@ -127,11 +127,11 @@ def node_info(node_name):
     """
     port = 12347
     if node_name == "acquisition":
-        host = 'acq'
+        host = secrets[node_name]["name"]
     elif node_name == "presentation":
-        host = 'stm'
+        host = secrets[node_name]["name"]
     elif node_name == "control":
-        host = 'ctr'
+        host = secrets[node_name]["name"]
     elif node_name == "dummy_acq":
         host = 'localhost'
         port = 1280

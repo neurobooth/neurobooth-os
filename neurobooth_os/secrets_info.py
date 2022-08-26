@@ -25,6 +25,11 @@ if not op.exists(fname):
             'pass': "",
             "bat" : op.join(pakg_path, 'server_stm.bat')
             },
+        "control": {
+            "name": "ctr"
+            "user": "CTR",
+            "pass": "5519"
+            },
         'database':{
             "dbname" : 'neurobooth',
             'user':'neuroboother',
