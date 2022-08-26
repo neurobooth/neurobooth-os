@@ -26,7 +26,7 @@ if not op.exists(fname):
             "bat" : op.join(pakg_path, 'server_stm.bat')
             },
         "control": {
-            "name": "ctr"
+            "name": "ctr",
             "user": "CTR",
             "pass": "5519"
             },
