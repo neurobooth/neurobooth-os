@@ -25,7 +25,7 @@ class EyeTracker():
             device_id="Eyelink_1",
             sensor_ids=['Eyelink_sens_1']):
         
-        self.IP = '192.168.100.1' #ip
+        self.IP = ip
         self.sample_rate = sample_rate
         self.device_id = device_id
         self.sensor_ids = sensor_ids
