@@ -27,7 +27,7 @@ class MicStream():
             if (audio.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
                 dev_name = audio.get_device_info_by_host_api_device_index(0, i).get('name')
                 print(dev_name)
-                if "Samson" in dev_name:
+                if "Yeti" in dev_name: #replace with Samson if using Samson mic
                     dev_inx = i
                     self.device_name = dev_name
                     break
