@@ -57,11 +57,11 @@ def reset_dev(MAC):
 
 if __name__ == '__main__':
     macs = {
-        # 'Mbient_LH_2': 'E8:95:D6:F7:39:D2',
-        # 'Mbient_RH_2': 'FE:07:3E:37:F5:9C',
+        'Mbient_LH_1': 'C3:AF:94:03:AD:D5',
+        'Mbient_RH_1': 'DF:22:33:80:5F:F5',
         # 'Mbient_RF_2': 'E5:F6:FB:6D:11:8A',
         # 'Mbient_LF_2': 'DA:B0:96:E4:7F:A3',
-        'Mbient_BK_1': 'FE:AB:CF:19:7A:CB'
+        # 'Mbient_BK_1': 'FE:AB:CF:19:7A:CB'
         }
     
     print('resetting mbients (will take ~ 1 min)...')
