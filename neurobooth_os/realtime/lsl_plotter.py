@@ -101,7 +101,7 @@ class stream_plotter():
         plt.show(block=False)
         
         sampling = .1
-        buff_size = 1024
+        buff_size = 5120
         mypause(sampling)
         
         print('starting plotting loop')
