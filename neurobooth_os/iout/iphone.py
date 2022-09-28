@@ -424,7 +424,8 @@ class IPhone:
                         'VIDEOQUALITY':'1920x1080',
                         'USECAMERAFACING':'BACK',
                         'FPS':'240',
-                        "BRIGHTNESS": "50" }
+                        "BRIGHTNESS": "50",
+                        'LENSPOS':'0.7'}
             self.notifyonframe=int(config['NOTIFYONFRAME'])
             connected=self.handshake(config)
             if connected:
@@ -494,7 +495,8 @@ if __name__ == "__main__":
             'VIDEOQUALITY':'1920x1080',
             'USECAMERAFACING':'BACK',
             'FPS':'240',
-            'BRIGHTNESS':'50'}
+            'BRIGHTNESS':'50',
+            'LENSPOS':'0.7'}
     
     if not iphone.prepare(config=config):
         print('Could not connect to iphone')
