@@ -1,9 +1,11 @@
 import io
 import sys
 import socket
+import logging
 
 from neurobooth_os.netcomm import socket_message
 
+logging.basicConfig(filename="netcomm_server_stdout.log", level=logging.INFO)
 
 def get_fprint(current_node, target_node='control'):
     """Return function to capture prints for sending to target_node.
@@ -74,11 +76,14 @@ class NewStdout():
         if message not in ["\n", ""]:
             try:
                 socket_message(f"{self.current_node}:::{message}", node_name=self.target_node)
+                logging.info(f"{self.current_node}:::{message}")
             except:
                 try:
                     socket_message(f"{self.current_node}:::{message}", node_name=self.target_node)
+                    logging.info(f"{self.current_node}:::{message}")
                 except:                       
                     self.terminal.write(f"\n***MESSAGE*** ###{message}### not sent to {self.target_node}\n")
+                    logging.info(f"{self.current_node}:::{message}")
 
     def flush(self):
         # For compatibility, just pass
