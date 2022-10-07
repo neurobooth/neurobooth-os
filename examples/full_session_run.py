@@ -15,7 +15,7 @@ from neurobooth_os.mock import MockWindow
 
 ####### PARAMETERS #########
 remote = False
-database = 'mock_neurobooth_1'
+database = 'neurobooth'
 staff_id = 'AN'
 first_name, last_name = "Anna", "Luddy"
 study_id = "study1" # 'mock_study'
@@ -62,7 +62,7 @@ _start_servers(main_window, conn, nodes, remote=remote)
 if not remote:
     time.sleep(5)
 vidf_mrkr, _, _ = _prepare_devices(main_window, nodes, collection_id,
-                                   log_task)
+                                   log_task, database=database)
 
 # Start LSL streams
 n_nodes_ready = 0
