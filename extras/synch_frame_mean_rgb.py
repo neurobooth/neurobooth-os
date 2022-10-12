@@ -96,7 +96,7 @@ def get_frames_mean_rgb(vid, folder_out, cam_n=1):
         
         rgb_m = img.mean(0).mean(0)
         
-        inx =  np.where(lsl_dev_data[:,1] == frame_ix[frame_n])
+        inx =  np.where(lsl_dev_data[:,1].astype(int) == frame_ix[frame_n])
         
         if len(inx[0])> 1:
             print(f"more than one frame n {frame_n}, bag index {frame_ix[frame_n]}")
@@ -140,18 +140,20 @@ def convert_bag_2_avi(video_filename, fname_bag, fps_rgb, size_rgb, fps_depth, s
     # colorizer = rs.colorizer()
     align = rs.align(rs.stream.color)
     
-    pipeline.start(config)
-    
+    pipeline_profile = pipeline.start(config)
+    playback = pipeline_profile.get_device().as_playback().set_real_time(False)
+
     ix = 0
     frame_ix = []
     # Streaming loop
     while True:
         # Get frameset of depth
         try:
-            frames = pipeline.poll_for_frames(timeout_ms=1000)
-            frame_ix.append(frames.get_frame_number())
+            frames = pipeline.wait_for_frames()
         except RuntimeError:
             break
+        frame_ix.append(frames.get_frame_number())
+
 
         # Align the depth frame to color frame
         aligned_frames = align.process(frames)
@@ -185,7 +187,7 @@ if __name__ == '__main__':
     
     for cam_n in range(1,4):
         vids = glob.glob(op.join(folder_in, "*", f"*timing_test_obs_intel{cam_n}.bag"))
-        for vid in vids:   
+        for vid in vids:
             try:
                 get_frames_mean_rgb(vid, folder_out, cam_n)
             except :

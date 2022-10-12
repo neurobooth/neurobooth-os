@@ -64,9 +64,11 @@ def mock_stm_routine(host, port, conn):
             print("UPDATOR:-Connect-")
 
         elif "present" in data:   
-            #-> "present:TASKNAME:subj_id"
+            #-> "present:TASKNAME:subj_id:session_id"
             # task_name can be list of task1-task2-task3
-            tasks, subj_id = data.split(":")[1:]
+            tasks, subj_id, session_id = data.split(":")[1:]
+            log_task['log_session_id'] = session_id
+
             task_karg ={"path": config.paths['data_out'],
                         "subj_id": subject_id_date,
                         "marker_outlet": streams['marker'],

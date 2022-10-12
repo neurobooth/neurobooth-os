@@ -45,6 +45,7 @@ def get_conn(remote=False, database='neurobooth'):
     else:
         host = secrets['database']['host']
         port = 5432
+     
     conn = psycopg2.connect(database=database, 
                             user=secrets['database']['user'],
                             password=secrets['database']['pass'],
