@@ -12,7 +12,7 @@ prefs.hardware['audioLatencyMode'] = 3
 
 import neurobooth_os
 from neurobooth_os import config
-from neurobooth_os.iout.screen_capture import ScreenMirror
+# from neurobooth_os.iout.screen_capture import ScreenMirror
 from neurobooth_os.iout.lsl_streamer import start_lsl_threads, close_streams, reconnect_streams
 from neurobooth_os.iout import metadator as meta
 
@@ -28,8 +28,7 @@ def Main():
 
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    win = utl.make_win(full_screen=True)
-    conn = meta.get_conn()
+    win = utl.make_win(full_screen=False)
 
     streams, screen_running, presented = {}, False, False
 
@@ -37,8 +36,8 @@ def Main():
 
         if "scr_stream" in data:
             if not screen_running:
-                screen_feed = ScreenMirror()
-                screen_feed.start()
+                # screen_feed = ScreenMirror()
+                # screen_feed.start()
                 # print("Stim screen feed running")
                 screen_running = True
             else:
@@ -46,12 +45,14 @@ def Main():
                 print("Already running screen feed")
 
         elif "prepare" in data:
-            # data = "prepare:collection_id:str(log_task_dict)"
+            # data = "prepare:collection_id:database:str(log_task_dict)"
 
             collection_id = data.split(":")[1]
-            log_task = eval(data.replace(f"prepare:{collection_id}:", ""))
+            database_name= data.split(":")[2]
+            log_task = eval(data.replace(f"prepare:{collection_id}:{database_name}:", ""))
             subject_id_date = log_task["subject_id-date"]
-
+            
+            conn = meta.get_conn(database=database_name)
             ses_folder = f"{config.paths['data_out']}{subject_id_date}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)

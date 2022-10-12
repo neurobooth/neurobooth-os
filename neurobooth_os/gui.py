@@ -287,7 +287,7 @@ def _update_button_status(window, statecolors, button_name, inlets, folder_sessi
             return session
 
 
-def _prepare_devices(window, nodes, collection_id, log_task):
+def _prepare_devices(window, nodes, collection_id, log_task, database):
     """Prepare devices"""
     window['-Connect-'].Update(button_color=('black', 'red'))
     event, values = window.read(.1)
@@ -299,14 +299,14 @@ def _prepare_devices(window, nodes, collection_id, log_task):
 
     nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:
-        socket_message(f"prepare:{collection_id}:{str(log_task)}", node)
+        socket_message(f"prepare:{collection_id}:{database}:{str(log_task)}", node)
     
     return vidf_mrkr, event, values
 
 
 def _get_ports(remote, database='neurobooth'):
     if remote:
-        database = "mock_neurobooth"
+        database = "mock_neurobooth_1"
         nodes = ('dummy_acq', 'dummy_stm')
         host_ctr, port_ctr = node_info("dummy_ctr")
     else:
@@ -326,7 +326,7 @@ def gui(remote=False, database='neurobooth'):
     database : str
         The database name
     """
-    database, nodes, host_ctr, port_ctr = _get_ports(remote, database='neurobooth')
+    database, nodes, host_ctr, port_ctr = _get_ports(remote, database=database)
 
     conn = meta.get_conn(remote=remote, database=database)
     window = _win_gen(_init_layout, conn)
@@ -342,9 +342,11 @@ def gui(remote=False, database='neurobooth'):
                    }
     steps = list()  # keep track of steps done
     event, values = window.read(.1)
+    print("HELP", event, values)
     while True:
+        print("INITIAL ITER", event, values)
         event, values = window.read(.5)
-        
+        print("SEE IF FIRST LOOP", event, values)
         ############################################################
         # Initial Window -> Select subject, study and tasks 
         ############################################################
@@ -380,6 +382,8 @@ def gui(remote=False, database='neurobooth'):
                                           log_task, values['staff_id'],
                                           subject_id, first_name, last_name, tasks)
                 # Open new layout with main window
+                print("SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVING")
+                print("sess_info:", sess_info)
                 window = _win_gen(_main_layout, sess_info, remote)
                 _start_ctr_server(window, host_ctr, port_ctr, remote=remote)
 
@@ -394,7 +398,7 @@ def gui(remote=False, database='neurobooth'):
         # Turn on devices
         elif event == '-Connect-':
             vidf_mrkr, event, values = _prepare_devices(window, nodes, collection_id,
-                                                        log_task)
+                                                        log_task, database)
     
         elif event == 'plot':
             _plot_realtime(window, plttr, inlets)
@@ -502,8 +506,10 @@ def main():
     parser = OptionParser()
     parser.add_option("-r", "--remote", dest="remote", action="store_true",
                       default=False, help="Access database using remote connection")
+    parser.add_option("-d", "--database", dest="database", type="string",
+                      default="neurobooth", help="Specify which database to connect")
     (options, args) = parser.parse_args()
-    gui(remote=options.remote)
+    gui(remote=options.remote, database=options.database)
 
 if __name__ == '__main__':
     main()
