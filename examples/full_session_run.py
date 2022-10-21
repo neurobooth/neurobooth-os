@@ -62,7 +62,7 @@ _start_servers(main_window, conn, nodes, remote=remote)
 if not remote:
     time.sleep(5)
 vidf_mrkr, _, _ = _prepare_devices(main_window, nodes, collection_id,
-                                   log_task)
+                                   log_task, database=database)
 
 # Start LSL streams
 n_nodes_ready = 0
