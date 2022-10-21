@@ -12,8 +12,9 @@ import json
 from h5io import read_hdf5
 import matplotlib.pyplot as plt
 
-fname = 'Z:/data/100059_2022-07-08/100059_2022-07-08_15h-36m-32s_timing_test_obs_IPhone.mov'
-h5 = 'Z:/data/100059_2022-07-08/100059_2022-07-08_15h-36m-32s_timing_test_obs_R001-IPhone_dev_1-IPhone_sens_1.hdf5'
+fname = 'Z:/data/100064_2022-09-28/100064_2022-09-28_14h-54m-26s_timing_test_obs_IPhone.mov'
+h5 = 'Z:/data/100064_2022-09-28/100064_2022-09-28_14h-54m-26s_timing_test_obs_R001-IPhone_dev_1-IPhone_sens_1.hdf5'
+
 
 my_clip = mp.VideoFileClip(fname)
 audio =  my_clip.audio.to_soundarray()[:,0]
