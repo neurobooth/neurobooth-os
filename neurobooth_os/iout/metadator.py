@@ -31,7 +31,7 @@ def get_conn(remote=False, database='neurobooth'):
     conn : object
         connector to psycopg database
     """
-    if remote:
+    if True:
         tunnel = SSHTunnelForwarder(
             secrets['database']['remote_address'],
             ssh_username=secrets['database']['remote_username'],
@@ -42,10 +42,12 @@ def get_conn(remote=False, database='neurobooth'):
         tunnel.start()
         host = tunnel.local_bind_host
         port = tunnel.local_bind_port
+        print(host, port)
     else:
         host = secrets['database']['host']
         port = 5432
-     
+        print(host, port)
+        
     conn = psycopg2.connect(database=database, 
                             user=secrets['database']['user'],
                             password=secrets['database']['pass'],

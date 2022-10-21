@@ -41,8 +41,8 @@ def offset(ts):
 # vid = 'Z:/data/100059_2022-07-08/100059_2022-07-08_15h-36m-32s_timing_test_obs_intel2.bag'
 path = r'Z:\data'
 proc_data_path = 'Z:\processed_data'
-session_id = '100059_2022-08-05'
-session_time = '_15h-02m-40s'
+session_id = '100064_2022-09-28'
+session_time = '_14h-54m-26s'
 
 # session_time = '_14h-41m-51s'
 
@@ -141,11 +141,12 @@ for ix,ky in enumerate(data.keys()):
         # plot audio data
         ax.plot(offset(audio_tstmp_full), normalize(audio_ts_full), label='Amplitude', alpha=0.5)
     # if  any([ky in k for k in ["Intel_D455_2", 'IPhone', 'Flir']]):
-    if  any([ky in k for k in ["Intel_D455_2"]]):        
+    #if  any([ky in k for k in ["Intel_D455_2", 'IPhone']]):        
         
-        # ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 0]-np.nanmean(data[ky]['device_data']['time_series'][:, 0])+20)*50, color='red', label=ky+'_red')
-        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 2]), color='blue', label=ky+'_blue')
-        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 1]), color='green', label=ky+'_green')
+        #  ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 0]-np.nanmean(data[ky]['device_data']['time_series'][:, 0])+20)*50, color='red', label=ky+'_red')
+        # ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 0]), color='blue', label=ky+'_blue')
+        # ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 1]), color='green', label=ky+'_green')
+        # ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 2]), color='red', label=ky+'_red')
         # ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 2]-np.nanmean(data[ky]['device_data']['time_series'][:, 2])+20)*50, color='blue', label=ky+'_blue')
     if "Intel_D455_3" in ky:
     #     ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 0]-np.nanmean(data[ky]['device_data']['time_series'][:, 0])+50)*20, color='darkred',  label=ky+'_red')
@@ -154,10 +155,11 @@ for ix,ky in enumerate(data.keys()):
     #     ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 2]-np.nanmean(data[ky]['device_data']['time_series'][:, 2])+50)*20, color='darkblue', label=ky+'_blue')
   
     if "Intel_D455_1" in ky:
-   #     ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 0]-np.nanmean(data[ky]['device_data']['time_series'][:, 0])+50)*20, color='darkred',  label=ky+'_red')
-       ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 2]), color='darkblue', label=ky+'_blue')
-       ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 1]), color='darkgreen', label=ky+'_green')
-   #     ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 2]-np.nanmean(data[ky]['device_data']['time_series'][:, 2])+50)*20, color='darkblue', label=ky+'_blue')
+    #     ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 0]-np.nanmean(data[ky]['device_data']['time_series'][:, 0])+50)*20, color='darkred',  label=ky+'_red')
+        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 2]), color='darkblue', label=ky+'_blue')
+        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 1]), color='darkgreen', label=ky+'_green')
+        ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 0]), color='darkred', label=ky+'_red')
+    #     ax.plot(data[ky]['device_data']['time_stamps'], (data[ky]['device_data']['time_series'][:, 2]-np.nanmean(data[ky]['device_data']['time_series'][:, 2])+50)*20, color='darkblue', label=ky+'_blue')
 
     if "FLIR" in ky:
         ax.plot(offset(data[ky]['device_data']['time_stamps']), normalize(data[ky]['device_data']['time_series'][:, 2]), ls='--',  color='darkblue', label=ky+'_blue')
