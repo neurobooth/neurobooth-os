@@ -306,7 +306,7 @@ def _prepare_devices(window, nodes, collection_id, log_task, database):
 
 def _get_ports(remote, database='neurobooth'):
     if remote:
-        database = "mock_neurobooth_1"
+        database = "mock_neurobooth"
         nodes = ('dummy_acq', 'dummy_stm')
         host_ctr, port_ctr = node_info("dummy_ctr")
     else:
@@ -342,11 +342,8 @@ def gui(remote=False, database='neurobooth'):
                    }
     steps = list()  # keep track of steps done
     event, values = window.read(.1)
-    print("HELP", event, values)
     while True:
-        print("INITIAL ITER", event, values)
         event, values = window.read(.5)
-        print("SEE IF FIRST LOOP", event, values)
         ############################################################
         # Initial Window -> Select subject, study and tasks 
         ############################################################
@@ -382,8 +379,6 @@ def gui(remote=False, database='neurobooth'):
                                           log_task, values['staff_id'],
                                           subject_id, first_name, last_name, tasks)
                 # Open new layout with main window
-                print("SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVING")
-                print("sess_info:", sess_info)
                 window = _win_gen(_main_layout, sess_info, remote)
                 _start_ctr_server(window, host_ctr, port_ctr, remote=remote)
 
