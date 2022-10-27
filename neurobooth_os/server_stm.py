@@ -28,7 +28,11 @@ def Main():
 
     sys.stdout = NewStdout("STM",  target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    win = utl.make_win(full_screen=False)
+    if os.getenv("NB_FULLSCREEN")=="false":
+        win = utl.make_win(full_screen=False)
+    else:
+        win = utl.make_win(full_screen=True)
+
 
     streams, screen_running, presented = {}, False, False
 
