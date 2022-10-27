@@ -42,11 +42,11 @@ def get_conn(remote=False, database='neurobooth'):
         tunnel.start()
         host = tunnel.local_bind_host
         port = tunnel.local_bind_port
-        print(host, port)
+        print(host, port, database)
     else:
         host = secrets['database']['host']
         port = 5432
-        print(host, port)
+        print(host, port, database)
         
     conn = psycopg2.connect(database=database, 
                             user=secrets['database']['user'],
