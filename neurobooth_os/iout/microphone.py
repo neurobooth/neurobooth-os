@@ -1,3 +1,5 @@
+import os
+
 from pylsl import StreamInfo, StreamOutlet, local_clock
 import pyaudio
 import numpy as np
@@ -27,7 +29,7 @@ class MicStream():
             if (audio.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
                 dev_name = audio.get_device_info_by_host_api_device_index(0, i).get('name')
                 print(dev_name)
-                if "BLUE USB" in dev_name: #replace with Samson if using Samson mic
+                if os.getenv("MICROPHONE_NAME") in dev_name: #replace with Samson if using Samson mic
                     dev_inx = i
                     self.device_name = dev_name
                     break
