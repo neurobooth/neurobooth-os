@@ -16,7 +16,8 @@ from pylsl import local_clock
 import pyrealsense2 as rs
 from pylsl import StreamInfo, StreamOutlet
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
+
 
 def catch_exception(f):
     @functools.wraps(f)
@@ -25,13 +26,21 @@ def catch_exception(f):
         return f(*args, **kwargs)
         # except Exception as e:
         # print('Caught an exception in function "{}" of type {}'.format(f.__name__, e))
+
     return func
 
 
-class VidRec_Intel():
-    def __init__(self, size_rgb=(640, 480), size_depth=(640, 360),
-                 device_id="Intel_D455_1", sensor_ids=['Intel_D455_rgb_1', 'Intel_D455_depth_1'],
-                 fps_rgb=60, fps_depth=60, camindex=[3, "SerialNumber"]):
+class VidRec_Intel:
+    def __init__(
+        self,
+        size_rgb=(640, 480),
+        size_depth=(640, 360),
+        device_id="Intel_D455_1",
+        sensor_ids=["Intel_D455_rgb_1", "Intel_D455_depth_1"],
+        fps_rgb=60,
+        fps_depth=60,
+        camindex=[3, "SerialNumber"],
+    ):
 
         self.open = True
         self.recording = False
@@ -45,15 +54,24 @@ class VidRec_Intel():
         self.config = rs.config()
         self.config.enable_device(self.serial_num)
         self.pipeline = rs.pipeline()
-        
-        self.config.enable_stream(rs.stream.color, self.frameSize[0][0],
-                                  self.frameSize[0][1], rs.format.rgb8, self.fps[0])
-        
-        if fps_depth:
-            self.config.enable_stream(rs.stream.depth, self.frameSize[1][0],
-                                  self.frameSize[1][1], rs.format.z16, self.fps[1])
 
-        
+        self.config.enable_stream(
+            rs.stream.color,
+            self.frameSize[0][0],
+            self.frameSize[0][1],
+            rs.format.rgb8,
+            self.fps[0],
+        )
+
+        if fps_depth:
+            self.config.enable_stream(
+                rs.stream.depth,
+                self.frameSize[1][0],
+                self.frameSize[1][1],
+                rs.format.z16,
+                self.fps[1],
+            )
+
         self.outlet = self.createOutlet()
 
     @catch_exception
@@ -71,10 +89,15 @@ class VidRec_Intel():
 
     @catch_exception
     def createOutlet(self):
-        self.streamName = f'IntelFrameIndex_cam{self.device_index}'
+        self.streamName = f"IntelFrameIndex_cam{self.device_index}"
         self.outlet_id = str(uuid.uuid4())
-        info = StreamInfo(name=self.streamName, type='videostream', channel_format='double64',
-                          channel_count=4, source_id=self.outlet_id)
+        info = StreamInfo(
+            name=self.streamName,
+            type="videostream",
+            channel_format="double64",
+            channel_count=4,
+            source_id=self.outlet_id,
+        )
 
         info.desc().append_child_value("device_id", self.device_id)
         info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
@@ -91,14 +114,14 @@ class VidRec_Intel():
         self.recording = True
         self.frame_counter = 1
         self.pipeline.start(self.config)
-        
+
         # Avoid autoexposure frame drops
         dev = self.pipeline.get_active_profile().get_device()
         sens = dev.first_color_sensor()
         sens.set_option(rs.option.auto_exposure_priority, 0.0)
-        
+
         self.toffset = time() - local_clock()
-        
+
         while self.recording:
             frame = self.pipeline.wait_for_frames(timeout_ms=1000)
             # frame = self.pipeline.poll_for_frames()
@@ -136,11 +159,9 @@ class VidRec_Intel():
         self.config = []
 
 
-
 def countdown(period):
     t1 = local_clock()
     t2 = t1
-    
-    while t2-t1 < period:
-        t2 =local_clock()
-        
+
+    while t2 - t1 < period:
+        t2 = local_clock()

@@ -11,7 +11,7 @@ from neurobooth_os.secrets_info import secrets
 
 
 def socket_message(message, node_name, wait_data=False):
-    """ Send a string message though socket connection to `node_name`.
+    """Send a string message though socket connection to `node_name`.
 
     Parameters
     ----------
@@ -27,13 +27,14 @@ def socket_message(message, node_name, wait_data=False):
     data : str
         Returns the data from the node_name.
     """
+
     def connect():
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # s.settimeout(.1)  # no time out as it's blocking process
-        
+
         # connect to server on local computer
         s.connect((host, port))
-        s.send(message.encode('ascii'))
+        s.send(message.encode("ascii"))
 
         data = None
         if wait_data:
@@ -94,7 +95,7 @@ def socket_time(node_name, print_flag=1, time_out=3):
         s.settimeout(time_out * 2)
         s.connect((host, port))
 
-    s.send(message.encode('ascii'))
+    s.send(message.encode("ascii"))
     # message received from server
     data = wait_socket_data(s, 2)
     s.close()
@@ -133,13 +134,13 @@ def node_info(node_name):
     elif node_name == "control":
         host = secrets[node_name]["name"]
     elif node_name == "dummy_acq":
-        host = 'localhost'
+        host = "localhost"
         port = 1280
     elif node_name == "dummy_stm":
-        host = 'localhost'
+        host = "localhost"
         port = 1281
     elif node_name == "dummy_ctr":
-        host = 'localhost'
+        host = "localhost"
         port = 1282
     return host, port
 
@@ -148,17 +149,17 @@ def _socket_receive_data(sock, pack_len):
     # Helper function to recv n bytes or return None if EOF is hit
     fragments = []
     MAX_RECV = 130992
-    buff_recv=0 
-    while True: 
+    buff_recv = 0
+    while True:
         bytes_to_pull = pack_len
         if (pack_len - buff_recv) < MAX_RECV:
-            bytes_to_pull = pack_len - buff_recv            
+            bytes_to_pull = pack_len - buff_recv
         packet = sock.recv(bytes_to_pull)
         buff_recv += len(packet)
         fragments.append(packet)
-        if buff_recv >= pack_len :
+        if buff_recv >= pack_len:
             break
-    data=b''.join(fragments)
+    data = b"".join(fragments)
     return data
 
 
@@ -169,13 +170,13 @@ def wait_socket_data(s, wait_time=None):
         r, _, _ = select.select([s], [], [s], 1)
         if r:
             data = s.recv(1024)
-            if data.startswith(b'::BYTES::'):
-                split_data = data.split(b'::')
-                split_data_len = int(split_data[2].decode('utf-8'))
+            if data.startswith(b"::BYTES::"):
+                split_data = data.split(b"::")
+                split_data_len = int(split_data[2].decode("utf-8"))
                 current_data = split_data[3]
-                remainder_len = (split_data_len-len(current_data))
-                remainder_data = _socket_receive_data(s,remainder_len)
-                data = current_data+remainder_data
+                remainder_len = split_data_len - len(current_data)
+                remainder_data = _socket_receive_data(s, remainder_len)
+                data = current_data + remainder_data
 
             else:
                 data = data.decode("utf-8")
@@ -188,7 +189,7 @@ def wait_socket_data(s, wait_time=None):
 
 
 def start_server(node_name, save_pid_txt=True):
-    """ Makes a network call to run script serv_{node_name}.bat
+    """Makes a network call to run script serv_{node_name}.bat
 
     First remote processes are logged, then a scheduled task is created to run
     the remote batch file, then task runs, and new python PIDs are captured with
@@ -221,34 +222,36 @@ def start_server(node_name, save_pid_txt=True):
     out = os.popen(task_cmd).read()
     pids_old = get_python_pids(out)
 
-    # Get list of scheduled tasks and run TaskOnEvent if not running 
+    # Get list of scheduled tasks and run TaskOnEvent if not running
     cmd_out = f"SCHTASKS /query /fo CSV /nh /S {s['name']} /U {s['name']}\\{s['user']} /P {s['pass']}"
-    out = os.popen(cmd_out).read().replace('\\', "")
-    df = pd.read_csv(StringIO(out), sep=",", index_col=0, names = ['date', 'status'])
-    
-    task_name = 'TaskOnEvent1'
+    out = os.popen(cmd_out).read().replace("\\", "")
+    df = pd.read_csv(StringIO(out), sep=",", index_col=0, names=["date", "status"])
+
+    task_name = "TaskOnEvent1"
     while True:
         if task_name in out:
             # if task already running add n+1 to task name
-            if df.loc[task_name, 'status'] == 'Running':
+            if df.loc[task_name, "status"] == "Running":
                 tsk_inx = int(task_name[-1]) + 1
-                task_name =  task_name[:-1] + str(tsk_inx)
+                task_name = task_name[:-1] + str(tsk_inx)
                 print(f"Creating new scheduled task: {task_name} in server {node_name}")
                 continue
         break
-        
+
     # Run scheduled task cmd1 creates a scheduled task, cmd2 initiates it
     cmd_str = f"SCHTASKS /S {s['name']} /U {s['name']}\\{s['user']} /P {s['pass']}"
-    cmd_1 = cmd_str + \
-        f" /Create /TN {task_name} /TR {s['bat']} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
-    cmd_2 = cmd_str + f' /Run /TN {task_name}'
+    cmd_1 = (
+        cmd_str
+        + f" /Create /TN {task_name} /TR {s['bat']} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
+    )
+    cmd_2 = cmd_str + f" /Run /TN {task_name}"
     out = os.popen(cmd_1).read()
     out = os.popen(cmd_2).read()
 
-    sleep(.3)
+    sleep(0.3)
     out = os.popen(task_cmd).read()
     pids_new = get_python_pids(out)
-    
+
     pid = [p for p in pids_new if p not in pids_old]
     print(f"{node_name.upper()} server initiated with pid {pid}")
 

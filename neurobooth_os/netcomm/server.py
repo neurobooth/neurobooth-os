@@ -5,7 +5,7 @@ import socket
 from neurobooth_os.netcomm import socket_message
 
 
-def get_fprint(current_node, target_node='control'):
+def get_fprint(current_node, target_node="control"):
     """Return function to capture prints for sending to target_node.
 
     Stdout is re-routed to target_node via socket connection.
@@ -45,8 +45,8 @@ def get_fprint(current_node, target_node='control'):
     return fprint_flush, old_stdout
 
 
-class NewStdout():
-    def __init__(self, current_node, target_node='control', terminal_print=False):
+class NewStdout:
+    def __init__(self, current_node, target_node="control", terminal_print=False):
         """Class that substitutes stdout pipe, sends message to socket and can print to terminal.
 
         Parameters
@@ -73,20 +73,25 @@ class NewStdout():
         # send to socket if message not empty
         if message not in ["\n", ""]:
             try:
-                socket_message(f"{self.current_node}:::{message}", node_name=self.target_node)
+                socket_message(
+                    f"{self.current_node}:::{message}", node_name=self.target_node
+                )
             except:
                 try:
-                    socket_message(f"{self.current_node}:::{message}", node_name=self.target_node)
-                except:                       
-                    self.terminal.write(f"\n***MESSAGE*** ###{message}### not sent to {self.target_node}\n")
+                    socket_message(
+                        f"{self.current_node}:::{message}", node_name=self.target_node
+                    )
+                except:
+                    self.terminal.write(
+                        f"\n***MESSAGE*** ###{message}### not sent to {self.target_node}\n"
+                    )
 
     def flush(self):
         # For compatibility, just pass
         pass
 
 
-
-def get_client_messages(s1, port=12347, host=''):
+def get_client_messages(s1, port=12347, host=""):
     """Create socket server and get messages from clients.
 
     Parameters
@@ -127,15 +132,18 @@ def get_client_messages(s1, port=12347, host=''):
         except BaseException:
             continue
 
-        if not data:            
+        if not data:
             print("Connection fault, closing Stim server")
             break
 
         data = data.decode("utf-8")
         yield data, conn
 
-def get_messages_to_ctr(callback=None, remote=False, host="", port=12347, *callback_args):
-    """ Creates socket server and run callback with socket data string.
+
+def get_messages_to_ctr(
+    callback=None, remote=False, host="", port=12347, *callback_args
+):
+    """Creates socket server and run callback with socket data string.
 
     Parameters
     ----------
@@ -175,7 +183,7 @@ def get_messages_to_ctr(callback=None, remote=False, host="", port=12347, *callb
     s.close()
 
 
-def get_data_timeout(s1, timeout=.1):
+def get_data_timeout(s1, timeout=0.1):
     """Change socket timeout, get data, and remove timeout.
 
     Parameters
@@ -186,13 +194,13 @@ def get_data_timeout(s1, timeout=.1):
         Time to wait for message
     """
     s1.settimeout(timeout)
-    
-    try: 
+
+    try:
         conn, _ = s1.accept()
         data = conn.recv(1024)
         data = data.decode("utf-8")
     except socket.timeout:
         data = None
-        
+
     s1.settimeout(None)
     return data

@@ -7,6 +7,7 @@ import time
 
 class _MockGUIElement(dict):
     """Mock GUI element."""
+
     def get_indexes(self):
         return 0
 
@@ -15,6 +16,7 @@ class _MockGUIElement(dict):
 
     def update(self, *args, **kwargs):
         pass
+
 
 class MockWindow(dict):
     def __init__(self, gui_element_names):

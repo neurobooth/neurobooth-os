@@ -15,8 +15,10 @@ import win32gui
 from pylsl import StreamInfo, StreamOutlet
 
 
-class ScreenMirror():
-    def __init__(self, Fps=1, res=(320, 240), options=None, RGB=False, local_plot=False):
+class ScreenMirror:
+    def __init__(
+        self, Fps=1, res=(320, 240), options=None, RGB=False, local_plot=False
+    ):
         """
         parameters:
             Fps : Int
@@ -52,11 +54,14 @@ class ScreenMirror():
         xy += 1
 
         self.oulet_id = str(uuid.uuid4())
-        info_stream = StreamInfo(name='Screen', type='Experimental',
-                                 # nominal_srate=self.fps,
-                                 channel_count=xy,
-                                 channel_format='float32', source_id=self.oulet_id
-                                 )
+        info_stream = StreamInfo(
+            name="Screen",
+            type="Experimental",
+            # nominal_srate=self.fps,
+            channel_count=xy,
+            channel_format="float32",
+            source_id=self.oulet_id,
+        )
         self.info_stream = info_stream
         self.outlet_screen = StreamOutlet(info_stream)
         print(f"-OUTLETID-:Screen:{self.oulet_id}")
@@ -74,7 +79,7 @@ class ScreenMirror():
         self.inx = 0
 
         if self.local_plot:
-            cv2.namedWindow('Screen', cv2.WINDOW_AUTOSIZE)
+            cv2.namedWindow("Screen", cv2.WINDOW_AUTOSIZE)
 
         tic = time.time()
         # loop over
@@ -97,7 +102,7 @@ class ScreenMirror():
             Xthis = [4 * x + mouseX for x in self.Xs]
             Ythis = [4 * y + mouseY for y in self.Ys]
             points = list(zip(Xthis, Ythis))
-            points = np.array(points, 'int32')
+            points = np.array(points, "int32")
             cv2.fillPoly(frame, [points], color=[255, 0, 0])
 
             frame = cv2.resize(frame, self.res)

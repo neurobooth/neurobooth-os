@@ -1,4 +1,3 @@
-
 import sys
 from neurobooth_os.tasks.utils import make_win
 import neurobooth_os.tasks.utils as utl
@@ -8,7 +7,7 @@ import os
 import os.path as op
 
 
-class MockTask():
+class MockTask:
     """Create mock task.
 
     Parameters
@@ -25,12 +24,14 @@ class MockTask():
     marker : instance of LSL Outlet.
         The LSL stream sending the markers.
     """
+
     def __init__(
-            self,
-            instruction_text="Default instructions, not from DB",
-            marker_outlet=None,
-            **kwarg):
-        
+        self,
+        instruction_text="Default instructions, not from DB",
+        marker_outlet=None,
+        **kwarg,
+    ):
+
         self.instruction_text = instruction_text
 
         if marker_outlet is not None:
@@ -60,24 +61,24 @@ class MockTask():
         # Run mock instructions
         print("\n\n\n")
         self.send_marker("Intructions-start_0")
-        print("\n\t",self.instruction_text)
+        print("\n\t", self.instruction_text)
         time.sleep(1)
         self.send_marker("Intructions-end_1")
-       
+
         # Run mock trials
         print("\n\n\n")
         self.send_marker("Task-start_0")
         print("\n\tTask-start_0")
         for _ in range(n_trials):
-            msg=f"Trial-start_0"
+            msg = f"Trial-start_0"
             self.send_marker(msg)
             print("\n\t", msg)
-            time.sleep(duration/n_trials)
-            msg=f"Trial-start_1"
+            time.sleep(duration / n_trials)
+            msg = f"Trial-start_1"
             self.send_marker(msg)
-            print("\n\t",msg)
+            print("\n\t", msg)
         msg = "Task-end_1"
         self.send_marker("Task-end_1")
-        print("\n\t",msg)
+        print("\n\t", msg)
 
-        print("\n\t","Mock task finished!")
+        print("\n\t", "Mock task finished!")
