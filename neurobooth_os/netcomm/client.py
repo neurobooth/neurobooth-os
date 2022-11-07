@@ -1,4 +1,5 @@
 # Import socket module
+import logging
 import socket
 import select
 from time import time, sleep
@@ -8,6 +9,21 @@ import pandas as pd
 from io import StringIO
 
 from neurobooth_os.secrets_info import secrets
+
+
+def setup_log(name):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    log_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    filename = f"./{name}.log"
+    log_handler = logging.FileHandler(filename)
+    log_handler.setLevel(logging.DEBUG)
+    log_handler.setFormatter(log_format)
+    logger.addHandler(log_handler)
+    return logger
+
+
+logger = setup_log(__name__)
 
 
 def socket_message(message, node_name, wait_data=False):
@@ -35,6 +51,7 @@ def socket_message(message, node_name, wait_data=False):
         # connect to server on local computer
         s.connect((host, port))
         s.send(message.encode("ascii"))
+        logger.info("Connecting to host: {host} and port: {port}")
 
         data = None
         if wait_data:
@@ -254,6 +271,7 @@ def start_server(node_name, save_pid_txt=True):
 
     pid = [p for p in pids_new if p not in pids_old]
     print(f"{node_name.upper()} server initiated with pid {pid}")
+    logger.info(f"{node_name.upper()} server initiated with pid {pid}")
 
     if save_pid_txt:
         with open("server_pids.txt", "a") as f:
