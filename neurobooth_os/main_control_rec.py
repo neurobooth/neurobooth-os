@@ -14,12 +14,17 @@ import psutil
 import numpy as np
 
 from neurobooth_os import config
-from neurobooth_os.netcomm import socket_message, socket_time, start_server, kill_pid_txt
+from neurobooth_os.netcomm import (
+    socket_message,
+    socket_time,
+    start_server,
+    kill_pid_txt,
+)
 
 
 def _get_nodes(nodes):
     if isinstance(nodes, str):
-        nodes = (nodes)
+        nodes = nodes
     return nodes
 
 
@@ -37,6 +42,7 @@ def start_servers(nodes=("acquisition", "presentation"), remote=False, conn=None
     """
     if remote:
         from neurobooth_os.mock import mock_server_stm, mock_server_acq
+
         _ = mock_server_acq(conn)
         _ = mock_server_stm(conn)
     else:
@@ -56,7 +62,7 @@ def prepare_feedback(nodes=("acquisition", "presentation")):
         else:
             return
     socket_message(msg, node)
-    
+
 
 def prepare_devices(collection_id="mvp_025", nodes=("acquisition", "presentation")):
     # prepares devices, collection_id can be just colletion name but also
@@ -65,7 +71,7 @@ def prepare_devices(collection_id="mvp_025", nodes=("acquisition", "presentation
     for node in nodes:
         socket_message(f"prepare:{collection_id}", node)
 
-    
+
 def shut_all(nodes=("acquisition", "presentation")):
     """Shut all nodes
 
@@ -101,8 +107,12 @@ def test_lan_delay(n=100, nodes=("acquisition", "presentation")):
         times_1w.append([t[1] for t in tmp])
         times_2w.append([t[0] for t in tmp])
 
-    _ = [print(f"{n} socket connexion time average:\n\t receive: {np.mean(times_2w[i])}\n\t send:\t  {np.mean(times_1w[i])} ")
-         for i, n in enumerate(nodes)]
+    _ = [
+        print(
+            f"{n} socket connexion time average:\n\t receive: {np.mean(times_2w[i])}\n\t send:\t  {np.mean(times_1w[i])} "
+        )
+        for i, n in enumerate(nodes)
+    ]
 
     return times_2w, times_1w
 
@@ -110,25 +120,22 @@ def test_lan_delay(n=100, nodes=("acquisition", "presentation")):
 def initiate_labRec():
     # Start LabRecorder
     if "LabRecorder.exe" not in (p.name() for p in psutil.process_iter()):
-        os.startfile(config.paths['LabRecorder'])
+        os.startfile(config.paths["LabRecorder"])
 
-    time.sleep(.05)
+    time.sleep(0.05)
     s = socket.create_connection(("localhost", 22345))
     s.sendall(b"select all\n")
     s.close()
 
 
 if 0:
-    pid = start_server('acquisition')
+    pid = start_server("acquisition")
 
     t2w, t1w = test_lan_delay(100)
-    
+
     socket_message("connect_mbient", "acquisition")
     socket_message("shutdown", "acquisition")
-
 
     prepare_feedback()
 
     prepare_devices()
-
-
