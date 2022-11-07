@@ -14,15 +14,16 @@ from mbientlab.warble import BleScanner
 from time import sleep
 
 
-def setup_log(name):
+def setup_log(name, node_name: str = None):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
-    log_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    filename = f"./{name}.log"
-    log_handler = logging.FileHandler(filename)
-    log_handler.setLevel(logging.DEBUG)
-    log_handler.setFormatter(log_format)
-    logger.addHandler(log_handler)
+    if not node_name:
+        log_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        filename = f"./{name}.log"
+        log_handler = logging.FileHandler(filename)
+        log_handler.setLevel(logging.DEBUG)
+        log_handler.setFormatter(log_format)
+        logger.addHandler(log_handler)
     return logger
 
 

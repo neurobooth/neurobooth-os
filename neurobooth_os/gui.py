@@ -7,6 +7,7 @@ Created on Fri Apr  2 08:01:51 2021
 
 import os
 import os.path as op
+import logging
 import sys
 import time
 import threading
@@ -32,6 +33,35 @@ import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, get_xdf_name
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
+
+def setup_log(name, sg_handler = None):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    log_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    filename = f"./{name}.log"
+    log_handler = logging.FileHandler(filename)
+    log_handler.setLevel(logging.DEBUG)
+    log_handler.setFormatter(log_format)
+    logger.addHandler(log_handler)
+    if sg_handler:
+        logger.addHandler(sg_handler)
+    return logger
+
+class Handler(logging.StreamHandler):
+
+    def __init__(self):
+        logging.StreamHandler.__init__(self)
+
+    def emit(self, record):
+        global BUFFER
+        buffer = f'{BUFFER}\n{str(record)}'.strip()
+        window['log'].update(value=buffer)
+
+BUFFER = ''
+
+logger = setup_log(__name__, sg_handler = Handler().setLevel(logging.DEBUG))
+
+
 
 
 def _process_received_data(serv_data, window):
