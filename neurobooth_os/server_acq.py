@@ -11,23 +11,27 @@ import neurobooth_os
 from neurobooth_os import config
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
-from neurobooth_os.iout.lsl_streamer import (start_lsl_threads, close_streams,
-                                             reconnect_streams, connect_mbient)
+from neurobooth_os.iout.lsl_streamer import (
+    start_lsl_threads,
+    close_streams,
+    reconnect_streams,
+    connect_mbient,
+)
 import neurobooth_os.iout.metadator as meta
 
 
 def countdown(period):
     t1 = local_clock()
     t2 = t1
-    
-    while t2-t1 < period:
-        t2 =local_clock()
+
+    while t2 - t1 < period:
+        t2 = local_clock()
 
 
 def Main():
     os.chdir(neurobooth_os.__path__[0])
 
-    sys.stdout = NewStdout("ACQ",  target_node="control", terminal_print=True)
+    sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     streams = {}
@@ -37,8 +41,9 @@ def Main():
 
         if "vis_stream" in data:
             if not lowFeed_running:
-                lowFeed = VidRec_Brio(camindex=config.paths["cam_inx_lowfeed"],
-                                      doPreview=True)
+                lowFeed = VidRec_Brio(
+                    camindex=config.paths["cam_inx_lowfeed"], doPreview=True
+                )
                 print("LowFeed running")
                 lowFeed_running = True
             else:
@@ -49,8 +54,10 @@ def Main():
             # data = "prepare:collection_id:database:str(log_task_dict)"
             collection_id = data.split(":")[1]
             database_name = data.split(":")[2]
-            log_task = eval(data.replace(f"prepare:{collection_id}:{database_name}:", ""))
-            subject_id_date = log_task['subject_id-date']
+            log_task = eval(
+                data.replace(f"prepare:{collection_id}:{database_name}:", "")
+            )
+            subject_id_date = log_task["subject_id-date"]
 
             conn = meta.get_conn(database=database_name)
             ses_folder = f"{config.paths['data_out']}{subject_id_date}"
@@ -69,39 +76,39 @@ def Main():
 
         elif "frame_preview" in data and not recording:
             if not any("IPhone" in s for s in streams):
-                print('no iphone')
+                print("no iphone")
                 connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
                 continue
 
-            frame = streams[[i for i in streams if 'IPhone' in i][0]].frame_preview()
-            frame_prefix=b'::BYTES::'+str(len(frame)).encode('utf-8')+b'::'
-            frame=frame_prefix+frame
+            frame = streams[[i for i in streams if "IPhone" in i][0]].frame_preview()
+            frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
+            frame = frame_prefix + frame
             connx.send(frame)
 
-        elif "record_start" in data:  
+        elif "record_start" in data:
             # "record_start::filename::task_id" FILENAME = {subj_id}_{obs_id}
             print("Starting recording")
             t0 = time()
-            fname, task = data.split("::")[1:]  
+            fname, task = data.split("::")[1:]
             fname = f"{config.paths['data_out']}{subject_id_date}/{fname}"
 
             for k in streams.keys():
-                if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]: 
-                    if task_devs_kw[task].get(k):   
+                if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
+                    if task_devs_kw[task].get(k):
                         try:
                             streams[k].start(fname)
                         except:
                             continue
-                        
+
             for k in streams.keys():
-                if  "Mbient" in k:
+                if "Mbient" in k:
                     try:
                         if not streams[k].device.is_connected:
-                            streams[k].try_reconnect()                                
-                    except  Exception as e:
+                            streams[k].try_reconnect()
+                    except Exception as e:
                         print(e)
                         pass
-            print(f'Device start took {time() - t0:.2f}')
+            print(f"Device start took {time() - t0:.2f}")
             msg = "ACQ_devices_ready"
             connx.send(msg.encode("ascii"))
             recording = True
@@ -112,8 +119,8 @@ def Main():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
                     if task_devs_kw[task].get(k):
                         streams[k].stop()
-            
-            print(f'Device stop took {time() - t0:.2f}')
+
+            print(f"Device stop took {time() - t0:.2f}")
             msg = "ACQ_devices_stoped"
             connx.send(msg.encode("ascii"))
             recording = False
@@ -122,7 +129,7 @@ def Main():
             if "shutdown" in data:
                 sys.stdout = sys.stdout.terminal
                 s1.close()
-                
+
             streams = close_streams(streams)
 
             if "shutdown" in data:
@@ -138,5 +145,6 @@ def Main():
 
         else:
             print(data)
+
 
 Main()

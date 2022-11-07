@@ -14,547 +14,635 @@ from datetime import datetime
 import select
 import uuid
 
-from neurobooth_os.iout.usbmux import  USBMux
+from neurobooth_os.iout.usbmux import USBMux
 
 global DEBUG_IPHONE
-DEBUG_IPHONE= 'default' # 'default', 'verbatim' , 'verbatim_no_lsl', 'default_no_lsl'
- 
-if DEBUG_IPHONE in ['default','verbatim']:
+DEBUG_IPHONE = "default"  # 'default', 'verbatim' , 'verbatim_no_lsl', 'default_no_lsl'
+
+if DEBUG_IPHONE in ["default", "verbatim"]:
     from pylsl import StreamInfo, StreamOutlet
     import liesl
 
 
 import functools
 
-#decorator for debug printing
+# decorator for debug printing
 def debug(func):
     @functools.wraps(func)
     def wrapper_print_debug(*args, **kwargs):
-        global DEBUG_IPHONE 
-        if DEBUG_IPHONE in ['verbatim','verbatim_no_lsl']:
+        global DEBUG_IPHONE
+        if DEBUG_IPHONE in ["verbatim", "verbatim_no_lsl"]:
             func(*args, **kwargs)
+
     return wrapper_print_debug
 
-#decorator for lsl streaming
+
+# decorator for lsl streaming
 def debug_lsl(func):
     @functools.wraps(func)
     def wrapper_lsl_debug(*args, **kwargs):
-        global DEBUG_IPHONE 
-        if DEBUG_IPHONE in ['default','verbatim']:
+        global DEBUG_IPHONE
+        if DEBUG_IPHONE in ["default", "verbatim"]:
             return func(*args, **kwargs)
         else:
             return None
+
     return wrapper_lsl_debug
 
 
 @debug
 def debug_print(arg):
     print(arg)
-    
+
 
 def safe_socket_operation(func):
     @functools.wraps(func)
     def wrapper_safe_socket(*args, **kwargs):
         try:
-            return func(*args,**kwargs)
+            return func(*args, **kwargs)
         except:
-            args[0]._state='#ERROR'
-            debug_print('Error occured at sending/receiving the signal through socket')
+            args[0]._state = "#ERROR"
+            debug_print("Error occured at sending/receiving the signal through socket")
+
     return wrapper_safe_socket
 
 
-IPHONE_PORT=2345 #IPhone should have socket on this port open, if we're connecting to it.
+IPHONE_PORT = (
+    2345  # IPhone should have socket on this port open, if we're connecting to it.
+)
+
 
 class IPhoneError(Exception):
     pass
 
+
 class IPhoneListeningThread(threading.Thread):
-    def __init__(self,*args):
-        self._iphone=args[0]
-        self._running=True
+    def __init__(self, *args):
+        self._iphone = args[0]
+        self._running = True
         threading.Thread.__init__(self)
 
     def run(self):
         while self._running:
             try:
-                msg,version,type,resp_tag=self._iphone._getpacket()     
-                self._iphone._process_message(msg,resp_tag)
-                if resp_tag==0:
-                    debug_print(f'Listener received: {msg}')
+                msg, version, type, resp_tag = self._iphone._getpacket()
+                self._iphone._process_message(msg, resp_tag)
+                if resp_tag == 0:
+                    debug_print(f"Listener received: {msg}")
                 else:
-                    debug_print(f'Listener received: Tag {resp_tag}')
+                    debug_print(f"Listener received: Tag {resp_tag}")
             except:
                 pass
-            
+
     def stop(self):
-        self._running=False
+        self._running = False
 
 
 class IPhone:
-    TYPE_MESSAGE=101
-    VERSION=1
-    STATE_TRANSITIONS={'#DISCONNECTED':{'@HANDSHAKE':'#CONNECTED','@ERROR':'#ERROR'},
-                        '#CONNECTED':{'@STANDBY':'#STANDBY','@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
-                        '#PREVIEW':{'@PREVIEWRECEIVE':'#READY','@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
-                        '#DUMPALL':{'@FILESTODUMP':'#READY','@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'}, #NO SPECIAL state for after received ready to dump. Dump is done from 'Connected' state
-                        '#DUMP':{'@DUMPRECEIVE':'#READY','@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
-                        '#STANDBY':{'@READY':'#READY','@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
-                        '#READY':{'@START':'#START','@PREVIEW':'#PREVIEW','@DUMPALL':'#DUMPALL','@DUMP':'#DUMP','@DUMPSUCCESS':'#READY','@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
-                        '#START':{'@STARTTIMESTAMP':'#RECORDING','@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
-                        '#RECORDING':{'@INPROGRESSTIMESTAMP':'#RECORDING','@STOP':'#STOP','@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
-                        '#STOP':{'@STOPTIMESTAMP':'#READY','@INPROGRESSTIMESTAMP':'#STOP', '@DISCONNECT':'#DISCONNECTED','@ERROR':'#ERROR'},
-                        '#ERROR':{'@DISCONNECT':'#DISCONNECTED'}
-                    }
-    MESSAGE_TYPES=[]
+    TYPE_MESSAGE = 101
+    VERSION = 1
+    STATE_TRANSITIONS = {
+        "#DISCONNECTED": {"@HANDSHAKE": "#CONNECTED", "@ERROR": "#ERROR"},
+        "#CONNECTED": {
+            "@STANDBY": "#STANDBY",
+            "@DISCONNECT": "#DISCONNECTED",
+            "@ERROR": "#ERROR",
+        },
+        "#PREVIEW": {
+            "@PREVIEWRECEIVE": "#READY",
+            "@DISCONNECT": "#DISCONNECTED",
+            "@ERROR": "#ERROR",
+        },
+        "#DUMPALL": {
+            "@FILESTODUMP": "#READY",
+            "@DISCONNECT": "#DISCONNECTED",
+            "@ERROR": "#ERROR",
+        },  # NO SPECIAL state for after received ready to dump. Dump is done from 'Connected' state
+        "#DUMP": {
+            "@DUMPRECEIVE": "#READY",
+            "@DISCONNECT": "#DISCONNECTED",
+            "@ERROR": "#ERROR",
+        },
+        "#STANDBY": {
+            "@READY": "#READY",
+            "@DISCONNECT": "#DISCONNECTED",
+            "@ERROR": "#ERROR",
+        },
+        "#READY": {
+            "@START": "#START",
+            "@PREVIEW": "#PREVIEW",
+            "@DUMPALL": "#DUMPALL",
+            "@DUMP": "#DUMP",
+            "@DUMPSUCCESS": "#READY",
+            "@DISCONNECT": "#DISCONNECTED",
+            "@ERROR": "#ERROR",
+        },
+        "#START": {
+            "@STARTTIMESTAMP": "#RECORDING",
+            "@DISCONNECT": "#DISCONNECTED",
+            "@ERROR": "#ERROR",
+        },
+        "#RECORDING": {
+            "@INPROGRESSTIMESTAMP": "#RECORDING",
+            "@STOP": "#STOP",
+            "@DISCONNECT": "#DISCONNECTED",
+            "@ERROR": "#ERROR",
+        },
+        "#STOP": {
+            "@STOPTIMESTAMP": "#READY",
+            "@INPROGRESSTIMESTAMP": "#STOP",
+            "@DISCONNECT": "#DISCONNECTED",
+            "@ERROR": "#ERROR",
+        },
+        "#ERROR": {"@DISCONNECT": "#DISCONNECTED"},
+    }
+    MESSAGE_TYPES = []
     for elem in STATE_TRANSITIONS:
-        MESSAGE_TYPES+=STATE_TRANSITIONS[elem].keys()
-    MESSAGE_TYPES=set(MESSAGE_TYPES)
-#    print(MESSAGE_TYPES)
-#    MESSAGE_TYPES=set(['@START','@STOP','@STANDBY','@READY','@PREVIEW','@DUMP','@STARTTIMESTAMP','@INPROGRESSTIMESTAMP','@STOPTIMESTAMP','@DUMPALL','@DISCONNECT','@FILESTODUMP'])
-    MESSAGE_KEYS=set(['MessageType','SessionID','TimeStamp','Message'])
-    
+        MESSAGE_TYPES += STATE_TRANSITIONS[elem].keys()
+    MESSAGE_TYPES = set(MESSAGE_TYPES)
+    #    print(MESSAGE_TYPES)
+    #    MESSAGE_TYPES=set(['@START','@STOP','@STANDBY','@READY','@PREVIEW','@DUMP','@STARTTIMESTAMP','@INPROGRESSTIMESTAMP','@STOPTIMESTAMP','@DUMPALL','@DISCONNECT','@FILESTODUMP'])
+    MESSAGE_KEYS = set(["MessageType", "SessionID", "TimeStamp", "Message"])
 
-    #decorator for socket_send
+    # decorator for socket_send
 
     @safe_socket_operation
-    def _socket_send(self,packet):
+    def _socket_send(self, packet):
         return self.sock.send(packet)
 
     @safe_socket_operation
-    def _socket_recv(self,nbytes):
+    def _socket_recv(self, nbytes):
         return self.sock.recv(nbytes)
 
-    def __init__(self,name,sess_id='',mock=False,device_id='',sensor_ids=''):
-        self.connected=False
-        self.recording=False
-        self.tag=0
-        self.iphone_sessionID=sess_id
-        self._allmessages=[]
-        self.name=name
-        self.mock=mock
-        self.device_id=device_id
-        self.sensor_ids=sensor_ids
-        self._state='#DISCONNECTED'
-        self._frame_preview_data=b''
-        self._frame_preview_cond=Condition()
-        self._dump_video_data=b''
-        self._dump_video_cond=Condition()
-        self._wait_for_reply_cond=Condition()
-        self._msg_latest={}
-        self._timeout_cond=5
+    def __init__(self, name, sess_id="", mock=False, device_id="", sensor_ids=""):
+        self.connected = False
+        self.recording = False
+        self.tag = 0
+        self.iphone_sessionID = sess_id
+        self._allmessages = []
+        self.name = name
+        self.mock = mock
+        self.device_id = device_id
+        self.sensor_ids = sensor_ids
+        self._state = "#DISCONNECTED"
+        self._frame_preview_data = b""
+        self._frame_preview_cond = Condition()
+        self._dump_video_data = b""
+        self._dump_video_cond = Condition()
+        self._wait_for_reply_cond = Condition()
+        self._msg_latest = {}
+        self._timeout_cond = 5
         self.streaming = False
-        self.streamName = 'IPhoneFrameIndex'
+        self.streamName = "IPhoneFrameIndex"
         self.oulet_id = str(uuid.uuid4())
-        
-        
-    def _validate_message(self,message,tag):
-        
-        if tag==1: # TAG==1 corresponds to PREVIEW file receiving
-            msgType='@PREVIEWRECEIVE'
-        elif tag==2:
-            msgType='@DUMPRECEIVE'
-        elif tag!=0:
-            print(f'Incorrect tag received from IPhone. Tag={tag}')
+
+    def _validate_message(self, message, tag):
+
+        if tag == 1:  # TAG==1 corresponds to PREVIEW file receiving
+            msgType = "@PREVIEWRECEIVE"
+        elif tag == 2:
+            msgType = "@DUMPRECEIVE"
+        elif tag != 0:
+            print(f"Incorrect tag received from IPhone. Tag={tag}")
             self.disconnect()
             return False
-            #raise IPhoneError(f'Incorrect tag received from IPhone. Tag={tag}')
+            # raise IPhoneError(f'Incorrect tag received from IPhone. Tag={tag}')
         else:
-            if len(message)!=len(self.MESSAGE_KEYS):
-                print(f'Message has incorrect length: {message}')
+            if len(message) != len(self.MESSAGE_KEYS):
+                print(f"Message has incorrect length: {message}")
                 self.disconnect()
                 return False
-                #raise IPhoneError(f'Message has incorrect length: {message}')
+                # raise IPhoneError(f'Message has incorrect length: {message}')
             for key in message:
                 if key not in self.MESSAGE_KEYS:
-                    print(f'Message has incorrect key: {key} not allowed. {message}')
+                    print(f"Message has incorrect key: {key} not allowed. {message}")
                     self.disconnect()
                     return False
-                    #raise IPhoneError(f'Message has incorrect key: {key} not allowed. {message}')
-            msgType=message['MessageType']
-        debug_print(f'Initial State: {self._state}')
-        debug_print(f'Message: {msgType}')
+                    # raise IPhoneError(f'Message has incorrect key: {key} not allowed. {message}')
+            msgType = message["MessageType"]
+        debug_print(f"Initial State: {self._state}")
+        debug_print(f"Message: {msgType}")
         # if msgType in ['@STARTTIMESTAMP', '@INPROGRESSTIMESTAMP','@STOPTIMESTAMP']:
         #     print('Correct msg type')
         #     debug_print(f'Message: {message}')
-        #validate whether the transition is valid
-        allowed_trans=self.STATE_TRANSITIONS[self._state]
+        # validate whether the transition is valid
+        allowed_trans = self.STATE_TRANSITIONS[self._state]
         if msgType in allowed_trans:
-            self._state=allowed_trans[msgType]
+            self._state = allowed_trans[msgType]
         else:
-            print(f'Message {msgType} is not valid in the state {self._state}.')
+            print(f"Message {msgType} is not valid in the state {self._state}.")
             self.disconnect()
             return False
-            #raise IPhoneError(f'Message {msgType} is not valid in the state {self._state}.')
-        debug_print(f'Outcome State:{self._state}')
+            # raise IPhoneError(f'Message {msgType} is not valid in the state {self._state}.')
+        debug_print(f"Outcome State:{self._state}")
         return True
 
-    def _message(self,msg_type,ts='',msg=''):
+    def _message(self, msg_type, ts="", msg=""):
         if not msg_type in self.MESSAGE_TYPES:
-            raise IPhoneError(f'Message type "{msg_type}" not in allowed message type list')
-        return {"MessageType": msg_type,
+            raise IPhoneError(
+                f'Message type "{msg_type}" not in allowed message type list'
+            )
+        return {
+            "MessageType": msg_type,
             "SessionID": self.iphone_sessionID,
             "TimeStamp": ts,
-            "Message": msg
+            "Message": msg,
         }
-    def _json_wrap(self,message):
-        json_msg=json.dumps(message)
-        json_msg='####'+json_msg # add 4 bytes
+
+    def _json_wrap(self, message):
+        json_msg = json.dumps(message)
+        json_msg = "####" + json_msg  # add 4 bytes
         return json_msg
-    def _json_unwrap(self,payload):
-        message=json.loads(payload[4:])
+
+    def _json_unwrap(self, payload):
+        message = json.loads(payload[4:])
         return message
 
-    def _sendpacket(self,msg_type,msg_contents=None,cond=None):
-#        if not self.connected:
-#            raise IPhoneError('IPhone is not connected')
-        msg=self._message(msg_type)
+    def _sendpacket(self, msg_type, msg_contents=None, cond=None):
+        #        if not self.connected:
+        #            raise IPhoneError('IPhone is not connected')
+        msg = self._message(msg_type)
         if not msg_contents is None:
             # replace contents of msg with information from provided dict
             for key in msg_contents:
-                msg[key]=msg_contents[key]
-        if not self._validate_message(msg,0):
-            print(f'Message {msg} did not pass validation. Exiting _sendpacket.')
+                msg[key] = msg_contents[key]
+        if not self._validate_message(msg, 0):
+            print(f"Message {msg} did not pass validation. Exiting _sendpacket.")
             self.disconnect()
             return False
-               #do transition through validate_message
-        self._process_message(msg,self.tag)        
-        payload=self._json_wrap(msg).encode('utf-8')
-        payload_size=len(payload)
-        packet=struct.pack("!IIII",self.VERSION,self.TYPE_MESSAGE,self.tag,payload_size)+payload
+            # do transition through validate_message
+        self._process_message(msg, self.tag)
+        payload = self._json_wrap(msg).encode("utf-8")
+        payload_size = len(payload)
+        packet = (
+            struct.pack(
+                "!IIII", self.VERSION, self.TYPE_MESSAGE, self.tag, payload_size
+            )
+            + payload
+        )
 
         if not cond is None:
             cond.acquire()
             self._socket_send(packet)
-            #self.sock.send(packet)
+            # self.sock.send(packet)
             if not cond.wait(timeout=self._timeout_cond):
                 cond.release()
-                print(f'No reply received from the device after packet {msg_type} was sent.')
-                #self.disconnect()
+                print(
+                    f"No reply received from the device after packet {msg_type} was sent."
+                )
+                # self.disconnect()
                 return False
             cond.release()
         else:
             self._socket_send(packet)
-            #self.sock.send(packet)
+            # self.sock.send(packet)
         return True
 
-
-    def recvall(self,sock, n):
-    # Helper function to recv n bytes or return None if EOF is hit
+    def recvall(self, sock, n):
+        # Helper function to recv n bytes or return None if EOF is hit
         fragments = []
-        BUFF_SIZE=16384
+        BUFF_SIZE = 16384
         MAX_RECV = 130992
-        buff_recv=0 
-        while True: 
+        buff_recv = 0
+        while True:
             bytes_to_pull = n
             if (n - buff_recv) < MAX_RECV:
-                bytes_to_pull = n - buff_recv            
+                bytes_to_pull = n - buff_recv
             packet = sock.recv(bytes_to_pull)
-            #packet = self._socket_recv(bytes_to_pull)
-            
+            # packet = self._socket_recv(bytes_to_pull)
+
             buff_recv += len(packet)
             fragments.append(packet)
-            if buff_recv >= n :
+            if buff_recv >= n:
                 break
-        data=b''.join(fragments)
+        data = b"".join(fragments)
         return data
 
-    def _getpacket(self,timeout_in_seconds=20):
-        ready,_,_ = select.select([self.sock], [], [], timeout_in_seconds)
-        #print(ready)
+    def _getpacket(self, timeout_in_seconds=20):
+        ready, _, _ = select.select([self.sock], [], [], timeout_in_seconds)
+        # print(ready)
         if ready:
-            #first_frame=self._socket_recv(16)
-            first_frame=self.sock.recv(16)
-            version,type,tag,payload_size = struct.unpack("!IIII", first_frame)
+            # first_frame=self._socket_recv(16)
+            first_frame = self.sock.recv(16)
+            version, type, tag, payload_size = struct.unpack("!IIII", first_frame)
 
             if tag == 1 or tag == 2:
-                self._validate_message({},tag)
-                payload=self.recvall(self.sock,payload_size)
-                return payload,version,type,tag
+                self._validate_message({}, tag)
+                payload = self.recvall(self.sock, payload_size)
+                return payload, version, type, tag
             else:
-                #payload= self._socket_recv(payload_size)
+                # payload= self._socket_recv(payload_size)
                 payload = self.sock.recv(payload_size)
 
-            msg=self._json_unwrap(payload)
-            self._validate_message(msg,tag)
-            return msg,version,type,tag
+            msg = self._json_unwrap(payload)
+            self._validate_message(msg, tag)
+            return msg, version, type, tag
         else:
-            raise IPhoneError(f'Timeout for packet receive exceeded ({timeout_in_seconds} sec)')
+            raise IPhoneError(
+                f"Timeout for packet receive exceeded ({timeout_in_seconds} sec)"
+            )
 
-    def handshake(self,config):
-        if self._state!='#DISCONNECTED':
-            print('Handshake is only available when disconnected')
+    def handshake(self, config):
+        if self._state != "#DISCONNECTED":
+            print("Handshake is only available when disconnected")
             return False
-        self.usbmux=USBMux()
+        self.usbmux = USBMux()
         if not self.usbmux.devices:
             self.usbmux.process(0.1)
         # for dev in self.usbmux.devices:
         #     print(dev)
-        if len(self.usbmux.devices)==1:
-            self.device=self.usbmux.devices[0]
+        if len(self.usbmux.devices) == 1:
+            self.device = self.usbmux.devices[0]
             try:
-                self.sock=self.usbmux.connect(self.device,IPHONE_PORT)
+                self.sock = self.usbmux.connect(self.device, IPHONE_PORT)
             except:
                 return False
-            self._state='#CONNECTED'
-            
-            #as soon as we're connected - start parallel listening thread.
-            self._listen_thread=IPhoneListeningThread(self)
+            self._state = "#CONNECTED"
+
+            # as soon as we're connected - start parallel listening thread.
+            self._listen_thread = IPhoneListeningThread(self)
             self._listen_thread.start()
-            #self.sock.setblocking(0)
-            self.connected=True
-#            self.notifyonframe=1
-            # Create config 
-            
-            msg_camera_config={'Message':json.dumps(config)}
+            # self.sock.setblocking(0)
+            self.connected = True
+            #            self.notifyonframe=1
+            # Create config
+
+            msg_camera_config = {"Message": json.dumps(config)}
             print(msg_camera_config)
-            self._sendpacket('@STANDBY',msg_contents=msg_camera_config,cond=self._wait_for_reply_cond)
+            self._sendpacket(
+                "@STANDBY",
+                msg_contents=msg_camera_config,
+                cond=self._wait_for_reply_cond,
+            )
             return True
         else:
             return False
 
     def _mock_handshake(self):
-        tag=self.tag
-        self._sendpacket('@STANDBY')
-        msg,version,type,resp_tag=self._getpacket()
+        tag = self.tag
+        self._sendpacket("@STANDBY")
+        msg, version, type, resp_tag = self._getpacket()
         self._validate_message(msg)
-        if msg['MessageType']!='@READY':
-            self.sock.close() #close the socket on our side to avoid hanging sockets
-            raise IPhoneError('Cannot establish STANDBY->READY connection with Iphone')
+        if msg["MessageType"] != "@READY":
+            self.sock.close()  # close the socket on our side to avoid hanging sockets
+            raise IPhoneError("Cannot establish STANDBY->READY connection with Iphone")
         # if tag!=resp_tag (check with Steven)
-        #process message - send timestamps to LSL, etc.
-        self._process_message(msg,resp_tag)
-        return 0    
-    
-    def start_recording(self,filename):
-#        if not self.connected:
-#            raise IPhoneError('IPhone not connected when start_recording is called.')
-#        tag=self.tag
-        msg_filename={'Message':filename}
-        self._sendpacket('@START',msg_contents=msg_filename,cond=self._wait_for_reply_cond)
+        # process message - send timestamps to LSL, etc.
+        self._process_message(msg, resp_tag)
         return 0
-    
+
+    def start_recording(self, filename):
+        #        if not self.connected:
+        #            raise IPhoneError('IPhone not connected when start_recording is called.')
+        #        tag=self.tag
+        msg_filename = {"Message": filename}
+        self._sendpacket(
+            "@START", msg_contents=msg_filename, cond=self._wait_for_reply_cond
+        )
+        return 0
+
     def stop_recording(self):
-        self._sendpacket('@STOP',cond=self._wait_for_reply_cond)
-        return 0 
-    
-    def _process_message(self,msg,tag):
-        if tag==1:
+        self._sendpacket("@STOP", cond=self._wait_for_reply_cond)
+        return 0
+
+    def _process_message(self, msg, tag):
+        if tag == 1:
             self._frame_preview_cond.acquire()
-            self._frame_preview_data=msg
+            self._frame_preview_data = msg
             self._frame_preview_cond.notify()
             self._frame_preview_cond.release()
-#            return msg #msg is binary data - image
-        elif tag==2:
+        #            return msg #msg is binary data - image
+        elif tag == 2:
             self._dump_video_cond.acquire()
-            self._dump_video_data=msg
+            self._dump_video_data = msg
             self._dump_video_cond.notify()
             self._dump_video_cond.release()
-#            return msg #msg is binary data - video
+        #            return msg #msg is binary data - video
         else:
             self._wait_for_reply_cond.acquire()
-            self._msg_latest=msg
+            self._msg_latest = msg
             self._wait_for_reply_cond.notify()
             self._wait_for_reply_cond.release()
-            self._allmessages.append({'message':msg,'ctr_timestamp':str(datetime.now()),'tag':tag})
+            self._allmessages.append(
+                {"message": msg, "ctr_timestamp": str(datetime.now()), "tag": tag}
+            )
 
-        if msg['MessageType'] in ['@STARTTIMESTAMP', '@INPROGRESSTIMESTAMP','@STOPTIMESTAMP']:
-            finfo =  eval(msg['TimeStamp'])
-            self.fcount = int(finfo['FrameNumber'])
-            debug_print([self.fcount, float(finfo['Timestamp']), time.time()])
-            self.lsl_push_sample([self.fcount, float(finfo['Timestamp']), time.time()])         
+        if msg["MessageType"] in [
+            "@STARTTIMESTAMP",
+            "@INPROGRESSTIMESTAMP",
+            "@STOPTIMESTAMP",
+        ]:
+            finfo = eval(msg["TimeStamp"])
+            self.fcount = int(finfo["FrameNumber"])
+            debug_print([self.fcount, float(finfo["Timestamp"]), time.time()])
+            self.lsl_push_sample([self.fcount, float(finfo["Timestamp"]), time.time()])
             # print([self.fcount, float(msg['TimeStamp']['Timestamp']), time.time()])
-            
+
     @debug_lsl
     def createOutlet(self):
 
-        info = StreamInfo(name=self.streamName, type='videostream', channel_format='double64',
-            channel_count=3, source_id=self.oulet_id)
+        info = StreamInfo(
+            name=self.streamName,
+            type="videostream",
+            channel_format="double64",
+            channel_count=3,
+            source_id=self.oulet_id,
+        )
 
         info.desc().append_child_value("device_id", self.device_id)
         info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
         # info.desc().append_child_value("fps_rgb", str(self.fps))
-        col_names = ['frame_index', 'iphone_frame_timestamp', 'unix_timestamp']
-        info.desc().append_child_value("column_names", str(col_names))  
+        col_names = ["frame_index", "iphone_frame_timestamp", "unix_timestamp"]
+        info.desc().append_child_value("column_names", str(col_names))
 
         print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
         return StreamOutlet(info)
 
     @debug_lsl
-    def lsl_push_sample(self,*args):
+    def lsl_push_sample(self, *args):
         self.outlet.push_sample(*args)
 
     @debug_lsl
-    def lsl_print(self,*args):
-        print(*args)      
-        
+    def lsl_print(self, *args):
+        print(*args)
+
     def frame_preview(self):
-        self._frame_preview_data=b''
-        self._sendpacket('@PREVIEW',cond=self._frame_preview_cond)
+        self._frame_preview_data = b""
+        self._sendpacket("@PREVIEW", cond=self._frame_preview_cond)
         return self._frame_preview_data
-    
-    def start(self,filename):
-        self.streaming=True
+
+    def start(self, filename):
+        self.streaming = True
         filename += "_IPhone"
         filename = op.split(filename)[-1]
-        self.lsl_print(f"-new_filename-:{self.streamName}:{filename}.mov") 
-        time.sleep(.05)
-        self.lsl_print(f"-new_filename-:{self.streamName}:{filename}.json") 
+        self.lsl_print(f"-new_filename-:{self.streamName}:{filename}.mov")
+        time.sleep(0.05)
+        self.lsl_print(f"-new_filename-:{self.streamName}:{filename}.json")
         self.start_recording(filename)
 
     def stop(self):
         self.stop_recording()
-        self.streaming=False
-    
+        self.streaming = False
+
     def close(self):
         self.disconnect()
-        
-    def prepare(self,mock=False,config=None):
+
+    def prepare(self, mock=False, config=None):
         if mock:
-            HOST = '127.0.0.1'                 # Symbolic name meaning the local host
-            PORT = 50009     # Arbitrary non-privileged port
-            s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-            s.connect((HOST,PORT))
-            self.sock=s
+            HOST = "127.0.0.1"  # Symbolic name meaning the local host
+            PORT = 50009  # Arbitrary non-privileged port
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((HOST, PORT))
+            self.sock = s
             self._mock_handshake()
-            self.connected=True
+            self.connected = True
         else:
             if config is None:
-                self.notifyonframe=1
-                config={'NOTIFYONFRAME':str(self.notifyonframe),
-                        'VIDEOQUALITY':'1920x1080',
-                        'USECAMERAFACING':'BACK',
-                        'FPS':'240',
-                        "BRIGHTNESS": "50",
-                        'LENSPOS':'0.7'}
-            self.notifyonframe=int(config['NOTIFYONFRAME'])
-            connected=self.handshake(config)
+                self.notifyonframe = 1
+                config = {
+                    "NOTIFYONFRAME": str(self.notifyonframe),
+                    "VIDEOQUALITY": "1920x1080",
+                    "USECAMERAFACING": "BACK",
+                    "FPS": "240",
+                    "BRIGHTNESS": "50",
+                    "LENSPOS": "0.7",
+                }
+            self.notifyonframe = int(config["NOTIFYONFRAME"])
+            connected = self.handshake(config)
             if connected:
                 self.outlet = self.createOutlet()
                 self.streaming = True
             return connected
-        
-    def dump(self,filename):
-        self._dump_video_data=b''
-        msg_filename={'Message':filename}
-        self._sendpacket('@DUMP',msg_filename,cond=self._dump_video_cond)
+
+    def dump(self, filename):
+        self._dump_video_data = b""
+        msg_filename = {"Message": filename}
+        self._sendpacket("@DUMP", msg_filename, cond=self._dump_video_cond)
         return self._dump_video_data
 
-    def dumpsuccess(self,filename):
-        msg_filename={'Message':filename}
-        self._sendpacket('@DUMPSUCCESS',msg_filename)
+    def dumpsuccess(self, filename):
+        msg_filename = {"Message": filename}
+        self._sendpacket("@DUMPSUCCESS", msg_filename)
         return True
-        
+
     def disconnect(self):
-        if self._state=='#DISCONNECTED':
-            print('IPhone device is already disconnected')
+        if self._state == "#DISCONNECTED":
+            print("IPhone device is already disconnected")
             return False
-        self._sendpacket('@DISCONNECT')
+        self._sendpacket("@DISCONNECT")
         time.sleep(4)
         self.sock.close()
         self._listen_thread.stop()
         self._listen_thread.join(timeout=3)
         if self._listen_thread.is_alive():
-            raise IPhoneError('Cannot stop the recording thread')
-        self.connected=False
+            raise IPhoneError("Cannot stop the recording thread")
+        self.connected = False
         self.streaming = False
         return True
 
     def dumpall_getfilelist(self):
-        self._sendpacket('@DUMPALL',cond=self._wait_for_reply_cond)
-        filelist=self._msg_latest['Message']
-        if self._state=='#ERROR':
+        self._sendpacket("@DUMPALL", cond=self._wait_for_reply_cond)
+        filelist = self._msg_latest["Message"]
+        if self._state == "#ERROR":
             return None
         return filelist
 
+
 if __name__ == "__main__":
-    
+
     @debug_lsl
     def liesl_sesion_create(**args):
-        session = liesl.Session(prefix=subject,
-                            streamargs=[streamargs], mainfolder=recording_folder)
+        session = liesl.Session(
+            prefix=subject, streamargs=[streamargs], mainfolder=recording_folder
+        )
         return session
+
     @debug_lsl
     def liesl_sesion_start(session):
-        session.start_recording()    
+        session.start_recording()
+
     @debug_lsl
     def liesl_sesion_stop(session):
         session.stop_recording()
 
     import time
+
     # Creating and starting mock streams:
-    
-    #config={'NOTIFYONFRAME':'1',
+
+    # config={'NOTIFYONFRAME':'1',
     #                        'VIDEOQUALITY':'3840x2160',
     #                        'USECAMERAFACING':'BACK','FPS':'60'}
-    
-        #config={'NOTIFYONFRAME':'1',
+
+    # config={'NOTIFYONFRAME':'1',
     #                        'VIDEOQUALITY':'1920x1080',
     #                        'USECAMERAFACING':'BACK','FPS':'120 or 240'}
     iphone = IPhone("iphone")
-    config={'NOTIFYONFRAME':'1',
-            'VIDEOQUALITY':'1920x1080',
-            'USECAMERAFACING':'BACK',
-            'FPS':'240',
-            'BRIGHTNESS':'50',
-            'LENSPOS':'0.7'}
-    
+    config = {
+        "NOTIFYONFRAME": "1",
+        "VIDEOQUALITY": "1920x1080",
+        "USECAMERAFACING": "BACK",
+        "FPS": "240",
+        "BRIGHTNESS": "50",
+        "LENSPOS": "0.7",
+    }
+
     if not iphone.prepare(config=config):
-        print('Could not connect to iphone')
+        print("Could not connect to iphone")
 
     frame = iphone.frame_preview()
-    
-    streamargs = {'name': "IPhoneFrameIndex"}
+
+    streamargs = {"name": "IPhoneFrameIndex"}
     recording_folder = ""
     subject = "007"
-    
-    session=liesl_sesion_create(prefix=subject,
-                            streamargs=[streamargs], mainfolder=recording_folder)
+
+    session = liesl_sesion_create(
+        prefix=subject, streamargs=[streamargs], mainfolder=recording_folder
+    )
     liesl_sesion_start(session)
-    #iphone.start('mov120_1')
+    # iphone.start('mov120_1')
     iphone.start(subject + f"_task_obs_1_{time.time()}")
-    
+
     time.sleep(1)
 
     iphone.stop()
     liesl_sesion_stop(session)
     iphone.disconnect()
 
-    
     import pyxdf
     import glob
     import numpy as np
-    
+
     subject = "007"
-    path = r'C:\neurobooth-eel\007'
+    path = r"C:\neurobooth-eel\007"
     fname = glob.glob(f"{subject}/recording_R0*.xdf")[-1]
     data, header = pyxdf.load_xdf(fname)
 
-    ts = data[0]['time_series']
+    ts = data[0]["time_series"]
     ts_pc = [t[1] for t in ts]
     ts_ip = [t[2] for t in ts]
-    
+
     df_pc = np.diff(ts_pc)
     df_ip = np.diff(ts_ip)
-    
+
     import matplotlib.pyplot as plt
+
     plt.figure()
     plt.plot(df_pc)
     plt.plot(df_ip)
     plt.show()
-    
+
     plt.figure()
     plt.scatter(df_pc, df_ip)
 
     plt.show()
-    
+
     plt.figure()
-    plt.hist(np.diff(ts_pc[1:])-np.diff(ts_ip[1:]), 20)
-    
-    print( 'mean diff diff ', np.mean(np.abs(np.diff(ts_pc[1:])-np.diff(ts_ip[1:]))))
-    
-    tstmp = data[0]['time_stamps']
-    plt.hist(np.diff(tstmp[1:])-np.diff(ts_ip[1:]))
-    
+    plt.hist(np.diff(ts_pc[1:]) - np.diff(ts_ip[1:]), 20)
+
+    print("mean diff diff ", np.mean(np.abs(np.diff(ts_pc[1:]) - np.diff(ts_ip[1:]))))
+
+    tstmp = data[0]["time_stamps"]
+    plt.hist(np.diff(tstmp[1:]) - np.diff(ts_ip[1:]))
+
     plt.figure()
     plt.hist(df_ip, 50)
-    

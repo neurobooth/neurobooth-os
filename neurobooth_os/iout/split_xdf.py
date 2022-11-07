@@ -35,7 +35,14 @@ def compute_clocks_diff():
     return time_offset
 
 
-def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder='', dont_split_xdf_fpath=None):
+def split_sens_files(
+    fname,
+    log_task_id=None,
+    task_id=None,
+    conn=None,
+    folder="",
+    dont_split_xdf_fpath=None,
+):
     """Split xdf file per sensor
 
     Parameters
@@ -43,9 +50,9 @@ def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''
     fname : str
         name of the file to split
     log_task_id : str, optional
-        task log id for the database, by default None. If conn not None, it can not be None. 
+        task log id for the database, by default None. If conn not None, it can not be None.
     task_id : str, optional
-        task id for the database, by default None. If conn not None, it can not be None. 
+        task id for the database, by default None. If conn not None, it can not be None.
     conn : callable
         Connector to the database, if None does not insert rows, by default None
     folder : str
@@ -61,7 +68,7 @@ def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''
     data, header = pyxdf.load_xdf(fname, dejitter_timestamps=False)
 
     # Find marker stream to add in to each h5 file
-    marker = [d for d in data if d['info']['name'] == ["Marker"]]
+    marker = [d for d in data if d["info"]["name"] == ["Marker"]]
 
     if conn is not None:
         table_sens_log = Table("log_sensor_file", conn=conn)
@@ -69,42 +76,42 @@ def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''
 
     # get video filenames if videofiles marker present
     videofiles = {}
-    if 'videofiles' in [d['info']['name'][0] for d in data]:
-        vid_data = [v for v in data if v['info']['name'] == ['videofiles']]
+    if "videofiles" in [d["info"]["name"][0] for d in data]:
+        vid_data = [v for v in data if v["info"]["name"] == ["videofiles"]]
         # video file marker format is ["streamName, fname.mov"]
-        for d in vid_data[0]['time_series']:
-            if d[0] == '':
+        for d in vid_data[0]["time_series"]:
+            if d[0] == "":
                 continue
-            stream_id, file_id = d[0].split(",")  
+            stream_id, file_id = d[0].split(",")
             if videofiles.get(stream_id) is not None:
                 videofiles[stream_id] += f", {file_id}"
             else:
                 videofiles[stream_id] = file_id
 
     if dont_split_xdf_fpath is not None:
-        with open(os.path.join(dont_split_xdf_fpath, "split_tohdf5.csv" ), "a+") as f:
-                f.write(f"{fname},{task_id}\n")
+        with open(os.path.join(dont_split_xdf_fpath, "split_tohdf5.csv"), "a+") as f:
+            f.write(f"{fname},{task_id}\n")
     files = []
     # Loop over each sensor
     for dev_data in data:
-        name = dev_data['info']['name'][0]
+        name = dev_data["info"]["name"][0]
         if name in ["Marker", "videofiles"]:
             continue
 
-        device_id = dev_data['info']['desc'][0]["device_id"][0]
-        sensors_id = eval(dev_data['info']['desc'][0]["sensor_ids"][0])
+        device_id = dev_data["info"]["desc"][0]["device_id"][0]
+        sensors_id = eval(dev_data["info"]["desc"][0]["sensor_ids"][0])
 
         # Only log and split devices in task DB
         if task_id is not None and device_id not in devices_ids:
             # print(f"Skipping {name} not in tech obs device list: {devices_ids}")
             continue
-        
+
         sensors = "-".join(sensors_id)
-        data_sens = {'marker': marker[0], 'device_data': dev_data}
+        data_sens = {"marker": marker[0], "device_data": dev_data}
         head, ext = op.splitext(fname)
         fname_full = f"{head}-{device_id}-{sensors}.hdf5"
 
-        if dont_split_xdf_fpath is  None:
+        if dont_split_xdf_fpath is None:
             write_hdf5(fname_full, data_sens, overwrite=True)
 
         # print(f"Saving stream {name} to {fname_full}")
@@ -112,31 +119,50 @@ def split_sens_files(fname, log_task_id=None, task_id=None, conn=None, folder=''
         _, head = op.split(fname_full)
 
         time_offset = compute_clocks_diff()
-        start_time = dev_data['time_stamps'][0] + time_offset
-        end_time = dev_data['time_stamps'][-1] + time_offset
+        start_time = dev_data["time_stamps"][0] + time_offset
+        end_time = dev_data["time_stamps"][-1] + time_offset
         start_time = datetime.fromtimestamp(start_time).strftime("%Y-%m-%d %H:%M:%S")
         end_time = datetime.fromtimestamp(end_time).strftime("%Y-%m-%d %H:%M:%S")
-        temp_res = 1 / np.median(np.diff(dev_data['time_stamps']))
+        temp_res = 1 / np.median(np.diff(dev_data["time_stamps"]))
 
         if len(folder):
             head = f"{folder}/{head}"
 
-        if videofiles.get(name): 
+        if videofiles.get(name):
             if len(folder):
                 head = f"{head}, {folder}/{videofiles.get(name)}"
             else:
                 head = f"{head}, {videofiles.get(name)}"
             # print(f"Videofile name: {head}")
-        
+
         if log_task_id is not None:
             for sens_id in sensors_id:
-                cols = ["log_task_id", "true_temporal_resolution", "true_spatial_resolution",
-                 "file_start_time", "file_end_time", "device_id", "sensor_id", 'sensor_file_path']
-                vals = [(log_task_id, temp_res, None, start_time, end_time, device_id, sens_id,
-                 "{" + head + "}")]
+                cols = [
+                    "log_task_id",
+                    "true_temporal_resolution",
+                    "true_spatial_resolution",
+                    "file_start_time",
+                    "file_end_time",
+                    "device_id",
+                    "sensor_id",
+                    "sensor_file_path",
+                ]
+                vals = [
+                    (
+                        log_task_id,
+                        temp_res,
+                        None,
+                        start_time,
+                        end_time,
+                        device_id,
+                        sens_id,
+                        "{" + head + "}",
+                    )
+                ]
                 table_sens_log.insert_rows(vals, cols)
     print(f"SPLIT XDF {task_id} took: {time.time() - t0}")
     return files
+
 
 def get_xdf_name(session, fname_prefix):
     """Get with most recent session xdf file name.
@@ -172,13 +198,13 @@ def create_h5_from_csv(dont_split_xdf_fpath, conn):
     import csv
 
     # read file and split to hdf5 in the same directory
-    with open(fname, newline='') as csvfile:
-        lines = csv.reader(csvfile, delimiter=',', quotechar='|')
-    
+    with open(fname, newline="") as csvfile:
+        lines = csv.reader(csvfile, delimiter=",", quotechar="|")
+
         for row in lines:
             # change to NAS path if necessary
             if not os.path.exists(row[0]):
-                row[0] = row[0].replace(paths['data_out'][:-1], paths['nas'])
+                row[0] = row[0].replace(paths["data_out"][:-1], paths["nas"])
             out = split_sens_files(row[0], task_id=row[1], conn=conn)
 
             if len(out) == 0:
@@ -186,5 +212,5 @@ def create_h5_from_csv(dont_split_xdf_fpath, conn):
 
     # rewrite file in case some xdf didn't get split
     with open(fname, "w") as f:
-        for lns in lines_todo:                
+        for lns in lines_todo:
             f.write(f"{lns[0]},{lns[1]}")
