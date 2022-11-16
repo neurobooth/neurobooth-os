@@ -19,11 +19,11 @@ def setup_log(name, node_name: str = None):
     logger.setLevel(logging.DEBUG)
     if not node_name:
         log_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        filename = f"./{name}.log"
-        log_handler = logging.FileHandler(filename)
-        log_handler.setLevel(logging.DEBUG)
-        log_handler.setFormatter(log_format)
-        logger.addHandler(log_handler)
+        #filename = f"./{name}.log"
+        #log_handler = logging.FileHandler(filename)
+        #log_handler.setLevel(logging.DEBUG)
+        #log_handler.setFormatter(log_format)
+        #logger.addHandler(log_handler)
     return logger
 
 
