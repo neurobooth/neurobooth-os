@@ -28,6 +28,7 @@ class VidRec_Flir:
     #              sizex=round(1936 / 2), sizey=round(1216 / 2), fps=196,
     #              camSN="20522874", exposure=4500, gain=20, gamma=.6,
     #              device_id="FLIR_blackfly_1", sensor_ids=['FLIR_rgb_1'], fd= .5):
+    # Staging FLIR SN is 22348141
     def __init__(
         self,
         sizex=548,
@@ -35,7 +36,7 @@ class VidRec_Flir:
         fps=195,
         offsetX=528,
         offsetY=152,
-        camSN="20522874",
+        camSN=os.getenv("FLIR_SN"),
         exposure=4500,
         gain=20,
         gamma=0.6,
@@ -228,6 +229,6 @@ if __name__ == "__main__":
     flir.close()
     flir.close()
     tdiff = np.diff(flir.stamp) / 1e6
-    plt.figure(), plt.hist(tdiff, 50)
-    plt.figure(), plt.plot(tdiff)
+    plt.figure(), plt.hist(tdiff, 50), plt.show()
+    plt.figure(), plt.plot(tdiff), plt.show()
     print("diff max min", tdiff.max() - tdiff.min())
