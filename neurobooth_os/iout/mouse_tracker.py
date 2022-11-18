@@ -4,18 +4,23 @@ from pynput import mouse
 from pylsl import StreamInfo, StreamOutlet
 
 
-class MouseStream():
+class MouseStream:
     def __init__(self, device_id="Mouse", sensor_ids=["Mouse"]):
 
         self.oulet_id = str(uuid.uuid4())
-        info_stream = StreamInfo(name='Mouse', type='mouse', channel_count=3,                                 
-                                 channel_format='int32', source_id=self.oulet_id)
+        info_stream = StreamInfo(
+            name="Mouse",
+            type="mouse",
+            channel_count=3,
+            channel_format="int32",
+            source_id=self.oulet_id,
+        )
 
         self.info_stream = info_stream
-        
+
         self.info_stream.desc().append_child_value("device_id", device_id)
         self.info_stream.desc().append_child_value("sensor_ids", str(sensor_ids))
-        
+
         self.outlet = StreamOutlet(info_stream)
         print(f"-OUTLETID-:Mouse:{self.oulet_id}")
         self.streaming = False
@@ -32,7 +37,6 @@ class MouseStream():
             self.outlet = StreamOutlet(self.info_stream)
 
     def stream(self):
-
         def on_move(x, y):
             mysample = [x, y, 0]
             try:
@@ -55,4 +59,3 @@ class MouseStream():
             self.streaming = False
             self.listener.stop()
             print("Mouse capture stopped")
-

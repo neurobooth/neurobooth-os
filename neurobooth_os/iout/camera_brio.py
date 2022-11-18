@@ -11,7 +11,8 @@ from pylsl import StreamInfo, StreamOutlet
 from neurobooth_os.iout import dshowcapture
 
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
 
 
 def catch_exception(f):
@@ -21,21 +22,22 @@ def catch_exception(f):
         return f(*args, **kwargs)
         # except Exception as e:
         #     print('Caught an exception in function "{}" of type {}'.format(f.__name__, e))
+
     return func
 
 
-class VidRec_Brio():
+class VidRec_Brio:
     def __init__(
-            self,
-            fourcc=cv2.VideoWriter_fourcc(
-                *'MJPG'),
-            sizex=1280,
-            sizey=720,
-            fps=90,
-            camindex=0,
-            mode=33,
-            doPreview=False):
-      # sizex=640, sizey=480, fps=120, camindex=0, mode=19, doPreview=False):
+        self,
+        fourcc=cv2.VideoWriter_fourcc(*"MJPG"),
+        sizex=1280,
+        sizey=720,
+        fps=90,
+        camindex=0,
+        mode=33,
+        doPreview=False,
+    ):
+        # sizex=640, sizey=480, fps=120, camindex=0, mode=19, doPreview=False):
 
         self.open = True
         self.doPreview = doPreview
@@ -43,7 +45,9 @@ class VidRec_Brio():
         self.recording = False
         self.streaming = False
         self.device_index = camindex
-        self.fps = fps                  # fps should be the minimum constant rate at which the camera can
+        self.fps = (
+            fps  # fps should be the minimum constant rate at which the camera can
+        )
         # capture images (with no decrease in speed over time; testing is required)
         self.fourcc = fourcc
         # scale_percent = 50
@@ -54,39 +58,42 @@ class VidRec_Brio():
         print(f"Frame size : {self.frameSize}")
         self.video_cap = dshowcapture.DShowCapture()
         self.mode = mode
-        self.device_name = self.video_cap.get_info()[self.device_index]['name']
+        self.device_name = self.video_cap.get_info()[self.device_index]["name"]
         self.capture_cap()
 
         if doPreview:
             self.preview_fps = 10
             self.preview_outlet_id = str(uuid.uuid4())
             self.info_stream = StreamInfo(
-                'Webcam',
-                'Experiment',
+                "Webcam",
+                "Experiment",
                 320 * 240,
                 self.preview_fps,
-                'int32',
-                self.preview_outlet_id)
+                "int32",
+                self.preview_outlet_id,
+            )
             self.outlet_preview = StreamOutlet(self.info_stream)
             print(f"-OUTLETID-:Webcam:{self.preview_outlet_id}")
             self.preview_start()
             self.preview_relFps = round(fps / self.preview_fps)
 
     def capture_cap(self):
-        self.video_cap.capture_device_by_dcap(self.device_index, self.mode,
-                                              self.frameSize[0], self.frameSize[1], self.fps)
+        self.video_cap.capture_device_by_dcap(
+            self.device_index, self.mode, self.frameSize[0], self.frameSize[1], self.fps
+        )
         print(f"Brio {self.device_index} capture started")
 
     @catch_exception
     def createOutlet(self, filename):
-        streamName = f'BrioFrameIndex_{self.device_index}'
+        streamName = f"BrioFrameIndex_{self.device_index}"
         self.oulet_id = str(uuid.uuid4())
         info = StreamInfo(
             name=streamName,
-            type='videostream',
-            channel_format='int32',
+            type="videostream",
+            channel_format="int32",
             channel_count=1,
-            source_id=self.oulet_id)
+            source_id=self.oulet_id,
+        )
         info.desc().append_child_value("videoFile", filename)
 
         info.desc().append_child_value("size_rgb", str(self.frameSize))
@@ -107,7 +114,9 @@ class VidRec_Brio():
                 try:
                     self.outlet_preview.push_sample(frame.flatten())
                 except BaseException:  # "OSError" from C++
-                    print("Reopening Brio {self.device_index} preview stream already closed")
+                    print(
+                        "Reopening Brio {self.device_index} preview stream already closed"
+                    )
                     self.outlet_preview = StreamOutlet(self.info_stream)
                     self.outlet_preview.push_sample(frame.flatten())
 
@@ -116,7 +125,8 @@ class VidRec_Brio():
                 break
 
             time.sleep(1 / self.preview_fps)
-#        self.outlet.__del__()
+
+    #        self.outlet.__del__()
 
     @catch_exception
     def frame_preview(self, frame):
@@ -145,7 +155,9 @@ class VidRec_Brio():
     @catch_exception
     def prepare(self, name="temp_video"):
         self.video_filename = "{}_brio{}.avi".format(name, self.device_index)
-        self.video_out = cv2.VideoWriter(self.video_filename, self.fourcc, self.fps, self.frameSize)
+        self.video_out = cv2.VideoWriter(
+            self.video_filename, self.fourcc, self.fps, self.frameSize
+        )
         self.outlet = self.createOutlet(self.video_filename)
         self.streaming = True
 
@@ -175,20 +187,24 @@ class VidRec_Brio():
                             self.outlet_preview.push_sample(frame.flatten())
                         except BaseException:  # "OSError" from C++
                             print(
-                                f"Reopening brio {self.device_index} preview stream already closed")
+                                f"Reopening brio {self.device_index} preview stream already closed"
+                            )
                             self.outlet_preview = StreamOutlet(self.info_stream)
                             self.outlet_preview.push_sample(frame.flatten())
 
-        print(f"Brio {self.device_index} recording ended with {self.frame_counter} frames")
+        print(
+            f"Brio {self.device_index} recording ended with {self.frame_counter} frames"
+        )
         self.video_out.release()
-#        self.outlet.__del__()
+
+    #        self.outlet.__del__()
 
     @catch_exception
     def stop(self):
         if self.open and self.recording:
             self.recording = False
             self.preview_start()
-#            self.outlet.__del__()
+        #            self.outlet.__del__()
         self.streaming = False
 
     @catch_exception
@@ -198,12 +214,14 @@ class VidRec_Brio():
             time.sleep(1 / self.preview_fps)
 
         self.stop()
-        time.sleep(.5)
+        time.sleep(0.5)
         if self.video_cap.cap:
             self.video_cap.stop_capture()
         self.video_cap.destroy_capture()
         self.open = False
         print(f"Brio cam {self.device_index} capture closed")
+
+
 #        if self.doPreview:
 #            self.outlet_preview.__del__()
 

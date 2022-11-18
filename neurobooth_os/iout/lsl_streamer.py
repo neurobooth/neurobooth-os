@@ -5,6 +5,7 @@ Created on Tue Nov 24 15:41:42 2020
 @author: adona
 """
 import time
+import logging
 
 from neurobooth_os import config
 from neurobooth_os.iout import metadator as meta
@@ -13,24 +14,38 @@ from mbientlab.warble import BleScanner
 from time import sleep
 
 
+def setup_log(name, node_name: str = None):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    if not node_name:
+        log_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        #filename = f"./{name}.log"
+        #log_handler = logging.FileHandler(filename)
+        #log_handler.setLevel(logging.DEBUG)
+        #log_handler.setFormatter(log_format)
+        #logger.addHandler(log_handler)
+    return logger
+
+
+logger = setup_log(__name__)
 
 
 def scann_BLE(sleep_period=10):
     print("scanning for devices...")
     devices = {}
+
     def handler(result):
         devices[result.mac] = result.name
-    
+
     BleScanner.set_handler(handler)
     BleScanner.start()
-    
+
     sleep(sleep_period)
     BleScanner.stop()
-        
-    
-    
+
+
 def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
-    """ Initiate devices and LSL streams based on databased parameters.
+    """Initiate devices and LSL streams based on databased parameters.
 
     Parameters
     ----------
@@ -59,7 +74,7 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
     kwarg_alldevs = {}
     for dc in kwarg_devs.values():
         kwarg_alldevs.update(dc)
-        
+
     scann_BLE()
 
     streams = {}
@@ -68,13 +83,13 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
         from neurobooth_os.iout.camera_intel import VidRec_Intel
         from neurobooth_os.iout.flir_cam import VidRec_Flir
         from neurobooth_os.iout.iphone import IPhone
-        
+
         for kdev, argsdev in kwarg_alldevs.items():
             if "Intel" in kdev:
                 streams[kdev] = VidRec_Intel(**argsdev)
             elif "Mbient" in kdev:
                 # Don't connect mbients from STM
-                if any([d in kdev for d in ["Mbient_LF", "Mbient_RF"]]):                    
+                if any([d in kdev for d in ["Mbient_LF", "Mbient_RF"]]):
                     continue
                 streams[kdev] = connect_mbient(**argsdev)
                 if streams[kdev] is None:
@@ -82,13 +97,16 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
                 else:
                     streams[kdev].start()
             elif "FLIR" in kdev:
-                streams[kdev] = VidRec_Flir(**argsdev)
+                try:
+                    streams[kdev] = VidRec_Flir(**argsdev)
+                except:
+                    logger.error(f"FLIR not connected")
             elif "Mic_Yeti" in kdev:
                 streams[kdev] = MicStream(**argsdev)
                 streams[kdev].start()
-            elif "IPhone"in kdev:
+            elif "IPhone" in kdev:
                 success = False
-                streams[kdev] = IPhone(name='IPhoneFrameIndex', **argsdev)
+                streams[kdev] = IPhone(name="IPhoneFrameIndex", **argsdev)
                 success = streams[kdev].prepare()
                 if not success and streams.get(kdev) is not None:
                     del streams[kdev]
@@ -98,48 +116,48 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
         from neurobooth_os.iout.mouse_tracker import MouseStream
         from neurobooth_os.iout.eyelink_tracker import EyeTracker
 
-        streams['marker'] = marker_stream()
+        streams["marker"] = marker_stream()
 
         for kdev, argsdev in kwarg_alldevs.items():
-            if 'Eyelink' in kdev:
-                streams['Eyelink'] = EyeTracker(win=win, **argsdev)
-            elif 'Mouse' in kdev:
-                streams['mouse'] = MouseStream(**argsdev)
-                streams['mouse'].start()
-            
+            if "Eyelink" in kdev:
+                streams["Eyelink"] = EyeTracker(win=win, **argsdev)
+            elif "Mouse" in kdev:
+                streams["mouse"] = MouseStream(**argsdev)
+                streams["mouse"].start()
+
             elif any([d in kdev for d in ["Mbient_LF", "Mbient_RF"]]):
                 streams[kdev] = connect_mbient(**argsdev)
                 if streams[kdev] is None:
                     del streams[kdev]
                 else:
                     streams[kdev].start()
-                    
 
-    elif node_name == "dummy_acq": 
+    elif node_name == "dummy_acq":
         from neurobooth_os.mock import mock_device_streamer as mock_dev
         from neurobooth_os.iout.iphone import IPhone
-        
+
         for kdev, argsdev in kwarg_alldevs.items():
             if "Intel" in kdev:
                 streams[kdev] = mock_dev.MockCamera(**argsdev)
             elif "Mbient" in kdev:
                 streams[kdev] = mock_dev.MockMbient(**argsdev)
                 streams[kdev].start()
-            elif "IPhone"in kdev:
+            elif "IPhone" in kdev:
                 success = False
-                streams[kdev] = IPhone(name='IPhoneFrameIndex', **argsdev)
+                streams[kdev] = IPhone(name="IPhoneFrameIndex", **argsdev)
                 success = streams[kdev].prepare()
                 if not success and streams.get(kdev) is not None:
                     del streams[kdev]
 
     elif node_name == "dummy_stm":
         from neurobooth_os.iout import marker_stream
-        streams['marker'] = marker_stream()
+
+        streams["marker"] = marker_stream()
 
     return streams
 
 
-def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=5, **kwarg):
+def connect_mbient(dev_name="LH", mac="CE:F3:BD:BD:04:8F", try_nmax=5, **kwarg):
     from neurobooth_os.iout.mbient import Sensor, reset_mbient
 
     tinx = 0
@@ -149,10 +167,12 @@ def connect_mbient(dev_name="LH", mac='CE:F3:BD:BD:04:8F', try_nmax=5, **kwarg):
             sens = Sensor(mac, dev_name, **kwarg)
             return sens
         except Exception as e:
-            print(f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries {e}")
-            tinx += 1            
+            print(
+                f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries {e}"
+            )
+            tinx += 1
             if tinx >= try_nmax:
-                try: 
+                try:
                     reset_mbient(mac, dev_name)
                     sens = Sensor(mac, dev_name, **kwarg)
                     return sens
