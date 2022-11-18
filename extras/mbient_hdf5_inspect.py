@@ -10,14 +10,18 @@ from h5io import read_hdf5
 import os.path as op
 import numpy as np
 
-session = '100089_2022-06-01'
-session = '100064_2022-06-03'
+session = "100089_2022-06-01"
+session = "100064_2022-06-03"
 files = glob.glob(f"Z:/data/{session}/{session}*Mbient*.hdf5")
 
 for fl in files:
     data = read_hdf5(fl)
-    
-    fps = data['device_data']['time_stamps']
-    
+
+    fps = data["device_data"]["time_stamps"]
+
     _, name = op.split(fl)
-    print(name.replace(session, '').replace("-mbient_acc_1-mbient_gyro_1.hdf5", ""), len(fps), 1/np.mean(np.diff(fps)))
+    print(
+        name.replace(session, "").replace("-mbient_acc_1-mbient_gyro_1.hdf5", ""),
+        len(fps),
+        1 / np.mean(np.diff(fps)),
+    )

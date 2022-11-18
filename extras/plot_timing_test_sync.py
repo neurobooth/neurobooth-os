@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from optparse import OptionParser
 
-
 def _get_target_traces(mdata):
     ts_ix = []
     x_coord = []

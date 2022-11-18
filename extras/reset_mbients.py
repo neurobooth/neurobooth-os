@@ -9,24 +9,25 @@ from mbientlab.metawear import MetaWear, libmetawear
 from time import sleep
 from neurobooth_os.iout.lsl_streamer import scann_BLE
 
+
 def connect(device):
-    
+
     try:
         device.connect()
     except:
         sleep(3)
         try:
-            print('trying again...')
+            print("trying again...")
             device.connect()
         except:
             return False
     return True
-    
-    
+
+
 def reset_dev(MAC):
     device = MetaWear(MAC)
     success = connect(device)
-    if not success:        
+    if not success:
         return False
 
     libmetawear.mbl_mw_logging_stop(device.board)
@@ -55,16 +56,16 @@ def reset_dev(MAC):
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     macs = {
-        'Mbient_LH_2': 'E8:95:D6:F7:39:D2',
-        'Mbient_RH_2': 'FE:07:3E:37:F5:9C',
-        'Mbient_RF_2': 'E5:F6:FB:6D:11:8A',
-        'Mbient_LF_2': 'DA:B0:96:E4:7F:A3',
-        'Mbient_BK_1': 'D7:B0:7E:C2:A1:23'
-        }
-    
-    print('resetting mbients (will take ~ 1 min)...')
+        "Mbient_LH_2": "E8:95:D6:F7:39:D2",
+        "Mbient_RH_2": "FE:07:3E:37:F5:9C",
+        "Mbient_RF_2": "E5:F6:FB:6D:11:8A",
+        "Mbient_LF_2": "DA:B0:96:E4:7F:A3",
+        "Mbient_BK_1": "D7:B0:7E:C2:A1:23",
+    }
+
+    print("resetting mbients (will take ~ 1 min)...")
     scann_BLE(2)
     for k, v in macs.items():
         success = reset_dev(v)
