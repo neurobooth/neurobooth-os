@@ -71,7 +71,6 @@ if __name__ == "__main__":
         success = reset_dev(v)
         if not success:
             print(f"Failed to connect {k} {v}")
-            sleep(3)
         else:
             print(f"Success in resetting {k} {v}")
-            sleep(3)
+    sleep(60)
