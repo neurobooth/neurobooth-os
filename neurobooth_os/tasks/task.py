@@ -228,8 +228,9 @@ class Task_countdown(Task):
         self.countdown_task()
 
         self.send_marker(self.marker_task_start, True)
-        self.win.flip()
+        utils.present(self.win, self.task_screen, waitKeys=False)
         utils.countdown(duration + 2)
+        self.win.flip()
         self.send_marker(self.marker_task_end, True)
 
         if prompt:
