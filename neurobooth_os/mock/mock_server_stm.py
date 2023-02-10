@@ -42,10 +42,11 @@ def mock_stm_routine(host, port, conn):
     for data, connx in get_client_messages(s1, port=port, host=host):
 
         if "prepare" in data:
-            # data = "prepare:collection_id:str(log_task_dict)"
+            # data = "prepare:collection_id:database:str(log_task_dict)"
 
             collection_id = data.split(":")[1]
-            log_task = eval(data.replace(f"prepare:{collection_id}:", ""))
+            database_name = data.split(":")[2]
+            log_task = eval(data.replace(f"prepare:{collection_id}:{database_name}:", ""))
             subject_id_date = log_task["subject_id-date"]
 
             ses_folder = os.path.join(config.paths["data_out"], subject_id_date)
