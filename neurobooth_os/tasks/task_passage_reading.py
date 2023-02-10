@@ -32,3 +32,8 @@ class Passage_Reading(Task):
                 func=self.present_task,
                 waitKeys=False,
             )
+
+if __name__ == "__main__":
+
+    task = Passage_Reading()
+    task.run(prompt=True, duration=10)
