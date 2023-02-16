@@ -24,7 +24,7 @@ def catch_exception(f):
         # try:
         return f(*args, **kwargs)
         # except Exception as e:
-        # print('Caught an exception in function "{}" of type {}'.format(f.__name__, e))
+        # print('Caught an exception in function "{}" of type {}'.format(f.__name__, e), flush=True)
 
     return func
 
@@ -108,7 +108,7 @@ class VidRec_Intel:
         info.desc().append_child_value("serial_number", settings.serial_num)
         info.desc().append_child_value("fps_rgb", str(settings.fps_rgb))
         info.desc().append_child_value("fps_depth", str(settings.size_depth))
-        print(f"-OUTLETID-:{settings.stream_name}:{settings.outlet_id}")
+        print(f"-OUTLETID-:{settings.stream_name}:{settings.outlet_id}", flush=True)
         return StreamOutlet(info)
 
     @staticmethod
@@ -136,7 +136,7 @@ class VidRec_Intel:
 
         video_filename = "{}_intel{}.bag".format(name, settings.device_index)
         config.enable_record_to_file(video_filename)
-        print(f"-new_filename-:{settings.stream_name}:{op.split(video_filename)[-1]}")
+        print(f"-new_filename-:{settings.stream_name}:{op.split(video_filename)[-1]}", flush=True)
 
         return config
 
@@ -167,14 +167,14 @@ class VidRec_Intel:
             try:
                 outlet.push_sample([frame_counter, frame_num, timestamp, time()])
             except BaseException:
-                print("Reopening intel stream already closed")
+                print("Reopening intel stream already closed", flush=True)
                 outlet = VidRec_Intel.create_outlet(config_settings)
                 outlet.push_sample([frame_counter, frame_num, timestamp, time()])
 
             frame_counter += 1
 
         pipeline.stop()
-        # print(f"Intel recording ended, total frames captured: {frame_num}, pushed lsl indexes: {frame_counter}")
+        # print(f"Intel recording ended, total frames captured: {frame_num}, pushed lsl indexes: {frame_counter}", flush=True')
 
     @catch_exception
     def stop(self, wait: bool = False):
