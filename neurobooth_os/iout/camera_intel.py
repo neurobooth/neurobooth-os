@@ -71,6 +71,10 @@ class VidRec_Intel:
         self.record_event = mp.Event()
         self.video_process: Optional[mp.Process] = None
 
+        # Make the LSL outlet during startup just to be sure that it is registered by the GUI.
+        # We will create another one in the subprocess since it cannot be pickled
+        self.outlet = VidRec_Intel.createOutlet(self.config_settings)
+
     @catch_exception
     def start(self, name="temp_video"):
         self.video_process = mp.get_context('spawn').Process(
