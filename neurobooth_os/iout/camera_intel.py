@@ -51,7 +51,6 @@ class VidRec_Intel:
 
         self.config = rs.config()
         self.config.enable_device(self.serial_num)
-        self.pipeline = rs.pipeline()
 
         self.config.enable_stream(
             rs.stream.color,
@@ -80,7 +79,6 @@ class VidRec_Intel:
             target=VidRec_Intel.record,
             args=(
                 self.record_event,
-                self.pipeline,
                 self.config,
                 self.outlet,
             )
@@ -118,13 +116,14 @@ class VidRec_Intel:
 
     @staticmethod
     @catch_exception
-    def record(record_event: mp.Event, pipeline: rs.pipeline, config: rs.config, outlet: StreamOutlet) -> None:
+    def record(record_event: mp.Event, config: rs.config, outlet: StreamOutlet) -> None:
         """
         Record frames from an Intel RealSense camera until the recording event is cleared.
         All variables explicitly provided and not referenced through class object to prevent multiprocessing headaches.
         A separate process is used so that freezes do not cause other streams to stop and buffer.
         """
         frame_counter = 1
+        pipeline = rs.pipeline()
         pipeline.start(config)
 
         # Avoid autoexposure frame drops
