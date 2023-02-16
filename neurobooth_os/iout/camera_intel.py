@@ -10,7 +10,7 @@ import multiprocessing as mp
 import uuid
 import functools
 import warnings
-from typing import NamedTuple, Tuple
+from typing import NamedTuple, Tuple, List, Optional
 
 import pyrealsense2 as rs
 from pylsl import StreamInfo, StreamOutlet
@@ -30,15 +30,18 @@ def catch_exception(f):
 
 
 class ConfigSettings(NamedTuple):
-    """All the settings needed for an intel camera config object.
-    Since the realsense objects can't be pickled, we pass this to the subprocess instead.
+    """All the settings needed for an intel camera config object and LSL outlet.
+    Since the realsense and LSL objects can't be pickled, we pass this to the subprocess instead.
     """
     serial_num: str
     size_rgb: Tuple[int, int]
     fps_rgb: int
     size_depth: Tuple[int, int]
     fps_depth: int
-    video_file_name: str
+    device_index: int
+    device_id: str
+    sensor_ids: List[str]
+    stream_name: str
 
 
 class VidRec_Intel:
@@ -52,72 +55,60 @@ class VidRec_Intel:
         fps_depth=60,
         camindex=[3, "SerialNumber"],
     ):
+        device_index, serial_num = camindex
+        self.config_settings = ConfigSettings(
+            serial_num=serial_num,
+            size_rgb=size_rgb,
+            fps_rgb=fps_rgb,
+            size_depth=size_depth,
+            fps_depth=fps_depth,
+            device_index=device_index,
+            device_id=device_id,
+            sensor_ids=sensor_ids,
+            stream_name=f"IntelFrameIndex_cam{device_index}"
+        )
 
-        self.open = True
         self.record_event = mp.Event()
-        self.device_index = camindex[0]
-        self.serial_num = camindex[1]
-        self.fps = (fps_rgb, fps_depth)
-        self.frameSize = (size_rgb, size_depth)
-        self.device_id = device_id
-        self.sensor_ids = sensor_ids
-
-        self.outlet = self.createOutlet()
+        self.video_process: Optional[mp.Process] = None
 
     @catch_exception
     def start(self, name="temp_video"):
-        self.prepare(name)
-        config_settings = ConfigSettings(
-            serial_num=self.serial_num,
-            size_rgb=self.frameSize[0],
-            fps_rgb=self.fps[0],
-            size_depth=self.frameSize[1],
-            fps_depth=self.fps[1],
-            video_file_name=self.video_filename,
-        )
-        
-        self.record_event.set()
         self.video_process = mp.get_context('spawn').Process(
             target=VidRec_Intel.record,
             args=(
                 self.record_event,
-                config_settings,
-                self.outlet,
+                self.config_settings,
+                name,
             )
         )
+        self.record_event.set()
         self.video_process.start()
 
     @catch_exception
-    def prepare(self, name):
-        self.name = name
-        self.video_filename = "{}_intel{}.bag".format(name, self.device_index)
-        print(f"-new_filename-:{self.streamName}:{op.split(self.video_filename)[-1]}")
-
-    @catch_exception
-    def createOutlet(self):
-        self.streamName = f"IntelFrameIndex_cam{self.device_index}"
-        self.outlet_id = str(uuid.uuid4())
+    @staticmethod
+    def createOutlet(settings: ConfigSettings) -> StreamOutlet:
+        outlet_id = str(uuid.uuid4())
         info = StreamInfo(
-            name=self.streamName,
+            name=settings.stream_name,
             type="videostream",
             channel_format="double64",
             channel_count=4,
-            source_id=self.outlet_id,
+            source_id=outlet_id,
         )
 
-        info.desc().append_child_value("device_id", self.device_id)
-        info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
-        info.desc().append_child_value("size_rgb", str(self.frameSize[0]))
-        info.desc().append_child_value("size_depth", str(self.frameSize[1]))
-        info.desc().append_child_value("serial_number", self.serial_num)
-        info.desc().append_child_value("fps_rgb", str(self.fps[0]))
-        info.desc().append_child_value("fps_depth", str(self.fps[1]))
-        print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
+        info.desc().append_child_value("device_id", settings.device_id)
+        info.desc().append_child_value("sensor_ids", str(settings.sensor_ids))
+        info.desc().append_child_value("size_rgb", str(settings.size_rgb))
+        info.desc().append_child_value("size_depth", str(settings.size_depth))
+        info.desc().append_child_value("serial_number", settings.serial_num)
+        info.desc().append_child_value("fps_rgb", settings.fps_rgb)
+        info.desc().append_child_value("fps_depth", settings.size_depth)
+        print(f"-OUTLETID-:{settings.stream_name}:{outlet_id}")
         return StreamOutlet(info)
 
     @staticmethod
     @catch_exception
-    def config_realsense(settings: ConfigSettings) -> rs.config:
+    def config_realsense(settings: ConfigSettings, name: str) -> rs.config:
         config = rs.config()
         config.enable_device(settings.serial_num)
 
@@ -138,31 +129,42 @@ class VidRec_Intel:
                 settings.fps_depth,
             )
 
-        config.enable_record_to_file(settings.video_file_name)
+        video_filename = "{}_intel{}.bag".format(name, settings.device_index)
+        config.enable_record_to_file(video_filename)
+        print(f"-new_filename-:{settings.stream_name}:{op.split(video_filename)[-1]}")
+
         return config
 
     @staticmethod
     @catch_exception
-    def record(record_event: mp.Event, config_settings: ConfigSettings, outlet: StreamOutlet) -> None:
+    def record(record_event: mp.Event, config_settings: ConfigSettings, name: str) -> None:
         """
         Record frames from an Intel RealSense camera until the recording event is cleared.
         All variables explicitly provided and not referenced through class object to prevent multiprocessing headaches.
         A separate process is used so that freezes do not cause other streams to stop and buffer.
         """
-        frame_counter = 1
+        outlet = VidRec_Intel.createOutlet(config_settings)
+
         pipeline = rs.pipeline()
-        pipeline.start(VidRec_Intel.config_realsense(config_settings))
+        pipeline.start(VidRec_Intel.config_realsense(config_settings, name))
 
         # Avoid autoexposure frame drops
         dev = pipeline.get_active_profile().get_device()
         sens = dev.first_color_sensor()
         sens.set_option(rs.option.auto_exposure_priority, 0.0)
 
+        frame_counter = 1
         while record_event.is_set():
             frame = pipeline.wait_for_frames(timeout_ms=1000)
             frame_num = frame.get_frame_number()
             timestamp = frame.get_timestamp()
-            outlet.push_sample([frame_counter, frame_num, timestamp, time()])
+
+            try:
+                outlet.push_sample([frame_counter, frame_num, timestamp, time()])
+            except BaseException:
+                print("Reopening intel stream already closed")
+                outlet = VidRec_Intel.createOutlet(config_settings)
+                outlet.push_sample([frame_counter, frame_num, timestamp, time()])
 
             frame_counter += 1
 
@@ -172,10 +174,10 @@ class VidRec_Intel:
     @catch_exception
     def stop(self, wait: bool = False):
         self.record_event.clear()
-        if wait:
+        if wait and self.video_process is not None:
             self.video_process.join()
+            self.video_process = None
 
     @catch_exception
     def close(self):
         self.stop()
-        self.config = []
