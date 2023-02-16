@@ -42,6 +42,7 @@ class ConfigSettings(NamedTuple):
     device_id: str
     sensor_ids: List[str]
     stream_name: str
+    outlet_id: str
 
 
 class VidRec_Intel:
@@ -65,7 +66,8 @@ class VidRec_Intel:
             device_index=device_index,
             device_id=device_id,
             sensor_ids=sensor_ids,
-            stream_name=f"IntelFrameIndex_cam{device_index}"
+            stream_name=f"IntelFrameIndex_cam{device_index}",
+            outlet_id=str(uuid.uuid4()),
         )
 
         self.record_event = mp.Event()
@@ -91,13 +93,12 @@ class VidRec_Intel:
     @catch_exception
     @staticmethod
     def createOutlet(settings: ConfigSettings) -> StreamOutlet:
-        outlet_id = str(uuid.uuid4())
         info = StreamInfo(
             name=settings.stream_name,
             type="videostream",
             channel_format="double64",
             channel_count=4,
-            source_id=outlet_id,
+            source_id=settings.outlet_id,
         )
 
         info.desc().append_child_value("device_id", settings.device_id)
@@ -107,7 +108,7 @@ class VidRec_Intel:
         info.desc().append_child_value("serial_number", settings.serial_num)
         info.desc().append_child_value("fps_rgb", settings.fps_rgb)
         info.desc().append_child_value("fps_depth", settings.size_depth)
-        print(f"-OUTLETID-:{settings.stream_name}:{outlet_id}")
+        print(f"-OUTLETID-:{settings.stream_name}:{settings.outlet_id}")
         return StreamOutlet(info)
 
     @staticmethod
