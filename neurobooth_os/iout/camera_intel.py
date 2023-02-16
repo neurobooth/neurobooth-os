@@ -75,7 +75,7 @@ class VidRec_Intel:
 
         # Make the LSL outlet during startup just to be sure that it is registered by the GUI.
         # We will create another one in the subprocess since it cannot be pickled
-        self.outlet = VidRec_Intel.createOutlet(self.config_settings)
+        self.outlet = VidRec_Intel.create_outlet(self.config_settings)
 
     @catch_exception
     def start(self, name="temp_video"):
@@ -90,9 +90,9 @@ class VidRec_Intel:
         self.record_event.set()
         self.video_process.start()
 
-    @catch_exception
     @staticmethod
-    def createOutlet(settings: ConfigSettings) -> StreamOutlet:
+    @catch_exception
+    def create_outlet(settings: ConfigSettings) -> StreamOutlet:
         info = StreamInfo(
             name=settings.stream_name,
             type="videostream",
@@ -106,8 +106,8 @@ class VidRec_Intel:
         info.desc().append_child_value("size_rgb", str(settings.size_rgb))
         info.desc().append_child_value("size_depth", str(settings.size_depth))
         info.desc().append_child_value("serial_number", settings.serial_num)
-        info.desc().append_child_value("fps_rgb", settings.fps_rgb)
-        info.desc().append_child_value("fps_depth", settings.size_depth)
+        info.desc().append_child_value("fps_rgb", str(settings.fps_rgb))
+        info.desc().append_child_value("fps_depth", str(settings.size_depth))
         print(f"-OUTLETID-:{settings.stream_name}:{settings.outlet_id}")
         return StreamOutlet(info)
 
@@ -148,7 +148,7 @@ class VidRec_Intel:
         All variables explicitly provided and not referenced through class object to prevent multiprocessing headaches.
         A separate process is used so that freezes do not cause other streams to stop and buffer.
         """
-        outlet = VidRec_Intel.createOutlet(config_settings)
+        outlet = VidRec_Intel.create_outlet(config_settings)
 
         pipeline = rs.pipeline()
         pipeline.start(VidRec_Intel.config_realsense(config_settings, name))
@@ -168,7 +168,7 @@ class VidRec_Intel:
                 outlet.push_sample([frame_counter, frame_num, timestamp, time()])
             except BaseException:
                 print("Reopening intel stream already closed")
-                outlet = VidRec_Intel.createOutlet(config_settings)
+                outlet = VidRec_Intel.create_outlet(config_settings)
                 outlet.push_sample([frame_counter, frame_num, timestamp, time()])
 
             frame_counter += 1
