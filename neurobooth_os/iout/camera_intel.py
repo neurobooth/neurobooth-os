@@ -5,6 +5,7 @@ Created on Mon Mar 29 10:46:13 2021
 @author: adonay
 """
 import os.path as op
+import sys
 from time import time
 import multiprocessing as mp
 import uuid
@@ -14,6 +15,8 @@ from typing import NamedTuple, Tuple, List, Optional
 
 import pyrealsense2 as rs
 from pylsl import StreamInfo, StreamOutlet
+
+from neurobooth_os.netcomm import NewStdout
 
 warnings.filterwarnings("ignore")
 
@@ -85,6 +88,7 @@ class VidRec_Intel:
                 self.record_event,
                 self.config_settings,
                 name,
+                sys.stdout,
             )
         )
         self.record_event.set()
@@ -142,12 +146,14 @@ class VidRec_Intel:
 
     @staticmethod
     @catch_exception
-    def record(record_event: mp.Event, config_settings: ConfigSettings, name: str) -> None:
+    def record(record_event: mp.Event, config_settings: ConfigSettings, name: str, stdout: NewStdout) -> None:
         """
         Record frames from an Intel RealSense camera until the recording event is cleared.
         All variables explicitly provided and not referenced through class object to prevent multiprocessing headaches.
         A separate process is used so that freezes do not cause other streams to stop and buffer.
         """
+        sys.stdout = stdout
+
         outlet = VidRec_Intel.create_outlet(config_settings)
 
         pipeline = rs.pipeline()
@@ -174,7 +180,7 @@ class VidRec_Intel:
             frame_counter += 1
 
         pipeline.stop()
-        # print(f"Intel recording ended, total frames captured: {frame_num}, pushed lsl indexes: {frame_counter}", flush=True')
+        # print(f"Intel recording ended, total frames captured: {frame_num}, pushed lsl indexes: {frame_counter}", flush=True)
 
     @catch_exception
     def stop(self, wait: bool = False):
