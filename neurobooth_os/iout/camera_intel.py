@@ -5,14 +5,12 @@ Created on Mon Mar 29 10:46:13 2021
 @author: adonay
 """
 import os.path as op
-from time import sleep as tsleep
 from time import time
-import threading
+import multiprocessing as mp
 import uuid
 import functools
 import warnings
 
-from pylsl import local_clock
 import pyrealsense2 as rs
 from pylsl import StreamInfo, StreamOutlet
 
@@ -43,7 +41,7 @@ class VidRec_Intel:
     ):
 
         self.open = True
-        self.recording = False
+        self.record_event = mp.Event()
         self.device_index = camindex[0]
         self.serial_num = camindex[1]
         self.fps = (fps_rgb, fps_depth)
@@ -77,8 +75,17 @@ class VidRec_Intel:
     @catch_exception
     def start(self, name="temp_video"):
         self.prepare(name)
-        self.video_thread = threading.Thread(target=self.record)
-        self.video_thread.start()
+        self.record_event.set()
+        self.video_process = mp.get_context('spawn').Process(
+            target=VidRec_Intel.record,
+            args=(
+                self.record_event,
+                self.pipeline,
+                self.config,
+                self.outlet,
+            )
+        )
+        self.video_process.start()
 
     @catch_exception
     def prepare(self, name):
@@ -109,59 +116,40 @@ class VidRec_Intel:
         print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
         return StreamOutlet(info)
 
+    @staticmethod
     @catch_exception
-    def record(self):
-        self.recording = True
-        self.frame_counter = 1
-        self.pipeline.start(self.config)
+    def record(record_event: mp.Event, pipeline: rs.pipeline, config: rs.config, outlet: StreamOutlet) -> None:
+        """
+        Record frames from an Intel RealSense camera until the recording event is cleared.
+        All variables explicitly provided and not referenced through class object to prevent multiprocessing headaches.
+        A separate process is used so that freezes do not cause other streams to stop and buffer.
+        """
+        frame_counter = 1
+        pipeline.start(config)
 
         # Avoid autoexposure frame drops
-        dev = self.pipeline.get_active_profile().get_device()
+        dev = pipeline.get_active_profile().get_device()
         sens = dev.first_color_sensor()
         sens.set_option(rs.option.auto_exposure_priority, 0.0)
 
-        self.toffset = time() - local_clock()
+        while record_event.is_set():
+            frame = pipeline.wait_for_frames(timeout_ms=1000)
+            frame_num = frame.get_frame_number()
+            timestamp = frame.get_timestamp()
+            outlet.push_sample([frame_counter, frame_num, timestamp, time()])
 
-        while self.recording:
-            frame = self.pipeline.wait_for_frames(timeout_ms=1000)
-            # frame = self.pipeline.poll_for_frames()
-            # if not frame:
-            #     continue
-            # else:
-            #     print(f" frame {self.frame_counter} in intel {self.device_index}")
-            self.n = frame.get_frame_number()
-            # self.ftsmp = frame.get_timestamp()
-            # self.tsmp = (self.ftsmp - self.toffset)*1e-3
-            self.tsmp = frame.get_timestamp()
-            try:
-                # self.outlet.push_sample([self.frame_counter, self.n], timestamp= self.tsmp)
-                self.outlet.push_sample([self.frame_counter, self.n, self.tsmp, time()])
-            except BaseException:
-                print("Reopening intel stream already closed")
-                self.outlet = self.createOutlet(self.name)
-                self.outlet.push_sample([self.frame_counter, self.n, self.tsmp, time()])
+            frame_counter += 1
 
-            self.frame_counter += 1
-            # countdown(1/(4*self.fps[0]))
-
-        self.pipeline.stop()
-        # print(f"Intel {self.device_index} recording ended, total frames captured: {self.n}, pushed lsl indexes: {self.frame_counter}")
+        pipeline.stop()
+        # print(f"Intel recording ended, total frames captured: {frame_num}, pushed lsl indexes: {frame_counter}")
 
     @catch_exception
-    def stop(self):
-        if self.recording:
-            self.recording = False
+    def stop(self, wait: bool = False):
+        self.record_event.clear()
+        if wait:
+            self.video_process.join()
 
     @catch_exception
     def close(self):
-        self.previewing = False
         self.stop()
         self.config = []
-
-
-def countdown(period):
-    t1 = local_clock()
-    t2 = t1
-
-    while t2 - t1 < period:
-        t2 = local_clock()
