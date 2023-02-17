@@ -88,7 +88,6 @@ class VidRec_Intel:
                 self.record_event,
                 self.config_settings,
                 name,
-                sys.stdout,
             )
         )
         self.record_event.set()
@@ -146,14 +145,12 @@ class VidRec_Intel:
 
     @staticmethod
     @catch_exception
-    def record(record_event: mp.Event, config_settings: ConfigSettings, name: str, stdout: NewStdout) -> None:
+    def record(record_event: mp.Event, config_settings: ConfigSettings, name: str) -> None:
         """
         Record frames from an Intel RealSense camera until the recording event is cleared.
         All variables explicitly provided and not referenced through class object to prevent multiprocessing headaches.
         A separate process is used so that freezes do not cause other streams to stop and buffer.
         """
-        sys.stdout = stdout
-
         outlet = VidRec_Intel.create_outlet(config_settings)
 
         pipeline = rs.pipeline()
