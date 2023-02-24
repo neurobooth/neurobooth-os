@@ -39,14 +39,18 @@ def Main():
 
     sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
     if os.getenv("NB_FULLSCREEN") == "false":
         win = utl.make_win(full_screen=False)
     else:
         win = utl.make_win(full_screen=True)
 
+    # The following variables are global server state shared across successive messages
     streams, screen_running, presented = {}, False, False
 
+    # Infinite loop - process incoming messages
     for data, connx in get_client_messages(s1):
+        # print(f'Message received: {data}')
 
         if "scr_stream" in data:
             if not screen_running:

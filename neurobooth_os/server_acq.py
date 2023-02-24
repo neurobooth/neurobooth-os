@@ -4,6 +4,9 @@ import sys
 from typing import Dict, List, Any
 from time import time
 
+# This import SEEMS unused, but is used by the eval statement in prepare()
+from collections import OrderedDict
+
 import neurobooth_os
 from neurobooth_os import config
 from neurobooth_os.netcomm import NewStdout, get_client_messages
