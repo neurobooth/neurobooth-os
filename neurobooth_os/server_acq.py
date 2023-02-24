@@ -31,7 +31,7 @@ def Main():
 
     # Infinite loop - process incoming messages
     for data, connx in get_client_messages(s1):
-        # print(f'Message recieved: {data}')
+        # print(f'Message received: {data}')
 
         if "vis_stream" in data:
             low_feed.viz_stream()
@@ -103,6 +103,7 @@ class DeviceStreams:
             # print("Checking prepared devices")
             self.streams = reconnect_streams(self.streams)
         else:
+            # This will also start the Yeti and mBients
             self.streams = start_lsl_threads("acquisition", collection_id, conn=conn)
 
     def record_start_cameras(self, file_name: str, task: str) -> None:
@@ -138,10 +139,8 @@ def prepare(device_streams: DeviceStreams, message: str) -> str:
     # Parse message
     # format: "prepare:collection_id:database:str(log_task_dict)"
     # TODO: Standardize and move message logic; get rid of eval
-    collection_id = message.split(':')[1]
-    database_name = message.split(':')[2]
-    log_task = message.replace(f'prepare:{collection_id}:{database_name}:', '')
-    log_task = eval(log_task)
+    _, collection_id, database_name, *_ = message.split(':')
+    log_task = eval(message.replace(f'prepare:{collection_id}:{database_name}:', ''))
     subject_id_date = log_task['subject_id-date']
 
     # Create session folder
@@ -151,6 +150,7 @@ def prepare(device_streams: DeviceStreams, message: str) -> str:
 
     # Prepare device streams
     device_streams.prepare(collection_id, database_name)
+
     print("UPDATOR:-Connect-")
     return subject_id_date
 
@@ -176,7 +176,7 @@ def record_start(device_streams: DeviceStreams, subject_id_date: str, message: s
     # Parse message
     # format: "record_start::filename::task_id" FILENAME = {subj_id}_{obs_id}
     # TODO: Standardize and move message logic
-    file_name, task = message.split("::")[1:]
+    _, file_name, task = message.split("::")
     file_name = f"{config.paths['data_out']}{subject_id_date}/{file_name}"
 
     device_streams.record_start_cameras(file_name, task)
