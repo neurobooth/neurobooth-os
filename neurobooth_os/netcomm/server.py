@@ -188,8 +188,7 @@ def get_data_timeout(s1, timeout=0.1):
 
     Parameters
     ----------
-    s1 : callable
-        socket.socket instance
+    s1 : socket.socket instance
     timeout: float
         Time to wait for message
     """

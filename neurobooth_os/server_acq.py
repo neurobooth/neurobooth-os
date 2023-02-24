@@ -89,6 +89,8 @@ class LowFeed:
 
 
 class DeviceStreams:
+    # This class is very similar to the one in STM. Consider abstract base class. Downside: would make harder to follow.
+
     streams: Dict[str, Any]
     task_dev_kw: Dict[str, str]
 
