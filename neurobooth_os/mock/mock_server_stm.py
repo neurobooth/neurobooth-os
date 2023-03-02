@@ -14,11 +14,7 @@ from collections import OrderedDict
 from datetime import datetime
 
 from neurobooth_os import config
-from neurobooth_os.iout.lsl_streamer import (
-    start_lsl_threads,
-    close_streams,
-    reconnect_streams,
-)
+from neurobooth_os.iout.lsl_streamer import DeviceStreamManagerMockSTM
 from neurobooth_os.netcomm import socket_message, get_client_messages, get_data_timeout
 from neurobooth_os.tasks.task_importer import get_task_funcs
 from neurobooth_os.iout import metadator as meta
@@ -37,7 +33,7 @@ def mock_stm_routine(host, port, conn):
         connector to the database
     """
 
-    streams = {}
+    device_streams = DeviceStreamManagerMockSTM()
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     for data, connx in get_client_messages(s1, port=port, host=host):
 
@@ -56,13 +52,7 @@ def mock_stm_routine(host, port, conn):
             del log_task["subject_id-date"]
 
             task_func_dict = get_task_funcs(collection_id, conn)
-            task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
-
-            if len(streams):
-                print("Checking prepared devices")
-                streams = reconnect_streams(streams)
-            else:
-                streams = start_lsl_threads("dummy_stm", collection_id, conn=conn)
+            device_streams.prepare(collection_id, conn)
 
             print("UPDATOR:-Connect-")
 
@@ -75,7 +65,7 @@ def mock_stm_routine(host, port, conn):
             task_karg = {
                 "path": config.paths["data_out"],
                 "subj_id": subject_id_date,
-                "marker_outlet": streams["marker"],
+                "marker_outlet": device_streams.get_streams_by_name('marker')[0],
             }
 
             for task in tasks.split("-"):
@@ -150,7 +140,7 @@ def mock_stm_routine(host, port, conn):
                         print("While paused received another message")
 
         elif data in ["close", "shutdown"]:
-            streams = close_streams(streams)
+            device_streams.close()
             print("Closing devices")
 
             if "shutdown" in data:

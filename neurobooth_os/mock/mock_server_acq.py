@@ -14,11 +14,7 @@ import cv2
 import numpy as np
 
 from neurobooth_os import config
-from neurobooth_os.iout.lsl_streamer import (
-    start_lsl_threads,
-    close_streams,
-    reconnect_streams,
-)
+from neurobooth_os.iout.lsl_streamer import DeviceStreamManagerMockACQ
 from neurobooth_os.netcomm import (
     socket_message,
     node_info,
@@ -42,7 +38,7 @@ def mock_acq_routine(host, port, conn):
         Connector to the database
     """
 
-    streams = {}
+    device_streams = DeviceStreamManagerMockACQ()
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     recording = False
     for data, connx in get_client_messages(s1, port=port, host=host):
@@ -56,24 +52,17 @@ def mock_acq_routine(host, port, conn):
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
-            task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
-            if len(streams):
-                # print("Checking prepared devices")
-                streams = reconnect_streams(streams)
-            else:
-                streams = start_lsl_threads("dummy_acq", collection_id, conn=conn)
-
-            devs = list(streams.keys())
+            device_streams.prepare(collection_id, conn)
             print("UPDATOR:-Connect-")
 
         elif "frame_preview" in data and not recording:
-            if not any("IPhone" in s for s in streams):
-                msg = "ERROR: no iphone in LSL streams"
-                print(msg)
-                connx.send(msg.encode("utf-8"))
+            streams = device_streams.get_streams_by_name('IPhone')
+            if len(streams) == 0:
+                print("no iPhone")
+                connx.send("ERROR: No iPhone in LSL streams".encode("ascii"))
                 continue
 
-            frame = streams[[i for i in streams if "IPhone" in i][0]].frame_preview()
+            frame = streams[0].frame_preview()
             frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
             frame = frame_prefix + frame
             connx.send(frame)
@@ -84,26 +73,23 @@ def mock_acq_routine(host, port, conn):
             print("Starting recording")
             filename, task = data.split("::")[1:]
             fname = config.paths["data_out"] + filename
-            for k in streams.keys():
-                if any([i in k for i in ["hiFeed", "Intel", "FLIR", "IPhone"]]):
-                    if task_devs_kw[task].get(k):
-                        streams[k].start(fname)
+
+            device_streams.record_start_cameras(fname, task)
+
             msg = "ACQ_devices_ready"
             connx.send(msg.encode("ascii"))
             recording = True
 
         elif "record_stop" in data:
             print("Closing recording")
-            for k in streams.keys():
-                if any([i in k for i in ["hiFeed", "Intel", "FLIR", "IPhone"]]):
-                    streams[k].stop()
+            device_streams.record_stop_cameras(task)
             msg = "ACQ_devices_stoped"
             connx.send(msg.encode("ascii"))
             recording = False
 
         elif data in ["close", "shutdown"]:
             print("Closing devices")
-            streams = close_streams(streams)
+            device_streams.close()
 
             if "shutdown" in data:
                 print("Closing RTD cam")

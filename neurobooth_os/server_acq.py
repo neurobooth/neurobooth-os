@@ -1,7 +1,6 @@
 import socket
 import os
 import sys
-from typing import Dict, List, Any
 from time import time
 
 # This import SEEMS unused, but is used by the eval statement in prepare()
@@ -11,13 +10,8 @@ import neurobooth_os
 from neurobooth_os import config
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
-from neurobooth_os.iout.lsl_streamer import (
-    start_lsl_threads,
-    close_streams,
-    reconnect_streams,
-)
-import neurobooth_os.iout.metadator as meta
-
+from neurobooth_os.iout.lsl_streamer import DeviceStreamManagerACQ
+from neurobooth_os.iout import metadator as meta
 
 def Main():
     os.chdir(neurobooth_os.__path__[0])
@@ -26,7 +20,7 @@ def Main():
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     # The following variables are global server state shared across successive messages
-    device_streams = DeviceStreams()
+    device_streams = DeviceStreamManagerACQ()
     low_feed = LowFeed()
     recording = False
     subject_id_date = None
@@ -88,59 +82,7 @@ class LowFeed:
             print("Closing RTD cam")
 
 
-class DeviceStreams:
-    # This class is very similar to the one in STM. Consider abstract base class. Downside: would make harder to follow.
-
-    streams: Dict[str, Any]
-    task_dev_kw: Dict[str, str]
-
-    def __init__(self):
-        self.streams = {}
-        self.task_devs_kw = None
-
-    def get_streams_by_name(self, name: str) -> List[Any]:
-        return [stream for stream_name, stream in self.streams.items() if (name in stream_name)]
-
-    def prepare(self, collection_id: str, database_name: str) -> None:
-        conn = meta.get_conn(database=database_name)
-        self.task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
-        if len(self.streams):
-            # print("Checking prepared devices")
-            self.streams = reconnect_streams(self.streams)
-        else:
-            # This will also start the Yeti and mBients
-            self.streams = start_lsl_threads("acquisition", collection_id, conn=conn)
-
-    def record_start_cameras(self, file_name: str, task: str) -> None:
-        for name, stream in self.streams.items():
-            if name.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
-                if self.task_devs_kw[task].get(name):
-                    try:
-                        stream.start(file_name)
-                    except:
-                        continue
-
-    def record_start_mbients(self) -> None:
-        for name, stream in self.streams.items():
-            if "Mbient" in name:
-                try:
-                    if not stream.device.is_connected:
-                        stream.try_reconnect()
-                except Exception as e:
-                    print(e)
-                    pass
-
-    def record_stop_cameras(self, task: str) -> None:
-        for name, stream in self.streams.items():
-            if name.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
-                if self.task_devs_kw[task].get(name):
-                    stream.stop()
-
-    def close(self):
-        self.streams = close_streams(self.streams)
-
-
-def prepare(device_streams: DeviceStreams, message: str) -> str:
+def prepare(device_streams: DeviceStreamManagerACQ, message: str) -> str:
     # Parse message
     # format: "prepare:collection_id:database:str(log_task_dict)"
     # TODO: Standardize and move message logic; get rid of eval
@@ -154,27 +96,28 @@ def prepare(device_streams: DeviceStreams, message: str) -> str:
         os.mkdir(ses_folder)
 
     # Prepare device streams
-    device_streams.prepare(collection_id, database_name)
+    conn = meta.get_conn(database=database_name)
+    device_streams.prepare(collection_id, conn)
 
     print("UPDATOR:-Connect-")
     return subject_id_date
 
 
-def frame_preview(device_streams: DeviceStreams, connx) -> None:
-    steams = device_streams.get_streams_by_name('IPhone')
-    if len(steams) == 0:
+def frame_preview(device_streams: DeviceStreamManagerACQ, connx) -> None:
+    streams = device_streams.get_streams_by_name('IPhone')
+    if len(streams) == 0:
         print("no iPhone")
         connx.send("ERROR: No iPhone in LSL streams".encode("ascii"))
         return
 
     # Capture frame from iPhone and send to CTL
-    frame = steams[0].frame_preview()
+    frame = streams[0].frame_preview()
     frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
     frame = frame_prefix + frame
     connx.send(frame)
 
 
-def record_start(device_streams: DeviceStreams, subject_id_date: str, message: str, connx) -> str:
+def record_start(device_streams: DeviceStreamManagerACQ, subject_id_date: str, message: str, connx) -> str:
     print("Starting recording")
     t0 = time()
 
@@ -192,7 +135,7 @@ def record_start(device_streams: DeviceStreams, subject_id_date: str, message: s
     return task
 
 
-def record_stop(device_streams: DeviceStreams, task: str, connx) -> None:
+def record_stop(device_streams: DeviceStreamManagerACQ, task: str, connx) -> None:
     t0 = time()
 
     device_streams.record_stop_cameras(task)

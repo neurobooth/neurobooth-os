@@ -4,7 +4,7 @@ import os
 from time import time
 from datetime import datetime
 import copy
-from typing import NamedTuple, List, Dict, Any
+from typing import NamedTuple, Dict, Any
 
 # This import SEEMS unused, but is used by the eval statement in prepare()
 from collections import OrderedDict
@@ -19,11 +19,7 @@ import neurobooth_os
 from neurobooth_os import config
 
 from neurobooth_os.iout.screen_capture import ScreenMirror
-from neurobooth_os.iout.lsl_streamer import (
-    start_lsl_threads,
-    close_streams,
-    reconnect_streams,
-)
+from neurobooth_os.iout.lsl_streamer import DeviceStreamManagerSTM
 from neurobooth_os.iout import metadator as meta
 
 from neurobooth_os.netcomm import (
@@ -50,7 +46,7 @@ def Main():
         win = utl.make_win(full_screen=True)
 
     # The following variables are global server state shared across successive messages
-    device_streams = DeviceStreams()
+    device_streams = DeviceStreamManagerSTM()
     screen_feed = ScreenFeed()
     presented = False
     prepare_data = None
@@ -104,65 +100,6 @@ class ScreenFeed:
             self.running = False
 
 
-class DeviceStreams:
-    # This class is very similar to the one in ACQ. Consider abstract base class. Downside: would make harder to follow.
-    streams: Dict[str, Any]
-    task_dev_kw: Dict[str, str]
-
-    def __init__(self):
-        self.streams = {}
-        self.task_devs_kw = None
-
-    def get_streams_by_name(self, name: str) -> List[Any]:
-        return [stream for stream_name, stream in self.streams.items() if (name in stream_name)]
-
-    def has_stream(self, name: str) -> bool:
-        return name in self.streams
-
-    def prepare(self, collection_id: str, conn: Any) -> None:
-        self.task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
-
-        if len(self.streams):
-            print("Checking prepared devices")
-            self.streams = reconnect_streams(self.streams)
-        else:
-            # This will also start the mouse and mBients
-            self.streams = start_lsl_threads("presentation", collection_id, conn=conn)
-
-    def should_run_eyelink(self, task: str) -> bool:
-        return (
-            ('Eyelink' in self.streams)
-            and (any('Eyelink' in d for d in list(self.task_devs_kw[task])))
-            and ('calibration_task' not in task)
-        )
-
-    def record_start_eyelink(self, task: str, file_name: str) -> None:
-        if self.should_run_eyelink(task):
-            self.streams['Eyelink'].start(file_name)
-
-    def record_stop_eyelink(self, task: str) -> None:
-        if self.should_run_eyelink(task):
-            self.streams['Eyelink'].stop()
-
-    def record_start_mbients(self) -> None:
-        for name, stream in self.streams.items():
-            if "Mbient" in name:
-                try:
-                    if not stream.device.is_connected:
-                        stream.try_reconnect()
-                except Exception as e:
-                    print(e)
-                    pass
-
-    def record_stop_mbients(self) -> None:
-        for name, stream in self.streams.items():
-            if "Mbient" in name:
-                stream.lsl_push = False
-
-    def close(self):
-        self.streams = close_streams(self.streams)
-
-
 def set_stdout() -> None:
     sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
 
@@ -175,7 +112,7 @@ class PrepareData(NamedTuple):
     db_connection: Any
 
 
-def prepare(device_streams: DeviceStreams, message: str) -> PrepareData:
+def prepare(device_streams: DeviceStreamManagerSTM, message: str) -> PrepareData:
     # Parse message
     # format: "prepare:collection_id:database:str(log_task_dict)"
     # TODO: Standardize and move message logic; get rid of eval
@@ -209,7 +146,7 @@ def prepare(device_streams: DeviceStreams, message: str) -> PrepareData:
 
 
 def present(
-        device_streams: DeviceStreams,
+        device_streams: DeviceStreamManagerSTM,
         prepare_data: PrepareData,
         s1: socket.socket,
         win: Window,
@@ -299,7 +236,7 @@ def present(
         _ = socket_message(
             f"record_start::{prepare_data.subject_id_date}_{task_start_time}_{t_obs_id}::{task}",
             "acquisition",
-            wait_data=10,
+            wait_data=True,
         )
 
         # Start mBients
@@ -317,7 +254,7 @@ def present(
 
         # Stop rec in ACQ
         t0 = t00 = time()
-        _ = socket_message("record_stop", "acquisition", wait_data=15)
+        _ = socket_message("record_stop", "acquisition", wait_data=True)
         print(f"ACQ stop took: {time() - t0}")
 
         # Stop devices
@@ -325,12 +262,10 @@ def present(
         device_streams.record_stop_eyelink(task)
 
         # Signal CTR to start LSL rec and wait for start confirmation
-        print(f"Finished task:{task}")
+        print(f"Finished task: {task}")
 
         # Log task to database
-        log_task["date_times"] += (
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "}"
-        )
+        log_task["date_times"] += (datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "}")
         log_task["task_id"] = t_obs_id
         log_task["event_array"] = (
             str(events).replace("'", '"')
