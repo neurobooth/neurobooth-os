@@ -33,6 +33,20 @@ logger = setup_log(__name__)
 
 
 class DeviceStreamManager(ABC):
+    """
+    Create and manage device LSL streams.
+
+    Life cycle:
+    1. preprare: Creates the streams. Some streams will start streaming upon creation.
+    2. record_start: Begin streaming data on devices that were not started upon creation.
+    3. record_stop: Stop streaming data on devices that were not started upon creation.
+    4. close: Stop streaming and close all streams.
+    """
+
+    # ================================================================================
+    # Class Initialization
+    # ================================================================================
+
     streams: Dict[str, Any]
     task_dev_kw: Dict[str, str]
 
@@ -40,11 +54,30 @@ class DeviceStreamManager(ABC):
         self.streams = {}
         self.task_devs_kw = None
 
+    # ================================================================================
+    # Utility Functions
+    # Exposes streams to server scripts.
+    # ================================================================================
+
     def get_streams_by_name(self, name: str) -> List[Any]:
         return [stream for stream_name, stream in self.streams.items() if (name in stream_name)]
 
     def has_stream(self, name: str) -> bool:
         return name in self.streams
+
+    # ================================================================================
+    # Prepare-related Functions
+    # ================================================================================
+
+    def prepare(self, collection_id: str, conn: Any) -> None:
+        self.task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
+
+        if len(self.streams):
+            print("Checking prepared devices")
+            self.reconnect_streams()
+        else:
+            # This will also start the mouse and mBients
+            self.start_lsl_threads(collection_id, conn=conn)
 
     def start_lsl_threads(self, collection_id: str = 'mvp_030', win: Any = None, conn: Any = None) -> None:
         """
@@ -81,15 +114,20 @@ class DeviceStreamManager(ABC):
         """Handle server-specific implementation details of start_lsl_threads"""
         raise NotImplementedError()
 
-    def prepare(self, collection_id: str, conn: Any) -> None:
-        self.task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
+    def reconnect_streams(self) -> None:
+        for name, stream in self.streams.items():
+            if name.split("_")[0] in ["hiFeed", "Intel", "FLIR", "IPhone"]:
+                continue
 
-        if len(self.streams):
-            print("Checking prepared devices")
-            self.reconnect_streams()
-        else:
-            # This will also start the mouse and mBients
-            self.start_lsl_threads(collection_id, conn=conn)
+            if not stream.streaming:
+                print(f"Re-streaming {name} stream")
+                stream.start()
+            print(f"-OUTLETID-:{name}:{stream.oulet_id}")
+
+    # ================================================================================
+    # Remaining Lifecycle Functions
+    # Some record_start and record_stop functions are implemented by subclasses.
+    # ================================================================================
 
     def record_start_mbients(self) -> None:
         for name, stream in self.streams.items():
@@ -105,16 +143,6 @@ class DeviceStreamManager(ABC):
         for name, stream in self.streams.items():
             if "Mbient" in name:
                 stream.lsl_push = False
-
-    def reconnect_streams(self) -> None:
-        for name, stream in self.streams.items():
-            if name.split("_")[0] in ["hiFeed", "Intel", "FLIR", "IPhone"]:
-                continue
-
-            if not stream.streaming:
-                print(f"Re-streaming {name} stream")
-                stream.start()
-            print(f"-OUTLETID-:{name}:{stream.oulet_id}")
 
     def close(self) -> None:
         for name, stream in self.streams.items():
@@ -219,6 +247,8 @@ class DeviceStreamManagerSTM(DeviceStreamManager):
 
 
 class DeviceStreamManagerMockACQ(DeviceStreamManagerACQ):
+    """Overwrites _start_lsl_threads_server to be usable with a mock setup"""
+    
     def _start_lsl_threads_server(self, win: Any, kwarg_alldevs: Dict[str, Any]) -> None:
         from neurobooth_os.mock import mock_device_streamer as mock_dev
         from neurobooth_os.iout.iphone import IPhone
@@ -237,9 +267,16 @@ class DeviceStreamManagerMockACQ(DeviceStreamManagerACQ):
 
 
 class DeviceStreamManagerMockSTM(DeviceStreamManagerSTM):
+    """Overwrites _start_lsl_threads_server to be usable with a mock setup"""
+
     def _start_lsl_threads_server(self, win: Any, kwarg_alldevs: Dict[str, Any]) -> None:
         from neurobooth_os.iout import marker_stream
         self.streams["marker"] = marker_stream()
+
+
+# ================================================================================
+# Utility functions for handling BLE and Mbients
+# ================================================================================
 
 
 def scann_BLE(sleep_period=10):
