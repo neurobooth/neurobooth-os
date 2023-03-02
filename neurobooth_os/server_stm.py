@@ -18,7 +18,6 @@ prefs.hardware["audioLatencyMode"] = 3
 import neurobooth_os
 from neurobooth_os import config
 
-from neurobooth_os.iout.screen_capture import ScreenMirror
 from neurobooth_os.iout.lsl_streamer import DeviceStreamManagerSTM
 from neurobooth_os.iout import metadator as meta
 
@@ -75,29 +74,6 @@ def Main():
             connx.send(f"ping_{time()}".encode("ascii"))
         else:
             print(f'Unexpected message: {data}')
-
-
-class ScreenFeed:
-    running: bool
-    feed: ScreenMirror = None
-
-    def __init__(self):
-        self.running = False
-
-    def start(self) -> None:
-        if not self.running:
-            self.feed = ScreenMirror()
-            self.feed.start()
-            print("Stim screen feed running")
-            self.running = True
-        else:
-            print(f"-OUTLETID-:Screen:{self.feed.outlet_id}")
-            print("Already running screen feed")
-
-    def stop(self) -> None:
-        if self.running:
-            self.feed.stop()
-            self.running = False
 
 
 def set_stdout() -> None:
@@ -308,6 +284,41 @@ def present(
                 print("While paused received another message")
 
     finish_screen(win)
+
+
+ENABLE_SCREEN_MIRROR = False
+if ENABLE_SCREEN_MIRROR:
+    from neurobooth_os.iout.screen_capture import ScreenMirror
+
+    class ScreenFeed:
+        running: bool
+        feed: ScreenMirror = None
+
+        def __init__(self):
+            self.running = False
+
+        def start(self) -> None:
+            if not self.running:
+                self.feed = ScreenMirror()
+                self.feed.start()
+                print("Stim screen feed running")
+                self.running = True
+            else:
+                print(f"-OUTLETID-:Screen:{self.feed.outlet_id}")
+                print("Already running screen feed")
+
+        def stop(self) -> None:
+            if self.running:
+                self.feed.stop()
+                self.running = False
+
+else:
+    class ScreenFeed:
+        def start(self) -> None:
+            print('Screen mirror not enabled!')
+
+        def stop(self) -> None:
+            pass
 
 
 Main()

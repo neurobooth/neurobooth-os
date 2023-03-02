@@ -248,7 +248,7 @@ class DeviceStreamManagerSTM(DeviceStreamManager):
 
 class DeviceStreamManagerMockACQ(DeviceStreamManagerACQ):
     """Overwrites _start_lsl_threads_server to be usable with a mock setup"""
-    
+
     def _start_lsl_threads_server(self, win: Any, kwarg_alldevs: Dict[str, Any]) -> None:
         from neurobooth_os.mock import mock_device_streamer as mock_dev
         from neurobooth_os.iout.iphone import IPhone
