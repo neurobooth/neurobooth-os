@@ -73,8 +73,5 @@ if __name__ == "__main__":
             print(f"Failed to connect {k} {v}")
         else:
             print(f"Success in resetting {k} {v}")
-<<<<<<< Updated upstream
-    sleep(60)
-=======
-            sleep(30)
->>>>>>> Stashed changes
+
+    sleep(30)
