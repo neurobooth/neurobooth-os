@@ -83,6 +83,8 @@ def split_sens_files(
             if d[0] == "":
                 continue
             stream_id, file_id = d[0].split(",")
+            if len(folder):
+                file_id = f"{folder}/{file_id}"
             if videofiles.get(stream_id) is not None:
                 videofiles[stream_id] += f", {file_id}"
             else:
@@ -129,10 +131,7 @@ def split_sens_files(
             head = f"{folder}/{head}"
 
         if videofiles.get(name):
-            if len(folder):
-                head = f"{head}, {folder}/{videofiles.get(name)}"
-            else:
-                head = f"{head}, {videofiles.get(name)}"
+            head = f"{head}, {videofiles.get(name)}"
             # print(f"Videofile name: {head}")
 
         if log_task_id is not None:
