@@ -74,4 +74,4 @@ if __name__ == "__main__":
         else:
             print(f"Success in resetting {k} {v}")
 
-    sleep(30)
+    sleep(60)
