@@ -30,7 +30,7 @@ def countdown(period):
 
 
 class Saccade_synch(Task_Eyetracker):
-    def __init__(self, wait_center=1, target_size=0.7, num_iterations=10, **kwargs):
+    def __init__(self, wait_center=1, target_size=0.7, num_iterations=10, monochrome=True, **kwargs):
 
         super().__init__(**kwargs)
         self.ntrials = int(num_iterations)
@@ -39,6 +39,13 @@ class Saccade_synch(Task_Eyetracker):
         self.pointer_size_pixel = deg2pix(
             self.pointer_size_deg, self.subj_screendist_cm, self.pixpercm
         )
+
+        if monochrome:
+            self.color_sequence = ["black", "white", "black", "white"]
+        else:
+            self.color_sequence = ["green", "red", "green", "blue"]
+
+        self.target_positions = [(0, 0), (-480, 0), (0, 0), (480, 0)]
 
     def run(self, prompt=True, last_task=False, **kwargs):
         self.present_instructions(prompt)
@@ -57,13 +64,13 @@ class Saccade_synch(Task_Eyetracker):
 
         # Drift check/correction, params, x, y, draw_target, allow_setup
 
-        self.target.pos = (0, 0)
+        self.target.pos = self.target_positions[0]
         self.target.size = self.pointer_size_pixel
         # self.target.draw()
         # self.win.flip()
         # self.doDriftCorrect([int(0 + self.mon_size[0] / 2.0),
         #                        int(self.mon_size[1] / 2.0 - 0), 0, 1])
-        self.win.color = "green"
+        self.win.color = self.color_sequence[0]
         self.win.flip()
 
         # self.sendMessage("TRIALID")
@@ -76,63 +83,20 @@ class Saccade_synch(Task_Eyetracker):
 
         # Send a message to mark movement onset
         self.sendMessage(self.marker_task_start)
-        previous_pos = 480
-        colors_v = ["green", "red", "blue"]
-        col_ix = 1
         n_nosound = 0
         for ix in range(self.ntrials):
+            for tgt_pos, color in zip(self.target_positions, self.color_sequence):
+                self.win.color = color
+                self.win.flip()
+                if ix >= n_nosound:
+                    mySound.play(when=self.win.getFutureFlipTime(clock="ptb"))
+                self.target.pos = tgt_pos
+                self.target.draw()
+                self.win.flip()
+                self.sendMessage(self.marker_trial_start)
+                self.send_target_loc(self.target.pos)
 
-            # mySound = sound.Sound(1000, 0.1)
-            self.win.color = "green"
-            self.win.flip()
-            if ix >= n_nosound:
-                mySound.play(when=self.win.getFutureFlipTime(clock="ptb"))
-            self.target.pos = (0, 0)
-            self.target.draw()
-            self.win.flip()
-            self.sendMessage(self.marker_trial_start)
-            self.send_target_loc(self.target.pos)
-
-            countdown(self.wait_center)
-
-            # mySound = sound.Sound(1000, 0.1)
-            self.win.color = "red"
-            self.win.flip()
-            if ix >= n_nosound:
-                mySound.play()
-            self.target.pos = (-480, 0)
-            self.target.draw()
-            self.win.flip()
-            self.sendMessage(self.marker_trial_start)
-            self.send_target_loc(self.target.pos)
-
-            countdown(self.wait_center)
-
-            # mySound = sound.Sound(1000, 0.1)
-            self.win.color = "green"
-            self.win.flip()
-            if ix >= n_nosound:
-                mySound.play(when=self.win.getFutureFlipTime(clock="ptb"))
-            self.target.pos = (0, 0)
-            self.target.draw()
-            self.win.flip()
-            self.sendMessage(self.marker_trial_start)
-            self.send_target_loc(self.target.pos)
-
-            countdown(self.wait_center)
-
-            # mySound = sound.Sound(1000, 0.1)
-            self.win.color = "blue"
-            self.win.flip()
-            if ix >= n_nosound:
-                mySound.play()
-            self.target.pos = (480, 0)
-            self.target.draw()
-            self.win.flip()
-            self.sendMessage(self.marker_trial_start)
-            self.send_target_loc(self.target.pos)
-
-            countdown(self.wait_center)
+                countdown(self.wait_center)
 
         # clear the window
         self.win.color = (0, 0, 0)
