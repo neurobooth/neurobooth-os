@@ -3,25 +3,32 @@ import uuid
 from pynput import mouse
 from pylsl import StreamInfo, StreamOutlet
 
+from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+
 
 class MouseStream:
     def __init__(self, device_id="Mouse", sensor_ids=["Mouse"]):
 
         self.oulet_id = str(uuid.uuid4())
-        info_stream = StreamInfo(
-            name="Mouse",
-            type="mouse",
-            channel_count=3,
-            channel_format="int32",
-            source_id=self.oulet_id,
+        self.info_stream = set_stream_description(
+            stream_info=StreamInfo(
+                name="Mouse",
+                type="mouse",
+                channel_count=3,
+                channel_format="int32",
+                source_id=self.oulet_id,
+            ),
+            device_id=device_id,
+            sensor_ids=sensor_ids,
+            data_version=DataVersion(1, 0),
+            columns=['PosX', 'PosY', 'MouseState'],
+            column_desc={
+                'PosX': 'X screen coordinate of the mouse (pixels)',
+                'PosY': 'y screen coordinate of the mouse (pixels)',
+                'MouseState': 'Flag for the state of the mouse (0=move, 1=click, -1=release)',
+            }
         )
-
-        self.info_stream = info_stream
-
-        self.info_stream.desc().append_child_value("device_id", device_id)
-        self.info_stream.desc().append_child_value("sensor_ids", str(sensor_ids))
-
-        self.outlet = StreamOutlet(info_stream)
+        self.outlet = StreamOutlet(self.info_stream)
         print(f"-OUTLETID-:Mouse:{self.oulet_id}")
         self.streaming = False
 

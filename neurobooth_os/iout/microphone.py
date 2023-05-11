@@ -8,6 +8,8 @@ import time
 import uuid
 import wave
 
+from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+
 
 class MicStream:
     def __init__(
@@ -62,16 +64,20 @@ class MicStream:
 
         # Setup outlet stream infos
         self.oulet_id = str(uuid.uuid4())
-        self.stream_info_audio = StreamInfo(
-            "Audio", "Experimental", CHUNK + 1, RATE / CHUNK, "int16", self.oulet_id
+        self.stream_info_audio = set_stream_description(
+            stream_info=StreamInfo("Audio", "Experimental", CHUNK + 1, RATE / CHUNK, "int16", self.oulet_id),
+            device_id=device_id,
+            sensor_ids=sensor_ids,
+            data_version=DataVersion(1, 0),
+            columns=['ElapsedTime', f'Amplitude ({CHUNK} samples)'],
+            column_desc={
+                'ElapsedTime': 'Elapsed time on the local LSL clock since the last chunk of samples (ms)',
+                f'Amplitude ({CHUNK} samples)': 'Remaining columns represent a chunk of audio samples.',
+            },
+            contains_chunks=True,
+            fps=str(self.fps),
+            device_name=self.device_name,
         )
-
-        self.stream_info_audio.desc().append_child_value("fps", str(self.fps))
-        self.stream_info_audio.desc().append_child_value(
-            "device_name", self.device_name
-        )
-        self.stream_info_audio.desc().append_child_value("device_id", device_id)
-        self.stream_info_audio.desc().append_child_value("sensor_ids", str(sensor_ids))
         print(f"-OUTLETID-:Audio:{self.oulet_id}")
 
         self.streaming = False

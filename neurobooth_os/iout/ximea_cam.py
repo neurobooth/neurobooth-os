@@ -11,6 +11,7 @@ import uuid
 from pylsl import StreamInfo, StreamOutlet
 import cv2
 import time
+from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 
 
 class VidRec_Ximea:
@@ -55,20 +56,27 @@ class VidRec_Ximea:
     def createOutlet(self, filename):
         streamName = "XimeaFrameIndex"
         self.oulet_id = str(uuid.uuid4())
-        info = StreamInfo(
-            name=streamName,
-            type="videostream",
-            channel_format="double64",
-            channel_count=2,
-            source_id=self.oulet_id,
-        )
-        info.desc().append_child_value("videoFile", filename)
-
-        info.desc().append_child_value("size_rgb", str(self.frameSize))
-        info.desc().append_child_value("serial_number", self.serial_num)
-        info.desc().append_child_value("fps_rgb", str(self.fps))
-        info.desc().append_child_value(
-            "device_model_id", self.cam.get_device_name().decode()
+        info = set_stream_description(
+            stream_info=StreamInfo(
+                name=streamName,
+                type="videostream",
+                channel_format="double64",
+                channel_count=2,
+                source_id=self.oulet_id,
+            ),
+            device_id='camera_ximea',
+            sensor_ids=['camera_ximea'],
+            data_version=DataVersion(1, 0),
+            columns=['FrameNum', 'Time_Ximea'],
+            column_desc={
+                'FrameNum': 'Camera-tracked frame number',
+                'Time_Ximea': 'Camera frame timestamp',
+            },
+            video_file=filename,
+            size_rgb=str(self.frameSize),
+            serial_number=self.serial_num,
+            fps_rgb=str(self.fps),
+            device_model_id=self.cam.get_device_name().decode(),
         )
         print(f"-OUTLETID-:{streamName}:{self.oulet_id}")
         return StreamOutlet(info)

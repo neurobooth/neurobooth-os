@@ -20,6 +20,8 @@ import skvideo
 import skvideo.io
 import h5py
 
+from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 
@@ -110,24 +112,29 @@ class VidRec_Flir:
     def createOutlet(self):
         self.streamName = "FlirFrameIndex"
         self.oulet_id = str(uuid.uuid4())
-        info = StreamInfo(
-            name=self.streamName,
-            type="videostream",
-            channel_format="double64",
-            channel_count=2,
-            source_id=self.oulet_id,
+        info = set_stream_description(
+            stream_info=StreamInfo(
+                name=self.streamName,
+                type="videostream",
+                channel_format="double64",
+                channel_count=2,
+                source_id=self.oulet_id,
+            ),
+            device_id=self.device_id,
+            sensor_ids=self.sensor_ids,
+            data_version=DataVersion(1, 0),
+            columns=['FrameNum', 'Time_FLIR'],
+            column_desc={
+                'FrameNum': 'Frame number',
+                'Time_FLIR': 'Camera timestamp (ns)',
+            },
+            serial_number=self.serial_num,
+            fps_rgb=str(self.fps),
+            exposure=str(self.exposure),
+            gain=str(self.gain),
+            gamma=str(self.gamma),
+            # device_model_id=self.cam.get_device_name().decode(),
         )
-
-        info.desc().append_child_value("device_id", self.device_id)
-        info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
-        # info.desc().append_child_value("size_rgb", str(self.frameSize))
-        info.desc().append_child_value("serial_number", self.serial_num)
-        info.desc().append_child_value("fps_rgb", str(self.fps))
-        info.desc().append_child_value("exposure", str(self.exposure))
-        info.desc().append_child_value("gain", str(self.gain))
-        info.desc().append_child_value("gamma", str(self.gamma))
-
-        # info.desc().append_child_value("device_model_id", self.cam.get_device_name().decode())
         print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
         return StreamOutlet(info)
 

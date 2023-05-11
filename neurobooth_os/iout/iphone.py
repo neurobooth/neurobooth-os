@@ -22,6 +22,7 @@ DEBUG_IPHONE = "default"  # 'default', 'verbatim' , 'verbatim_no_lsl', 'default_
 if DEBUG_IPHONE in ["default", "verbatim"]:
     from pylsl import StreamInfo, StreamOutlet
     import liesl
+    from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 
 
 import functools
@@ -174,7 +175,7 @@ class IPhone:
     def _socket_recv(self, nbytes):
         return self.sock.recv(nbytes)
 
-    def __init__(self, name, sess_id="", mock=False, device_id="", sensor_ids=""):
+    def __init__(self, name, sess_id="", mock=False, device_id="", sensor_ids=("",)):
         self.connected = False
         self.recording = False
         self.tag = 0
@@ -440,21 +441,24 @@ class IPhone:
 
     @debug_lsl
     def createOutlet(self):
-
-        info = StreamInfo(
-            name=self.streamName,
-            type="videostream",
-            channel_format="double64",
-            channel_count=3,
-            source_id=self.oulet_id,
+        info = set_stream_description(
+            stream_info=StreamInfo(
+                name=self.streamName,
+                type="videostream",
+                channel_format="double64",
+                channel_count=3,
+                source_id=self.oulet_id,
+            ),
+            device_id=self.device_id,
+            sensor_ids=self.sensor_ids,
+            data_version=DataVersion(1, 0),
+            columns=['FrameNum', 'Time_iPhone', 'Time_ACQ'],
+            column_desc={
+                'FrameNum': 'App-tracked frame number',
+                'Time_iPhone': 'App timestamp (s)',
+                'Time_ACQ': 'Local machine timestamp (s)',
+            }
         )
-
-        info.desc().append_child_value("device_id", self.device_id)
-        info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
-        # info.desc().append_child_value("fps_rgb", str(self.fps))
-        col_names = ["frame_index", "iphone_frame_timestamp", "unix_timestamp"]
-        info.desc().append_child_value("column_names", str(col_names))
-
         print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
         return StreamOutlet(info)
 

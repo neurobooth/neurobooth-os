@@ -13,6 +13,7 @@ from psychopy import core
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
     EyeLinkCoreGraphicsPsychoPy,
 )
+from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 
 
 class EyeTracker:
@@ -51,44 +52,34 @@ class EyeTracker:
 
         # Setup outlet stream info
         self.oulet_id = str(uuid.uuid4())
-        self.stream_info = StreamInfo(
-            "EyeLink", "Gaze", 13, self.sample_rate, "double64", self.oulet_id
-        )
-        self.stream_info.desc().append_child_value("fps", str(self.sample_rate))
-        self.stream_info.desc().append_child_value("device_id", self.device_id)
-        self.stream_info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
-        col_names = [
-            "R_gazeX",
-            "R_gazeY",
-            "R_pupil",
-            "L_gazeX",
-            "L_gazeY",
-            "L_pupil",
-            "TargetDistance",
-            "TargetPosition",
-            "PPD",
-            "timestamp",
-        ]
-        self.stream_info.desc().append_child_value("column_names", str(col_names))
-        self.stream_info.desc().append_child_value(
-            "gaze", "location gaze in the screen in pixels"
-        )
-        self.stream_info.desc().append_child_value("pupil", "size pupil")
-        self.stream_info.desc().append_child_value(
-            "TargetDistance", "distance subject target sticker to screen"
-        )
-        self.stream_info.desc().append_child_value(
-            "TargetPosition",
-            "location subject target sticker in eyetracker "
-            + "camera space, quantifies movement",
-        )
-        self.stream_info.desc().append_child_value(
-            "PPD",
-            " Angular resolution at current gaze position in screen pixels per"
-            + "visual degree (from gaze to deg visual angle)",
-        )
-        self.stream_info.desc().append_child_value(
-            "timestamp", "eyetracker timestamp of the sample"
+        self.stream_info = set_stream_description(
+            stream_info=StreamInfo("EyeLink", "Gaze", 13, self.sample_rate, "double64", self.oulet_id),
+            device_id=self.device_id,
+            sensor_ids=self.sensor_ids,
+            data_version=DataVersion(1, 0),
+            columns=[
+                'R_GazeX', 'R_GazeY', 'R_PupilSize',
+                'L_GazeX', 'L_GazeY', 'L_PupilSize',
+                'Target_PositionX', 'Target_PositionY', 'Target_Distance',
+                'R_PPD', 'L_PPD',
+                'Time_EDF', 'Time_NUC'
+            ],
+            column_desc={
+                'R_GazeX': 'Right eye: Horizontal gaze location on screen (pixels)',
+                'R_GazeY': 'Right eye: Vertical gaze location on screen (pixels)',
+                'R_PupilSize': 'Right eye: Pupil size (arbitrary units; see EyeLink documentation)',
+                'L_GazeX': 'Left eye: Horizontal gaze location on screen (pixels)',
+                'L_GazeY': 'Left eye: Vertical gaze location on screen (pixels)',
+                'L_PupilSize': 'Left eye: Pupil size (arbitrary units; see EyeLink documentation)',
+                'Target_PositionX': 'Horizontal location of the bullseye target (camera pixels)',
+                'Target_PositionY': 'Vertical location of the bullseye target (camera pixels)',
+                'Target_Distance': 'Distance to the bullseye target',
+                'R_PPD': 'Right eye: Angular resolution at current gaze position (pixels per visual degree)',
+                'L_PPD': 'Left eye: Angular resolution at current gaze position (pixels per visual degree)',
+                'Time_EDF': 'Timestamp within the EDF file (ms)',
+                'Time_NUC': 'Local timestamp of sample receipt by the NUC machine (s)',
+            },
+            fps=str(self.sample_rate),
         )
         self.outlet = StreamOutlet(self.stream_info)
 
