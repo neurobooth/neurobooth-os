@@ -16,6 +16,8 @@ from pylsl import local_clock
 import pyrealsense2 as rs
 from pylsl import StreamInfo, StreamOutlet
 
+from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+
 warnings.filterwarnings("ignore")
 
 
@@ -91,21 +93,30 @@ class VidRec_Intel:
     def createOutlet(self):
         self.streamName = f"IntelFrameIndex_cam{self.device_index}"
         self.outlet_id = str(uuid.uuid4())
-        info = StreamInfo(
-            name=self.streamName,
-            type="videostream",
-            channel_format="double64",
-            channel_count=4,
-            source_id=self.outlet_id,
+        info = set_stream_description(
+            stream_info=StreamInfo(
+                name=self.streamName,
+                type="videostream",
+                channel_format="double64",
+                channel_count=4,
+                source_id=self.outlet_id,
+            ),
+            device_id=self.device_id,
+            sensor_ids=self.sensor_ids,
+            data_version=DataVersion(1, 0),
+            columns=['FrameNum', 'FrameNum_RealSense', 'Time_RealSense', 'Time_ACQ'],
+            column_desc={
+                'FrameNum': 'Locally-tracked frame number',
+                'FrameNum_RealSense': 'Camera-tracked frame number',
+                'Time_RealSense': 'Camera timestamp (ms)',
+                'Time_ACQ': 'Local machine timestamp (s)',
+            },
+            serial_number=self.serial_num,
+            size_rgb=str(self.frameSize[0]),
+            size_depth=str(self.frameSize[1]),
+            fps_rgb=str(self.fps[0]),
+            fps_depth=str(self.fps[1]),
         )
-
-        info.desc().append_child_value("device_id", self.device_id)
-        info.desc().append_child_value("sensor_ids", str(self.sensor_ids))
-        info.desc().append_child_value("size_rgb", str(self.frameSize[0]))
-        info.desc().append_child_value("size_depth", str(self.frameSize[1]))
-        info.desc().append_child_value("serial_number", self.serial_num)
-        info.desc().append_child_value("fps_rgb", str(self.fps[0]))
-        info.desc().append_child_value("fps_depth", str(self.fps[1]))
         print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
         return StreamOutlet(info)
 
