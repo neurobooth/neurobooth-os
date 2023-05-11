@@ -9,6 +9,8 @@ from sys import argv
 from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings
 from pylsl import StreamInfo, StreamOutlet, local_clock
 
+from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+
 
 def countdown(period):
     t1 = local_clock()
@@ -49,19 +51,28 @@ class Sensor:
     def createOutlet(self):
         # Setup outlet stream infos
         self.oulet_id = str(uuid.uuid4())
-        self.stream_mbient = StreamInfo(
-            name=f"mbient_{self.dev_name}",
-            type="acc",
-            channel_count=7,
-            channel_format="double64",
-            source_id=self.oulet_id,
+        self.stream_mbient = set_stream_description(
+            stream_info=StreamInfo(
+                name=f"mbient_{self.dev_name}",
+                type="acc",
+                channel_count=7,
+                channel_format="double64",
+                source_id=self.oulet_id,
+            ),
+            device_id=self.device_id,
+            sensor_ids=self.sensor_ids,
+            data_version=DataVersion(1, 0),
+            columns=['Time_Mbient', 'AccelX', 'AccelY', 'AccelZ', 'GyroX', 'GyroY', 'GyroZ'],
+            column_desc={
+                'Time_Mbient': 'Device timestamp (ms; epoch)',
+                'AccelX': 'X component of acceleration in local coordinate frame (g)',
+                'AccelY': 'Y component of acceleration in local coordinate frame (g)',
+                'AccelZ': 'Z component of acceleration in local coordinate frame (g)',
+                'GyroX': 'Angular velocity about X axis in local coordinate frame (deg/s)',
+                'GyroY': 'Angular velocity about Y axis in local coordinate frame (deg/s)',
+                'GyroZ': 'Angular velocity about Z axis in local coordinate frame (deg/s)',
+            }
         )
-
-        col_names = ["time_stamp", "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z"]
-        self.stream_mbient.desc().append_child_value("col_names", str(col_names))
-        self.stream_mbient.desc().append_child_value("device_id", self.device_id)
-        self.stream_mbient.desc().append_child_value("sensor_ids", str(self.sensor_ids))
-
         return StreamOutlet(self.stream_mbient)
 
     def connect(self):
