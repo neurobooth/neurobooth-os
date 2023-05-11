@@ -9,6 +9,7 @@ import cv2
 from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout import dshowcapture
+from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 
 import warnings
 
@@ -87,19 +88,24 @@ class VidRec_Brio:
     def createOutlet(self, filename):
         streamName = f"BrioFrameIndex_{self.device_index}"
         self.oulet_id = str(uuid.uuid4())
-        info = StreamInfo(
-            name=streamName,
-            type="videostream",
-            channel_format="int32",
-            channel_count=1,
-            source_id=self.oulet_id,
+        info = set_stream_description(
+            stream_info=StreamInfo(
+                name=streamName,
+                type="videostream",
+                channel_format="int32",
+                channel_count=1,
+                source_id=self.oulet_id,
+            ),
+            device_id='camera_brio',
+            sensor_ids=[f'camera_brio_{self.device_index}'],
+            data_version=DataVersion(1, 0),
+            columns=['FrameNum'],
+            column_desc={'FrameNum': 'Locally-tracked frame number'},
+            video_file=filename,
+            size_rgb=str(self.frameSize),
+            fps_rgb=str(self.fps),
+            device_name=self.device_name,
         )
-        info.desc().append_child_value("videoFile", filename)
-
-        info.desc().append_child_value("size_rgb", str(self.frameSize))
-        # info.desc().append_child_value("serial_number", self.serial_num)
-        info.desc().append_child_value("fps_rgb", str(self.fps))
-        info.desc().append_child_value("device_name", self.device_name)
         print(f"-OUTLETID-:{streamName}:{self.oulet_id}")
         return StreamOutlet(info)
 
