@@ -224,7 +224,6 @@ class IPhone:
                     # raise IPhoneError(f'Message has incorrect key: {key} not allowed. {message}')
             msgType = message["MessageType"]
         debug_print(f"Initial State: {self._state}")
-        self.logger.debug(f'iPhone initial state: {self._state}')
         debug_print(f"Message: {msgType}")
         # if msgType in ['@STARTTIMESTAMP', '@INPROGRESSTIMESTAMP','@STOPTIMESTAMP']:
         #     print('Correct msg type')
