@@ -136,6 +136,11 @@ def Main():
                     if task_devs_kw[task].get(k):
                         streams[k].stop()
 
+            for k in streams.keys():
+                if k.split("_")[0] in ["FLIR", "Intel", "IPhone"]:
+                    if task_devs_kw[task].get(k):
+                        streams[k].ensure_stopped(10)
+
             elapsed_time = time() - t0
             print(f"Device stop took {elapsed_time:.2f}")
             logger.info(f'Device stop took {elapsed_time:.2f}')

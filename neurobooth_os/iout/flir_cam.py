@@ -227,6 +227,11 @@ class VidRec_Flir:
         self.cam.DeInit()
         self.open = False
 
+    def ensure_stopped(self, timeout_seconds: float) -> None:
+        """Check to make sure the recording is actually stopped."""
+        # TODO: Implement
+        pass
+
 
 if __name__ == "__main__":
 
