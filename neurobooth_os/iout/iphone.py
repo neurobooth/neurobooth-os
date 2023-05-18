@@ -501,6 +501,11 @@ class IPhone:
     def close(self):
         self.disconnect()
 
+    def ensure_stopped(self, timeout_seconds: float) -> None:
+        """Check to make sure the recording is actually stopped."""
+        # TODO: Implement
+        pass
+
     def prepare(self, mock=False, config=None):
         if mock:
             HOST = "127.0.0.1"  # Symbolic name meaning the local host

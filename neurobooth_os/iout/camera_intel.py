@@ -22,6 +22,11 @@ from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 warnings.filterwarnings("ignore")
 
 
+class RecordingThreadException(Exception):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
 def catch_exception(f):
     @functools.wraps(f)
     def func(*args, **kwargs):
@@ -46,7 +51,10 @@ class VidRec_Intel:
     ):
 
         self.open = True
-        self.recording = False
+        self.recording = threading.Event()
+        self.recording.clear()
+        self.video_thread = None
+
         self.device_index = camindex[0]
         self.serial_num = camindex[1]
         self.fps = (fps_rgb, fps_depth)
@@ -75,14 +83,22 @@ class VidRec_Intel:
                 self.fps[1],
             )
 
+
+
         self.outlet = self.createOutlet()
 
         self.logger = logging.getLogger('session')
-        self.logger.debug(f'RealSense: fps={str(self.fps)}; frame_size={str(self.frameSize)}')
+        self.logger.debug(f'RealSense [{self.device_index}]: fps={str(self.fps)}; frame_size={str(self.frameSize)}')
 
     @catch_exception
     def start(self, name="temp_video"):
+        if self.video_thread is not None and self.video_thread.is_alive():
+            error_msg = f'RealSense [{self.device_index}]: Attempting to start new recording thread while old one is still alive!'
+            self.logger.error(error_msg)
+            raise RecordingThreadException(error_msg)
+
         self.prepare(name)
+        self.recording.set()
         self.video_thread = threading.Thread(target=self.record)
         self.logger.debug(f'RealSense: Beginning recording for {self.device_index} ({self.serial_num})')
         self.video_thread.start()
@@ -127,7 +143,6 @@ class VidRec_Intel:
 
     @catch_exception
     def record(self):
-        self.recording = True
         self.frame_counter = 1
         self.pipeline.start(self.config)
 
@@ -138,7 +153,7 @@ class VidRec_Intel:
 
         self.toffset = time() - local_clock()
 
-        while self.recording:
+        while self.recording.is_set():
             frame = self.pipeline.wait_for_frames(timeout_ms=1000)
             # frame = self.pipeline.poll_for_frames()
             # if not frame:
@@ -168,14 +183,23 @@ class VidRec_Intel:
     @catch_exception
     def stop(self):
         self.logger.debug(f'RealSense: Setting record stop flag for {self.device_index} ({self.serial_num})')
-        if self.recording:
-            self.recording = False
+        self.recording.clear()
 
     @catch_exception
     def close(self):
         self.previewing = False
         self.stop()
         self.config = []
+
+    @catch_exception
+    def ensure_stopped(self, timeout_seconds: float) -> None:
+        """Check to make sure the recording is actually stopped."""
+        self.video_thread.join(timeout_seconds)
+        if self.video_thread.is_alive():
+            error_msg = f'RealSense [{self.device_index}]: Potential Zombie Thread Detected!'
+            self.logger.error(error_msg)
+            self.pipeline.stop()
+            raise RecordingThreadException(error_msg)
 
 
 def countdown(period):
