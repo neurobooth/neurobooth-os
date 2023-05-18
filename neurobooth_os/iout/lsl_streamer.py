@@ -14,22 +14,6 @@ from mbientlab.warble import BleScanner
 from time import sleep
 
 
-def setup_log(name, node_name: str = None):
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
-    if not node_name:
-        log_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        #filename = f"./{name}.log"
-        #log_handler = logging.FileHandler(filename)
-        #log_handler.setLevel(logging.DEBUG)
-        #log_handler.setFormatter(log_format)
-        #logger.addHandler(log_handler)
-    return logger
-
-
-logger = setup_log(__name__)
-
-
 def scann_BLE(sleep_period=10):
     print("scanning for devices...")
     devices = {}
@@ -68,6 +52,8 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
         print("getting conn")
         conn = meta.get_conn()
 
+    logger = logging.getLogger('session')
+
     # Get params from all tasks
     kwarg_devs = meta._get_device_kwargs_by_task(collection_id, conn)
     # Get all device params from session
@@ -85,6 +71,8 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
         from neurobooth_os.iout.iphone import IPhone
 
         for kdev, argsdev in kwarg_alldevs.items():
+            logger.debug(f'LSL Streamer Starting: {kdev}')
+
             if "Intel" in kdev:
                 streams[kdev] = VidRec_Intel(**argsdev)
             elif "Mbient" in kdev:
@@ -119,6 +107,8 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
         streams["marker"] = marker_stream()
 
         for kdev, argsdev in kwarg_alldevs.items():
+            logger.debug(f'LSL Streamer Starting: {kdev}')
+
             if "Eyelink" in kdev:
                 streams["Eyelink"] = EyeTracker(win=win, **argsdev)
             elif "Mouse" in kdev:
@@ -160,6 +150,9 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
 def connect_mbient(dev_name="LH", mac="CE:F3:BD:BD:04:8F", try_nmax=5, **kwarg):
     from neurobooth_os.iout.mbient import Sensor, reset_mbient
 
+    logger = logging.getLogger('session')
+    logger.debug(f'Connect Mbient: {dev_name} [{mac}]')
+
     tinx = 0
     print(f"Trying to connect mbient {dev_name}, mac {mac}")
     while True:
@@ -178,13 +171,17 @@ def connect_mbient(dev_name="LH", mac="CE:F3:BD:BD:04:8F", try_nmax=5, **kwarg):
                     return sens
                 except:
                     print(f"Failed to connect mbient {dev_name}")
+                    logger.debug(f"Failed to connect mbient {dev_name}")
                 break
             time.sleep(1)
 
 
 def close_streams(streams):
+    logger = logging.getLogger('session')
+
     for k in list(streams):
         print(f"Closing {k} stream")
+        logger.debug(f'LSL Streamer Closing: {k}')
         if k.split("_")[0] in ["hiFeed", "Intel", "FLIR", "IPhone"]:
             streams[k].close()
         else:
@@ -194,10 +191,13 @@ def close_streams(streams):
 
 
 def reconnect_streams(streams):
+    logger = logging.getLogger('session')
+
     for k in list(streams):
         if k.split("_")[0] in ["hiFeed", "Intel", "FLIR", "IPhone"]:
             continue
 
+        logger.debug(f'LSL Streamer Reconnecting: {k}')
         if not streams[k].streaming:
             print(f"Re-streaming {k} stream")
             streams[k].start()

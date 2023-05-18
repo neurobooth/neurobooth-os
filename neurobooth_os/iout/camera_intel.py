@@ -11,6 +11,7 @@ import threading
 import uuid
 import functools
 import warnings
+import logging
 
 from pylsl import local_clock
 import pyrealsense2 as rs
@@ -76,10 +77,14 @@ class VidRec_Intel:
 
         self.outlet = self.createOutlet()
 
+        self.logger = logging.getLogger('session')
+        self.logger.debug(f'RealSense: fps={str(self.fps)}; frame_size={str(self.frameSize)}')
+
     @catch_exception
     def start(self, name="temp_video"):
         self.prepare(name)
         self.video_thread = threading.Thread(target=self.record)
+        self.logger.debug(f'RealSense: Beginning recording for {self.device_index} ({self.serial_num})')
         self.video_thread.start()
 
     @catch_exception
@@ -155,11 +160,14 @@ class VidRec_Intel:
             self.frame_counter += 1
             # countdown(1/(4*self.fps[0]))
 
+        self.logger.debug(f'RealSense: {self.device_index} ({self.serial_num}) exited record loop.')
         self.pipeline.stop()
+        self.logger.debug(f'RealSense: {self.device_index} ({self.serial_num}) stopped pipeline.')
         # print(f"Intel {self.device_index} recording ended, total frames captured: {self.n}, pushed lsl indexes: {self.frame_counter}")
 
     @catch_exception
     def stop(self):
+        self.logger.debug(f'RealSense: Setting record stop flag for {self.device_index} ({self.serial_num})')
         if self.recording:
             self.recording = False
 

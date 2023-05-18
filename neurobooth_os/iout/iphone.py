@@ -13,6 +13,7 @@ import time
 from datetime import datetime
 import select
 import uuid
+import logging
 
 from neurobooth_os.iout.usbmux import USBMux
 
@@ -196,6 +197,7 @@ class IPhone:
         self.streaming = False
         self.streamName = "IPhoneFrameIndex"
         self.oulet_id = str(uuid.uuid4())
+        self.logger = logging.getLogger('session')
 
     def _validate_message(self, message, tag):
 
@@ -222,6 +224,7 @@ class IPhone:
                     # raise IPhoneError(f'Message has incorrect key: {key} not allowed. {message}')
             msgType = message["MessageType"]
         debug_print(f"Initial State: {self._state}")
+        self.logger.debug(f'iPhone initial state: {self._state}')
         debug_print(f"Message: {msgType}")
         # if msgType in ['@STARTTIMESTAMP', '@INPROGRESSTIMESTAMP','@STOPTIMESTAMP']:
         #     print('Correct msg type')
@@ -229,9 +232,13 @@ class IPhone:
         # validate whether the transition is valid
         allowed_trans = self.STATE_TRANSITIONS[self._state]
         if msgType in allowed_trans:
+            prev_state = self._state
             self._state = allowed_trans[msgType]
+            if self._state == '#ERROR':
+                self.logger.error(f'iPhone entered #ERROR state from {prev_state} via {msgType}!')
         else:
             print(f"Message {msgType} is not valid in the state {self._state}.")
+            self.logger.error(f"iPhone Message {msgType} is not valid in the state {self._state}.")
             self.disconnect()
             return False
             # raise IPhoneError(f'Message {msgType} is not valid in the state {self._state}.')
@@ -269,6 +276,7 @@ class IPhone:
                 msg[key] = msg_contents[key]
         if not self._validate_message(msg, 0):
             print(f"Message {msg} did not pass validation. Exiting _sendpacket.")
+            self.logger.error(f'iPhone (state={self._state}) packet validation error: {msg}')
             self.disconnect()
             return False
             # do transition through validate_message
@@ -339,6 +347,7 @@ class IPhone:
             self._validate_message(msg, tag)
             return msg, version, type, tag
         else:
+            self.logger.error(f"iPhone exceed timeout for packet receipt")
             raise IPhoneError(
                 f"Timeout for packet receive exceeded ({timeout_in_seconds} sec)"
             )
@@ -386,6 +395,7 @@ class IPhone:
         self._validate_message(msg)
         if msg["MessageType"] != "@READY":
             self.sock.close()  # close the socket on our side to avoid hanging sockets
+            self.logger.error("Cannot establish STANDBY->READY connection with Iphone")
             raise IPhoneError("Cannot establish STANDBY->READY connection with Iphone")
         # if tag!=resp_tag (check with Steven)
         # process message - send timestamps to LSL, etc.
