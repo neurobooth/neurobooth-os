@@ -10,5 +10,6 @@ def make_session_logger(session_folder: str, machine_name: str, log_level=loggin
     file_handler.setLevel(log_level)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
+    logger.setLevel(log_level)
 
     return logger
