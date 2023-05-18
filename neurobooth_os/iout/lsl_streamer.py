@@ -71,14 +71,15 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
         from neurobooth_os.iout.iphone import IPhone
 
         for kdev, argsdev in kwarg_alldevs.items():
-            logger.debug(f'LSL Streamer Starting: {kdev}')
-
             if "Intel" in kdev:
+                logger.debug(f'LSL Streamer Starting: {kdev}')
                 streams[kdev] = VidRec_Intel(**argsdev)
             elif "Mbient" in kdev:
                 # Don't connect mbients from STM
                 if any([d in kdev for d in ["Mbient_LF", "Mbient_RF"]]):
                     continue
+
+                logger.debug(f'LSL Streamer Starting: {kdev}')
                 streams[kdev] = connect_mbient(**argsdev)
                 if streams[kdev] is None:
                     del streams[kdev]
@@ -86,13 +87,16 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
                     streams[kdev].start()
             elif "FLIR" in kdev:
                 try:
+                    logger.debug(f'LSL Streamer Starting: {kdev}')
                     streams[kdev] = VidRec_Flir(**argsdev)
                 except:
                     logger.error(f"FLIR not connected")
             elif "Mic_Yeti" in kdev:
+                logger.debug(f'LSL Streamer Starting: {kdev}')
                 streams[kdev] = MicStream(**argsdev)
                 streams[kdev].start()
             elif "IPhone" in kdev:
+                logger.debug(f'LSL Streamer Starting: {kdev}')
                 success = False
                 streams[kdev] = IPhone(name="IPhoneFrameIndex", **argsdev)
                 success = streams[kdev].prepare()
@@ -107,15 +111,16 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
         streams["marker"] = marker_stream()
 
         for kdev, argsdev in kwarg_alldevs.items():
-            logger.debug(f'LSL Streamer Starting: {kdev}')
-
             if "Eyelink" in kdev:
+                logger.debug(f'LSL Streamer Starting: {kdev}')
                 streams["Eyelink"] = EyeTracker(win=win, **argsdev)
             elif "Mouse" in kdev:
+                logger.debug(f'LSL Streamer Starting: {kdev}')
                 streams["mouse"] = MouseStream(**argsdev)
                 streams["mouse"].start()
 
             elif any([d in kdev for d in ["Mbient_LF", "Mbient_RF"]]):
+                logger.debug(f'LSL Streamer Starting: {kdev}')
                 streams[kdev] = connect_mbient(**argsdev)
                 if streams[kdev] is None:
                     del streams[kdev]
