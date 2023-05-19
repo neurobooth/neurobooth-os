@@ -5,6 +5,7 @@ from time import time, sleep
 from collections import OrderedDict
 from datetime import datetime
 import copy
+import logging
 
 from psychopy import prefs
 
@@ -32,6 +33,7 @@ from neurobooth_os.netcomm import (
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
+from neurobooth_os.logging import make_session_logger
 
 
 def Main():
@@ -39,6 +41,11 @@ def Main():
 
     sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    # Initialize logging to nothing, will get overwritten during session preparation
+    logger = logging.getLogger('null')
+    logger.addHandler(logging.NullHandler())
+
     if os.getenv("NB_FULLSCREEN") == "false":
         win = utl.make_win(full_screen=False)
     else:
@@ -47,6 +54,7 @@ def Main():
     streams, screen_running, presented = {}, False, False
 
     for data, connx in get_client_messages(s1):
+        logger.info(f'MESSAGE RECEIVED: {data}')
 
         if "scr_stream" in data:
             if not screen_running:
@@ -72,6 +80,9 @@ def Main():
             ses_folder = f"{config.paths['data_out']}{subject_id_date}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
+
+            logger = make_session_logger(ses_folder, 'STM')
+            logger.info('LOGGER CREATED')
 
             # delete subj_date as not present in DB
             del log_task["subject_id-date"]
@@ -109,12 +120,14 @@ def Main():
                 task_func_dict = get_task_funcs(collection_id, conn)
 
             # Preload tasks media
+            t0 = time()
             for task in tasks.split("-"):
                 if task not in task_func_dict.keys():
                     continue
                 tsk_fun = copy.copy(task_func_dict[task]["obj"])
                 this_task_kwargs = {**task_karg, **task_func_dict[task]["kwargs"]}
                 task_func_dict[task]["obj"] = tsk_fun(**this_task_kwargs)
+            logger.debug(f'Task media took {time() - t0:.2f}')
 
             win = welcome_screen(win=win)
             # When win is created, stdout pipe is reset
@@ -130,9 +143,11 @@ def Main():
 
             while len(tasks):
                 task = tasks.pop(0)
+                logger.info(f'TASK: {task}')
 
                 if task not in task_func_dict.keys():
                     print(f"Task {task} not implemented")
+                    logger.warning(f'Task {task} not implemented')
                     continue
 
                 t0 = t00 = time()
@@ -152,14 +167,16 @@ def Main():
                 tsk_strt_time = datetime.now().strftime("%Hh-%Mm-%Ss")
 
                 # Signal CTR to start LSL rec and wait for start confirmation
+                logger.info(f'STARTING TASK: {task}')
                 t0 = time()
-                print(
-                    f"Initiating task:{task}:{t_obs_id}:{log_task_id}:{tsk_strt_time}"
-                )
+                print(f"Initiating task:{task}:{t_obs_id}:{log_task_id}:{tsk_strt_time}")
+                logger.info(f'Initiating task:{task}:{t_obs_id}:{log_task_id}:{tsk_strt_time}')
                 ctr_msg = None
                 while ctr_msg != "lsl_recording":
                     ctr_msg = get_data_timeout(s1, 4)
-                print(f"Waiting for CTR took: {time() -t0}")
+                elapsed_time = time() - t0
+                print(f"Waiting for CTR took: {elapsed_time:.2f}")
+                logger.info(f'Waiting for CTR took: {elapsed_time:.2f}')
 
                 # Start eyetracker if device in task
                 if streams.get("Eyelink") and any(
@@ -176,6 +193,7 @@ def Main():
                         streams["Eyelink"].start(fname)
 
                 # Start rec in ACQ and run task
+                logger.info(f'SENDING record_start TO ACQ')
                 _ = socket_message(
                     f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
                     "acquisition",
@@ -197,13 +215,21 @@ def Main():
                 this_task_kwargs["task_name"] = t_obs_id
                 this_task_kwargs["subj_id"] += "_" + tsk_strt_time
 
-                print(f"Total TASK WAIT start took: {time() - t00}")
+                elapsed_time = time() - t00
+                print(f"Total TASK WAIT start took: {elapsed_time:.2f}")
+                logger.info(f"Total TASK WAIT start took: {elapsed_time:.2f}")
+
+                logger.debug(f"RUNNING TASK FUNCTION")
                 events = tsk_fun.run(**this_task_kwargs)
+                logger.debug(f"TASK FUNCTION RETURNED")
 
                 # Stop rec in ACQ
                 t0 = t00 = time()
+                logger.info(f'SENDING record_stop TO ACQ')
                 _ = socket_message("record_stop", "acquisition", wait_data=15)
-                print(f"ACQ stop took: {time() -t0}")
+                elapsed_time = time() - t0
+                print(f"ACQ stop took: {elapsed_time:.2f}")
+                logger.info(f"ACQ stop took: {elapsed_time:.2f}")
                 # mbient stop streaming
                 for k in streams.keys():
                     if "Mbient" in k:
@@ -217,7 +243,8 @@ def Main():
                         streams["Eyelink"].stop()
 
                 # Signal CTR to start LSL rec and wait for start confirmation
-                print(f"Finished task:{task}")
+                print(f"Finished task: {task}")
+                logger.info(f'FINISHED TASK: {task}')
 
                 # Log task to database
                 log_task["date_times"] += (
@@ -239,17 +266,21 @@ def Main():
 
                 meta._fill_task_row(log_task_id, log_task, conn)
 
-                print(f"Total TASK WAIT stop took: {time() - t00}")
+                elapsed_time = time() - t00
+                print(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
+                logger.info(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
 
                 # Check if pause requested, unpause or stop
                 data = get_data_timeout(s1, 0.1)
                 if data == "pause tasks":
+                    logger.info('Session Paused')
                     pause_screen = utl.create_text_screen(win, text="Session Paused")
                     utl.present(win, pause_screen, waitKeys=False)
 
                     connx2, _ = s1.accept()
                     data = connx2.recv(1024)
                     data = data.decode("utf-8")
+                    logger.info(f'PAUSE MESSAGE RECEIVED: {data}')
 
                     if data == "continue tasks":
                         continue
@@ -265,6 +296,7 @@ def Main():
                     else:
                         print("While paused received another message")
 
+            logger.info('FINISH SCREEN')
             finish_screen(win)
             presented = True
 

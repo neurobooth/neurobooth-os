@@ -6,6 +6,7 @@ from collections import OrderedDict
 import cv2
 import numpy as np
 from pylsl import local_clock
+import logging
 
 import neurobooth_os
 from neurobooth_os import config
@@ -18,6 +19,7 @@ from neurobooth_os.iout.lsl_streamer import (
     connect_mbient,
 )
 import neurobooth_os.iout.metadator as meta
+from neurobooth_os.logging import make_session_logger
 
 
 def countdown(period):
@@ -34,10 +36,15 @@ def Main():
     sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+    # Initialize logging to nothing, will get overwritten during session preparation
+    logger = logging.getLogger('null')
+    logger.addHandler(logging.NullHandler())
+
     streams = {}
     lowFeed_running = False
     recording = False
     for data, connx in get_client_messages(s1):
+        logger.info(f'MESSAGE RECEIVED: {data}')
 
         if "vis_stream" in data:
             if not lowFeed_running:
@@ -64,6 +71,9 @@ def Main():
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
+            logger = make_session_logger(ses_folder, 'ACQ')
+            logger.info('LOGGER CREATED')
+
             task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
             if len(streams):
                 # print("Checking prepared devices")
@@ -72,18 +82,21 @@ def Main():
                 streams = start_lsl_threads("acquisition", collection_id, conn=conn)
 
             devs = list(streams.keys())
+            logger.info(f'LOADED DEVICES: {str(devs)}')
             print("UPDATOR:-Connect-")
 
         elif "frame_preview" in data and not recording:
             if not any("IPhone" in s for s in streams):
                 print("no iphone")
                 connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
+                logger.debug('Frame preview unavailable')
                 continue
 
             frame = streams[[i for i in streams if "IPhone" in i][0]].frame_preview()
             frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
             frame = frame_prefix + frame
             connx.send(frame)
+            logger.debug('Frame preview sent')
 
         elif "record_start" in data:
             # "record_start::filename::task_id" FILENAME = {subj_id}_{obs_id}
@@ -108,7 +121,10 @@ def Main():
                     except Exception as e:
                         print(e)
                         pass
-            print(f"Device start took {time() - t0:.2f}")
+
+            elapsed_time = time() - t0
+            print(f"Device start took {elapsed_time:.2f}")
+            logger.info(f'Device start took {elapsed_time:.2f}')
             msg = "ACQ_devices_ready"
             connx.send(msg.encode("ascii"))
             recording = True
@@ -120,7 +136,14 @@ def Main():
                     if task_devs_kw[task].get(k):
                         streams[k].stop()
 
-            print(f"Device stop took {time() - t0:.2f}")
+            for k in streams.keys():
+                if k.split("_")[0] in ["FLIR", "Intel", "IPhone"]:
+                    if task_devs_kw[task].get(k):
+                        streams[k].ensure_stopped(10)
+
+            elapsed_time = time() - t0
+            print(f"Device stop took {elapsed_time:.2f}")
+            logger.info(f'Device stop took {elapsed_time:.2f}')
             msg = "ACQ_devices_stoped"
             connx.send(msg.encode("ascii"))
             recording = False
