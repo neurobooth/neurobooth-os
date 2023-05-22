@@ -5,6 +5,7 @@ from ctypes import c_void_p, cast, POINTER
 from time import sleep
 from threading import Event
 from sys import argv
+import logging
 
 from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings
 from pylsl import StreamInfo, StreamOutlet, local_clock
@@ -48,6 +49,9 @@ class Sensor:
         self.setup()
         print(f"-OUTLETID-:mbient_{self.dev_name}:{self.oulet_id}")
 
+        self.logger = logging.getLogger('session')
+        self.logger.debug(f'Mbient [{self.dev_name}]: acc_sample_rate={self.acc_hz}; gyro_sample_rate={self.gyro_hz}')
+
     def createOutlet(self):
         # Setup outlet stream infos
         self.oulet_id = str(uuid.uuid4())
@@ -88,6 +92,7 @@ class Sensor:
             print(f"WARNING {self.dev_name} is diconnected prematurely")
         else:
             print(message)
+        self.logger.warning(f'Mbient [{self.dev_name}]: Disconnected Prematurely')
 
         try:
             self.connect()
@@ -98,6 +103,7 @@ class Sensor:
                 self.connect()
             except:
                 print(f"Failed to reconnect {self.dev_name}... bye")
+                self.logger.warning(f'Mbient [{self.dev_name}]: Failed to Reconnect')
 
         isconn = self.device.is_connected
         if isconn:
@@ -105,6 +111,7 @@ class Sensor:
                 self.setup(create_outlet=False)
             except:
                 print(f"Couldn't setup for {self.dev_name}")
+                self.logger.warning(f'Mbient [{self.dev_name}]: Could not Setup')
         return isconn
 
     def data_handler(self, ctx, data):
@@ -214,6 +221,7 @@ class Sensor:
             sleep(self.buzz_time / 1000)
 
         # print ("Acquisition started")
+        self.logger.debug(f'Mbient [{self.dev_name}]: Starting Streaming')
         self.streaming = True
         libmetawear.mbl_mw_acc_start(self.device.board)
         try:  # MMRS only
@@ -222,6 +230,7 @@ class Sensor:
             libmetawear.mbl_mw_gyro_bmi160_start(self.device.board)
 
     def stop(self):
+        self.logger.debug(f'Mbient [{self.dev_name}]: Stopping Streaming...')
         e = Event()
         self.device.on_disconnect = lambda status: e.set()
         self.device.disconnect()
@@ -229,6 +238,7 @@ class Sensor:
         print("Stopped ", self.dev_name)
         self.streaming = False
         e.wait(10)
+        self.logger.debug(f'Mbient [{self.dev_name}]: Streaming Stopped')
         print(self.dev_name, self.nsmpl)
 
     def close(self):
@@ -277,6 +287,7 @@ def reset_mbient(mac, dev_name="mbient"):
 
     device.disconnect()
     print(f"{dev_name} reset and disconnected")
+    logging.getLogger('session').info(f'Mbient [{dev_name}]: Reset and Disconnected')
     sleep(1.0)
 
 
