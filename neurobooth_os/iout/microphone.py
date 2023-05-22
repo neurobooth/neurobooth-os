@@ -7,6 +7,7 @@ import threading
 import time
 import uuid
 import wave
+import logging
 
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 
@@ -80,6 +81,11 @@ class MicStream:
         )
         print(f"-OUTLETID-:Audio:{self.oulet_id}")
 
+        self.logger = logging.getLogger('session')
+        self.logger.debug(
+            f'Microphone: sample_rate={str(self.fps)}; save_on_disk={self.save_on_disk}; channels={self.CHANNELS}'
+        )
+
         self.streaming = False
         self.stream_on = False
         self.tic = 0
@@ -94,11 +100,13 @@ class MicStream:
             self.frames = []
             self.frames_raw = []
         self.stream_thread = threading.Thread(target=self.stream)
+        self.logger.debug('Microphone: Starting LSL Thread')
         self.stream_thread.start()
 
     def stream(self):
         print("Microphone stream opened")
         self.last_time = int(local_clock() * 10e3)
+        self.logger.debug('Microphone: Entering LSL Loop')
         while self.streaming:
             data = self.stream_in.read(self.CHUNK)
             decoded = np.frombuffer(data, "int16")
@@ -122,16 +130,21 @@ class MicStream:
             self.tic = time.time()
         self.stream_on = False
         print("Microphone stream closed")
+        self.logger.debug('Microphone: Exiting LSL Thread')
 
     def stop(self):
+        self.logger.debug('Microphone: Setting Stop Signal')
         self.streaming = False
         if self.save_on_disk:
+            self.logger.debug('Microphone: Saving Data to Disk...')
+
             wf = wave.open("decoded_mic_data.wav", "wb")
             wf.setnchannels(self.CHANNELS)
             wf.setsampwidth(self.p.get_sample_size(self.FORMAT))
             wf.setframerate(self.fps)
             wf.writeframes(b"".join(self.frames))
             wf.close()
+            self.logger.debug('Microphone: Saved Decoded Data to Disk')
 
             wf = wave.open("raw_mic_data.wav", "wb")
             wf.setnchannels(self.CHANNELS)
@@ -139,6 +152,7 @@ class MicStream:
             wf.setframerate(self.fps)
             wf.writeframes(b"".join(self.frames_raw))
             wf.close()
+            self.logger.debug('Microphone: Saved Raw Data to Disk')
 
 
 # for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):

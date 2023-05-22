@@ -88,7 +88,9 @@ class VidRec_Intel:
         self.outlet = self.createOutlet()
 
         self.logger = logging.getLogger('session')
-        self.logger.debug(f'RealSense [{self.device_index}]: fps={str(self.fps)}; frame_size={str(self.frameSize)}')
+        self.logger.debug(
+            f'RealSense [{self.device_index}] ({self.serial_num}): fps={str(self.fps)}; frame_size={str(self.frameSize)}'
+        )
 
     @catch_exception
     def start(self, name="temp_video"):
@@ -100,7 +102,7 @@ class VidRec_Intel:
         self.prepare(name)
         self.recording.set()
         self.video_thread = threading.Thread(target=self.record)
-        self.logger.debug(f'RealSense: Beginning recording for {self.device_index} ({self.serial_num})')
+        self.logger.debug(f'RealSense [{self.device_index}]: Beginning Recording')
         self.video_thread.start()
 
     @catch_exception
@@ -144,6 +146,7 @@ class VidRec_Intel:
     @catch_exception
     def record(self):
         self.frame_counter = 1
+        self.logger.debug(f'RealSense [{self.device_index}]: Starting Pipeline')
         self.pipeline.start(self.config)
 
         # Avoid autoexposure frame drops
@@ -153,6 +156,7 @@ class VidRec_Intel:
 
         self.toffset = time() - local_clock()
 
+        self.logger.debug(f'RealSense [{self.device_index}]: Entering LSL Loop')
         while self.recording.is_set():
             frame = self.pipeline.wait_for_frames(timeout_ms=1000)
             # frame = self.pipeline.poll_for_frames()
@@ -175,14 +179,14 @@ class VidRec_Intel:
             self.frame_counter += 1
             # countdown(1/(4*self.fps[0]))
 
-        self.logger.debug(f'RealSense: {self.device_index} ({self.serial_num}) exited record loop.')
+        self.logger.debug(f'RealSense [{self.device_index}]: Exited Record Loop')
         self.pipeline.stop()
-        self.logger.debug(f'RealSense: {self.device_index} ({self.serial_num}) stopped pipeline.')
+        self.logger.debug(f'RealSense [{self.device_index}]: Stopped Pipeline')
         # print(f"Intel {self.device_index} recording ended, total frames captured: {self.n}, pushed lsl indexes: {self.frame_counter}")
 
     @catch_exception
     def stop(self):
-        self.logger.debug(f'RealSense: Setting record stop flag for {self.device_index} ({self.serial_num})')
+        self.logger.debug(f'RealSense [{self.device_index}]: Setting Record Stop Flag')
         self.recording.clear()
 
     @catch_exception

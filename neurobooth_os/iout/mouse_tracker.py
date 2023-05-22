@@ -1,4 +1,5 @@
 import uuid
+import logging
 
 from pynput import mouse
 from pylsl import StreamInfo, StreamOutlet
@@ -32,9 +33,13 @@ class MouseStream:
         print(f"-OUTLETID-:Mouse:{self.oulet_id}")
         self.streaming = False
 
+        self.logger = logging.getLogger('session')
+        self.logger.debug('Mouse: Created Object')
+
     def start(self):
         self.streaming = True
         self.stream()
+        self.logger.debug('Mouse: Starting Listener')
         self.listener.start()
 
         try:
@@ -65,4 +70,5 @@ class MouseStream:
         if self.streaming:
             self.streaming = False
             self.listener.stop()
+            self.logger.debug('Mouse: Stopped Listener')
             print("Mouse capture stopped")
