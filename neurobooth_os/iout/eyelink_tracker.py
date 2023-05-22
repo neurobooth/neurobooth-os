@@ -3,6 +3,7 @@ import time
 import uuid
 import threading
 import subprocess
+import logging
 import numpy as np
 
 import pylink
@@ -83,6 +84,9 @@ class EyeTracker:
         )
         self.outlet = StreamOutlet(self.stream_info)
 
+        self.logger = logging.getLogger('session')
+        self.logger.debug(f'EyeLink: sample_rate={str(self.sample_rate)}')
+
         print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
         self.streaming = False
         self.calibrated = True
@@ -144,6 +148,7 @@ class EyeTracker:
         self.tk.sendCommand("validation_area_proportion = 0.80 0.78")
 
     def calibrate(self):
+        self.logger.debug('EyeLink: Performing Calibration')
         calib_prompt = "You will see dots on the screen, please gaze at them"
         calib_msg = visual.TextStim(
             self.win, text=calib_prompt, color="white", units="pix"
@@ -185,16 +190,18 @@ class EyeTracker:
         # print("Eyetracker recording")
         self.recording = True
         self.stream_thread = threading.Thread(target=self.record)
+        self.logger.debug('EyeLink: Starting Record Thread')
         self.stream_thread.start()
 
     def record(self):
-
         # print("Eyetracker LSL recording")
         self.paused = False
         old_sample = None
         values = []
         self.timestamps_et = []
         self.timestamps_local = []
+
+        self.logger.debug('EyeLink: Entering LSL Loop')
         while self.recording:
             if self.paused:
                 t1 = local_clock()
@@ -256,8 +263,10 @@ class EyeTracker:
         )
         self.tk.stopRecording()
         self.tk.closeDataFile()
+        self.logger.debug('EyeLink: Exiting Record Thread')
 
     def stop(self):
+        self.logger.debug('EyeLink: Setting Stop Signal')
         self.recording = False
         if self.streaming:
             self.stream_thread.join()

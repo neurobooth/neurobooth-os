@@ -12,6 +12,7 @@ import time
 import os
 import threading
 import uuid
+import logging
 
 import cv2
 import PySpin
@@ -70,6 +71,9 @@ class VidRec_Flir:
         self.image_queue = queue.Queue(0)
         self.outlet = self.createOutlet()
 
+        self.logger = logging.getLogger('session')
+        self.logger.debug(f'FLIR: fps={str(self.fps)}; frame_size={str((self.sizex, self.sizey))}')
+
     def get_cam(self):
         self.system = PySpin.System.GetInstance()
         cam_list = self.system.GetCameras()
@@ -79,7 +83,7 @@ class VidRec_Flir:
         try:
             funct(val)
         except:
-            print(f"Flair {val} couldn't be changed")
+            print(f"FLIR {val} couldn't be changed")
 
     def setup_cam(self):
         self.cam.Init()
@@ -141,16 +145,19 @@ class VidRec_Flir:
     # function to capture images, convert to numpy, send to queue, and release
     # from buffer in separate process
     def camCaptureVid(self):
+        self.logger.debug('FLIR: Save Thread Started')
         while self.recording or self.image_queue.qsize():
             try:
                 dequeuedImage = self.image_queue.get(block=True, timeout=1)
                 self.video_out.write(dequeuedImage)
             except queue.Empty:
                 continue
+        self.logger.debug('FLIR: Exiting Save Thread')
 
     def start(self, name="temp_video"):
         self.prepare(name)
         self.video_thread = threading.Thread(target=self.record)
+        self.logger.debug('FLIR: Beginning Recording')
         self.video_thread.start()
 
     def imgage_proc(self):
@@ -177,6 +184,7 @@ class VidRec_Flir:
         self.streaming = True
 
     def record(self):
+        self.logger.debug('FLIR: LSL Thread Started')
         self.recording = True
         self.frame_counter = 0
         self.save_thread = threading.Thread(target=self.camCaptureVid)
@@ -213,10 +221,12 @@ class VidRec_Flir:
         self.recording = False
         self.save_thread.join()
         self.video_out.release()
+        self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
         # print(f"FLIR video saving ended in {time.time()-t0} sec")
 
     def stop(self):
         if self.open and self.recording:
+            self.logger.debug('FLIR: Setting Record Stop Flag')
             self.recording = False
             self.video_thread.join()
 
@@ -229,7 +239,7 @@ class VidRec_Flir:
 
     def ensure_stopped(self, timeout_seconds: float) -> None:
         """Check to make sure the recording is actually stopped."""
-        # TODO: Implement
+        # TODO: Implement; move video thread join here
         pass
 
 

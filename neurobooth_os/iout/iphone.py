@@ -82,9 +82,11 @@ class IPhoneListeningThread(threading.Thread):
     def __init__(self, *args):
         self._iphone = args[0]
         self._running = True
+        self.logger = logging.getLogger('session')
         threading.Thread.__init__(self)
 
     def run(self):
+        self.logger.debug('iPhone: Entering Listening Loop')
         while self._running:
             try:
                 msg, version, type, resp_tag = self._iphone._getpacket()
@@ -95,6 +97,7 @@ class IPhoneListeningThread(threading.Thread):
                     debug_print(f"Listener received: Tag {resp_tag}")
             except:
                 pass
+        self.logger.debug('iPhone: Exiting Listening Loop')
 
     def stop(self):
         self._running = False
@@ -198,6 +201,7 @@ class IPhone:
         self.streamName = "IPhoneFrameIndex"
         self.oulet_id = str(uuid.uuid4())
         self.logger = logging.getLogger('session')
+        self.logger.debug('iPhone: Created Object')
 
     def _validate_message(self, message, tag):
 
@@ -234,10 +238,10 @@ class IPhone:
             prev_state = self._state
             self._state = allowed_trans[msgType]
             if self._state == '#ERROR':
-                self.logger.error(f'iPhone entered #ERROR state from {prev_state} via {msgType}!')
+                self.logger.error(f'iPhone: Entered #ERROR state from {prev_state} via {msgType}!')
         else:
             print(f"Message {msgType} is not valid in the state {self._state}.")
-            self.logger.error(f"iPhone Message {msgType} is not valid in the state {self._state}.")
+            self.logger.error(f"iPhone: Message {msgType} is not valid in the state {self._state}.")
             self.disconnect()
             return False
             # raise IPhoneError(f'Message {msgType} is not valid in the state {self._state}.')
@@ -275,7 +279,7 @@ class IPhone:
                 msg[key] = msg_contents[key]
         if not self._validate_message(msg, 0):
             print(f"Message {msg} did not pass validation. Exiting _sendpacket.")
-            self.logger.error(f'iPhone (state={self._state}) packet validation error: {msg}')
+            self.logger.error(f'iPhone: (state={self._state}) packet validation error: {msg}')
             self.disconnect()
             return False
             # do transition through validate_message
@@ -346,7 +350,7 @@ class IPhone:
             self._validate_message(msg, tag)
             return msg, version, type, tag
         else:
-            self.logger.error(f"iPhone exceed timeout for packet receipt")
+            self.logger.error(f"iPhone: Exceed timeout for packet receipt")
             raise IPhoneError(
                 f"Timeout for packet receive exceeded ({timeout_in_seconds} sec)"
             )
@@ -394,7 +398,7 @@ class IPhone:
         self._validate_message(msg)
         if msg["MessageType"] != "@READY":
             self.sock.close()  # close the socket on our side to avoid hanging sockets
-            self.logger.error("Cannot establish STANDBY->READY connection with Iphone")
+            self.logger.error("iPhone: Cannot establish STANDBY->READY connection")
             raise IPhoneError("Cannot establish STANDBY->READY connection with Iphone")
         # if tag!=resp_tag (check with Steven)
         # process message - send timestamps to LSL, etc.
@@ -406,12 +410,14 @@ class IPhone:
         #            raise IPhoneError('IPhone not connected when start_recording is called.')
         #        tag=self.tag
         msg_filename = {"Message": filename}
+        self.logger.debug('iPhone: Sending @START Message')
         self._sendpacket(
             "@START", msg_contents=msg_filename, cond=self._wait_for_reply_cond
         )
         return 0
 
     def stop_recording(self):
+        self.logger.debug('iPhone: Sending @STOP Message')
         self._sendpacket("@STOP", cond=self._wait_for_reply_cond)
         return 0
 

@@ -57,14 +57,15 @@ def Main():
         logger.info(f'MESSAGE RECEIVED: {data}')
 
         if "scr_stream" in data:
-            if not screen_running:
-                # screen_feed = ScreenMirror()
-                # screen_feed.start()
-                # print("Stim screen feed running")
-                screen_running = True
-            else:
-                print(f"-OUTLETID-:Screen:{screen_feed.outlet_id}")
-                print("Already running screen feed")
+            pass
+            # if not screen_running:
+            #     screen_feed = ScreenMirror()
+            #     screen_feed.start()
+            #     print("Stim screen feed running")
+            #     screen_running = True
+            # else:
+            #     print(f"-OUTLETID-:Screen:{screen_feed.outlet_id}")
+            #     print("Already running screen feed")
 
         elif "prepare" in data:
             # data = "prepare:collection_id:database:str(log_task_dict)"
@@ -157,7 +158,9 @@ def Main():
                 t_obs_id = task_func_dict[task]["t_obs_id"]
                 # Do not record if intro instructions"
                 if "intro_" in task or "pause_" in task:
+                    logger.debug(f"RUNNING PAUSE/INTRO (No Recording)")
                     tsk_fun.run(**this_task_kwargs)
+                    logger.debug(f"TASK FUNCTION RETURNED")
                     continue
 
                 log_task_id = meta._make_new_task_row(conn, subj_id)
@@ -309,9 +312,9 @@ def Main():
             streams = close_streams(streams)
 
             if "shutdown" in data:
-                if screen_running:
-                    screen_feed.stop()
-                    screen_running = False
+                # if screen_running:
+                #     screen_feed.stop()
+                #     screen_running = False
                 break
 
         elif "time_test" in data:
