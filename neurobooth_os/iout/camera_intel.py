@@ -22,7 +22,7 @@ from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 warnings.filterwarnings("ignore")
 
 
-class RecordingThreadException(Exception):
+class RealSenseException(Exception):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -97,7 +97,7 @@ class VidRec_Intel:
         if self.video_thread is not None and self.video_thread.is_alive():
             error_msg = f'RealSense [{self.device_index}]: Attempting to start new recording thread while old one is still alive!'
             self.logger.error(error_msg)
-            raise RecordingThreadException(error_msg)
+            raise RealSenseException(error_msg)
 
         self.prepare(name)
         self.recording.set()
@@ -203,7 +203,7 @@ class VidRec_Intel:
             error_msg = f'RealSense [{self.device_index}]: Potential Zombie Thread Detected!'
             self.logger.error(error_msg)
             self.pipeline.stop()
-            raise RecordingThreadException(error_msg)
+            raise RealSenseException(error_msg)
 
 
 def countdown(period):

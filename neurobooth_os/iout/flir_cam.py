@@ -26,6 +26,11 @@ from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 
+class FlirException(Exception):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
 class VidRec_Flir:
     # def __init__(self,
     #              sizex=round(1936 / 2), sizey=round(1216 / 2), fps=196,
@@ -228,8 +233,6 @@ class VidRec_Flir:
         if self.open and self.recording:
             self.logger.debug('FLIR: Setting Record Stop Flag')
             self.recording = False
-            self.video_thread.join()
-
         self.streaming = False
 
     def close(self):
@@ -239,8 +242,10 @@ class VidRec_Flir:
 
     def ensure_stopped(self, timeout_seconds: float) -> None:
         """Check to make sure the recording is actually stopped."""
-        # TODO: Implement; move video thread join here
-        pass
+        self.video_thread.join()
+        if self.video_thread.is_alive():
+            self.logger.error('FLIR: Potential Zombie Thread Detected!')
+            raise FlirException('Potential Zombie Thread Detected!')
 
 
 if __name__ == "__main__":
