@@ -200,6 +200,7 @@ class IPhone:
         self.streaming = False
         self.streamName = "IPhoneFrameIndex"
         self.oulet_id = str(uuid.uuid4())
+        self.ready_event = threading.Event()  # Used to check if we have re-entered the ready state by ensure_stopped()
         self.logger = logging.getLogger('session')
         self.logger.debug('iPhone: Created Object')
 
@@ -239,6 +240,8 @@ class IPhone:
             self._state = allowed_trans[msgType]
             if self._state == '#ERROR':
                 self.logger.error(f'iPhone: Entered #ERROR state from {prev_state} via {msgType}!')
+            elif self._state == '#READY':
+                self.ready_event.set()
         else:
             print(f"Message {msgType} is not valid in the state {self._state}.")
             self.logger.error(f"iPhone: Message {msgType} is not valid in the state {self._state}.")
@@ -250,6 +253,7 @@ class IPhone:
 
     def _message(self, msg_type, ts="", msg=""):
         if not msg_type in self.MESSAGE_TYPES:
+            self.logger.error(f'iPhone: "{msg_type}" is not an allowed message')
             raise IPhoneError(
                 f'Message type "{msg_type}" not in allowed message type list'
             )
@@ -410,14 +414,15 @@ class IPhone:
         #            raise IPhoneError('IPhone not connected when start_recording is called.')
         #        tag=self.tag
         msg_filename = {"Message": filename}
-        self.logger.debug('iPhone: Sending @START Message')
+        self.logger.debug(f'iPhone: Sending @START Message; current_state={self._state}')
         self._sendpacket(
             "@START", msg_contents=msg_filename, cond=self._wait_for_reply_cond
         )
         return 0
 
     def stop_recording(self):
-        self.logger.debug('iPhone: Sending @STOP Message')
+        self.logger.debug(f'iPhone: Sending @STOP Message; current_state={self._state}')
+        self.ready_event.clear()  # Clear this event so that ensure_stopped() can wait on it
         self._sendpacket("@STOP", cond=self._wait_for_reply_cond)
         return 0
 
@@ -507,9 +512,11 @@ class IPhone:
         self.disconnect()
 
     def ensure_stopped(self, timeout_seconds: float) -> None:
-        """Check to make sure the recording is actually stopped."""
-        # TODO: Implement
-        pass
+        """Check to make sure that we have transitioned from the #STOP state back to the #READY state."""
+        success = self.ready_event.wait(timeout=timeout_seconds)
+        if not success:
+            self.logger.error('iPhone: Ready state not reached during stop sequence before timeout!')
+            raise IPhoneError('Ready state not reached during stop sequence before timeout!')
 
     def prepare(self, mock=False, config=None):
         if mock:
@@ -553,12 +560,14 @@ class IPhone:
         if self._state == "#DISCONNECTED":
             print("IPhone device is already disconnected")
             return False
+        self.logger.debug('iPhone: Disconnecting')
         self._sendpacket("@DISCONNECT")
         time.sleep(4)
         self.sock.close()
         self._listen_thread.stop()
         self._listen_thread.join(timeout=3)
         if self._listen_thread.is_alive():
+            self.logger.error('iPhone: Could not stop listening thread.')
             raise IPhoneError("Cannot stop the recording thread")
         self.connected = False
         self.streaming = False
