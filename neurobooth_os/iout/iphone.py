@@ -515,8 +515,12 @@ class IPhone:
         """Check to make sure that we have transitioned from the #STOP state back to the #READY state."""
         success = self.ready_event.wait(timeout=timeout_seconds)
         if not success:
-            self.logger.error('iPhone: Ready state not reached during stop sequence before timeout!')
+            self.logger.error(
+                f'iPhone: Ready state not reached during stop sequence before timeout! state={self._state}'
+            )
             raise IPhoneError('Ready state not reached during stop sequence before timeout!')
+
+        self.logger.debug(f'iPhone: Transition to #READY Detected; current_state={self._state}')
 
     def prepare(self, mock=False, config=None):
         if mock:
