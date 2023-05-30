@@ -28,7 +28,7 @@ If pip install from sr-research doesn't work, please follow the following steps:
 
 * Create an sr-research support account
 * Download the `EyeLink Developers Kit v2.1.1 (32 and 64 bit)`
-* Run: `$ cd C:\\Program Files (x86)\\SR Research\\EyeLink\\SampleExperiments\\Python\\`
+* Run: `$ cd C:'\\Program Files (x86)\\SR Research\\EyeLink\\SampleExperiments\\Python\\'`
 * Run: `$ python install_pylink.py`
 
 For pyspin FLIR installation on the ACQ: 
