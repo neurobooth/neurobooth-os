@@ -24,16 +24,18 @@ Install Pylink running on the STM:
 
 $ pip install --index-url=https://pypi.sr-support.com sr-research-pylink
 
-if pip install from sr-reseach doesn't work. Create an sr-reseach account, download the `EyeLink Developers Kit v2.1.1 (32 and 64 bit)` 
-and run:
-$ cd C:\Program Files (x86)\SR Research\EyeLink\SampleExperiments\Python\
-$ python  install_pylink.py
+If pip install from sr-research doesn't work, please follow the following steps:
+
+* Create an sr-research support account
+* Download the `EyeLink Developers Kit v2.1.1 (32 and 64 bit)`
+* Run: `$ cd C:\\Program Files (x86)\\SR Research\\EyeLink\\SampleExperiments\\Python\\`
+* Run: `$ python install_pylink.py`
 
 For pyspin FLIR installation on the ACQ: 
 download SDK from https://www.flir.com/products/spinnaker-sdk/?vertical=machine+vision&segment=iis
 direct link to wheel file: https://flir.app.boxcn.net/v/SpinnakerSDK/file/982785545712
 then unzip the file, cd to the folder and run: 
-$  pip install spinnaker_python-2.x.x.x-cp3x-cp3x-win_amd64.whl
+`$  pip install spinnaker_python-2.x.x.x-cp3x-cp3x-win_amd64.whl`
 
 
 Setup
