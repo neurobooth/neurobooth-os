@@ -141,6 +141,7 @@ class IPhone:
             "@DUMPSUCCESS": "#READY",
             "@DISCONNECT": "#DISCONNECTED",
             "@ERROR": "#ERROR",
+            "@INPROGRESSTIMESTAMP": "#READY"
         },
         "#START": {
             "@STARTTIMESTAMP": "#RECORDING",
@@ -442,11 +443,9 @@ class IPhone:
         else:
             self._wait_for_reply_cond.acquire()
             self._msg_latest = msg
-            self._wait_for_reply_cond.notify()
-            self._wait_for_reply_cond.release()
             self._allmessages.append(
-                {"message": msg, "ctr_timestamp": str(datetime.now()), "tag": tag}
-            )
+                {"message": msg, "ctr_timestamp": str(datetime.now()), "tag": tag})
+            
 
         if msg["MessageType"] in [
             "@STARTTIMESTAMP",
@@ -457,7 +456,12 @@ class IPhone:
             self.fcount = int(finfo["FrameNumber"])
             debug_print([self.fcount, float(finfo["Timestamp"]), time.time()])
             self.lsl_push_sample([self.fcount, float(finfo["Timestamp"]), time.time()])
-            # print([self.fcount, float(msg['TimeStamp']['Timestamp']), time.time()])
+            if msg["MessageType"]=="@INPROGRESSTIMESTAMP":
+                if self._state == "#RECORDING":
+                    self._wait_for_reply_cond.notify()
+            else:
+                self._wait_for_reply_cond.notify()
+        self._wait_for_reply_cond.release()
 
     @debug_lsl
     def createOutlet(self):
