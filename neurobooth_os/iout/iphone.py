@@ -447,21 +447,21 @@ class IPhone:
                 {"message": msg, "ctr_timestamp": str(datetime.now()), "tag": tag})
             
 
-        if msg["MessageType"] in [
-            "@STARTTIMESTAMP",
-            "@INPROGRESSTIMESTAMP",
-            "@STOPTIMESTAMP",
-        ]:
-            finfo = eval(msg["TimeStamp"])
-            self.fcount = int(finfo["FrameNumber"])
-            debug_print([self.fcount, float(finfo["Timestamp"]), time.time()])
-            self.lsl_push_sample([self.fcount, float(finfo["Timestamp"]), time.time()])
-            if msg["MessageType"]=="@INPROGRESSTIMESTAMP":
-                if self._state == "#RECORDING":
+            if msg["MessageType"] in [
+                "@STARTTIMESTAMP",
+                "@INPROGRESSTIMESTAMP",
+                "@STOPTIMESTAMP",
+            ]:
+                finfo = eval(msg["TimeStamp"])
+                self.fcount = int(finfo["FrameNumber"])
+                debug_print([self.fcount, float(finfo["Timestamp"]), time.time()])
+                self.lsl_push_sample([self.fcount, float(finfo["Timestamp"]), time.time()])
+                if msg["MessageType"]=="@INPROGRESSTIMESTAMP":
+                    if self._state == "#RECORDING":
+                        self._wait_for_reply_cond.notify()
+                else:
                     self._wait_for_reply_cond.notify()
-            else:
-                self._wait_for_reply_cond.notify()
-        self._wait_for_reply_cond.release()
+            self._wait_for_reply_cond.release()
 
     @debug_lsl
     def createOutlet(self):
@@ -556,6 +556,7 @@ class IPhone:
     def dump(self, filename):
         self._dump_video_data = b""
         msg_filename = {"Message": filename}
+        print(f'DUMPING: {filename}')
         self._sendpacket("@DUMP", msg_filename, cond=self._dump_video_cond)
         return self._dump_video_data
 
@@ -584,6 +585,7 @@ class IPhone:
     def dumpall_getfilelist(self):
         self._sendpacket("@DUMPALL", cond=self._wait_for_reply_cond)
         filelist = self._msg_latest["Message"]
+        print(f'FILELIST: {filelist}')
         if self._state == "#ERROR":
             return None
         return filelist
