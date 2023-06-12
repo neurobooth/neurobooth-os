@@ -15,9 +15,12 @@ def neurobooth_dump():
 
     logger.debug('Connecting to iPhone')
     phone = iphone.IPhone("dump_iphone")
-    phone.prepare()
-    flist = phone.dumpall_getfilelist()
+    handshake_success = phone.prepare()
+    if not handshake_success:
+        logger.error('Unable to connect to iPhone!')
+        return
 
+    flist = phone.dumpall_getfilelist()
     if flist is None:
         logger.error('Unable to retrieve file list!')
         phone.disconnect()

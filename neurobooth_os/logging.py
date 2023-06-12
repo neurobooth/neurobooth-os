@@ -20,7 +20,7 @@ def make_session_logger(session_folder: str, machine_name: str, log_level=loggin
 
 def make_iphone_dump_logger(
         log_path: str = 'D:/neurobooth/neurobooth_logs',
-        log_level=logging.DEBUG
+        log_level=logging.DEBUG,
 ) -> logging.Logger:
     if not os.path.exists(log_path):
         os.mkdir(log_path)
