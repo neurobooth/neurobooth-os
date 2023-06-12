@@ -48,13 +48,13 @@ def dump_video(phone: iphone.IPhone, fname: str, fname_out: str) -> None:
         return
 
     logger.info(f'Dump {fname} -> {fname_out}')
-    video = phone.dump(fname)
-    if len(video) == 0:
+    file_data = phone.dump(fname)
+    if len(file_data) == 0:
         logger.error(f'{fname} returned a zero-byte file!')
         return
 
     with open(fname_out, "wb") as f:
-        f.write(video)
+        f.write(file_data)
     logger.debug(f'Wrote {fname_out}')
 
     phone.dumpsuccess(fname)
