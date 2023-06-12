@@ -12,6 +12,7 @@ import numpy as np
 import os.path as op
 from datetime import datetime
 from pathlib import Path
+from typing import NamedTuple, Optional, Any, List
 
 from h5io import write_hdf5
 
@@ -35,6 +36,7 @@ def compute_clocks_diff():
     return time_offset
 
 
+# TODO: Refactor into parse XDF, (Future: correct device metadata), write hdf5s, log to DB
 def split_sens_files(
     fname,
     log_task_id=None,
@@ -161,6 +163,87 @@ def split_sens_files(
                 table_sens_log.insert_rows(vals, cols)
     print(f"SPLIT XDF {task_id} took: {time.time() - t0}")
     return files
+
+
+class DeviceData(NamedTuple):
+    device_id: str
+    device_data: Any
+    marker_data: Any
+    video_files: Optional[str]
+    sensor_ids: List[str]
+
+
+def parse_xdf(file_path: str, device_ids: Optional[List[str]] = None) -> List[DeviceData]:
+    """
+    Split an XDF file into device/stream-specific HDF5 files.
+
+    Parameters
+    ----------
+    file_path: str
+        The path to the XDF file to parse
+    device_ids: Optional[List[str]]
+        If provided, only parse files corresponding to the specified devices.
+
+    Returns
+    -------
+    results: List[DeviceData]
+        A structured representation of information extracted from the XDF file for each device.
+    """
+    folder, file_name = os.path.split(file_path)
+    data, _ = pyxdf.load_xdf(file_path, dejitter_timestamps=False)
+
+    # Find marker stream to associate with each device
+    marker = [d for d in data if d["info"]["name"] == ["Marker"]]
+
+    # Get video file names for each device "videofiles" marker is present
+    video_files = {}
+    if "videofiles" in [d["info"]["name"][0] for d in data]:
+        video_data = [v for v in data if v["info"]["name"] == ["videofiles"]]
+        # Video file marker format is ["streamName, fname.mov"]
+        for d in video_data[0]["time_series"]:
+            if d[0] == "":
+                continue
+            stream_id, file_id = d[0].split(",")
+            if folder:
+                file_id = f"{folder}/{file_id}"
+            if stream_id in video_files:
+                video_files[stream_id] += f", {file_id}"
+            else:
+                video_files[stream_id] = file_id
+
+    # Parse device data into more structured format; associate with marker and videos
+    results = []
+    for device_data in data:
+        device_name = device_data["info"]["name"][0]
+        if device_name in ["Marker", "videofiles"]:
+            continue
+
+        device_id = device_data["info"]["desc"][0]["device_id"][0]
+        sensors_ids = eval(device_data["info"]["desc"][0]["sensor_ids"][0])  # Dirty trick for converting into a List
+
+        if (device_ids is not None) and (device_id not in device_ids):  # Only split specified devices
+            continue
+
+        # sensors = "-".join(sensors_ids)
+        # head, _ = op.splitext(file_name)
+        # hdf5_name = f"{head}-{device_id}-{sensors}.hdf5"
+        # hdf5_path = f'{folder}/{hdf5_name}' if folder else hdf5_name
+
+        results.append(DeviceData(
+            device_id=device_id,
+            device_data=device_data,
+            marker_data=marker,
+            video_files=video_files[device_name] if device_name in video_files else None,
+            sensor_ids=sensors_ids,
+        ))
+
+    return results
+
+
+# TODO: Implement write hdf
+
+
+# TODO: Implement file logging
 
 
 def get_xdf_name(session, fname_prefix):
