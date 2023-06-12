@@ -35,13 +35,13 @@ def neurobooth_dump():
             logger.debug(f'Creating directory: {sess_folder}')
             os.mkdir(sess_folder)
 
-        dump_video(phone, fname, op.join(sess_folder, fname))
+        dump_file(phone, fname, op.join(sess_folder, fname))
 
     logger.debug('Disconnecting iPhone')
     phone.disconnect()
 
 
-def dump_video(phone: iphone.IPhone, fname: str, fname_out: str) -> None:
+def dump_file(phone: iphone.IPhone, fname: str, fname_out: str) -> None:
     logger = logging.getLogger('iphone_dump')
     if op.exists(fname_out):
         logger.error(f'Cannot write {fname_out} as it already exists!')
