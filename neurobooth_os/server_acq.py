@@ -131,15 +131,19 @@ def Main():
 
         elif "record_stop" in data:
             t0 = time()
-            for k in streams.keys():
+            for k in streams.keys():  # Call stop on streams with that method
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
                     if task_devs_kw[task].get(k):
                         streams[k].stop()
 
-            for k in streams.keys():
+            for k in streams.keys():  # Ensure the streams are stopped
                 if k.split("_")[0] in ["FLIR", "Intel", "IPhone"]:
                     if task_devs_kw[task].get(k):
                         streams[k].ensure_stopped(10)
+
+            for k in streams.keys():  # Run logging handler for iphone; TODO: make this more device generic
+                if k.split("_")[0] == "IPhone" and task_devs_kw[task].get(k):
+                    streams[k].log_files()
 
             elapsed_time = time() - t0
             print(f"Device stop took {elapsed_time:.2f}")

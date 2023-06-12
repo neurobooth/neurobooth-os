@@ -254,7 +254,7 @@ class IPhone:
 
     def _message(self, msg_type, ts="", msg=""):
         if not msg_type in self.MESSAGE_TYPES:
-            self.logger.error(f'iPhone: "{msg_type}" is not an allowed message')
+            self.logger.error(f'iPhone [state={self._state}]: "{msg_type}" is not an allowed message')
             raise IPhoneError(
                 f'Message type "{msg_type}" not in allowed message type list'
             )
@@ -284,7 +284,7 @@ class IPhone:
                 msg[key] = msg_contents[key]
         if not self._validate_message(msg, 0):
             print(f"Message {msg} did not pass validation. Exiting _sendpacket.")
-            self.logger.error(f'iPhone: (state={self._state}) packet validation error: {msg}')
+            self.logger.error(f'iPhone [state={self._state}]: Packet Validation Error: {msg}')
             self.disconnect()
             return False
             # do transition through validate_message
@@ -292,10 +292,7 @@ class IPhone:
         payload = self._json_wrap(msg).encode("utf-8")
         payload_size = len(payload)
         packet = (
-            struct.pack(
-                "!IIII", self.VERSION, self.TYPE_MESSAGE, self.tag, payload_size
-            )
-            + payload
+            struct.pack("!IIII", self.VERSION, self.TYPE_MESSAGE, self.tag, payload_size) + payload
         )
 
         if not cond is None:
@@ -304,9 +301,7 @@ class IPhone:
             # self.sock.send(packet)
             if not cond.wait(timeout=self._timeout_cond):
                 cond.release()
-                print(
-                    f"No reply received from the device after packet {msg_type} was sent."
-                )
+                print(f"No reply received from the device after packet {msg_type} was sent.")
                 # self.disconnect()
                 return False
             cond.release()
@@ -355,7 +350,7 @@ class IPhone:
             self._validate_message(msg, tag)
             return msg, version, type, tag
         else:
-            self.logger.error(f"iPhone: Exceed timeout for packet receipt")
+            self.logger.error(f"iPhone [state={self._state}]: Exceed timeout for packet receipt")
             raise IPhoneError(
                 f"Timeout for packet receive exceeded ({timeout_in_seconds} sec)"
             )
@@ -403,7 +398,7 @@ class IPhone:
         self._validate_message(msg)
         if msg["MessageType"] != "@READY":
             self.sock.close()  # close the socket on our side to avoid hanging sockets
-            self.logger.error("iPhone: Cannot establish STANDBY->READY connection")
+            self.logger.error(f"iPhone [state={self._state}]: Cannot establish STANDBY->READY connection")
             raise IPhoneError("Cannot establish STANDBY->READY connection with Iphone")
         # if tag!=resp_tag (check with Steven)
         # process message - send timestamps to LSL, etc.
@@ -415,14 +410,14 @@ class IPhone:
         #            raise IPhoneError('IPhone not connected when start_recording is called.')
         #        tag=self.tag
         msg_filename = {"Message": filename}
-        self.logger.debug(f'iPhone: Sending @START Message; current_state={self._state}')
+        self.logger.debug(f'iPhone [state={self._state}]: Sending @START Message')
         self._sendpacket(
             "@START", msg_contents=msg_filename, cond=self._wait_for_reply_cond
         )
         return 0
 
     def stop_recording(self):
-        self.logger.debug(f'iPhone: Sending @STOP Message; current_state={self._state}')
+        self.logger.debug(f'iPhone [state={self._state}]: Sending @STOP Message')
         self.ready_event.clear()  # Clear this event so that ensure_stopped() can wait on it
         self._sendpacket("@STOP", cond=self._wait_for_reply_cond)
         return 0
@@ -445,7 +440,6 @@ class IPhone:
             self._msg_latest = msg
             self._allmessages.append(
                 {"message": msg, "ctr_timestamp": str(datetime.now()), "tag": tag})
-            
 
             if msg["MessageType"] in [
                 "@STARTTIMESTAMP",
@@ -456,7 +450,7 @@ class IPhone:
                 self.fcount = int(finfo["FrameNumber"])
                 debug_print([self.fcount, float(finfo["Timestamp"]), time.time()])
                 self.lsl_push_sample([self.fcount, float(finfo["Timestamp"]), time.time()])
-                if msg["MessageType"]=="@INPROGRESSTIMESTAMP":
+                if msg["MessageType"] == "@INPROGRESSTIMESTAMP":
                     if self._state == "#RECORDING":
                         self._wait_for_reply_cond.notify()
                 else:
@@ -520,11 +514,16 @@ class IPhone:
         success = self.ready_event.wait(timeout=timeout_seconds)
         if not success:
             self.logger.error(
-                f'iPhone: Ready state not reached during stop sequence before timeout! state={self._state}'
+                f'iPhone [state={self._state}]: Ready state not reached during stop sequence before timeout!'
             )
             raise IPhoneError('Ready state not reached during stop sequence before timeout!')
 
-        self.logger.debug(f'iPhone: Transition to #READY Detected; current_state={self._state}')
+        self.logger.debug(f'iPhone [state={self._state}]: Transition to #READY Detected')
+
+    def log_files(self) -> None:
+        """Add the files currently in the iPhone's memory to the log"""
+        files = self.dumpall_getfilelist(print_files=False)
+        self.logger.debug(f"iPhone [state={self._state}]: File List = {str(files)}")
 
     def prepare(self, mock=False, config=None):
         if mock:
@@ -569,23 +568,24 @@ class IPhone:
         if self._state == "#DISCONNECTED":
             print("IPhone device is already disconnected")
             return False
-        self.logger.debug('iPhone: Disconnecting')
+        self.logger.debug(f'iPhone [state={self._state}]: Disconnecting')
         self._sendpacket("@DISCONNECT")
         time.sleep(4)
         self.sock.close()
         self._listen_thread.stop()
         self._listen_thread.join(timeout=3)
         if self._listen_thread.is_alive():
-            self.logger.error('iPhone: Could not stop listening thread.')
+            self.logger.error(f'iPhone [state={self._state}]: Could not stop listening thread.')
             raise IPhoneError("Cannot stop the recording thread")
         self.connected = False
         self.streaming = False
         return True
 
-    def dumpall_getfilelist(self):
+    def dumpall_getfilelist(self, print_files: bool = True):
         self._sendpacket("@DUMPALL", cond=self._wait_for_reply_cond)
         filelist = self._msg_latest["Message"]
-        print(f'FILELIST: {filelist}')
+        if print_files:
+            print(f'FILELIST: {filelist}')
         if self._state == "#ERROR":
             return None
         return filelist
