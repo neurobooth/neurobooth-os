@@ -18,11 +18,17 @@ def make_session_logger(session_folder: str, machine_name: str, log_level=loggin
     return logger
 
 
-def make_iphone_dump_logger(log_level=logging.DEBUG) -> logging.Logger:
+def make_iphone_dump_logger(
+        log_path: str = 'D:/neurobooth/neurobooth_logs',
+        log_level=logging.DEBUG
+) -> logging.Logger:
+    if not os.path.exists(log_path):
+        os.mkdir(log_path)
+
     logger = logging.getLogger('iphone_dump')
     time_str = datetime.now().strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
 
-    file_handler = logging.FileHandler(f'D:/neurobooth_logs/iphone_dump_{time_str}.log')
+    file_handler = logging.FileHandler(os.path.join(log_path, f'iphone_dump_{time_str}.log'))
     file_handler.setLevel(log_level)
     file_handler.setFormatter(LOG_FORMAT)
     logger.addHandler(file_handler)
