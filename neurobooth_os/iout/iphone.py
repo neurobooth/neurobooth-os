@@ -626,7 +626,13 @@ if __name__ == "__main__":
         '--recording-folder',
         default='',
         type=str,
-        help='The folder the LSL stream should record to.'
+        help='The folder the LSL stream should record to.',
+    )
+    parser.add_argument(
+        '--no-plots',
+        dest='show_plots',
+        action='store_false',
+        help='Disable plotting of results.',
     )
     args = parser.parse_args()
 
@@ -657,7 +663,7 @@ if __name__ == "__main__":
 
     streamargs = {"name": "IPhoneFrameIndex"}
     date = datetime.now().strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
-    task_id = f'{args.subject_id}_{date}_task_obs_1_IPhone'
+    task_id = f'{args.subject_id}_{date}_task_obs_1'
 
     # Start LSL
     session = liesl_sesion_create(
@@ -688,26 +694,26 @@ if __name__ == "__main__":
 
     df_pc = np.diff(ts_pc)
     df_ip = np.diff(ts_ip)
+    print(f"mean diff diff: {np.mean(np.abs(df_pc[1:] - df_ip[1:]))}")
 
-    import matplotlib.pyplot as plt
+    if args.show_plots:
+        import matplotlib.pyplot as plt
 
-    plt.figure()
-    plt.plot(df_pc)
-    plt.plot(df_ip)
-    plt.show()
+        plt.figure()
+        plt.plot(df_pc)
+        plt.plot(df_ip)
+        plt.show()
 
-    plt.figure()
-    plt.scatter(df_pc, df_ip)
+        plt.figure()
+        plt.scatter(df_pc, df_ip)
 
-    plt.show()
+        plt.show()
 
-    plt.figure()
-    plt.hist(np.diff(ts_pc[1:]) - np.diff(ts_ip[1:]), 20)
+        plt.figure()
+        plt.hist(np.diff(ts_pc[1:]) - np.diff(ts_ip[1:]), 20)
 
-    print("mean diff diff ", np.mean(np.abs(np.diff(ts_pc[1:]) - np.diff(ts_ip[1:]))))
+        tstmp = data[0]["time_stamps"]
+        plt.hist(np.diff(tstmp[1:]) - np.diff(ts_ip[1:]))
 
-    tstmp = data[0]["time_stamps"]
-    plt.hist(np.diff(tstmp[1:]) - np.diff(ts_ip[1:]))
-
-    plt.figure()
-    plt.hist(df_ip, 50)
+        plt.figure()
+        plt.hist(df_ip, 50)

@@ -58,10 +58,10 @@ def dump_file(phone: iphone.IPhone, fname: str, fname_out: str) -> None:
 
     with open(fname_out, "wb") as f:
         f.write(file_data)
-    logger.debug(f'Wrote {fname_out}, {len(file_data)/1024:0.1f} kB')
+    logger.debug(f'Wrote {fname_out}, {len(file_data)/(1<<20):0.1f} MiB')
 
     phone.dumpsuccess(fname)
-    logger.debug(f'Sent @DUMPSUCCESS for {fname}.')
+    logger.debug(f'Sent @DUMPSUCCESS for {fname}')
 
 
 if __name__ == "__main__":
