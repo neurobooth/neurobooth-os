@@ -594,10 +594,8 @@ class IPhone:
 if __name__ == "__main__":
 
     @debug_lsl
-    def liesl_sesion_create(**args):
-        session = liesl.Session(
-            prefix=subject, streamargs=[streamargs], mainfolder=recording_folder
-        )
+    def liesl_sesion_create(**kwargs):
+        session = liesl.Session(**kwargs)
         return session
 
     @debug_lsl
@@ -674,7 +672,7 @@ if __name__ == "__main__":
 
     # Stop LSL
     liesl_sesion_stop(session)
-    
+
     iphone.disconnect()
 
     import pyxdf
