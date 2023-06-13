@@ -609,6 +609,29 @@ if __name__ == "__main__":
         session.stop_recording()
 
     import time
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Run a standalone capture using the iPhone.')
+    parser.add_argument(
+        '--duration',
+        default=1,
+        type=int,
+        help='Duration of video capture'
+    )
+    parser.add_argument(
+        '--subject-id',
+        default='007',
+        type=str,
+        help='The subject ID to use',
+    )
+    parser.add_argument(
+        '--recording-folder',
+        default='',
+        type=str,
+        help='The folder the LSL stream should record to.'
+    )
+    args = parser.parse_args()
+
 
     # Creating and starting mock streams:
 
@@ -635,29 +658,30 @@ if __name__ == "__main__":
     frame = iphone.frame_preview()
 
     streamargs = {"name": "IPhoneFrameIndex"}
-    recording_folder = ""
-    subject = "007"
+    date = datetime.now().strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
+    task_id = f'{args.subject_id}_{date}_task_obs_1_IPhone'
 
+    # Start LSL
     session = liesl_sesion_create(
-        prefix=subject, streamargs=[streamargs], mainfolder=recording_folder
+        prefix=args.subject_id, streamargs=[streamargs], mainfolder=args.recording_folder
     )
     liesl_sesion_start(session)
-    # iphone.start('mov120_1')
-    iphone.start(subject + f"_task_obs_1_{time.time()}")
 
-    time.sleep(1)
-
+    # Data capture
+    iphone.start(task_id)
+    time.sleep(args.duration)
     iphone.stop()
+
+    # Stop LSL
     liesl_sesion_stop(session)
+    
     iphone.disconnect()
 
     import pyxdf
     import glob
     import numpy as np
 
-    subject = "007"
-    path = r"C:\neurobooth-eel\007"
-    fname = glob.glob(f"{subject}/recording_R0*.xdf")[-1]
+    fname = glob.glob(f"{args.subject_id}/recording_R0*.xdf")[-1]
     data, header = pyxdf.load_xdf(fname)
 
     ts = data[0]["time_series"]
