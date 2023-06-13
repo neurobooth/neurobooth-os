@@ -141,10 +141,6 @@ def Main():
                     if task_devs_kw[task].get(k):
                         streams[k].ensure_stopped(10)
 
-            for k in streams.keys():  # Run logging handler for iphone; TODO: make this more device generic
-                if k.split("_")[0] == "IPhone" and task_devs_kw[task].get(k):
-                    streams[k].log_files()
-
             elapsed_time = time() - t0
             print(f"Device stop took {elapsed_time:.2f}")
             logger.info(f'Device stop took {elapsed_time:.2f}')
@@ -156,6 +152,11 @@ def Main():
             if "shutdown" in data:
                 sys.stdout = sys.stdout.terminal
                 s1.close()
+
+            # TODO: It would be nice to generically register logging handlers at each stage of a stream's lifecycle.
+            for k in streams.keys():  # Log the list of files present on the iPhone
+                if k.split("_")[0] == "IPhone":
+                    streams[k].dumpall_getfilelist()
 
             streams = close_streams(streams)
 

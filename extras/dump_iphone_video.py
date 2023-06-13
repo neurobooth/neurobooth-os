@@ -20,7 +20,7 @@ def neurobooth_dump():
         logger.error(f'Unable to connect to iPhone [state={phone._state}]!')
         return
 
-    flist = phone.dumpall_getfilelist()
+    flist = phone.dumpall_getfilelist(log_files=False)
     if flist is None:
         logger.error(f'Unable to retrieve file list [state={phone._state}]!')
         phone.disconnect()

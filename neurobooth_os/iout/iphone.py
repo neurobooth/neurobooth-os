@@ -520,11 +520,6 @@ class IPhone:
 
         self.logger.debug(f'iPhone [state={self._state}]: Transition to #READY Detected')
 
-    def log_files(self) -> None:
-        """Add the files currently in the iPhone's memory to the log"""
-        files = self.dumpall_getfilelist(print_files=False)
-        self.logger.debug(f"iPhone [state={self._state}]: File List = {str(files)}")
-
     def prepare(self, mock=False, config=None):
         if mock:
             HOST = "127.0.0.1"  # Symbolic name meaning the local host
@@ -581,11 +576,11 @@ class IPhone:
         self.streaming = False
         return True
 
-    def dumpall_getfilelist(self, print_files: bool = True):
+    def dumpall_getfilelist(self, log_files: bool = True):
         self._sendpacket("@DUMPALL", cond=self._wait_for_reply_cond)
         filelist = self._msg_latest["Message"]
-        if print_files:
-            print(f'FILELIST: {filelist}')
+        if log_files:
+            self.logger.debug(f"iPhone [state={self._state}]: File List = {filelist}")
         if self._state == "#ERROR":
             return None
         return filelist
