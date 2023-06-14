@@ -26,7 +26,7 @@ def neurobooth_dump():
         phone.disconnect()
         return
 
-    logger.debug(f'Files to transfer: {str(flist)}')
+    logger.debug(f'{len(flist)} files to transfer: {str(flist)}')
     for fname in flist:
         sess_name = re.findall("[0-9]*_[0-9]{4}-[0-9]{2}-[0-9]{2}", fname)
         if len(sess_name) == 0 or sess_name is None:

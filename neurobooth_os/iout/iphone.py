@@ -579,10 +579,11 @@ class IPhone:
     def dumpall_getfilelist(self, log_files: bool = True):
         self._sendpacket("@DUMPALL", cond=self._wait_for_reply_cond)
         filelist = self._msg_latest["Message"]
-        if log_files:
-            self.logger.debug(f"iPhone [state={self._state}]: File List = {filelist}")
         if self._state == "#ERROR":
+            self.logger.error(f'iPhone [state={self._state}]: @DUMPALL Error; message="{filelist}"')
             return None
+        if log_files:
+            self.logger.debug(f"iPhone [state={self._state}]: File List (N={len(filelist)}) = {filelist}")
         return filelist
 
 
