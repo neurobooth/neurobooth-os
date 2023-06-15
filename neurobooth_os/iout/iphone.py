@@ -1,4 +1,5 @@
 import os.path as op
+import sys
 from logging import raiseExceptions
 from multiprocessing import Condition, Event, RLock
 import functools
@@ -868,7 +869,22 @@ if __name__ == "__main__":
         action='store_false',
         help='Disable plotting of results.',
     )
+    parser.add_argument(
+        '--log-console',
+        action='store_true',
+        help='Print session logs to the console.'
+    )
+    parser.add_argument(
+        '--log-file',
+        default=None,
+        type=str,
+        help='Write session logs to the specified file.',
+    )
     args = parser.parse_args()
+
+    if args.log_console or args.log_file is not None:
+        from neurobooth_os.logging import make_session_logger_debug
+        make_session_logger_debug(file=args.log_file, console=args.log_console)
 
 
     # Creating and starting mock streams:

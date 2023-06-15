@@ -2,6 +2,7 @@ import os
 import logging
 import sys
 from datetime import datetime
+from typing import Optional
 
 
 LOG_FORMAT = logging.Formatter('|%(levelname)s| [%(asctime)s] %(filename)s, %(funcName)s, L%(lineno)d> %(message)s')
@@ -14,6 +15,29 @@ def make_session_logger(session_folder: str, machine_name: str, log_level=loggin
     file_handler.setLevel(log_level)
     file_handler.setFormatter(LOG_FORMAT)
     logger.addHandler(file_handler)
+    logger.setLevel(log_level)
+    return logger
+
+
+def make_session_logger_debug(
+        file: Optional[str] = None,
+        console: bool = True,
+        log_level=logging.DEBUG
+) -> logging.Logger:
+    logger = logging.getLogger('session')
+
+    if file is not None:
+        file_handler = logging.FileHandler(file)
+        file_handler.setLevel(log_level)
+        file_handler.setFormatter(LOG_FORMAT)
+        logger.addHandler(file_handler)
+
+    if console:
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(log_level)
+        console_handler.setFormatter(LOG_FORMAT)
+        logger.addHandler(console_handler)
+
     logger.setLevel(log_level)
     return logger
 
