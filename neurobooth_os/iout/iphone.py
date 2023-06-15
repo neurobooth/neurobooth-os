@@ -559,9 +559,9 @@ class IPhone:
         self.logger.debug(f'iPhone [state={self._state}]: Disconnecting')
         self._sendpacket("@DISCONNECT")
         time.sleep(4)
-        self.sock.close()
         self._listen_thread.stop()
         self._listen_thread.join(timeout=3)
+        self.sock.close()
         if self._listen_thread.is_alive():
             self.logger.error(f'iPhone [state={self._state}]: Could not stop listening thread.')
             raise IPhoneError("Cannot stop the recording thread")
