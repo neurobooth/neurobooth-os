@@ -94,7 +94,10 @@ class IPhoneListeningThread(threading.Thread):
                     debug_print(f"Listener received: {msg}")
                 else:
                     debug_print(f"Listener received: Tag {resp_tag}")
-            except Exception as e:
+            except OSError as e:  # Will occur when the socket is closed during shutdown
+                if self._running:
+                    self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
+            except Exception as e:  # Simply log any other errors
                 self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
         self.logger.debug('iPhone: Exiting Listening Loop')
 
@@ -560,8 +563,8 @@ class IPhone:
         self._sendpacket("@DISCONNECT")
         time.sleep(4)
         self._listen_thread.stop()
+        self.sock.close()  # Closing the socket will force an error that will break the thread out of its wait
         self._listen_thread.join(timeout=3)
-        self.sock.close()
         if self._listen_thread.is_alive():
             self.logger.error(f'iPhone [state={self._state}]: Could not stop listening thread.')
             raise IPhoneError("Cannot stop the recording thread")
