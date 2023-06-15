@@ -54,12 +54,14 @@ def dump_file(phone: iphone.IPhone, fname: str, fname_out: str) -> None:
     file_data = phone.dump(fname)
     if len(file_data) == 0:
         logger.error(f'{fname} returned a zero-byte file!')
+        # Get rid of the 0-byte file
+        phone.dumpsuccess(fname)
+        logger.debug(f'Sent @DUMPSUCCESS for {fname}')
         return
 
     with open(fname_out, "wb") as f:
         f.write(file_data)
     logger.debug(f'Wrote {fname_out}, {len(file_data)/(1<<20):0.1f} MiB')
-
     phone.dumpsuccess(fname)
     logger.debug(f'Sent @DUMPSUCCESS for {fname}')
 
