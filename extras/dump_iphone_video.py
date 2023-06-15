@@ -38,20 +38,24 @@ def neurobooth_dump():
             logger.debug(f'Creating directory: {sess_folder}')
             os.mkdir(sess_folder)
 
-        dump_file(phone, fname, op.join(sess_folder, fname))
+        dump_file(phone, fname, op.join(sess_folder, fname), 30)
 
     logger.debug('Disconnecting iPhone')
     phone.disconnect()
 
 
-def dump_file(phone: iphone.IPhone, fname: str, fname_out: str) -> None:
+def dump_file(phone: iphone.IPhone, fname: str, fname_out: str, timeout_sec: float) -> None:
     logger = logging.getLogger('iphone_dump')
     if op.exists(fname_out):
         logger.error(f'Cannot write {fname_out} as it already exists!')
         return
 
     logger.info(f'Dump {fname} -> {fname_out}')
-    file_data = phone.dump(fname)
+    success, file_data = phone.dump(fname, timeout_sec=timeout_sec)
+    if not success:
+        logger.error(f'Unable to retrieve {fname}! (Error in _sendpacket or timeout on wait)')
+        return
+
     if len(file_data) == 0:
         logger.error(f'{fname} returned a zero-byte file!')
         # Get rid of the 0-byte file

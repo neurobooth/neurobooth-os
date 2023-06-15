@@ -543,13 +543,17 @@ class IPhone:
                 self.streaming = True
             return connected
 
-    def dump(self, filename):
+    def dump(self, filename, timeout_sec=None):
+        if timeout_sec is None:
+            timeout_sec = self._timeout_cond
+        success = False
+
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMP Message')
         with self._dump_video_cond:
             self._dump_video_data = b""
             if self._sendpacket("@DUMP", msg_contents={"Message": filename}):
-                self._dump_video_cond.wait(timeout=self._timeout_cond)
-            return self._dump_video_data
+                success = self._dump_video_cond.wait(timeout=timeout_sec)
+            return success, self._dump_video_data
 
     def dumpsuccess(self, filename):
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMPSUCCESS Message')
