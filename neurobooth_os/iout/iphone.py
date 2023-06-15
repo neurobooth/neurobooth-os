@@ -194,7 +194,8 @@ class IPhone:
         self._allmessages = []
         self._message_lock = RLock()
         self._state_lock = RLock()
-        self._msg_latest = {}
+        self._latest_message = {}
+        self._latest_message_type = ''
         self._wait_for_reply_cond = Condition()
         self._timeout_cond = 5
         self.ready_event = Event()  # Used to check if we have re-entered the ready state by ensure_stopped()
@@ -301,7 +302,7 @@ class IPhone:
                 success = self._wait_for_reply_cond.wait(timeout=self._timeout_cond)
             else:
                 success = self._wait_for_reply_cond.wait_for(
-                        lambda: self._msg_latest['MessageType'] in wait_on,
+                        lambda: self._latest_message_type in wait_on,
                         timeout=self._timeout_cond,
                 )
 
@@ -428,11 +429,13 @@ class IPhone:
                 self._dump_video_cond.notify()
         else:
             self._update_message_log(msg, tag)
+            message_type = msg["MessageType"]
             with self._wait_for_reply_cond:
-                self._msg_latest = msg
+                self._latest_message = msg
+                self._latest_message_type = message_type
                 self._wait_for_reply_cond.notify()
 
-            if msg["MessageType"] in [
+            if message_type in [
                 "@STARTTIMESTAMP",
                 "@INPROGRESSTIMESTAMP",
                 "@STOPTIMESTAMP",
@@ -572,13 +575,13 @@ class IPhone:
                 return None
 
             if not self._wait_for_reply_cond.wait_for(
-                lambda: self._msg_latest['MessageType'] in self.STATE_TRANSITIONS['#DUMPALL'].keys(),
+                lambda: self._latest_message_type in self.STATE_TRANSITIONS['#DUMPALL'].keys(),
                 timeout=self._timeout_cond,
             ):
                 self.logger.error('Timeout when waiting for @@FILESTODUMP.')
                 return None
 
-            filelist = self._msg_latest["Message"]
+            filelist = self._latest_message["Message"]
             if self._state == "#ERROR":
                 self.logger.error(f'iPhone [state={self._state}]: @DUMPALL Error; message="{filelist}"')
                 return None
