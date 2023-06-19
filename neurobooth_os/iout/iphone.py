@@ -1,9 +1,7 @@
+import argparse
 import os.path as op
-import sys
-from logging import raiseExceptions
 from multiprocessing import Condition, Event, RLock
 import functools
-
 import socket
 import json
 import struct
@@ -17,111 +15,55 @@ from typing import Dict, List, Tuple, Any, Optional, Union, ByteString
 
 from neurobooth_os.iout.usbmux import USBMux
 
-global DEBUG_IPHONE
-DEBUG_IPHONE = "default"  # 'default', 'verbatim' , 'verbatim_no_lsl', 'default_no_lsl'
 
-if DEBUG_IPHONE in ["default", "verbatim"]:
+# --------------------------------------------------------------------------------
+# Module-level constants and debugging flags
+# --------------------------------------------------------------------------------
+IPHONE_PORT: int = 2345  # IPhone should have socket on this port open if we're connecting to it.
+
+DEBUG_LOGGING: bool = False
+DISABLE_LSL: bool = False
+
+if not DISABLE_LSL:  # Conditional imports based on flags
     from pylsl import StreamInfo, StreamOutlet
     import liesl
     from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 
 
+# --------------------------------------------------------------------------------
 # Type aliases
+# --------------------------------------------------------------------------------
 MESSAGE = Dict[str, Any]
 PACKET_PAYLOAD = Union[MESSAGE, ByteString]
 PACKET_CONTENTS = Tuple[PACKET_PAYLOAD, int, int, int]
 CONFIG = Dict[str, Any]
 
 
-# decorator for debug printing
-def debug(func):
-    @functools.wraps(func)
-    def wrapper_print_debug(*args, **kwargs):
-        global DEBUG_IPHONE
-        if DEBUG_IPHONE in ["verbatim", "verbatim_no_lsl"]:
-            func(*args, **kwargs)
-
-    return wrapper_print_debug
-
-
-# decorator for lsl streaming
-def debug_lsl(func):
-    @functools.wraps(func)
-    def wrapper_lsl_debug(*args, **kwargs):
-        global DEBUG_IPHONE
-        if DEBUG_IPHONE in ["default", "verbatim"]:
-            return func(*args, **kwargs)
-        else:
-            return None
-
-    return wrapper_lsl_debug
-
-
-@debug
-def debug_print(arg):
-    print(arg)
-
-
-def safe_socket_operation(func):  # This decorator detects errors and sends the IPhone object into an #ERROR state
-    @functools.wraps(func)
-    def wrapper_safe_socket(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            _iphone: IPhone = args[0]
-            with _iphone._state_lock:
-                _iphone._state = "#ERROR"
-            debug_print(f"Error occurred sending/receiving the signal through the socket: {e}")
-            _iphone.logger.error(f'iPhone: Error occurred sending/receiving the signal through the socket: {e}')
-
-    return wrapper_safe_socket
-
-
-IPHONE_PORT = (
-    2345  # IPhone should have socket on this port open, if we're connecting to it.
-)
-
-
+# --------------------------------------------------------------------------------
+# Exceptions
+# --------------------------------------------------------------------------------
 class IPhoneError(Exception):
+    """Errors intended to be raised to calling code (instead of handled here, like panic)."""
     pass
 
 
-class IPhoneListeningThread(threading.Thread):
-    """
-    A thread that listens for messages sent by the iPhone and processes them (e.g., updates state, notifies conditions.)
-    """
-
-    def __init__(self, *args):
-        self._iphone: IPhone = args[0]
-        self._running = True
-        self.logger = logging.getLogger('session')
-        threading.Thread.__init__(self)
-
-    def run(self):
-        self.logger.debug('iPhone: Entering Listening Loop')
-        while self._running:
-            try:
-                payload, _, _, resp_tag = self._iphone._getpacket()
-                self._iphone._process_received_message(payload, resp_tag)
-
-                if resp_tag == 0:
-                    debug_print(f"Listener received: {payload}")
-                else:
-                    debug_print(f"Listener received: Tag {resp_tag}")
-            except OSError as e:  # Will occur when the socket is closed during shutdown
-                if self._running:
-                    self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
-            except Exception as e:  # Simply log any other errors
-                self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
-        self.logger.debug('iPhone: Exiting Listening Loop')
-
-    def stop(self):
-        self._running = False
+class IPhonePanic(Exception):
+    """An exception to signal code should panic and disconnect if a serious error is encountered."""
+    pass
 
 
+# --------------------------------------------------------------------------------
+# Hardware Interface Code
+# --------------------------------------------------------------------------------
 class IPhone:
     """
     Handles interactions with an iPhone device running the Neurobooth app.
+    Intended Lifecycle:
+     1. Create object.
+     2. prepare() to connect to iPhone and initialize LSL stream.
+     3. Record data: start() -> stop() -> ensure_stopped(). Repeat cycle as needed.
+     4. close() to disconnect the iPhone.
+    At any point during the lifecycle a panic may occur if an error is encountered. This will disconnect the iPhone.
     """
 
     # Constants for interfacing with the app
@@ -132,7 +74,10 @@ class IPhone:
     # The nested (key->value) structure is (#CURRENT_STATE->(@MESSAGE->#NEXT_STATE)), where if @MESSAGE is received in
     # #CURRENT_STATE, then the state machine should transition to #NEXT_STATE.
     STATE_TRANSITIONS = {
-        "#DISCONNECTED": {"@HANDSHAKE": "#CONNECTED", "@ERROR": "#ERROR"},
+        "#DISCONNECTED": {
+            "@HANDSHAKE": "#CONNECTED",
+            "@ERROR": "#ERROR",
+        },
         "#CONNECTED": {
             "@STANDBY": "#STANDBY",
             "@DISCONNECT": "#DISCONNECTED",
@@ -164,9 +109,9 @@ class IPhone:
             "@DUMPALL": "#DUMPALL",
             "@DUMP": "#DUMP",
             "@DUMPSUCCESS": "#READY",
+            "@INPROGRESSTIMESTAMP": "#READY",
             "@DISCONNECT": "#DISCONNECTED",
             "@ERROR": "#ERROR",
-            "@INPROGRESSTIMESTAMP": "#READY"
         },
         "#START": {
             "@STARTTIMESTAMP": "#RECORDING",
@@ -185,21 +130,16 @@ class IPhone:
             "@DISCONNECT": "#DISCONNECTED",
             "@ERROR": "#ERROR",
         },
-        "#ERROR": {"@DISCONNECT": "#DISCONNECTED"},
+        "#ERROR": {
+            "@DISCONNECT": "#DISCONNECTED",
+            "@ERROR": "#ERROR",
+        },
     }
     MESSAGE_TYPES = []
     for elem in STATE_TRANSITIONS:
         MESSAGE_TYPES += STATE_TRANSITIONS[elem].keys()
     MESSAGE_TYPES = set(MESSAGE_TYPES)
     MESSAGE_KEYS = {"MessageType", "SessionID", "TimeStamp", "Message"}
-
-    @safe_socket_operation  # safe_socket decorator for self.sock.send
-    def _socket_send(self, packet):
-        return self.sock.send(packet)
-
-    @safe_socket_operation  # safe_socket decorator for self.sock.recv
-    def _socket_recv(self, nbytes):
-        return self.sock.recv(nbytes)
 
     def __init__(self, name, sess_id="", mock=False, device_id="", sensor_ids=("",)):
         self.connected = False
@@ -219,17 +159,14 @@ class IPhone:
         # --------------------------------------------------------------------------------
         self._timeout_cond = 5  # Default threading timeout
 
+        self._state = "#DISCONNECTED"  # Entry point of state machine
+        self._state_lock = RLock()
+
         self._frame_preview_data = b""
         self._frame_preview_cond = Condition()
 
         self._dump_video_data = b""
         self._dump_video_cond = Condition()
-
-        self._allmessages = []
-        self._message_lock = RLock()
-
-        self._state = "#DISCONNECTED"  # Entry point of state machine
-        self._state_lock = RLock()
 
         self._latest_message = {}
         self._latest_message_type = ''
@@ -240,107 +177,98 @@ class IPhone:
 
         self.logger.debug('iPhone: Created Object')
 
-    def _validate_message(self, message: MESSAGE, tag: int) -> bool:
+    def panic(self, e: IPhonePanic, disconnect: bool = True) -> None:
         """
-        Validate the structure of a message and update the state machine if validated.
+        Respond to an IPhonePanic being raised. Log errors, go to error state, and (optionally) disconnect.
 
-        Parameters
-        ----------
-        message
-            The message to validate
-        tag
-            The associated message tag
-
-        Returns
-        -------
-        success
-            Whether the function call was successful.
+        :param e: The raised IPhonePanic exception.
+        :param disconnect: Whether to trigger a disconnect as a result of the panic.
         """
-        if tag == 1:  # TAG==1 corresponds to PREVIEW file receiving
-            msg_type = "@PREVIEWRECEIVE"
-        elif tag == 2:  # TAG==2 corresponds to DUMP file receiving
-            msg_type = "@DUMPRECEIVE"
-        elif tag != 0:  # Incorrect / unexpected tag
-            print(f"Incorrect tag received from IPhone. Tag={tag}")
-            self.logger.error(f'iPhone: Incorrect tag ({tag}) received.')
+        self.logger.error(f'iPhone [state={self._state}]: PANIC Message: {e}')
+        print(f'iPhone PANIC: {e}')
+
+        with self._state_lock:
+            self._state = "#ERROR"
+
+        if disconnect:
             self.disconnect()
-            return False
-        else:  # Tag==0; all other messages
-            if len(message) != len(self.MESSAGE_KEYS):
-                print(f"Message has incorrect length: {message}")
-                self.logger.error(f'iPhone: Message has incorrect length: {message}')
-                self.disconnect()
-                return False
-            for key in message:
-                if key not in self.MESSAGE_KEYS:
-                    print(f"Message has incorrect key: {key} not allowed. {message}")
-                    self.logger.error(f'iPhone: Message has incorrect key: key={key}; message={message}')
-                    self.disconnect()
-                    return False
-            msg_type = message["MessageType"]
-        debug_print(f"Message: {msg_type}")
-        return self._update_state(msg_type)
 
-    def _update_state(self, msg_type: str) -> bool:
+    @staticmethod
+    def _handle_panic(func):
+        """Decorator to wrap a function call in a try/except to detect panic and generically handle panic exceptions."""
+        @functools.wraps(func)
+        def wrapper_panic(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except IPhonePanic as e:
+                _iphone: IPhone = args[0]
+                _iphone.panic(e)
+                return None
+        return wrapper_panic
+
+    def _update_state(self, msg_type: str) -> None:
         """
         Update the state machine based on the given message type.
 
-        Parameters
-        ----------
-        msg_type
-            The message type string (e.g., @START) used to update the state machine.
-
-        Returns
-        -------
-        success
-            Whether the state update was successful. False if an invalid transition was requested.
-
+        :param msg_type: The message type string (e.g., @START) used to update the state machine.
         """
         with self._state_lock:
-            debug_print(f"Initial State: {self._state}")
+            if DEBUG_LOGGING:
+                self.logger.debug(f"Initial State: {self._state}")
+
+            # Check that the requested transition is valid
             allowed_trans = self.STATE_TRANSITIONS[self._state]
             if msg_type not in allowed_trans:
-                print(f"Message {msg_type} is not valid in the state {self._state}.")
-                self.logger.error(f"iPhone: Message {msg_type} is not valid in the state {self._state}.")
-                self.disconnect()
-                return False
+                self.logger.error('iPhone: PANIC')
+                raise IPhonePanic(f'Message {msg_type} is not valid in the current state.')
 
+            # Perform the transition
             prev_state = self._state
             self._state = allowed_trans[msg_type]
+
+            # Special handling for certain states
             if self._state == '#ERROR':
                 self.logger.error(f'iPhone: Entered #ERROR state from {prev_state} via {msg_type}!')
             elif self._state == '#READY':
                 self.ready_event.set()
-            debug_print(f"Outcome State:{self._state}")
-        return True
+
+            if DEBUG_LOGGING:
+                self.logger.debug(f"Outcome State: {self._state}")
 
     def _message(self, msg_type: str, timestamp: str = "", msg: str = "") -> MESSAGE:
         """
         Create a message given a subset of its contents (defaulting the rest).
 
-        Parameters
-        ----------
-        msg_type
-            The message type string (e.g., @START)
-        timestamp
-            The message timestamp
-        msg
-            The message contents
-
-        Returns
-        -------
-        message
-            A populated message dictionary.
+        :param msg_type: The message type string (e.g., @START)
+        :param timestamp: The message timestamp
+        :param msg: The message contents
+        :returns: A populated message dictionary.
         """
         if msg_type not in self.MESSAGE_TYPES:
-            self.logger.error(f'iPhone [state={self._state}]: "{msg_type}" is not an allowed message')
-            raise IPhoneError(f'Message type "{msg_type}" not in allowed message type list')
+            self.logger.error('iPhone: PANIC')
+            raise IPhonePanic(f'Message type "{msg_type}" not in allowed message type list.')
+
         return {
             "MessageType": msg_type,
             "SessionID": self.iphone_sessionID,
             "TimeStamp": timestamp,
             "Message": msg,
         }
+
+    def _validate_message(self, message: MESSAGE) -> None:
+        """
+        Validate the structure of a message. Panic if an error is detected.
+
+        :param message: The message to validate
+        """
+        if len(message) != len(self.MESSAGE_KEYS):
+            self.logger.error('iPhone: PANIC')
+            raise IPhonePanic(f'Message has incorrect length: {message}')
+
+        for key in message:
+            if key not in self.MESSAGE_KEYS:
+                self.logger.error('iPhone: PANIC')
+                raise IPhonePanic(f'Message has incorrect key: key={key}; message={message}')
 
     @staticmethod
     def _json_wrap(message: MESSAGE) -> str:
@@ -352,44 +280,31 @@ class IPhone:
         """Convert a transmitted JSON string into a message dictionary."""
         return json.loads(payload[4:])
 
-    def _update_message_log(self, msg: MESSAGE, tag: int) -> None:
-        """Safely update the log of messages sent and received."""
-        with self._message_lock:
-            self._allmessages.append({"message": msg, "ctr_timestamp": str(datetime.now()), "tag": tag})
-
-    def _sendpacket(self, msg_type: str, msg_contents: Optional[MESSAGE] = None) -> bool:
+    def _send_packet(self, msg_type: str, msg_contents: Optional[MESSAGE] = None) -> None:
         """
-        Validate a message, update the state machine, and send the message to the iPhone.
+        Create and validate a message, update the state machine, and send the message to the iPhone.
 
-        Parameters
-        ----------
-        msg_type
-            The message type string (e.g., @START)
-        msg_contents
-            Any non-default message entries/contents
-        Returns
-        -------
-        success
-            Whether the message was successfully validated and sent.
+        :param msg_type: The message type string (e.g., @START)
+        :param msg_contents: Any non-default message entries/contents
         """
         msg = self._message(msg_type)  # Default message contents
         if msg_contents is not None:  # Replace default contents with information from provided dict
             msg.update(msg_contents)
+        self._validate_message(msg)
 
-        if not self._validate_message(msg, 0):  # State transition is side effect of validate_message
-            print(f"Message {msg} did not pass validation. Exiting _sendpacket.")
-            self.logger.error(f'iPhone [state={self._state}]: Packet Validation Error: {msg}')
-            self.disconnect()
-            return False
+        self._update_state(msg_type)
 
-        self._update_message_log(msg, self.tag)
         payload = IPhone._json_wrap(msg).encode("utf-8")
         payload_size = len(payload)
         packet = (
             struct.pack("!IIII", self.VERSION, self.TYPE_MESSAGE, self.tag, payload_size) + payload
         )
-        self._socket_send(packet)
-        return True
+
+        try:
+            self.sock.send(packet)
+        except Exception as e:
+            self.logger.error(f'iPhone: PANIC: {e}')
+            raise IPhonePanic(f'Error occurred sending signal through the socket') from e
 
     def _send_and_wait_for_response(
             self,
@@ -398,29 +313,18 @@ class IPhone:
             wait_on: Optional[List[str]] = None,
     ) -> bool:
         """
-        A convenience wrapper for _sendpacket that waits for a response (with tag==0) from the iPhone.
+        A convenience wrapper for _send_packet that waits for a response (with tag==0) from the iPhone.
         The data of the response is NOT returned. If safe access to the message itself is required, then the calling
         function should instead do its own handling of an appropriate condition variable.
 
-        Parameters
-        ----------
-        msg_type
-            The message type string (e.g., @START) to be passed to _sendpacket
-        msg_contents
-            Any non-default message entries/contents to be passed to _sendpacket
-        wait_on
-            If None, wait for any response from the iPhone.
+        :param msg_type: The message type string (e.g., @START) to be passed to _send_packet
+        :param msg_contents: Any non-default message entries/contents to be passed to _send_packet
+        :param wait_on: If None, wait for any response from the iPhone.
             If a list of message types is provided, wait for any of the specified message types.
-
-        Returns
-        -------
-        success
-            Whether the message was successfully validated and sent. A False value may also indicate a wait timeout.
+        :returns: Whether the message timed out or was successfully sent
         """
         with self._wait_for_reply_cond:
-            if not self._sendpacket(msg_type, msg_contents=msg_contents):
-                self.logger.error(f'iPhone [state={self._state}]: Failed to send {msg_type} packet!')
-                return False
+            self._send_packet(msg_type, msg_contents=msg_contents)
 
             if wait_on is None:
                 success = self._wait_for_reply_cond.wait(timeout=self._timeout_cond)
@@ -432,25 +336,26 @@ class IPhone:
 
             if not success:
                 self.logger.warning(f'iPhone [state={self._state}]: Timeout when waiting for response to {msg_type}.')
-
             return success
+
+    def listen(self):
+        """Called by tge listener thread. Attempt to receive and process a message."""
+        payload, _, _, resp_tag = self._get_packet()
+
+        if DEBUG_LOGGING:
+            debug_msg = payload if resp_tag == 0 else f'Tag {resp_tag}'
+            self.logger.debug(f'Listener Received: {debug_msg}')
+
+        self._process_received_message(payload, resp_tag)
 
     @staticmethod
     def recvall(sock: socket.socket, n: int) -> ByteString:
         """
         Helper function to receive large packets.
 
-        Parameters
-        ----------
-        sock
-            The socket to pull from.
-        n
-            The number of bytes to retrieve.
-
-        Returns
-        -------
-        data
-            The data pulled from the socket.
+        :param sock: The socket to pull from.
+        :param n: The number of bytes to retrieve.
+        :returns: The data pulled from the socket.
         """
         MAX_RECV = (1 << 17) - 80  # Largest chunk of data to pull from the socket in any one call.
 
@@ -470,114 +375,92 @@ class IPhone:
 
         return b"".join(fragments)
 
-    def _getpacket(self, timeout_sec: int = 20) -> PACKET_CONTENTS:
+    def _get_packet(self, timeout_sec: int = 20) -> PACKET_CONTENTS:
         """
         Retrieve a packet of data from the iPhone. This method will block until timed out.
 
-        Parameters
-        ----------
-        timeout_sec
-            How long to block before timing out
-
-        Returns
-        -------
-        package_contents
-            (payload, version, type, tag): Payload is either a message dictionary (tag == 0) or byte string
+        :param timeout_sec: How long to block before timing out
+        :returns: (payload, version, type, tag): Payload is either a message dictionary (tag == 0) or byte string
             (tag == 1 or tag == 2).
         """
         ready, _, _ = select.select([self.sock], [], [], timeout_sec)
         if not ready:
             self.logger.error(f"iPhone [state={self._state}]: Exceeded timeout for packet receipt")
-            raise IPhoneError(
-                f"Timeout for packet receive exceeded ({timeout_sec} sec)"
-            )
+            raise IPhoneError(f"Timeout for packet receive exceeded ({timeout_sec} sec)")
 
         first_frame = self.sock.recv(16)
         version, type_, tag, payload_size = struct.unpack("!IIII", first_frame)
 
-        if tag == 1 or tag == 2:
-            self._validate_message({}, tag)
+        if tag in (1, 2):
             payload = IPhone.recvall(self.sock, payload_size)
             return payload, version, type_, tag
-
-        payload = self.sock.recv(payload_size)
-        msg = IPhone._json_unwrap(payload)
-        self._validate_message(msg, tag)
-        return msg, version, type_, tag
+        elif tag == 0:
+            payload = self.sock.recv(payload_size)
+            msg = IPhone._json_unwrap(payload)
+            self._validate_message(msg)
+            return msg, version, type_, tag
+        else:
+            self.logger.error('iPhone: PANIC')
+            raise IPhonePanic(f'Incorrect tag ({tag}) received.')
 
     def _process_received_message(self, msg: PACKET_PAYLOAD, tag: int) -> None:
         """
-        Notify appropriate conditions of message arrival.
-        Also push data to LSL for appropriate messages.
+        Push to LSL (if appropriate), update the state machine, and notify appropriate conditions of message arrival.
 
-        Parameters
-        ----------
-        msg
-            The payload received from the iPhone. (Either a message or raw data depending on the tag.)
-        tag
-            The message tag that indicates how to handle the payload.
+        :param msg: The payload received from the iPhone. (Either a message or raw data depending on the tag.)
+        :param tag: The message tag that indicates how to handle the payload.
         """
         if tag == 1:
+            self._update_state("@PREVIEWRECEIVE")
             with self._frame_preview_cond:
                 self._frame_preview_data = msg
                 self._frame_preview_cond.notify()
         elif tag == 2:
+            self._update_state("@DUMPRECEIVE")
             with self._dump_video_cond:
                 self._dump_video_data = msg
                 self._dump_video_cond.notify()
         else:
-            self._update_message_log(msg, tag)
+            self._lsl_push_sample(msg)  # Push before trying to acquire locks to ensure accurate timing
+
             message_type = msg["MessageType"]
+            self._update_state(message_type)
             with self._wait_for_reply_cond:
                 self._latest_message = msg
                 self._latest_message_type = message_type
-
-                # Push data to LSL in an appropriate message was received
-                if message_type in [
-                    "@STARTTIMESTAMP",
-                    "@INPROGRESSTIMESTAMP",
-                    "@STOPTIMESTAMP",
-                ]:
-                    finfo = eval(msg["TimeStamp"])
-                    self.fcount = int(finfo["FrameNumber"])
-                    lsl_sample = [self.fcount, float(finfo["Timestamp"]), time.time()]
-                    self.lsl_push_sample(lsl_sample)
-                    debug_print(lsl_sample)
-
                 self._wait_for_reply_cond.notify()
 
-    @debug_lsl
-    def lsl_push_sample(self, *args):
-        self.outlet.push_sample(*args)
+    def _lsl_push_sample(self, message: MESSAGE) -> None:
+        """
+        Push a sample to LSL if an appropriate message type and LSL is enabled.
+        :param message: The message to parse and possibly push to LSL.
+        """
+        # Guards to ensure that we only try to push data where appropriate
+        if DISABLE_LSL or message["MessageType"] not in ("@STARTTIMESTAMP", "@INPROGRESSTIMESTAMP", "@STOPTIMESTAMP",):
+            return
 
-    @debug_lsl
-    def lsl_print(self, *args):
-        print(*args)
+        # Parse data from message
+        frame_info = eval(message["TimeStamp"])  # Nasty trick to turn the message string into an object
+        frame_num, frame_time = int(frame_info["FrameNumber"]), float(frame_info["Timestamp"])
+
+        # Push the sample
+        lsl_sample = [frame_num, frame_time, time.time()]
+        self.outlet.push_sample(lsl_sample)
+
+        if DEBUG_LOGGING:
+            self.logger.debug(f'LSL Push: {lsl_sample}')
 
     def prepare(self, mock: bool = False, config: Optional[CONFIG] = None) -> bool:
         """
-        Connect to the iPhone and open an LSL outlet.
+        Called during a PREPARE message to the server (i.e., "Connect Devices").
+        Connects to the iPhone and opens an LSL outlet.
 
-        Parameters
-        ----------
-        mock
-            Whether to use a mock iPhone
-        config
-            iPhone configuation options
-
-        Returns
-        -------
-        success
-            Whether the connection was successful
+        :param mock: Whether to use a mock iPhone
+        :param config: iPhone configuation options
+        :returns: Whether the connection was successful
         """
         if mock:
-            HOST = "127.0.0.1"  # Symbolic name meaning the local host
-            PORT = 50009  # Arbitrary non-privileged port
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.connect((HOST, PORT))
-            self._mock_handshake()
-            self.connected = True
-            return self.connected
+            return self._mock_handshake() and self.connected
 
         if config is None:
             config = {
@@ -588,26 +471,19 @@ class IPhone:
                 "BRIGHTNESS": "50",
                 "LENSPOS": "0.7",
             }
-        self.notifyonframe = int(config["NOTIFYONFRAME"])
-        success = self.handshake(config)
-        if success:
-            self.outlet = self.create_outlet()
+
+        success = self._handshake(config)
+        if success and not DISABLE_LSL:
+            self.outlet = self._create_outlet()
             self.streaming = True
         return success and self.connected
 
-    def handshake(self, config: CONFIG) -> bool:
+    def _handshake(self, config: CONFIG) -> bool:
         """
         Establish a connection with the iPhone; helper for prepare.
 
-        Parameters
-        ----------
-        config
-            iPhone configuation options
-
-        Returns
-        -------
-        success
-            Whether the connection was successful
+        :param config: iPhone configuation options
+        :returns: Whether the connection was successful
         """
         if self._state != "#DISCONNECTED":
             print("Handshake is only available when disconnected")
@@ -626,10 +502,10 @@ class IPhone:
         self.device = self.usbmux.devices[0]
         try:
             self.sock = self.usbmux.connect(self.device, IPHONE_PORT)
+            self._update_state('@HANDSHAKE')
         except Exception as e:
             self.logger.error(f'iPhone [state={self._state}]: Unable to connect; error={e}')
             return False
-        self._state = "#CONNECTED"
 
         # As soon as we're connected, start the parallel listening thread.
         self._listen_thread = IPhoneListeningThread(self)
@@ -637,21 +513,39 @@ class IPhone:
         # self.sock.setblocking(0)
         self.connected = True
 
+        # Send the configuration to the iPhone and wait for a response
         msg_camera_config = {"Message": json.dumps(config)}
         print(msg_camera_config)
-        return self._send_and_wait_for_response(
-            "@STANDBY",
-            msg_contents=msg_camera_config,
-            wait_on=list(self.STATE_TRANSITIONS['#STANDBY'].keys()),
-        )
+        try:
+            return self._send_and_wait_for_response(
+                "@STANDBY",
+                msg_contents=msg_camera_config,
+                wait_on=list(self.STATE_TRANSITIONS['#STANDBY'].keys()),
+            )
+        except IPhonePanic as e:
+            self.panic(e)
+            return False
 
     def _mock_handshake(self) -> bool:
-        self._validate_message(self._message('@STANDBY'), 0)
-        self._validate_message(self._message('@READY'), 0)
-        return True
+        try:
+            HOST = "127.0.0.1"  # Symbolic name meaning the local host
+            PORT = 50009  # Arbitrary non-privileged port
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.connect((HOST, PORT))
+            self.connected = True
 
-    @debug_lsl
-    def create_outlet(self) -> StreamOutlet:
+            self._update_state('@HANDSHAKE')
+            self._update_state('@STANDBY')
+            self._update_state('@READY')
+            return True
+        except IPhonePanic as e:
+            self.panic(e)
+            return False
+        except Exception as e:
+            self.logger.error(f'iPhone [state={self._state}]: Unable to connect; error={e}')
+            return False
+
+    def _create_outlet(self) -> StreamOutlet:
         """Create an LSL outlet; helper for prepare."""
         info = set_stream_description(
             stream_info=StreamInfo(
@@ -674,17 +568,22 @@ class IPhone:
         print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
         return StreamOutlet(info)
 
-    def start_recording(self, filename: str) -> None:
-        """Signal the iPhone to start recording using the given filename"""
-        msg_filename = {"Message": filename}
+    @_handle_panic
+    def _start_recording(self, filename: str) -> None:
+        """
+        Signal the iPhone to start recording.
+
+        :param filename: The file name root (i.e., no extension) to be passed to the iPhone.
+        """
         self.logger.debug(f'iPhone [state={self._state}]: Sending @START Message')
         self._send_and_wait_for_response(
             "@START",
-            msg_contents=msg_filename,
+            msg_contents={"Message": filename},
             wait_on=list(self.STATE_TRANSITIONS['#START'].keys()),
         )
 
-    def stop_recording(self) -> None:
+    @_handle_panic
+    def _stop_recording(self) -> None:
         """Signal the iPhone to stop recording."""
         self.logger.debug(f'iPhone [state={self._state}]: Sending @STOP Message')
         self.ready_event.clear()  # Clear this event so that ensure_stopped() can wait on it
@@ -694,32 +593,32 @@ class IPhone:
         )
 
     def frame_preview(self) -> ByteString:
-        """Retrieve a frame preview from the iPhone,"""
+        """
+        Retrieve a frame preview from the iPhone.
+
+        :returns: The raw data of the image, or an empty byte string if the condition times out.
+        """
         self.logger.debug(f'iPhone [state={self._state}]: Sending @PREVIEW Message')
         with self._frame_preview_cond:
             self._frame_preview_data = b""
-            if self._sendpacket("@PREVIEW"):
+            try:
+                self._send_packet("@PREVIEW")
                 self._frame_preview_cond.wait(timeout=self._timeout_cond)
+            except IPhonePanic as e:
+                self.panic(e)
             return self._frame_preview_data
 
+    @_handle_panic
     def dumpall_getfilelist(self, log_files: bool = True) -> Optional[List[str]]:
         """
-        Get a list of files saved on the iPhone.
+        Fetch a list of files saved on the iPhone.
 
-        Parameters
-        ----------
-        log_files
-            Whether to log the list of retrieved files using the session logger.
-
-        Returns
-        -------
-        file_names
-            The list of files saved on the iPhone.
+        :param log_files: Whether to log the list of retrieved files using the session logger.
+        :returns: The list of files saved on the iPhone, or None if the condition times out.
         """
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMPALL Message')
         with self._wait_for_reply_cond:
-            if not self._sendpacket("@DUMPALL"):
-                return None
+            self._send_packet("@DUMPALL")
 
             if not self._wait_for_reply_cond.wait_for(
                 lambda: self._latest_message_type in self.STATE_TRANSITIONS['#DUMPALL'].keys(),
@@ -729,121 +628,150 @@ class IPhone:
                 return None
 
             filelist = self._latest_message["Message"]
-            if self._state == "#ERROR":
-                self.logger.error(f'iPhone [state={self._state}]: @DUMPALL Error; message="{filelist}"')
-                return None
-
             if log_files:
                 self.logger.debug(f"iPhone [state={self._state}]: File List (N={len(filelist)}) = {filelist}")
-
             return filelist
 
     def dump(self, filename: str, timeout_sec=None) -> (bool, ByteString):
         """
         Retrieve a file from the iPhone.
 
-        Parameters
-        ----------
-        filename
-            The file (from the list returned by dumpall_getfilelist) to retrieve.
-        timeout_sec
-            Wait the specified amount of time for the file transfer to complete.
-
-        Returns
-        -------
-        success
-            False if a timeout occurred or the request could not be sent; a zero-byte file will be returned.
+        :param filename: The file (from the list returned by dumpall_getfilelist) to retrieve.
+        :param timeout_sec: Wait the specified amount of time for the file transfer to complete. No timeout if None.
+        :returns: (success, data): success is False if a timeout occurred; Data is the raw data returned from the phone,
+            or zero bytes if timed out.
         """
         success = False
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMP Message')
         with self._dump_video_cond:
             self._dump_video_data = b""
-            if self._sendpacket("@DUMP", msg_contents={"Message": filename}):
+            try:
+                self._send_packet("@DUMP", msg_contents={"Message": filename})
                 success = self._dump_video_cond.wait(timeout=timeout_sec)
+            except IPhonePanic as e:
+                self.panic(e)
             return success, self._dump_video_data
 
-    def dumpsuccess(self, filename: str) -> bool:
+    @_handle_panic
+    def dump_success(self, filename: str) -> None:
         """
         Notify the iPhone that it may delete the specified file.
 
-        Parameters
-        ----------
-        filename
-            The file (from the list returned by dumpall_getfilelist) to delete.
-
-        Returns
-        -------
-        success
-            Whether the @DUMPSUCCESS message was successfully sent.
+        :param filename: The file (from the list returned by dumpall_getfilelist) to delete.
         """
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMPSUCCESS Message')
-        return self._sendpacket("@DUMPSUCCESS", msg_contents={"Message": filename})
+        self._send_packet("@DUMPSUCCESS", msg_contents={"Message": filename})
 
     def start(self, filename: str) -> None:
-        """Start data capture."""
+        """
+        Called during a START message to the server. Start data capture.
+
+        :param filename: The task file name supplied by the server.
+        """
         self.streaming = True
         filename += "_IPhone"
         filename = op.split(filename)[-1]
-        self.lsl_print(f"-new_filename-:{self.streamName}:{filename}.mov")
-        time.sleep(0.05)
-        self.lsl_print(f"-new_filename-:{self.streamName}:{filename}.json")
-        self.start_recording(filename)
+        if not DISABLE_LSL:
+            print(f"-new_filename-:{self.streamName}:{filename}.mov")
+            time.sleep(0.05)
+            print(f"-new_filename-:{self.streamName}:{filename}.json")
+        self._start_recording(filename)
 
     def stop(self) -> None:
-        """Stop data capture."""
-        self.stop_recording()
+        """Called during a START message to the server. Stop data capture."""
+        self._stop_recording()
         self.streaming = False
 
+    @_handle_panic
     def ensure_stopped(self, timeout_seconds: float) -> None:
-        """Check to make sure that we have transitioned from the #STOP state back to the #READY state."""
+        """
+        Check to make sure that we have transitioned from the #STOP state back to the #READY state.
+
+        :param timeout_seconds: How long to wait for the transition back to #READY before a panic is triggered.
+        """
         success = self.ready_event.wait(timeout=timeout_seconds)
         if not success:
-            self.logger.error(
-                f'iPhone [state={self._state}]: Ready state not reached during stop sequence before timeout!'
-            )
-            raise IPhoneError('Ready state not reached during stop sequence before timeout!')
+            self.logger.error('iPhone: PANIC')
+            raise IPhonePanic('Ready state not reached during stop sequence before timeout!')
 
         self.logger.debug(f'iPhone [state={self._state}]: Transition to #READY Detected')
 
     def close(self) -> None:
-        """Close the stream and disconnect the iPhone"""
+        """Called during a CLOSE or SHUTDOWN message to the server. Disconnect the iPhone"""
         self.disconnect()
 
-    def disconnect(self) -> bool:
-        """Disconnect the iPhone"""
+    def disconnect(self, join_listener: bool = True) -> bool:
+        """
+        Disconnect the iPhone
+
+        :param join_listener: Should be set to False if called from the listener thread, otherwise True.
+        """
         if self._state == "#DISCONNECTED":
             print("IPhone device is already disconnected")
             return False
+
+        # Send disconnect signal
         self.logger.debug(f'iPhone [state={self._state}]: Disconnecting')
-        self._sendpacket("@DISCONNECT")
-        time.sleep(4)
+        try:
+            self._send_packet("@DISCONNECT")
+        except IPhonePanic as e:
+            self.logger.error(f'iPhone: PANIC while sending @DISCONNECT: {e}')
+
+        time.sleep(1)  # Give things some time to happen; was 4 before rewrite...
+
+        # Try to stop the listener thread
         self._listen_thread.stop()
         self.sock.close()  # Closing the socket will force an error that will break the thread out of its wait
-        self._listen_thread.join(timeout=3)
-        if self._listen_thread.is_alive():
-            self.logger.error(f'iPhone [state={self._state}]: Could not stop listening thread.')
-            raise IPhoneError("Cannot stop the recording thread")
+        if join_listener:
+            self._listen_thread.join(timeout=3)
+            if self._listen_thread.is_alive():
+                self.logger.error(f'iPhone [state={self._state}]: Could not stop listening thread.')
+                raise IPhoneError("Cannot stop the recording thread")
+
         self.connected = False
         self.streaming = False
         return True
 
 
-if __name__ == "__main__":
-    import argparse
+class IPhoneListeningThread(threading.Thread):
+    """
+    A thread that listens for messages sent by the iPhone and processes them (e.g., updates state, notifies conditions.)
+    """
+    def __init__(self, iphone: IPhone):
+        self._iphone = iphone
+        self._running = True
+        self.logger = logging.getLogger('session')
+        threading.Thread.__init__(self)
 
-    @debug_lsl
-    def liesl_sesion_create(**kwargs):
-        session = liesl.Session(**kwargs)
-        return session
+    def run(self):
+        self.logger.debug('iPhone: Entering Listening Loop')
+        while self._running:
+            try:
+                self._iphone.listen()
+            except IPhonePanic as e:
+                self._iphone.panic(e, disconnect=False)
+                self._iphone.disconnect(join_listener=False)
+            except OSError as e:  # Will occur when the socket is closed during shutdown
+                if self._running:
+                    self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
+            except Exception as e:  # Simply log any other errors
+                self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
+        self.logger.debug('iPhone: Exiting Listening Loop')
 
-    @debug_lsl
-    def liesl_sesion_start(session):
-        session.start_recording()
+    def stop(self):
+        self._running = False
 
-    @debug_lsl
-    def liesl_sesion_stop(session):
-        session.stop_recording()
 
+# --------------------------------------------------------------------------------
+# Testing Script
+# --------------------------------------------------------------------------------
+def test_script():
+    args = script_parse_args()
+    script_capture_data(args.subject_id, args.recording_folder, args.duration)
+    script_results(args.subject_id, args.show_plots)
+
+
+def script_parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Run a standalone capture using the iPhone.')
     parser.add_argument(
         '--duration',
@@ -886,16 +814,10 @@ if __name__ == "__main__":
         from neurobooth_os.logging import make_session_logger_debug
         make_session_logger_debug(file=args.log_file, console=args.log_console)
 
+    return args
 
-    # Creating and starting mock streams:
 
-    # config={'NOTIFYONFRAME':'1',
-    #                        'VIDEOQUALITY':'3840x2160',
-    #                        'USECAMERAFACING':'BACK','FPS':'60'}
-
-    # config={'NOTIFYONFRAME':'1',
-    #                        'VIDEOQUALITY':'1920x1080',
-    #                        'USECAMERAFACING':'BACK','FPS':'120 or 240'}
+def script_capture_data(subject_id: str, recording_folder: str, capture_duration: int) -> None:
     iphone = IPhone("iphone")
     default_config: CONFIG = {
         "NOTIFYONFRAME": "1",
@@ -909,33 +831,32 @@ if __name__ == "__main__":
     if not iphone.prepare(config=default_config):
         print("Could not connect to iphone")
 
-    frame = iphone.frame_preview()
-
-    streamargs = {"name": "IPhoneFrameIndex"}
-    date = datetime.now().strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
-    task_id = f'{args.subject_id}_{date}_task_obs_1'
+    iphone.frame_preview()
 
     # Start LSL
-    session = liesl_sesion_create(
-        prefix=args.subject_id, streamargs=[streamargs], mainfolder=args.recording_folder
-    )
-    liesl_sesion_start(session)
+    if not DISABLE_LSL:
+        streamargs = {"name": "IPhoneFrameIndex"}
+        session = liesl.Session(prefix=subject_id, streamargs=[streamargs], mainfolder=recording_folder)
+        session.start_recording()
 
     # Data capture
-    iphone.start(task_id)
-    time.sleep(args.duration)
+    iphone.start(f'{subject_id}_{datetime.now().strftime("%Y-%m-%d_%Hh-%Mm-%Ss")}_task_obs_1')
+    time.sleep(capture_duration)
     iphone.stop()
 
     # Stop LSL
-    liesl_sesion_stop(session)
+    if not DISABLE_LSL:
+        session.stop_recording()
 
     iphone.disconnect()
 
+
+def script_results(subject_id: str, show_plots: bool) -> None:
     import pyxdf
     import glob
     import numpy as np
 
-    fname = glob.glob(f"{args.subject_id}/recording_R0*.xdf")[-1]
+    fname = glob.glob(f"{subject_id}/recording_R0*.xdf")[-1]
     data, header = pyxdf.load_xdf(fname)
 
     ts = data[0]["time_series"]
@@ -946,7 +867,7 @@ if __name__ == "__main__":
     df_ip = np.diff(ts_ip)
     print(f"mean diff diff: {np.mean(np.abs(df_pc[1:] - df_ip[1:]))}")
 
-    if args.show_plots:
+    if show_plots:
         import matplotlib.pyplot as plt
 
         plt.figure()
@@ -967,3 +888,7 @@ if __name__ == "__main__":
 
         plt.figure()
         plt.hist(df_ip, 50)
+
+
+if __name__ == "__main__":
+    test_script()

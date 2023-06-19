@@ -104,23 +104,21 @@ def dump_file(
     logger.info(f'Dump {fname} -> {fname_out}')
     success, file_data = phone.dump(fname, timeout_sec=timeout_sec)
     if not success:
-        logger.error(f'Unable to retrieve {fname}! (Either the wait timed out or _sendpacket failed.)')
+        logger.error(f'Unable to retrieve {fname}! (E.g., wait timed out.)')
         raise TimeoutException
 
-    if len(file_data) == 0:  # Handle 0-byte files
+    zero_byte = len(file_data) == 0
+    if zero_byte:
         logger.error(f'{fname} returned a zero-byte file!')
-        if delete_zero_byte:
-            phone.dumpsuccess(fname)  # Delete file from iPhone
-            logger.debug(f'Sent @DUMPSUCCESS for {fname}')
-        return
 
     try:  # Save the file and delete from the iphone
         with open(fname_out, "wb") as f:
             f.write(file_data)
         logger.debug(f'Wrote {fname_out}, {len(file_data)/(1<<20):0.1f} MiB')
 
-        phone.dumpsuccess(fname)  # Delete file from iPhone
-        logger.debug(f'Sent @DUMPSUCCESS for {fname}')
+        if not zero_byte or delete_zero_byte:
+            phone.dump_success(fname)  # Delete file from iPhone
+            logger.debug(f'Sent @DUMPSUCCESS for {fname}')
     except Exception as e:
         logger.error(f'Unable to write file {fname_out}; error={e}')
 
@@ -156,7 +154,7 @@ def parse_arguments() -> argparse.Namespace:
 
 def main():
     logger = make_iphone_dump_logger()
-    iphone.DEBUG_IPHONE = 'verbatim_no_lsl'  # Get debug prints from the iPhone
+    iphone.DISABLE_LSL = True
 
     args = parse_arguments()
     t0 = datetime.datetime.now()
