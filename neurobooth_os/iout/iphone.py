@@ -21,8 +21,8 @@ from neurobooth_os.iout.usbmux import USBMux
 # --------------------------------------------------------------------------------
 IPHONE_PORT: int = 2345  # IPhone should have socket on this port open if we're connecting to it.
 
-DEBUG_LOGGING: bool = False
-DISABLE_LSL: bool = False
+DEBUG_LOGGING: bool = False  # If True, enable additional logging outputs. May slow down the script.
+DISABLE_LSL: bool = False  # If True, LSL streams will not be created nor will received data be pushed.
 
 if not DISABLE_LSL:  # Conditional imports based on flags
     from pylsl import StreamInfo, StreamOutlet
@@ -47,8 +47,13 @@ class IPhoneError(Exception):
     pass
 
 
-class IPhonePanic(Exception):
+class IPhonePanic(IPhoneError):
     """An exception to signal code should panic and disconnect if a serious error is encountered."""
+    pass
+
+
+class IPhoneTimeout(IPhoneError):
+    """Signals that waiting on a particular response or threading condition failed."""
     pass
 
 
@@ -154,7 +159,7 @@ class IPhone:
     MESSAGE_TYPES = set(MESSAGE_TYPES)
     MESSAGE_KEYS = {"MessageType", "SessionID", "TimeStamp", "Message"}
 
-    def __init__(self, name, sess_id="", mock=False, device_id="", sensor_ids=("",)):
+    def __init__(self, name, sess_id="", mock=False, device_id="", sensor_ids=("",), enable_timeout_exceptions=False):
         self.connected = False
         self.tag = 0
         self.iphone_sessionID = sess_id
@@ -162,6 +167,7 @@ class IPhone:
         self.mock = mock
         self.device_id = device_id
         self.sensor_ids = sensor_ids
+        self.enable_timeout_exceptions = enable_timeout_exceptions
         self.streaming = False
         self.streamName = "IPhoneFrameIndex"
         self.outlet_id = str(uuid.uuid4())
@@ -205,6 +211,18 @@ class IPhone:
 
         if disconnect:
             self.disconnect()
+
+    def _raise_timeout(self, event_name: str) -> None:
+        """
+        Raise an IPhoneTimeout if not disabled.
+
+        :param event_name: The name of the message/condition that timed out. (Used for logging.)
+        """
+        self.logger.error(
+            f'iPhone [state={self._state}]: Timeout encountered when waiting for response to {event_name}.'
+        )
+        if self.enable_timeout_exceptions:
+            raise IPhoneTimeout(f'Timeout when waiting for {event_name}.')
 
     def _update_state(self, msg_type: str) -> None:
         """
@@ -311,7 +329,7 @@ class IPhone:
             msg_type: str,
             msg_contents: Optional[MESSAGE] = None,
             wait_on: Optional[List[str]] = None,
-    ) -> bool:
+    ) -> None:
         """
         A convenience wrapper for _send_packet that waits for a response (with tag==0) from the iPhone.
         The data of the response is NOT returned. If safe access to the message itself is required, then the calling
@@ -321,7 +339,6 @@ class IPhone:
         :param msg_contents: Any non-default message entries/contents to be passed to _send_packet
         :param wait_on: If None, wait for any response from the iPhone.
             If a list of message types is provided, wait for any of the specified message types.
-        :returns: Whether the message timed out or was successfully sent
         """
         with self._wait_for_reply_cond:
             self._send_packet(msg_type, msg_contents=msg_contents)
@@ -335,8 +352,7 @@ class IPhone:
                 )
 
             if not success:
-                self.logger.warning(f'iPhone [state={self._state}]: Timeout when waiting for response to {msg_type}.')
-            return success
+                self._raise_timeout(msg_type)
 
     def listen(self):
         """Called by tge listener thread. Attempt to receive and process a message."""
@@ -517,11 +533,12 @@ class IPhone:
         msg_camera_config = {"Message": json.dumps(config)}
         print(msg_camera_config)
         try:
-            return self._send_and_wait_for_response(
+            self._send_and_wait_for_response(
                 "@STANDBY",
                 msg_contents=msg_camera_config,
                 wait_on=list(self.STATE_TRANSITIONS['#STANDBY'].keys()),
             )
+            return True
         except IPhonePanic as e:
             self.panic(e)
             return False
@@ -603,17 +620,17 @@ class IPhone:
             self._frame_preview_data = b""
             try:
                 self._send_packet("@PREVIEW")
-                self._frame_preview_cond.wait(timeout=self._timeout_cond)
+                if not self._frame_preview_cond.wait(timeout=self._timeout_cond):
+                    self._raise_timeout("@PREVIEW")
             except IPhonePanic as e:
                 self.panic(e)
             return self._frame_preview_data
 
     @_handle_panic
-    def dumpall_getfilelist(self, log_files: bool = True) -> Optional[List[str]]:
+    def dumpall_getfilelist(self) -> Optional[List[str]]:
         """
         Fetch a list of files saved on the iPhone.
 
-        :param log_files: Whether to log the list of retrieved files using the session logger.
         :returns: The list of files saved on the iPhone, or None if the condition times out.
         """
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMPALL Message')
@@ -624,11 +641,11 @@ class IPhone:
                 lambda: self._latest_message_type in self.STATE_TRANSITIONS['#DUMPALL'].keys(),
                 timeout=self._timeout_cond,
             ):
-                self.logger.error('Timeout when waiting for @FILESTODUMP.')
+                self._raise_timeout("@DUMPALL")
                 return None
 
             filelist = self._latest_message["Message"]
-            if log_files:
+            if DEBUG_LOGGING:
                 self.logger.debug(f"iPhone [state={self._state}]: File List (N={len(filelist)}) = {filelist}")
             return filelist
 
@@ -638,19 +655,18 @@ class IPhone:
 
         :param filename: The file (from the list returned by dumpall_getfilelist) to retrieve.
         :param timeout_sec: Wait the specified amount of time for the file transfer to complete. No timeout if None.
-        :returns: (success, data): success is False if a timeout occurred; Data is the raw data returned from the phone,
-            or zero bytes if timed out.
+        :returns: The raw data returned from the phone, or zero bytes if timed out.
         """
-        success = False
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMP Message')
         with self._dump_video_cond:
             self._dump_video_data = b""
             try:
                 self._send_packet("@DUMP", msg_contents={"Message": filename})
-                success = self._dump_video_cond.wait(timeout=timeout_sec)
+                if not self._dump_video_cond.wait(timeout=timeout_sec):
+                    self._raise_timeout("@DUMP")
             except IPhonePanic as e:
                 self.panic(e)
-            return success, self._dump_video_data
+            return self._dump_video_data
 
     @_handle_panic
     def dump_success(self, filename: str) -> None:

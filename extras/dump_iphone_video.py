@@ -30,14 +30,15 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
 
     # Connect to the iPhone
     logger.debug('Connecting to iPhone')
-    phone = iphone.IPhone("dump_iphone")
+    # It is important that timeout exceptions are enabled to prevent misnamed files!
+    phone = iphone.IPhone("dump_iphone", enable_timeout_exceptions=True)
     handshake_success = phone.prepare()
     if not handshake_success:
         logger.error(f'Unable to connect to iPhone [state={phone._state}]!')
         return
 
     # Get a list of stored files
-    flist = phone.dumpall_getfilelist(log_files=False)
+    flist = phone.dumpall_getfilelist()
     if flist is None:
         logger.error(f'Unable to retrieve file list [state={phone._state}]!')
         phone.disconnect()
@@ -64,8 +65,10 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
                 timeout_sec=args.timeout,
                 delete_zero_byte=args.delete_zero_byte,
             )
-        except TimeoutException:
-            logger.warning('Discontinuing file transfer to prevent out-of-order files.')
+        except iphone.IPhoneTimeout:
+            logger.error(
+                f'Timeout encountered when retrieving {fname}. Discontinuing transfer to prevent out-of-order files.'
+            )
             break
 
     logger.debug('Disconnecting iPhone')
@@ -102,10 +105,7 @@ def dump_file(
 
     # Attempt to retrieve the file from the iPhone
     logger.info(f'Dump {fname} -> {fname_out}')
-    success, file_data = phone.dump(fname, timeout_sec=timeout_sec)
-    if not success:
-        logger.error(f'Unable to retrieve {fname}! (E.g., wait timed out.)')
-        raise TimeoutException
+    file_data = phone.dump(fname, timeout_sec=timeout_sec)
 
     zero_byte = len(file_data) == 0
     if zero_byte:
