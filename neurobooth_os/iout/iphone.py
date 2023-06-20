@@ -55,6 +55,19 @@ class IPhonePanic(Exception):
 # --------------------------------------------------------------------------------
 # Hardware Interface Code
 # --------------------------------------------------------------------------------
+def _handle_panic(func):
+    """Decorator to wrap a function call in a try/except to detect panic and generically handle panic exceptions."""
+    @functools.wraps(func)
+    def wrapper_panic(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except IPhonePanic as e:
+            _iphone: IPhone = args[0]
+            _iphone.panic(e)
+            return None
+    return wrapper_panic
+
+
 class IPhone:
     """
     Handles interactions with an iPhone device running the Neurobooth app.
@@ -192,19 +205,6 @@ class IPhone:
 
         if disconnect:
             self.disconnect()
-
-    @staticmethod
-    def _handle_panic(func):
-        """Decorator to wrap a function call in a try/except to detect panic and generically handle panic exceptions."""
-        @functools.wraps(func)
-        def wrapper_panic(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except IPhonePanic as e:
-                _iphone: IPhone = args[0]
-                _iphone.panic(e)
-                return None
-        return wrapper_panic
 
     def _update_state(self, msg_type: str) -> None:
         """
