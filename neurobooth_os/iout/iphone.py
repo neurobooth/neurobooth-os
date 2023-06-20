@@ -574,7 +574,7 @@ class IPhone:
             ),
             device_id=self.device_id,
             sensor_ids=self.sensor_ids,
-            data_version=DataVersion(1, 0),
+            data_version=DataVersion(1, 1),
             columns=['FrameNum', 'Time_iPhone', 'Time_ACQ'],
             column_desc={
                 'FrameNum': 'App-tracked frame number',
