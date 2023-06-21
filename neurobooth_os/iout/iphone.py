@@ -644,6 +644,10 @@ class IPhone:
                 self._raise_timeout("@DUMPALL")
                 return None
 
+            if self._state == '#ERROR':  # Usually occurs when no files present
+                self.logger.error(f'iPhone [state={self._state}]: {self._latest_message["Message"]}')
+                return None
+
             filelist = self._latest_message["Message"]
             if DEBUG_LOGGING:
                 self.logger.debug(f"iPhone [state={self._state}]: File List (N={len(filelist)}) = {filelist}")
