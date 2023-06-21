@@ -157,7 +157,10 @@ def Main():
             for k in streams.keys():  # Log the list of files present on the iPhone
                 if k.split("_")[0] == "IPhone":
                     iphone_files = streams[k].dumpall_getfilelist()
-                    logger.info(f'iPhone has {len(iphone_files)} waiting for dump: {iphone_files}')
+                    if iphone_files is not None:
+                        logger.info(f'iPhone has {len(iphone_files)} waiting for dump: {iphone_files}')
+                    else:
+                        logger.warning(f'iPhone did not return a list of files to dump.')
 
             streams = close_streams(streams)
 
