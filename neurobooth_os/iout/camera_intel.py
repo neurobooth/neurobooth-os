@@ -5,11 +5,9 @@ Created on Mon Mar 29 10:46:13 2021
 @author: adonay
 """
 import os.path as op
-from time import sleep as tsleep
 from time import time
 import threading
 import uuid
-import functools
 import warnings
 import logging
 
@@ -27,17 +25,6 @@ class RealSenseException(Exception):
         super().__init__(*args, **kwargs)
 
 
-def catch_exception(f):
-    @functools.wraps(f)
-    def func(*args, **kwargs):
-        # try:
-        return f(*args, **kwargs)
-        # except Exception as e:
-        # print('Caught an exception in function "{}" of type {}'.format(f.__name__, e))
-
-    return func
-
-
 class VidRec_Intel:
     def __init__(
         self,
@@ -52,6 +39,7 @@ class VidRec_Intel:
 
         self.open = True
         self.recording = threading.Event()
+        self.record_stopped_flag = threading.Event()
         self.recording.clear()
         self.video_thread = None
 
@@ -61,7 +49,6 @@ class VidRec_Intel:
         self.frameSize = (size_rgb, size_depth)
         self.device_id = device_id
         self.sensor_ids = sensor_ids
-
         self.config = rs.config()
         self.config.enable_device(self.serial_num)
         self.pipeline = rs.pipeline()
@@ -83,8 +70,6 @@ class VidRec_Intel:
                 self.fps[1],
             )
 
-
-
         self.outlet = self.createOutlet()
 
         self.logger = logging.getLogger('session')
@@ -92,7 +77,6 @@ class VidRec_Intel:
             f'RealSense [{self.device_index}] ({self.serial_num}): fps={str(self.fps)}; frame_size={str(self.frameSize)}'
         )
 
-    @catch_exception
     def start(self, name="temp_video"):
         if self.video_thread is not None and self.video_thread.is_alive():
             error_msg = f'RealSense [{self.device_index}]: Attempting to start new recording thread while old one is still alive!'
@@ -105,14 +89,12 @@ class VidRec_Intel:
         self.logger.debug(f'RealSense [{self.device_index}]: Beginning Recording')
         self.video_thread.start()
 
-    @catch_exception
     def prepare(self, name):
         self.name = name
         self.video_filename = "{}_intel{}.bag".format(name, self.device_index)
         self.config.enable_record_to_file(self.video_filename)
         print(f"-new_filename-:{self.streamName}:{op.split(self.video_filename)[-1]}")
 
-    @catch_exception
     def createOutlet(self):
         self.streamName = f"IntelFrameIndex_cam{self.device_index}"
         self.outlet_id = str(uuid.uuid4())
@@ -143,7 +125,6 @@ class VidRec_Intel:
         print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
         return StreamOutlet(info)
 
-    @catch_exception
     def record(self):
         self.frame_counter = 1
         self.logger.debug(f'RealSense [{self.device_index}]: Starting Pipeline')
@@ -158,57 +139,42 @@ class VidRec_Intel:
 
         self.logger.debug(f'RealSense [{self.device_index}]: Entering LSL Loop')
         while self.recording.is_set():
-            frame = self.pipeline.wait_for_frames(timeout_ms=1000)
-            # frame = self.pipeline.poll_for_frames()
-            # if not frame:
-            #     continue
-            # else:
-            #     print(f" frame {self.frame_counter} in intel {self.device_index}")
+            success, frame = self.pipeline.try_wait_for_frames(timeout_ms=1000)
+            if not success:
+                self.logger.warning(f'RealSense [{self.device_index}]: Timeout when waiting for frame!')
+                continue
+
             self.n = frame.get_frame_number()
-            # self.ftsmp = frame.get_timestamp()
-            # self.tsmp = (self.ftsmp - self.toffset)*1e-3
             self.tsmp = frame.get_timestamp()
             try:
-                # self.outlet.push_sample([self.frame_counter, self.n], timestamp= self.tsmp)
                 self.outlet.push_sample([self.frame_counter, self.n, self.tsmp, time()])
-            except BaseException:
-                print("Reopening intel stream already closed")
-                self.outlet = self.createOutlet(self.name)
+            except Exception as e:
+                self.logger.warning(f'RealSense [{self.device_index}]: Reopening closed stream: {e}')
+                self.outlet = self.createOutlet()
                 self.outlet.push_sample([self.frame_counter, self.n, self.tsmp, time()])
 
             self.frame_counter += 1
-            # countdown(1/(4*self.fps[0]))
 
         self.logger.debug(f'RealSense [{self.device_index}]: Exited Record Loop')
         self.pipeline.stop()
+        self.record_stopped_flag.set()
         self.logger.debug(f'RealSense [{self.device_index}]: Stopped Pipeline')
-        # print(f"Intel {self.device_index} recording ended, total frames captured: {self.n}, pushed lsl indexes: {self.frame_counter}")
 
-    @catch_exception
     def stop(self):
         self.logger.debug(f'RealSense [{self.device_index}]: Setting Record Stop Flag')
+        self.record_stopped_flag.clear()
         self.recording.clear()
 
-    @catch_exception
     def close(self):
         self.previewing = False
         self.stop()
         self.config = []
 
-    @catch_exception
     def ensure_stopped(self, timeout_seconds: float) -> None:
         """Check to make sure the recording is actually stopped."""
-        self.video_thread.join(timeout_seconds)
-        if self.video_thread.is_alive():
-            error_msg = f'RealSense [{self.device_index}]: Potential Zombie Thread Detected!'
-            self.logger.error(error_msg)
-            self.pipeline.stop()
-            raise RealSenseException(error_msg)
-
-
-def countdown(period):
-    t1 = local_clock()
-    t2 = t1
-
-    while t2 - t1 < period:
-        t2 = local_clock()
+        if not self.record_stopped_flag.wait(timeout=timeout_seconds):
+            self.logger.error(f'RealSense [{self.device_index}]: Potential Zombie Detected!')
+            try:
+                self.pipeline.stop()
+            except Exception as e:
+                self.logger.error(f'RealSense [{self.device_index}]: Unable to stop pipeline: {e}')
