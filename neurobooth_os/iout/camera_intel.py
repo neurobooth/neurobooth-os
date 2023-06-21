@@ -85,6 +85,7 @@ class VidRec_Intel:
 
         self.prepare(name)
         self.recording.set()
+        self.record_stopped_flag.clear()
         self.video_thread = threading.Thread(target=self.record)
         self.logger.debug(f'RealSense [{self.device_index}]: Beginning Recording')
         self.video_thread.start()
@@ -127,8 +128,14 @@ class VidRec_Intel:
 
     def record(self):
         self.frame_counter = 1
-        self.logger.debug(f'RealSense [{self.device_index}]: Starting Pipeline')
-        self.pipeline.start(self.config)
+        
+        try:
+            self.logger.debug(f'RealSense [{self.device_index}]: Starting Pipeline')
+            self.pipeline.start(self.config)
+        except Exception as e:
+            self.logger.error(f'RealSense [{self.device_index}]: Unable to start pipeline: {e}')
+            self.record_stopped_flag.set()
+            return
 
         # Avoid autoexposure frame drops
         dev = self.pipeline.get_active_profile().get_device()
@@ -162,7 +169,6 @@ class VidRec_Intel:
 
     def stop(self):
         self.logger.debug(f'RealSense [{self.device_index}]: Setting Record Stop Flag')
-        self.record_stopped_flag.clear()
         self.recording.clear()
 
     def close(self):
