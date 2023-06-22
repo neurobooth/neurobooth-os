@@ -737,7 +737,7 @@ class IPhone:
         except IPhonePanic as e:
             self.logger.error(f'iPhone: PANIC while sending @DISCONNECT: {e}')
 
-        time.sleep(1)  # Give things some time to happen; was 4 before rewrite...
+        time.sleep(4)  # Give things some time to happen; was here before rewrite, but why?
 
         # Try to stop the listener thread
         self._listen_thread.stop()
