@@ -46,23 +46,46 @@ Disabling Ethernet DHCP server on NUC
   * Do an ``ipconfig /release`` followed by an ``ipconfig /renew`` on Windows - OR
   * Disable the ethernet adapter in Windows, then enable it again after 30s - OR
   * Reboot the NUC - OR
-  * Any combination of the above till Windows is assigned an IP by any dhcp server in the NUC
+  * Any combination of the above till Windows is assigned an IP by any DHCP server in the NUC
 
-4. In case you see that Windows has an IP in the range of 192.168.100.X - that is also ok, this means that Windows has been assigned an IP by the dhcp server on the WiFi NIC in NUC.
-5. Now that Windows has an IP assigned by NUC, you can access the NUC's filesystem via a WebUI that is provided by the NUC. For this open any web browser and put in the IP address of the dhcp server that has assigned IP to the Windows machine - meaning if Windows has a 10.1.1.X IP, type in 10.1.1.1 in the browser, if its 192.168.100.X, type in 192.168.100.15 (remember we set this as host IP in previous step for WiFi NIC) in the browser. This should open the NUC's WebUI.
+4. In case you see that Windows has an IP in the range of 192.168.100.X - that is also ok, this means that Windows has been assigned an IP by the DHCP server on the WiFi NIC in NUC.
+5. Now that Windows has an IP assigned by NUC, you can access the NUC's filesystem via a WebUI that is provided by the NUC. For this open any web browser and put in the IP address of the DHCP server that has assigned IP to the Windows machine - meaning if Windows has a 10.1.1.X IP, type in 10.1.1.1 in the browser, if its 192.168.100.X, type in 192.168.100.15 (remember we set this as host IP in previous step for WiFi NIC) in the browser. This should open the NUC's WebUI.
 6. Next, click on the "gear" ICON and go into settings, then click on the "network" icon to open the network configuration page (the icon looks like a tiny flow diagram), this opens the Configuration.html window of the WebUI
 7. Tick the "Disable Ethernet DHCPD" check box. Leave all other options as default. This disables the DHCP server running on the Ethernet NIC of the NUC.
 8. Repeat all of the steps above, and you will see that Windows now only ever gets a 192.168.100.X IP, because the only DHCP server active in the NUC is on the WiFi NIC. 
 
 An image of line 247 on start_tk and the Configuration.html page of NUC's WebUI is pasted below:
 
-.. image:: HOST_WIFI_IP_and_Configuration_options.jpg.png
+.. image:: HOST_WIFI_IP_and_Configuration_options.jpg
     :align: center
 
+Breaking the Internal Bridge between WiFi and Ethernet NICs inside the NUC
+--------------------------------------------------------------------------
 
+As things stand at this point, the Windows machine and the NUC are connected via LAN cables to an unmanaged switch, the DHCP server on the Ethernet NIC has been disabled, and the DHCP server running on the WiFi NIC is assigning an IP address to the Windows machines via the internal bridge between Ethernet and WiFI NICs inside the NUC. Additionally, the Windows machine that is connected only to an Ethernet network, can connect to the WebUI of the NUC by accessing the IP of the WiFi host, again because of the internal bridge.
 
+Before we can break this internal bridge, we need to get the network set up to work with neurodoor. For this:
 
+1. Disconnect NUC and Windows machine from the switch.
+2. Check that Windows IP address has reverted to the Windows default of 169.254.X.Y (you can wait/simply restart Windows machine/follow any of the steps above for IP to refresh and revert to Windows default)
+3. Connect neurodoor to the switch
+4. Connect Windows machine to switch
+5. Check and ensure that Windows now has a new IP in the range of 192.168.100.X (since neurodoor's DHCP server is on the 192.168.100.1 subnet)
+6. Now, connect NUC to the switch
+7. Restart the NUC from the WebUI (keep the monitor and keyboard connected to NUC, and when NUC reboots, select the headless mode to boot into command line interface of the NUC, the WebUI will remain unaffected and will work as normal on the Windows machine)
 
+At this point, we have neurodoor, Windows machine and NUC connected to the switch. Windows has been assigned IP by neurodoor. NUC has a self assigned static IP of 192.168.100.15 as hard coded and configured in the current start_tk file. Because neurodoor is on the same subnet as NUC WiFi NIC, Windows can successfully access the NUC's WebUI. Additionally, the NUC is booted in headless mode.
+
+We can now reconfigure the NUC to break the internal bridge:
+
+1. Go into the elcl/exe directory on NUC and do and ls ``cd /elcl/exe`` | ``ls`` you will see a single ``start_tk`` file
+2. To check status of the network configuration on the NUC, run the following commands:
+  * ``ifconfig wm0 | grep inet`` output indicates that this NIC (which is the Ethernet one) is configured to broadcast on 10.1.1.255
+  * ``ifconfig mrvl_uap0 | grep inet`` output indicates that this NIC (which is the WiFi one) is configured to boradcast on 192.168.100.255
+  * ``brconfig -a``output indicates the configuration of the internat bridge between the two NICs
+3. The following image shows the NUC's command line interface with these commands and output:
+.. image:: before.jpg
+    :align: center
 
 
 
