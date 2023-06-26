@@ -74,7 +74,7 @@ Before we can break this internal bridge, we need to get the network set up to w
 6. Now, connect NUC to the switch
 7. Restart the NUC from the WebUI (keep the monitor and keyboard connected to NUC, and when NUC reboots, select the headless mode to boot into command line interface of the NUC, the WebUI will remain unaffected and will work as normal on the Windows machine)
 
-At this point, we have neurodoor, Windows machine and NUC connected to the switch. Windows has been assigned IP by neurodoor. NUC has a self assigned static IP of 192.168.100.15 as hard coded and configured in the current start_tk file. Because neurodoor is on the same subnet as NUC WiFi NIC, Windows can successfully access the NUC's WebUI. Additionally, the NUC is booted in headless mode.
+At this point, we have neurodoor, Windows machine and NUC connected to the switch. Windows has been assigned IP by neurodoor. NUC has a self assigned static IP of 192.168.100.15 as hard coded and configured in the current ``start_tk`` file. Because neurodoor is on the same subnet as NUC WiFi NIC, Windows can successfully access the NUC's WebUI. Additionally, the NUC is booted in headless mode with monitor and keyboard attached.
 
 We can now reconfigure the NUC to break the internal bridge:
 
@@ -84,8 +84,31 @@ We can now reconfigure the NUC to break the internal bridge:
   * ``ifconfig mrvl_uap0 | grep inet`` output indicates that this NIC (which is the WiFi one) is configured to boradcast on 192.168.100.255
   * ``brconfig -a``output indicates the configuration of the internat bridge between the two NICs
 3. The following image shows the NUC's command line interface with these commands and output:
+
 .. image:: before.jpg
     :align: center
+
+4. Download the ``start_tk_new`` file from this repo onto the desktop of the Windows machine
+5. Open the WebUI on the browser by typing 192.168.100.15 in the URL bar
+6. Click your way to the /elcl/exe folder, you can list the files by details or tiles, and you will see a single start_tk file here
+7. Click the upload button on the WebUI, click browse and select the ``start_tk_new`` file that you downloaded to Desktop, click upload - the file will get uploaded to the NUC in the exe folder
+8. Do an ``ls`` in the NUC, and you will see a new file has appeared ``start_tk_new`` in the /elcl/exe folder
+9. Rename the original ``start_tk`` file as ``start_tk_orig``
+10. Rename the new ``start_tk_new`` file to ``start_tk``
+11. Next we need to change the static IP of the Ethernet NIC - for this we need to edit the ``netconfig.ini`` file which is also in the exe folder.
+12. Since we are already in the exe folder (confirm by doing pwd) first create a backup of the original netconfig file ``cp netconfig.ini netconfig_orig``, do an ``ls`` and ensure you made the backup
+13. Open in VI ``vi netconfig.ini`` and edit the line ``HOST_IP = 10.1.1.1`` to ``HOST_IP = 192.168.100.15`` - side note, this could be done via the Configuration.html page in WebUI, however the WebUI blocks an IP change to 192.168.100.X range since under the existence of the bridge that would conflict with WiFi NIC, therefore we have to do this in the configuration text file.
+14. Type ``shutdown`` and hit enter, this will restart the NUC
+15. Check status of the network configuration by following commands in step 2 - you should see 192.168.100.255 for Ethernet subnet, a 192.168.5.255 for WiFi subnet and no output for ``brconfig`` as shown below:
+
+.. image:: after.jpg
+    :align: center
+
+
+
+
+
+
 
 
 
