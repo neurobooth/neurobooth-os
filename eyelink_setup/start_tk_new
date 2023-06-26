@@ -1,0 +1,906 @@
+#!/bin/sh
+
+v=`getconf _CS_TIMEZONE`
+if [ "$?" -eq 1  ]; then
+	setconf _CS_TIMEZONE `cat /etc/TIMEZONE`
+fi
+
+
+
+cd /elcl/exe
+
+wifi_alive=0
+
+# ############################################################################################################
+# Set up networking based on netconfig.ini.
+# Use presets for any values that are invalid or missing from netconfig.ini.
+#TR-4208
+#
+
+
+if [ ! -a "/elcl/exe/netconfig.ini" ]; then
+	#reset to factory default.
+	#to reset to factory default, delete netconfig.ini, netconfig_hl.ini, and netconfig_ui.ini
+	cat <<EOF >/elcl/exe/netconfig.ini
+	
+HOST_IP = 10.1.1.1
+HOST_NETMASK = 255.255.255.0
+WIFI_SSID_SUFFIX = 
+WIFI_PASSPHRASE = eyelink3
+ENABLE_LEGACY_DISPLAY_IP = 0
+DISABLE_ETHERNET_DHCPD = 1
+ENABLE_SSID_BROADCAST = 1
+DISABLE_WIFI = 1
+
+EOF
+
+
+	if [ ! -a "/elcl/exe/netconfig_hl.ini" ]; then
+		#echo "Headless netconfig not found. copying netconfig.ini"
+		cat <<EOF >/elcl/exe/netconfig_hl.ini
+			
+HOST_IP = 10.1.1.1
+HOST_NETMASK = 255.255.255.0
+WIFI_SSID_SUFFIX = 
+WIFI_PASSPHRASE = eyelink3
+ENABLE_LEGACY_DISPLAY_IP = 0
+DISABLE_ETHERNET_DHCPD = 1
+ENABLE_SSID_BROADCAST = 1
+DISABLE_WIFI = 1
+		
+EOF
+	fi
+	
+	if [ ! -a "/elcl/exe/netconfig_ui.ini" ]; then
+		#echo "UI netconfig not found. copying netconfig.ini"
+		cat <<EOF >/elcl/exe/netconfig_ui.ini
+			
+HOST_IP = 100.1.1.1
+HOST_NETMASK = 255.255.255.0
+WIFI_SSID_SUFFIX = 
+WIFI_PASSPHRASE = eyelink3
+ENABLE_LEGACY_DISPLAY_IP = 0
+DISABLE_ETHERNET_DHCPD = 1
+ENABLE_SSID_BROADCAST = 1
+DISABLE_WIFI = 1
+		
+EOF
+	fi
+	
+fi
+
+if [ ! -a "/elcl/exe/lastboot.ini" ]; then
+	#echo "we don't have last boot info. Just write last boot info"
+	echo "LASTBOOT=$EL_HEADLESS" > "/elcl/exe/lastboot.ini"
+	if [ ! -a "/elcl/exe/netconfig_hl.ini" ]; then
+		#echo "Headless netconfig not found. copying netconfig.ini"
+		cp  /elcl/exe/netconfig.ini  /elcl/exe/netconfig_hl.ini
+	fi
+	
+	if [ ! -a "/elcl/exe/netconfig_ui.ini" ]; then
+		#echo "UI netconfig not found. copying netconfig.ini"
+		cp  /elcl/exe/netconfig.ini  /elcl/exe/netconfig_ui.ini
+	fi
+	
+	
+	
+	#echo "assume boot model changed"
+	THISBOOT_NETCONFIG=/elcl/exe/netconfig_hl.ini
+
+	if [ "$EL_HEADLESS" == "0"  ]; then
+		#echo "not headless. "
+		THISBOOT_NETCONFIG=/elcl/exe/netconfig_ui.ini
+	fi	  		
+	diff /elcl/exe/netconfig.ini $THISBOOT_NETCONFIG  >/dev/null
+	if [ $? -ne  0 ]; then
+		#echo "Since netconfigs are different, we need to copy the current netconfig to netconfig."
+		cp  $THISBOOT_NETCONFIG /elcl/exe/netconfig.ini  
+	fi	
+else
+	#echo "We have lastboot info"
+	
+	
+	if [ ! -a "/elcl/exe/netconfig_hl.ini" ]; then
+		#echo "Headless netconfig not found. copying netconfig.ini"
+		cp  /elcl/exe/netconfig.ini  /elcl/exe/netconfig_hl.ini
+	fi
+
+	if [ ! -a "/elcl/exe/netconfig_ui.ini" ]; then
+		#echo "UI netconfig not found. copying netconfig.ini"
+		cp  /elcl/exe/netconfig.ini  /elcl/exe/netconfig_ui.ini
+	fi
+	
+	
+	LASTBOOT=`cat /elcl/exe/lastboot.ini | grep LASTBOOT | grep -v '#' | cut -d'=' -f2`
+	if [[ ! -z $LASTBOOT  ]] ; then
+	  	#lastboot found
+	  	LASTBOOT_NETCONFIG=/elcl/exe/netconfig_hl.ini
+	  	
+	  	if [ "$LASTBOOT" == "0"  ]; then
+	  		echo "not headless. "
+	  		LASTBOOT_NETCONFIG=/elcl/exe/netconfig_ui.ini
+	  	fi
+	  	
+	  	
+	  	if [ "$LASTBOOT" == $EL_HEADLESS  ]; then
+	  		#echo "no change in boot model"	
+			diff /elcl/exe/netconfig.ini $LASTBOOT_NETCONFIG  >/dev/null
+			if [ $? -ne  0 ]; then
+				#echo "netconfig changed, but same boot model. so commit the cange."
+				cp  /elcl/exe/netconfig.ini  $LASTBOOT_NETCONFIG
+				
+			fi
+	  	else
+	  		#boot changed copy to netconfig.ini
+	  		#echo "boot model changed"
+			THISBOOT_NETCONFIG=/elcl/exe/netconfig_hl.ini
+
+			if [ "$EL_HEADLESS" == "0"  ]; then
+				#echo "not headless. "
+				THISBOOT_NETCONFIG=/elcl/exe/netconfig_ui.ini
+			fi	  		
+			diff /elcl/exe/netconfig.ini $THISBOOT_NETCONFIG  >/dev/null
+			if [ $? -ne  0 ]; then
+				#echo "Since netconfigs are different, we need to copy the current netconfig to netconfig."
+				cp  $THISBOOT_NETCONFIG /elcl/exe/netconfig.ini  
+				
+			fi
+			echo "LASTBOOT=$EL_HEADLESS" > "/elcl/exe/lastboot.ini"
+	  	fi
+	else
+		#echo "no lastboot info."
+		echo "LASTBOOT=$EL_HEADLESS" > "/elcl/exe/lastboot.ini"
+	fi
+fi
+
+
+HOST_IP=`cat /elcl/exe/netconfig.ini | grep HOST_IP | grep -v '#' | cut -d' ' -f3 | egrep -e '^(([0-9]|[0-9]{2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[0-9]{2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'`
+if [[ ! -z $HOST_IP  ]] ; then
+  echo "Using HOST_IP from /elcl/exe/netconfig.ini: $HOST_IP."
+else
+  echo "No valid HOST_IP found in /elcl/exe/netconfig.ini, using 10.1.1.1"
+  HOST_IP=10.1.1.1
+fi
+
+HOST_NETMASK=`cat /elcl/exe/netconfig.ini | grep HOST_NETMASK | grep -v '#' | cut -d' ' -f3 | egrep -e '^(((255\.)(255\.)(255\.)(255|254|252|248|240|224|192|128|0+))|((255\.)(255\.)(255|254|252|248|240|224|192|128|0+)\.0)|((255\.)(255|254|252|248|240|224|192|128|0+)(\.0+)(\.0+))|((255|254|252|248|240|224|192|128|0+)(\.0+)(\.0+)(\.0+)))$'`
+if [[ ! -z $HOST_NETMASK  ]] ; then
+  echo "Using HOST_NETMASK from /elcl/exe/netconfig.ini: $HOST_NETMASK."
+else
+  echo "No valid HOST_NETMASK found in /elcl/exe/netconfig.ini, using 255.255.255.0."
+  HOST_NETMASK=255.255.255.0
+fi
+
+ENABLE_LEGACY_DISPLAY_IP=`cat /elcl/exe/netconfig.ini | grep ENABLE_LEGACY_DISPLAY_IP | grep -v '#' | cut -d' ' -f3 | egrep -e '^(0|1)$'`
+if [[ ! -z $ENABLE_LEGACY_DISPLAY_IP  ]] ; then
+  echo "Using ENABLE_LEGACY_DISPLAY_IP from /elcl/exe/netconfig.ini: $ENABLE_LEGACY_DISPLAY_IP."
+else
+  echo "No valid ENABLE_LEGACY_DISPLAY_IP found in /elcl/exe/netconfig.ini, using 0 (disabled)."
+  ENABLE_LEGACY_DISPLAY_IP=0
+fi
+
+# can contain # in the passphrase, so use egrep -v -e "^([[:space:]])*#.*$" to filter out comments from the file
+# egrep -e "^[ -~]{8,64}$": is between 8 and 64 printable ASCII characters ' ' is the first one and '~' is the last one
+WIFI_PASSPHRASE=`cat /elcl/exe/netconfig.ini | grep WIFI_PASSPHRASE | egrep -v -e "^([[:space:]])*#.*$" | cut -d' ' -f3 | egrep -e "^[ -~]{8,64}$"`
+if [[ ! -z $WIFI_PASSPHRASE  ]] ; then
+  echo "Using WIFI_PASSPHRASE from /elcl/exe/netconfig.ini: $WIFI_PASSPHRASE."
+else
+  echo "No valid WIFI_PASSPHRASE found in /elcl/exe/netconfig.ini, using eyelink3."
+  WIFI_PASSPHRASE=eyelink3
+fi
+
+# Requirements for SSID suffix:
+# - must be between 1 and 18 characters in length
+# - must not contain the characters ], +, /, ", or TAB
+# - must not end with a space
+# - must not start with !, #, or ; characters (although this is ok for a suffix of the SSID, not for the entire SSID, so don't check it: | egrep -v -e "^[!|#|;].*$"
+# https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/guide/ServiceSetID.html#wp1055366
+# can contain # in the passphrase, so use egrep -v -e "^([[:space:]])*#.*$" to filter out comments from the file
+# egrep -e "^[ -~]{1,18}$": is between 1 and 18 printable ASCII characters ' ' is the first one and '~' is the last one
+WIFI_SSID_SUFFIX=`cat /elcl/exe/netconfig.ini | grep WIFI_SSID_SUFFIX | egrep -v -e "^([[:space:]])*#.*$" | cut -d' ' -f3 | egrep -e "^[ -~]{1,18}$" | egrep -v -e "^.*(]|\+|/|\"|\t).*$" | egrep -v -e "^.*[[:space:]]$"`
+if [[ ! -z $WIFI_SSID_SUFFIX  ]] ; then
+  echo "Using WIFI_SSID suffix from /elcl/exe/netconfig.ini: $WIFI_SSID_SUFFIX."
+  DEF_WIFI_SSID_SUFFIX=$WIFI_SSID_SUFFIX
+else
+  echo "No valid WIFI_SSID suffix found in /elcl/exe/netconfig.ini, not appending a suffix to the SSID."
+  WIFI_SSID_SUFFIX=""
+  #default suffix only used if there are no camera id found. and no user defined suffix is provided or when the user defined suffix is not good.
+  DEF_WIFI_SSID_SUFFIX=`ifconfig |grep address|head -n 1|awk '{gsub(":","",$2); print $2}'`
+fi
+
+ENABLE_SSID_BROADCAST=`cat /elcl/exe/netconfig.ini | grep ENABLE_SSID_BROADCAST | grep -v '#' | cut -d' ' -f3 | egrep -e '^(0|1)$'`
+if [[ ! -z $ENABLE_SSID_BROADCAST  ]] ; then
+  echo "Using ENABLE_SSID_BROADCAST from /elcl/exe/netconfig.ini: $ENABLE_SSID_BROADCAST."
+else
+  echo "No valid ENABLE_SSID_BROADCAST found in /elcl/exe/netconfig.ini, using 1 (enabled)."
+  ENABLE_SSID_BROADCAST=1
+fi
+
+DISABLE_WIFI=`cat /elcl/exe/netconfig.ini | grep DISABLE_WIFI | grep -v '#' | cut -d' ' -f3 | egrep -e '^(0|1)$'`
+if [[ ! -z $DISABLE_WIFI  ]] ; then
+  echo "Using DISABLE_WIFI from /elcl/exe/netconfig.ini: $DISABLE_WIFI."
+else
+  echo "No valid DISABLE_WIFI found in /elcl/exe/netconfig.ini, using 1 (enabled)."
+  DISABLE_WIFI=1
+fi
+
+# This option is to let the user do the following:
+# - use the host on a LAN without interfering with DHCPD clients
+# - specify an IP/netmask for Ethernet
+# - disable DHCPD on Ethernet
+# - enable DHCPD on WiFi
+# - force WiFi to 192.168.5.1/255.255.255.0
+# - use a gateway of 192.168.5.1
+# In this case, from my tests, both WiFi and Ethernet
+# can communicate with the host at 10.1.1.1.
+# However, due to the current code in the Remote UI, it
+# connects to 192.168.5.1 instead of 10.1.1.1, which is fine.
+# The browser on the tablet at http://10.1.1.1 still works fine.
+DISABLE_ETHERNET_DHCPD=`cat /elcl/exe/netconfig.ini | grep DISABLE_ETHERNET_DHCPD | grep -v '#' | cut -d' ' -f3 | egrep -e '^(0|1)$'`
+if [[ ! -z $DISABLE_ETHERNET_DHCPD  ]] ; then
+  echo "Using DISABLE_ETHERNET_DHCPD from /elcl/exe/netconfig.ini: $DISABLE_ETHERNET_DHCPD."
+else
+  echo "No valid DISABLE_ETHERNET_DHCPD found in /elcl/exe/netconfig.ini, using 0 (disabled)."
+  DISABLE_ETHERNET_DHCPD=0
+fi
+
+# This is not a user configurable option.
+HOST_WIFI_IP="192.168.5.1"
+# ############################################################################################################
+
+SSID_PREFIX=EyeLink3Relay
+if [ $EL_SYSTEM_TYPE == "EyeLink_III" ]; then
+	SSID_PREFIX=ELIII-
+else
+	if [ $EL_SYSTEM_TYPE == "EyeLink_Portable_DUO" ]; then
+		SSID_PREFIX=ELDuo-
+	else
+		SSID_PREFIX=EL1000-
+	fi
+fi
+
+WIFI_SSID=$SSID_PREFIX$DEF_WIFI_SSID_SUFFIX
+WIFI_INTERFACE=mrvl_uap0 
+CAMSERIAL=""
+
+# renamed on QNX 7.0.4
+if [ -f /usr/sbin/uaputl-mx ]; then
+	UAPUTL_TOOL=uaputl-mx
+else
+	UAPUTL_TOOL=uaputl-mrvl8xx7
+fi
+
+	
+PWD=`pwd`
+if [ -a $PWD/debug_host ]; then
+	. $PWD/debug_host
+fi
+
+
+
+# don't add an alias to 100.1.1.1 if that's the host's IP
+if [ "$HOST_IP" == "100.1.1.1"  ]; then
+	ENABLE_LEGACY_DISPLAY_IP=0
+fi
+
+
+#./onboard_parallel_port
+#if [ "$?" -ne 0 ]; then
+#	export ONBOARD_PARALLEL_PORT=1
+#else
+	export ONBOARD_PARALLEL_PORT=0
+#fi
+
+
+start_dumper()
+{
+	slay -Q -p dumper 
+	if [ "$?" -eq 0 ]; then
+		echo "Starting dumper!"
+		echo "msg::Starting dumper!" >>/pps/sr_winmgr.control
+		mkdir -p /elcl/dumps
+		/usr/sbin/dumper -d /elcl/dumps
+	fi
+}
+slay_program()
+{	
+	slay -Q -p $1 
+	if [ "$?" -ne 0 ]; then
+		#is the program running, so kill all of them
+		slay -f -Q $1
+		slay -Q -p $1 #Any program Running ?
+		qtrunning="$?"
+		count=5
+		while [  "$qtrunning" -ne 0  ] && [  $count -gt 0  ];
+		do
+			sleep 1
+			slay -Q -p $1 #Any program Running ?
+			qtrunning="$?"
+			count=$count-1
+			echo "trying to kill $1"
+		done
+		if [ "$count" -eq 0 ]; then
+			slay -Q -s 9 $1 
+		fi
+	fi
+}
+del_shmem()
+{
+	if [ -a /dev/elcl_eyeimage_shm ]; then
+		echo "Removing shared memory!"
+		rm -f /dev/elcl_eyeimage_shm
+	fi
+	if [ -a /dev/elcl_eyeimage_shm ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+
+make_dhcpd_conf()
+{
+
+# This is more complicated now that we're accepting a full IP and netmask from the user.
+# Note: The Configuration page ensures that the last octet of the netmask is zero.
+# In order for this to work, we need to specify valid values for the dhcpd.conf file.
+# For example, if the user enters 10.1.1.1 and 255.255.0.0, then the file
+# needs to use subnet 10.1.0.0 netmask 255.255.0.0. In this example, we would
+# use a range of 10.1.1.200 - 10.1.1.255 for the DHCP assigned IPs.
+
+# Example:
+# https://subnet.urih.com/network/10.1.1.1/14
+# Network would be: 10.0.0.0/14 (or 10.0.0.0, netmask 255.252.0.0)
+# This range is valid (between min/max): 10.1.1.200 to 10.1.1.255.
+
+# The prefix range IP for DHCP addresses is just the host IP with the last octet cut off.
+PREFIX_RANGE_IP=`echo $HOST_IP | sed 's/\.[0-9]*$//'`
+
+# -----------------------------------------------------------------------------
+# Some bit shifting is needed to get the valid subnet-number.
+# This is based on the following: https://stackoverflow.com/a/24136051
+
+# Convert the host IP and netmask to numbers so that they can be bitwise ORed together
+# to get the subnet-number (presumably this is how this is done).
+IP_NUM=`echo $HOST_IP | tr . '\n' | awk '{s = s*256 + $1} END{print s}'`
+NETMASK_NUM=`echo $HOST_NETMASK | tr . '\n' | awk '{s = s*256 + $1} END{print s}'`
+
+PREFIX_NUM=$(( $IP_NUM & $NETMASK_NUM ))
+
+PREFIX_IP=""
+for i in 1 2 3 4; do
+  PREFIX_IP=$((PREFIX_NUM%256))$PREFIX_IP && PREFIX_NUM=$((PREFIX_NUM >> 8))
+  if [ $i -lt 4 ]; then
+    PREFIX_IP='.'$PREFIX_IP
+  fi
+done
+# -----------------------------------------------------------------------------
+
+if [ "$DISABLE_ETHERNET_DHCPD" -eq 1 ]; then
+  # DISABLE_ETHERNET_DHCPD = 1
+  # In this case, it doesn't matter what the tablet IP is or the WiFi host IP.
+  # We need to tell DHCPD to not service the Ethernet NIC when it receives
+  # DHCP requests there.
+  # As far as I can tell, this is done by having an empty subnet section
+  # for the subnet of the corresponding NIC that you don't want to service.
+  # So in this case, both the WiFi and the Ethernet NICs must have valid
+  # subnets so that we can specify separate subnet sections for them
+  # in the dhcpd.conf file.
+  # So we'll do it as follows:
+  # Ethernet: 10.1.1.1/255.255.255.0 (or some IP the user specifies via
+  # the configuration section of file manager)
+  # WiFi: forced to 192.168.5.1/255.255.255.0, not configurable
+  # The tablet will be served a DHCP IP/netmask for that subnet.
+  #
+  # Both the tablet and Ethernet can connect to 10.1.1.1 since both NICs
+  # are on the bridge and the tablet will use 192.168.5.1 as a gateway.
+
+  cat <<EOF >/tmp/dhcpd.conf
+option domain-name "eyelink3.local";
+option domain-name-servers ns1.eyelink3.local, ns2.eyelink3.local;
+default-lease-time 600;
+max-lease-time 7200;
+authoritative;
+option routers $HOST_WIFI_IP;
+subnet 127.1.1.0 netmask 255.255.255.0 { 
+}
+subnet $PREFIX_IP netmask $HOST_NETMASK { 
+}
+subnet 192.168.5.0 netmask $HOST_NETMASK {
+	range 192.168.5.200 192.168.5.255;
+}
+EOF
+
+else
+  # This should end up serving all DHCPD requests on all NICs.
+  # I believe this is the case since the Ethernet NIC will be in the specified
+  # subnet and all other NICs will be because their IPs will be 0.0.0.0.
+  cat <<EOF >/tmp/dhcpd.conf
+option domain-name "eyelink3.local";
+option domain-name-servers ns1.eyelink3.local, ns2.eyelink3.local;
+default-lease-time 600;
+max-lease-time 7200;
+authoritative;
+option routers $HOST_WIFI_IP;
+subnet 127.1.1.0 netmask 255.255.255.0 { 
+}
+subnet $PREFIX_IP netmask $HOST_NETMASK { 
+	range $PREFIX_RANGE_IP.200 $PREFIX_RANGE_IP.255;
+}
+subnet 192.168.5.0 netmask $HOST_NETMASK {
+	range 192.168.5.200 192.168.5.255;
+}
+EOF
+
+fi
+
+}
+
+make_hostapd_conf()
+{
+
+cat <<EOF >/tmp/hostapd.conf
+interface=$WIFI_INTERFACE
+logger_syslog=-1
+logger_syslog_level=2
+logger_stdout=-1
+logger_stdout_level=2
+ctrl_interface=/var/run/hostapd
+ctrl_interface_group=0
+ssid=$WIFI_SSID
+country_code=US
+ieee80211d=1
+ieee80211h=1
+hw_mode=g
+channel=0
+beacon_int=100
+dtim_period=2
+max_num_sta=255
+macaddr_acl=0
+auth_algs=3
+ignore_broadcast_ssid=0
+wmm_enabled=1
+wmm_ac_bk_cwmin=4
+wmm_ac_bk_cwmax=10
+wmm_ac_bk_aifs=7
+wmm_ac_bk_txop_limit=0
+wmm_ac_bk_acm=0
+wmm_ac_be_aifs=3
+wmm_ac_be_cwmin=4
+wmm_ac_be_cwmax=10
+wmm_ac_be_txop_limit=0
+wmm_ac_be_acm=0
+wmm_ac_vi_aifs=2
+wmm_ac_vi_cwmin=3
+wmm_ac_vi_cwmax=4
+wmm_ac_vi_txop_limit=94
+wmm_ac_vi_acm=0
+wmm_ac_vo_aifs=2
+wmm_ac_vo_cwmin=2
+wmm_ac_vo_cwmax=3
+wmm_ac_vo_txop_limit=47
+wmm_ac_vo_acm=0
+wpa=2
+wpa_key_mgmt=WPA-PSK 
+rsn_pairwise=CCMP
+wpa_passphrase=$WIFI_PASSPHRASE
+ap_max_inactivity=300
+disassoc_low_ack=1
+max_listen_interval=100
+ieee80211n=1
+ht_capab=[HT40+][LDPC][SHORT-GI-20][SHORT-GI-40][TX-STBC][RX-STBC1][DSSS_CCK-40]
+obss_interval=0
+ieee80211ac=1
+vht_capab=[MAX-MPDU-11454][RXLDPC][SHORT-GI-80][TX-STBC-2BY1][RX-STBC-1]
+require_vht=1
+vht_oper_chwidth=1
+vht_oper_centr_freq_seg0_idx=42
+vht_oper_centr_freq_seg1_idx=159
+eapol_key_index_workaround=0
+eap_server=0
+tx_queue_data3_aifs=7
+tx_queue_data3_cwmin=15
+tx_queue_data3_cwmax=1023
+tx_queue_data3_burst=0
+tx_queue_data2_aifs=3
+tx_queue_data2_cwmin=15
+tx_queue_data2_cwmax=63
+tx_queue_data2_burst=0
+tx_queue_data1_aifs=1
+tx_queue_data1_cwmin=7
+tx_queue_data1_cwmax=15
+tx_queue_data1_burst=3.0
+tx_queue_data0_aifs=1
+tx_queue_data0_cwmin=3
+tx_queue_data0_cwmax=7
+tx_queue_data0_burst=1.5
+
+
+EOF
+
+}
+
+
+start_wifi()
+{
+	# See TR-3451 for details. Currently only channels 36 and 44 work.
+	# TR-4182: In UK, channels 149-161 require a license so remove them from the list
+	# for the classroom system.
+	# https://www.ofcom.org.uk/__data/assets/pdf_file/0019/136009/Ofcom-Information-Sheet-5-GHz-RLANs.pdf
+	# "151" "159"
+	# Note the code below that sets the channel (sys_cfg_channel_ext). This list isn't the desired channel to set.
+	# It looks like the code below goes +2. For example, 38 would be channel 40. 46 Would be channel 48.
+	set -A channel_list "38" "46"
+	channeli=`awk -v min=0 -v max=${#channel_list[*]} 'BEGIN{srand(); print int(min+rand()*(max-min))}'` 
+
+	#got these magic data from "use devnp-qwdi-2.5_mrvl-8897-pci.so"
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE bss_stop            > /dev/null 2>&1
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE sys_reset           > /dev/null 2>&1
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE sys_cfg_2040_coex 0 > /dev/null 2>&1
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE httxcfg 0x62        > /dev/null 2>&1
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE sys_cfg_11n 1 0x11FF 3 0 > /dev/null 2>&1 
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE sys_cfg_ssid $WIFI_SSID > /dev/null 2>&1
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE sys_cfg_rates 0x8c 0x98 0xb0 0x12 0x24 0x48 0x60 0x6c > /dev/null 2>&1
+
+
+	#got the channel setting stuff from https://eu.industrial.panasonic.com/sites/default/pidseu/files/downloads/files/wm_pan9026_software_guide.pdf
+	#passing 38,46,151,159,
+	#CENTER_CHANNEL = [38, 46, 54, 62, 102, 110, 118, …, 159] #54,62 102,110,118 fails
+	#SECONDARY_CHANNEL = [2 , 4]
+	#with SECONDARY_CHANNEL=2 (above)
+	#CHANNEL=${CENTER_CHANNEL - 2}
+	#with SECONDARY_CHANNEL=4 (below)
+	#CHANNEL=${CENTER_CHANNEL + 2}
+
+	CENTER_CHANNEL=${channel_list[$channeli]}
+	SECONDARY_CHANNEL=4
+	CHANNEL=30
+	if [ $SECONDARY_CHANNEL -eq 2 ]; then
+		CHANNEL=$(( $CENTER_CHANNEL - 2 ))
+	else
+		CHANNEL=$(( $CENTER_CHANNEL + 2 ))
+	fi
+
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE sys_cfg_channel_ext $CHANNEL 1 $SECONDARY_CHANNEL > /dev/null 2>&1
+	
+	
+
+	#these magic values are from https://www.u-blox.com/sites/default/files/EVK-EMMY-W1_UserGuide_%28UBX-15012713%29.pdf
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE sys_cfg_auth 0      > /dev/null 2>&1
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE sys_cfg_protocol 32 > /dev/null 2>&1
+ 	#sets WPA2 protocol 
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE sys_cfg_wpa_passphrase $WIFI_PASSPHRASE > /dev/null 2>&1  
+	
+	#PAIRWISE_CIPHER:AES CCMP GROUP_CIPHER:AES CCMP          > /dev/null 2>&1
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE sys_cfg_cipher 8 8   > /dev/null 2>&1
+
+	# enable or disable SSID broadcast based on netconfig.ini
+	if [ "$ENABLE_SSID_BROADCAST" -ne 0 ]; then
+		$UAPUTL_TOOL -i $WIFI_INTERFACE sys_cfg_bcast_ssid_ctl 1
+	else
+		$UAPUTL_TOOL -i $WIFI_INTERFACE sys_cfg_bcast_ssid_ctl 0
+	fi
+
+	#start wifi
+	$UAPUTL_TOOL  -i $WIFI_INTERFACE bss_start             > /dev/null 2>&1
+	
+	echo  "Running $WIFI_SSID on channel ${channel_list[$channeli]} "
+}
+
+make_eyenet_ini()
+{
+
+cat <<EOF >EYENET.INI
+host_address = $HOST_IP,  $HOST_NETMASK
+eyelink_port = 589
+EOF
+
+}
+
+
+post_message()
+{
+	if [ -e /pps/sr_winmgr.control ]; then
+		echo "msg::$@" >>/pps/sr_winmgr.control
+	else
+		echo $@
+	fi
+	
+}
+
+
+
+full_reset_ip(){
+	CAMERAIP=127.1.1.1
+	
+	export IFS=" "
+	wm0found=0
+	mainint=""
+
+	if [ "$USBHOST" -eq 0 ]; then
+		# TR-5164: for 1000 Plus, need to also check SOCK=/sock2 now.
+		VAL1=`ifconfig -l`
+		VAL2=`SOCK=/sock2 ifconfig -l`
+		ifaces=`echo "$VAL1 $VAL2"`
+	else
+		ifaces=`ifconfig -l`
+	fi
+	
+	set -A dispifs "wm*" "rt*"
+	set -A dispifs_avail
+	set -A dispifs_availall
+	
+	for dev in $ifaces; do
+		if [  "$USBHOST" -eq 0 ] && [ "$dev" == "wm0" ]; then 
+			wm0found=1
+		else
+			if [ "$dev" == $WIFI_INTERFACE ]; then 
+				wifi0found=1
+			else
+		
+				## now loop through the above array
+				for i in "${dispifs[@]}"
+				do	
+	  
+					if [[ $dev = $i ]]; then
+						if [ "$mainint" = "" ]; then
+							mainint="$dev"
+						else
+							set -A dispifs_avail "$dispifs_avail $dev"
+	  fi
+						set -A dispifs_availall "$dispifs_availall $dev"
+	  
+	  fi
+					# or do whatever with individual element of the array
+				done
+	  fi
+	  fi
+	done
+	
+
+
+
+	make_eyenet_ini
+	
+	
+	make_dhcpd_conf
+
+
+			
+	if [ "$USBHOST" -eq 0 ]; then
+			if [  "$wm0found" -ne 0 ]; then
+			post_message "Found network interface for the Eyelink 1000 Plus camera."
+		
+			# TR-5164: Run the 1000 Plus camera on a separate io-pkt.
+			SOCK=/sock2 ifconfig wm0 $CAMERAIP  mtu 9000 netmask 255.255.255.0 up
+			export ELCL_GIGE_INTERFACE=wm0
+
+			# TR-5637: After bringing up the camera Ethernet for 1000+, wait for up to 10 seconds
+			# for the link to come up as 1000baseT.
+			# Tradeoffs:
+			# - normal boot with camera should wait so that the tracker app starts up
+			# and finds the NIC with GigE (1000baseT) to use to connect to the camera
+			# - unusual boot up without a camera should wait, but not "too long" to make
+			# the user think that it's frozen, so for now, the timeout is 10 seconds.
+			if [[ `SOCK=/sock2 ifconfig wm0 | grep 1000baseT` == *"1000baseT"* ]]; then
+				post_message "Network interface for EyeLink 1000 Plus camera is Gigabit Ethernet."
+			else
+				post_message "Waiting for Gigabit Ethernet to the EyeLink 1000 Plus camera."
+
+				counter=0
+				seconds=10
+				while [[ `SOCK=/sock2 ifconfig wm0 | grep 1000baseT` != *"1000baseT"* ]]; do
+					post_message "Waiting for Gigabit Ethernet to the EyeLink 1000 Plus camera: $seconds."
+			sleep 1
+					((seconds--))
+					((counter++))
+					if [[ $counter -eq 10 ]]; then
+						post_message "Is the EyeLink 1000 Plus camera connected? No Gigabit Ethernet connection was detected."
+						sleep 5
+						break;
+			fi
+				done
+		fi
+			 fi
+		fi
+		
+	post_message "Setting up Display network."
+	if [ "$mainint" = "" ]; then 
+		post_message "Did not find any suitable ethernet cards for Display connection. $mainint" 
+	else
+		ifconfig $mainint $HOST_IP  netmask $HOST_NETMASK up 
+					sleep 1 
+					if [ "$ENABLE_LEGACY_DISPLAY_IP" -ne 0 ]; then
+			ifconfig $mainint alias 100.1.1.1  netmask 255.255.255.0 up 
+			fi 
+					sleep 1 
+					fi
+			
+
+	if [ "$wifi0found" -ne 0 ] ;then
+		if [  "$mainint" = "" ] ; then
+			ifconfig $WIFI_INTERFACE $HOST_WIFI_IP netmask 255.255.255.0 up
+				sleep 1 
+				if [ "$ENABLE_LEGACY_DISPLAY_IP" -ne 0 ]; then
+					ifconfig  $WIFI_INTERFACE alias 100.1.1.1  netmask 255.255.255.0 up 
+				fi
+			else
+			ifconfig $WIFI_INTERFACE $HOST_WIFI_IP netmask 255.255.255.0 up
+		fi
+
+		sleep 1
+
+		if [ "$DISABLE_WIFI" -eq 0 ]; then
+			#hostapd-2.5 -B -dddddd /tmp/hostapd.conf
+			start_wifi
+			wifi_alive=1
+		else
+			# TR-4124: ensure that WiFi is not working
+			$UAPUTL_TOOL  -i $WIFI_INTERFACE bss_stop            > /dev/null 2>&1
+		fi
+
+		sleep 1
+	else
+		post_message "NO WIFI device found. "
+	fi
+	
+	# Note: If there is a USB NIC, then it will overrule the built-in NIC and become HOST_IP.
+	# In this case, the built-in NIC will become 169.254.1.1.
+	if [ -e /etc/usblauncher/startasixdongle.sh ]; then
+		sh /etc/usblauncher/startasixdongle.sh 
+	fi
+
+
+		dhcpd -4 -cf /tmp/dhcpd.conf 2>/dev/null
+}
+
+
+
+#if  [ "$SR_SYS_PROD_NAME" = "ThinkPad T470 W10DG" ] || [ "$SR_SYS_PROD_NAME" = "Latitude 7480" ] || [  "$SR_SYS_PROD_NAME" = "Latitude 7470" ] || [ "$SR_SYS_PROD_NAME" = "fitlet2" ]; then
+
+#for the portable duo, we will enable the smi fix all the time, untill we have a machine that does not need this.
+smi_arg=2
+if  [ "$SR_CHASSIS_TYPE" = "Desktop" ]; then
+	smi_arg=1
+fi
+/elcl/exe/smm_fix $smi_arg >/dev/null
+#fi
+
+#dummy is used to hide the output.
+dummy=`sysctl -w kern.mbuf.nmbclusters=32768` 
+dummy=`sysctl -w net.inet.tcp.sendspace=69632` 
+dummy=`sysctl -w net.inet.ip.forwarding=1` 
+
+
+
+#if test "$DEBUG_HOST" == 1; then
+#	start_dumper
+#fi
+
+echo "Setting up ramdisk"
+ 
+
+
+#move up here to give time for the ramdisk to take its time to do its job
+ramdisk="/dev/ram0"    
+if [ -b "$ramdisk" ]; then
+  #ram drive 0 already exits. using ram1
+  ramdisk="/dev/ram1" 
+  if [ -b "$ramdisk" ]; then
+  	echo "Ramdisk 1 already taken. So, not mounting"
+  	ramdisk=""
+  else
+  	devb-ram ram capacity=1 blk ramdisk=200m,cache=512k,vnode=256  2>/dev/null
+  	echo "Ramdrive name $ramdisk"
+  fi
+fi
+
+if [ "$SR_CHASSIS_TYPE" = "Portable" ] || [ -n "$EL_DISPLAY" -a "$EL_DISPLAY" = "GOP" -a "$EL_HEADLESS" = "1" ] ; then
+	#if laptop then we need the battery monitor
+	#if headless, we need battery monitor for the wake on lan feature.
+	#non laptop desktop, we don't want to enable as it interferes with camera lost beep sound. (workaround for TR-4286)
+	if [ -f /SRResearch/bin/batterymonitord ]; then
+		echo "Starting battery monitor"
+		chmod +x /SRResearch/bin/batterymonitord
+		/SRResearch/bin/batterymonitord > /dev/null 2>&1 &
+	else
+		echo "Could not find /SRResearch/bin/batterymonitord."
+	fi
+fi
+
+echo "Starting window manager and tracker"
+
+if [ -n "$EL_DISPLAY" -a "$EL_DISPLAY" = "GOP" -a "$EL_HEADLESS" = "0" ]; then
+	# For now, slay qterm or else it'll show through as the cursor moves around.
+	slay qterm
+	chmod +x sr_window_manager_GOP
+	./sr_window_manager_GOP -bg white -qws > /elcl/logs/sr_window_mgr.log 2>&1
+else
+	LD_LIBRARY_PATH=/SRResearch/qt5/lib:$LD_LIBRARY_PATH \
+	QML_IMPORT_PATH=/SRResearch/qt5/qml \
+	QML2_IMPORT_PATH=/SRResearch/qt5/qml \
+	QT_QPA_PLATFORM_PLUGIN_PATH=/SRResearch/qt5/plugins ./sr_window_manager > /elcl/logs/sr_window_mgr.log 2>&1
+fi
+waitfor /pps/sr_winmgr.control
+
+set_default_ssid(){
+	camserstr=""
+	if [ "$USBHOST" -ne 0 ]; then
+		# delay the usbcam execution further as a precaution
+		echo "Waiting for USB init..."; sleep 2; echo "Connecting to camera..."
+		# run usbcam and dump log messages temporarily
+		./usbcam_read_serial -t -vv > /elcl/exe/usbcam_read_serial.log
+
+		# check completion
+		if [ "$?" -eq 0 ]; then
+			# check if camera is connected
+			usb | grep 0x2bc4 > /dev/null
+			if [ "$?" -eq 0 ]; then
+				echo "Failed during Camera Connect!"
+			else
+				echo "No Camera Detected!"
+			fi
+		else
+			# get camera serial id
+			camserstr=`cat /elcl/exe/usbcam_read_serial.log | tail -1`
+			camserial=`echo "$camserstr" | cut -d '-' -f2 | cut -d "]" -f1`
+			if [ "$camserstr" == "" ]; then
+				echo "Camera Detected, but the serial is invalid!"
+			else
+				CAMSERIAL=$camserial
+				if [ $EL_SYSTEM_TYPE == "EyeLink_III" ]; then
+					WIFI_SSID="ELIII-"$camserial$WIFI_SSID_SUFFIX
+				else
+					WIFI_SSID="ELDuo-"$camserial$WIFI_SSID_SUFFIX
+				fi
+			fi
+			# cleanup temporary log
+			rm /elcl/exe/usbcam_read_serial.log
+		fi
+	else
+		#WIFI_SSID="EL1000" 
+		echo "Eyelink 1000+ mode: no WiFi SSID mechanism at the moment."
+	fi
+}
+
+set_default_ssid
+
+post_message "Setting up network"
+
+full_reset_ip
+
+if [ "$CAMSERIAL" != "" ]; then
+   /etc/usblauncher/startsrresearchcamera.sh $CAMSERIAL
+fi	
+
+
+
+slay_program el_trackerapp
+del_shmem
+
+post_message "Starting Web Server "
+rm -f /var/run/mongoose_launcher.pid
+./start_mongoose
+
+
+
+if [ -z "$ramdisk" ]; then
+	echo "Ramdrive not given"
+else
+	echo "Mounting ramdrive "
+	waitfor $ramdisk
+	mkqnx6fs -q $ramdisk
+	mount -tqnx6 $ramdisk /elcl/data/recv
+fi
+
+
+if [ $wifi_alive -eq "1" ]; then
+	post_message "WiFi SSID: "$WIFI_SSID
+fi
+
+# TR-4030: Automatically start the tracker app for all hosts
+# except for the EyeLink 3 when booted in headless mode.
+if [ $EL_SYSTEM_TYPE = "EyeLink_III" ] && [ -n "$EL_HEADLESS" -a "$EL_HEADLESS" -eq 1 ]; then
+	echo "Not starting the tracker app for an EyeLink 3 headless host."
+else
+	echo "cmd::tracker" >> /pps/sr_winmgr.control
+fi
