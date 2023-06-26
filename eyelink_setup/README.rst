@@ -104,13 +104,16 @@ We can now reconfigure the NUC to break the internal bridge:
 .. image:: after.jpg
     :align: center
 
+16. When the NUC reboots, the WebUI will refresh on its own and you should be able to access NUC's file system at 192.168.100.15. If you goto settings -> network, you will see the Ethernet IP has updated to 192.168.100.15 (from 10.1.1.1)
 
+Explanation
+===========
+What the new start_tk file ``start_tk_new`` does is it changes the Host WiFi to the 192.168.5.1 subnet. When you check the Host WiFi on the Eyelink app on the tablet, you will now see 192.168.5.1.
 
+Additionally, the new start_tk script breaks the internal bridge between the Ethernet and WiFi NICs. In the absence of the bridge we can no longer connect to NUC's WebUI via the Windows machine, unless the NUC's Ethernet NIC is available on the same subnet. For this we could assign the Ethernet NIC a fixed IP - 192.168.100.15 for example via the DHCP server on neurodoor - we would hard code the mac address of the Ethernet NIC on NUC with the 192.168.100.15 IP address. This type of IP assignment is called as fixed IP assignment since the DHCP on neurodoor will always assign the same fixed IP to a particular mac address (device).
 
+However this type of IP assignment is not supported by the NUC - therefore we set a 'static' IP on the NUC itself by changing the ``netconfig.ini`` file on the NUC. This enables the Ethernet NIC on NUC to always identify itself with the 192.168.100.15 IP. Thus, we need to ensure that the DHCP server on neurodoor is configured to never assign the 192.168.100.15 IP to any device. This can be done either by putting this IP in the "excluded IP" list in the DHCP configuration file - or as is the case now, hard coding the mac address of Ethernet NIC on NUC to this IP (where neurodoor tried to assign fixed IP to NUC, which isn't supported by the NUC, but in the process the IP gets reserved anyway on neurodoor's side).
 
+With this configuration, all Windows machines on the ethernet network can access NUC via the .15 IP address, and the only DHCP server active is neurodoor's. DHCP server on Ethernet NIC on NUC is inactive. And DHCP server on WiFi NIC of NUC is active and managing communication with the tablet.
 
-
-
-
-
- 
+END
