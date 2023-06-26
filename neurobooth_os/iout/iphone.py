@@ -203,8 +203,8 @@ class IPhone:
         :param e: The raised IPhonePanic exception.
         :param disconnect: Whether to trigger a disconnect as a result of the panic.
         """
-        self.logger.error(f'iPhone [state={self._state}]: PANIC Message: {e}')
-        print(f'iPhone PANIC: {e}')
+        self.logger.exception(f'iPhone [state={self._state}]: PANIC Message: {e}')
+        print(f'iPhone PANIC (Please restart iphone app and session): {e}')
 
         with self._state_lock:
             self._state = "#ERROR"
@@ -355,7 +355,7 @@ class IPhone:
                 self._raise_timeout(msg_type)
 
     def listen(self):
-        """Called by tge listener thread. Attempt to receive and process a message."""
+        """Called by the listener thread. Attempt to receive and process a message."""
         payload, _, _, resp_tag = self._get_packet()
 
         if DEBUG_LOGGING:
@@ -401,8 +401,7 @@ class IPhone:
         """
         ready, _, _ = select.select([self.sock], [], [], timeout_sec)
         if not ready:
-            self.logger.error(f"iPhone [state={self._state}]: Exceeded timeout for packet receipt")
-            raise IPhoneError(f"Timeout for packet receive exceeded ({timeout_sec} sec)")
+            raise IPhoneTimeout(f"Timeout for packet receive exceeded ({timeout_sec} sec)")
 
         first_frame = self.sock.recv(16)
         version, type_, tag, payload_size = struct.unpack("!IIII", first_frame)
@@ -732,10 +731,7 @@ class IPhone:
 
         # Send disconnect signal
         self.logger.debug(f'iPhone [state={self._state}]: Disconnecting')
-        try:
-            self._send_packet("@DISCONNECT")
-        except IPhonePanic as e:
-            self.logger.error(f'iPhone: PANIC while sending @DISCONNECT: {e}')
+        self._update_state("@DISCONNECT")
 
         time.sleep(4)  # Give things some time to happen; was here before rewrite, but why?
 
@@ -764,19 +760,34 @@ class IPhoneListeningThread(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        self.logger.debug('iPhone: Entering Listening Loop')
-        while self._running:
-            try:
-                self._iphone.listen()
-            except IPhonePanic as e:
-                self._iphone.panic(e, disconnect=False)
-                self._iphone.disconnect(join_listener=False)
-            except OSError as e:  # Will occur when the socket is closed during shutdown
-                if self._running:
-                    self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
-            except Exception as e:  # Simply log any other errors
-                self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
-        self.logger.debug('iPhone: Exiting Listening Loop')
+        try:
+            self.logger.debug('iPhone: Started Listening Thread')
+            while self._running:
+                self.listen()
+        except IPhonePanic as e:  # Top-level exceptions that will kill the loop
+            self._iphone.panic(e, disconnect=False)
+            self._iphone.disconnect(join_listener=False)
+        finally:
+            self.logger.debug('iPhone: Exiting Listening Thread')
+
+    def listen(self):
+        """Call the iPhone listen() method and sort through various possible exceptions."""
+        try:
+            self._iphone.listen()
+        except IPhoneTimeout as e:  # These occur normally; only log if the module debug flag is set
+            if DEBUG_LOGGING:
+                self.logger.debug(f"iPhone: {e}")
+        except struct.error as e:  # Can occur if the app is on too long and iPhone blocks the port
+            raise IPhonePanic('Communications Breakdown') from e
+        except OSError as e:
+            if not self._running:
+                return  # OSError occurs when the socket is closed during shutdown; do nothing if thread is stopped
+            if 'WinError 10053' in str(e):  # Can occur if the app is on too long and iPhone blocks the port
+                raise IPhonePanic('Communications Breakdown') from e
+            # Simply log anything unexpected
+            self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
+        except Exception as e:  # Simply log any other unexpected errors
+            self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
 
     def stop(self):
         self._running = False
