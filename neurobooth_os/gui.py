@@ -45,7 +45,7 @@ def setup_log(sg_handler = None):
 
 
 class Handler(logging.StreamHandler):
-
+    """LogHandler that emits entries to the GUI"""
     def __init__(self):
         logging.StreamHandler.__init__(self)
 
