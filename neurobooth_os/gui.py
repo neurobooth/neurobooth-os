@@ -50,8 +50,7 @@ class Handler(logging.StreamHandler):
         logging.StreamHandler.__init__(self)
 
     def emit(self, record):
-        spacer = ''
-        buffer = f'{spacer}\n{str(record)}'.strip()
+        buffer = str(record).strip()
         window['log'].update(value=buffer)
 
 
