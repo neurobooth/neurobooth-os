@@ -10,6 +10,7 @@ import logging
 
 import neurobooth_os
 from neurobooth_os import config
+from neurobooth_os.logging import make_default_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import (
@@ -32,13 +33,20 @@ def countdown(period):
 
 def Main():
     os.chdir(neurobooth_os.__path__[0])
-
     sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
-    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    # Initialize logging to nothing, will get overwritten during session preparation
-    logger = logging.getLogger('null')
-    logger.addHandler(logging.NullHandler())
+    # Initialize default logger
+    logger = make_default_logger()
+    try:
+        run_acq(logger)
+    except Exception as e:
+        logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
+        logger.critical(e, exc_info=sys.exc_info())
+        raise
+
+
+def run_acq(logger):
+    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     streams = {}
     lowFeed_running = False

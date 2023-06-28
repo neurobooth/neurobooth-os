@@ -4,8 +4,9 @@ import sys
 from datetime import datetime
 from typing import Optional
 
-
 LOG_FORMAT = logging.Formatter('|%(levelname)s| [%(asctime)s] %(filename)s, %(funcName)s, L%(lineno)d> %(message)s')
+
+DEFAULT_LOG_PATH = r"D:\neurobooth\neurobooth_logs"
 
 
 def make_session_logger(session_folder: str, machine_name: str, log_level=logging.DEBUG) -> logging.Logger:
@@ -42,16 +43,16 @@ def make_session_logger_debug(
     return logger
 
 
-def make_iphone_dump_logger(
-        log_path: str = 'D:/neurobooth/neurobooth_logs',
+def make_default_logger(
+        log_path=DEFAULT_LOG_PATH,
         log_level=logging.DEBUG,
 ) -> logging.Logger:
     if not os.path.exists(log_path):
-        os.mkdir(log_path)
+        os.makedirs(log_path)
 
-    logger = logging.getLogger('iphone_dump')
+    logger = logging.getLogger('default')
     time_str = datetime.now().strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
-    file = os.path.join(log_path, f'iphone_dump_{time_str}.log')
+    file = os.path.join(log_path, f'default_{time_str}.log')
 
     file_handler = logging.FileHandler(file)
     file_handler.setLevel(log_level)
