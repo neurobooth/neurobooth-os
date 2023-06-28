@@ -167,5 +167,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        logger = logging.getLogger('iphone_dump')
-        logger.exception(e)
+        logger = logging.getLogger("default")
+        logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
+        logger.critical(e, exc_info=sys.exc_info())
+        raise

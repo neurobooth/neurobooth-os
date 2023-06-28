@@ -50,12 +50,10 @@ class Handler(logging.StreamHandler):
         logging.StreamHandler.__init__(self)
 
     def emit(self, record):
-        global BUFFER
-        buffer = f'{BUFFER}\n{str(record)}'.strip()
+        spacer = ''
+        buffer = f'{spacer}\n{str(record)}'.strip()
         window['log'].update(value=buffer)
 
-
-BUFFER = ''
 
 logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
 
