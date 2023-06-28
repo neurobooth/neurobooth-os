@@ -33,9 +33,7 @@ def countdown(period):
 
 def Main():
     os.chdir(neurobooth_os.__path__[0])
-
     sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
-    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     # Initialize default logger
     logger = make_default_logger()
@@ -48,6 +46,8 @@ def Main():
 
 
 def run_acq(logger):
+    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
     streams = {}
     lowFeed_running = False
     recording = False
