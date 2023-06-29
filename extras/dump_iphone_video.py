@@ -8,6 +8,7 @@ import logging
 from typing import Optional
 from neurobooth_os.logging import make_default_logger
 import argparse
+import sys
 
 
 class TimeoutException(Exception):
@@ -25,7 +26,7 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
         Command line arguments.
     """
     session_root = cfg.paths["data_out"]
-    logger = logging.getLogger('iphone_dump')
+    logger = logging.getLogger('default')
     logger.debug(f'Session Root: {session_root}')
 
     # Connect to the iPhone
@@ -98,7 +99,7 @@ def dump_file(
     delete_zero_byte
         If true, delete files from the iPhone if no data is observed.
     """
-    logger = logging.getLogger('iphone_dump')
+    logger = logging.getLogger('default')
     if op.exists(fname_out):  # Do not overwrite a file that already exists
         logger.error(f'Cannot write {fname_out} as it already exists!')
         return
@@ -124,7 +125,7 @@ def dump_file(
 
 
 def parse_arguments() -> argparse.Namespace:
-    logger = logging.getLogger('iphone_dump')
+    logger = logging.getLogger('default')
     parser = argparse.ArgumentParser(description='Download and save all files on the iPhone (both .json and .MOV).')
     parser.add_argument(
         '--delete-zero-byte',
