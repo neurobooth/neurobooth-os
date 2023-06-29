@@ -126,7 +126,6 @@ class ResetDeviceThread(threading.Thread):
         libmetawear.mbl_mw_macro_erase_all(board)
         libmetawear.mbl_mw_debug_reset_after_gc(board)
         libmetawear.mbl_mw_debug_disconnect(board)
-        device.disconnect()
 
 
 def main():
