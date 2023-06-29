@@ -1,88 +1,171 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Fri May 27 14:49:22 2022
-
-@author: ACQ
-"""
-
+import sys
+import argparse
 from mbientlab.metawear import MetaWear, libmetawear
-from time import sleep
+from time import sleep, time
+import threading
+import logging
 from neurobooth_os.iout.mbient import scan_BLE
 from neurobooth_os.logging import make_default_logger
 
 
-def connect(device):
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description='Find and reset Mbient wearable devices.')
+    parser.add_argument(
+        '--n-devices',
+        default=5,
+        type=int,
+        help='The number of expected devices'
+    )
+    parser.add_argument(
+        '--n-connect-attempts',
+        default=3,
+        type=int,
+        help='The number of times to attempt to connect to a device.'
+    )
+    parser.add_argument(
+        '--scan-timeout',
+        default=10,
+        type=int,
+        help='Specify a timeout (in seconds) for identifying the devices.'
+    )
+    parser.add_argument(
+        '--reset-timeout',
+        default=10,
+        type=int,
+        help='Specify a timeout (in seconds) for resetting the devices.'
+    )
+    args = parser.parse_args()
 
-    try:
-        device.connect()
-    except:
-        sleep(3)
+    if args.scan_timeout <= 0:
+        parser.error(f'Invalid scan timeout specified ({args.scan_timeout} sec).')
+    if args.reset_timeout <= 0:
+        parser.error(f'Invalid reset timeout specified ({args.reset_timeout} sec).')
+    if args.n_devices <= 0:
+        parser.error(f'Invalid number of devices specified ({args.n_devices}).')
+    if args.n_connect_attempts <= 0:
+        parser.error(f'Invalid number of connect attempts specified ({args.n_connect_attempts}).')
+
+    return args
+
+
+class ResetDeviceThread(threading.Thread):
+    def __init__(self, address: str, connect_attempts: int, reset_timeout: float):
+        """
+        When started, this thread will try to connect to and reset the specified Mbient device.
+
+        :param address: The MAC address of the device to reset.
+        :param connect_attempts: The number of times to try to connect to the device before giving up.
+        :param reset_timeout: How long to wait for the device to reset before giving up.
+        """
+        super().__init__()
+        self.address = address
+        self.connect_attempts = connect_attempts
+        self.reset_timeout = reset_timeout
+        self.logger = logging.getLogger('default')
+        self.disconnect_event = threading.Event()
+        self.success = False
+
+    def run(self) -> None:
         try:
-            print("trying again...")
-            device.connect()
-        except:
-            return False
-    return True
+            t0 = time()
 
+            device = self.connect()
+            ResetDeviceThread.reset_device(device)
+            self.success = self.disconnect_event.wait(self.reset_timeout)
 
-def reset_dev(MAC):
-    device = MetaWear(MAC)
-    success = connect(device)
-    if not success:
-        return False
+            if self.success:
+                self.logger.debug(f'Reset for {self.address} took {time() - t0:0.1f} sec.')
+        except Exception as e:
+            self.logger.exception(e)
 
-    libmetawear.mbl_mw_logging_stop(device.board)
-    sleep(1.0)
+    def connect(self) -> MetaWear:
+        """
+        Attempt to connect to the device. Raise an exception if the maximum number of attempts is exceeded.
 
-    libmetawear.mbl_mw_logging_flush_page(device.board)
-    sleep(1.0)
+        :returns: The connected Mbient device object.
+        """
+        device = MetaWear(self.address)
 
-    libmetawear.mbl_mw_logging_clear_entries(device.board)
-    sleep(1.0)
+        success = False
+        for i in range(self.connect_attempts):
+            try:
+                if i > 0:  # Do not immediately try to reconnect if it just failed.
+                    sleep(3)
 
-    libmetawear.mbl_mw_event_remove_all(device.board)
-    sleep(1.0)
+                device.connect()
+                success = True
+                break
+            except Exception as e:
+                self.logger.debug(f'Failed to connect to {self.address} on attempt {i+1}: {e}')
 
-    libmetawear.mbl_mw_macro_erase_all(device.board)
-    sleep(1.0)
+        if not success:
+            raise Exception(f'Unable to connect to {self.address}')
 
-    libmetawear.mbl_mw_debug_reset_after_gc(device.board)
-    sleep(1.0)
+        device.on_disconnect = lambda status: self.on_disconnect(status)
+        return device
 
-    libmetawear.mbl_mw_debug_disconnect(device.board)
-    sleep(1.0)
+    def on_disconnect(self, status) -> None:
+        self.logger.debug(f'Disconnected {self.address} with status {status}.')
+        self.disconnect_event.set()
 
-    device.disconnect()
-    sleep(1.0)
-    return True
+    @staticmethod
+    def reset_device(device: MetaWear) -> None:
+        """
+        Reset the device. See https://mbientlab.com/tutorials/PyLinux.html#reset
+
+        :param device: The connected device object to reset
+        """
+        board = device.board
+        libmetawear.mbl_mw_logging_stop(board)
+        libmetawear.mbl_mw_logging_flush_page(board)
+        libmetawear.mbl_mw_logging_clear_entries(board)
+        libmetawear.mbl_mw_event_remove_all(board)
+        libmetawear.mbl_mw_macro_erase_all(board)
+        libmetawear.mbl_mw_debug_reset_after_gc(board)
+        libmetawear.mbl_mw_debug_disconnect(board)
+        device.disconnect()
 
 
 def main():
     logger = make_default_logger()
+    args = parse_arguments()
 
-    macs = {
-        "Mbient_LH_2": "E8:95:D6:F7:39:D2",
-        "Mbient_RH_2": "FE:07:3E:37:F5:9C",
-        "Mbient_RF_2": "E5:F6:FB:6D:11:8A",
-        "Mbient_LF_2": "DA:B0:96:E4:7F:A3",
-        "Mbient_BK_1": "D7:B0:7E:C2:A1:23",
-    }
-
-    print('resetting mbients (will take ~ 1 min)...')
-    devices = scan_BLE(2)
-    logger.info(f'Identified {len(devices)} devices')
+    t0 = time()
+    logger.info('Scanning for devices...')
+    devices = scan_BLE(timeout_sec=args.scan_timeout, n_devices=args.n_devices)
+    logger.info(f'Identified {len(devices)} devices. Scan took {time() - t0:0.1f} sec.')
+    if len(devices) < args.n_devices:
+        logger.warning('Not all devices found!')
     for k, v in devices.items():
         logger.debug(f'Device {k} Address: {v}')
 
-    for k, v in macs.items():
-        success = reset_dev(v)
-        if not success:
-            print(f"Failed to connect {k} {v}")
-        else:
-            print(f"Success in resetting {k} {v}")
+    reset_threads = [
+        ResetDeviceThread(
+            address=address,
+            connect_attempts=args.n_connect_attempts,
+            reset_timeout=args.reset_timeout,
+        ) for _, address in devices.items()
+    ]
+    t0 = time()
+    for t in reset_threads:
+        t.start()
+    for t in reset_threads:
+        t.join()
+    logger.debug(f'Device reset {time() - t0:0.1f} sec.')
 
-    sleep(60)
+    success = [t.address for t in reset_threads if t.success]
+    failure = [t.address for t in reset_threads if not t.success]
+    logger.info(f'Succesfully reset {len(success)} devices: {success}')
+    if failure:
+        logger.warning(f'Failed to reset {len(failure)} devices: {failure}')
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logger = logging.getLogger('default')
+        logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
+        logger.critical(e, exc_info=sys.exc_info())
+        raise e
