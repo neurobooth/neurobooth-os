@@ -11,31 +11,21 @@ from neurobooth_os.logging import make_default_logger
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Find and reset Mbient wearable devices.')
-    parser.add_argument(
+
+    group = parser.add_argument_group(help='Scanning Arguments')
+    group.add_argument(
         '--n-devices',
         default=5,
         type=int,
         help='The number of expected devices'
     )
-    parser.add_argument(
-        '--n-connect-attempts',
-        default=3,
-        type=int,
-        help='The number of times to attempt to connect to a device.'
-    )
-    parser.add_argument(
+    group.add_argument(
         '--scan-timeout',
         default=10,
         type=int,
         help='Specify a timeout (in seconds) for identifying the devices.'
     )
-    parser.add_argument(
-        '--reset-timeout',
-        default=10,
-        type=int,
-        help='Specify a timeout (in seconds) for resetting the devices.'
-    )
-    parser.add_argument(
+    group.add_argument(
         '--mac',
         default=[],
         required=False,
@@ -45,6 +35,20 @@ def parse_arguments() -> argparse.Namespace:
              'This argument can be specified multiple times to reset multiple devices.'
     )
 
+    group = parser.add_argument_group(help='Reset Arguments')
+    group.add_argument(
+        '--n-connect-attempts',
+        default=3,
+        type=int,
+        help='The number of times to attempt to connect to a device.'
+    )
+    group.add_argument(
+        '--reset-timeout',
+        default=10,
+        type=int,
+        help='Specify a timeout (in seconds) for resetting the devices.'
+    )
+    
     args = parser.parse_args()
 
     if args.scan_timeout <= 0:
