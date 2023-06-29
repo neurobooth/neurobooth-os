@@ -4,6 +4,7 @@ import os
 from time import time
 from datetime import datetime
 import copy
+from collections import OrderedDict  # NOT an unused import, very naughtily used by an eval
 
 from psychopy import prefs
 
