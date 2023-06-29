@@ -88,6 +88,7 @@ class ResetDeviceThread(threading.Thread):
         device = MetaWear(self.address)
 
         success = False
+        self.logger.debug(f'Attempting connection to {self.address}')
         for i in range(self.connect_attempts):
             try:
                 if i > 0:  # Do not immediately try to reconnect if it just failed.
@@ -147,12 +148,13 @@ def main():
             reset_timeout=args.reset_timeout,
         ) for _, address in devices.items()
     ]
+    logger.info(f'Reset in progress...')
     t0 = time()
     for t in reset_threads:
         t.start()
     for t in reset_threads:
         t.join()
-    logger.debug(f'Device reset {time() - t0:0.1f} sec.')
+    logger.info(f'Device reset {time() - t0:0.1f} sec.')
 
     success = [t.address for t in reset_threads if t.success]
     failure = [t.address for t in reset_threads if not t.success]
