@@ -12,7 +12,7 @@ from neurobooth_os.logging import make_default_logger
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Find and reset Mbient wearable devices.')
 
-    group = parser.add_argument_group(help='Scanning Arguments')
+    group = parser.add_argument_group(title='Scanning Arguments')
     group.add_argument(
         '--n-devices',
         default=5,
@@ -35,7 +35,7 @@ def parse_arguments() -> argparse.Namespace:
              'This argument can be specified multiple times to reset multiple devices.'
     )
 
-    group = parser.add_argument_group(help='Reset Arguments')
+    group = parser.add_argument_group(title='Reset Arguments')
     group.add_argument(
         '--n-connect-attempts',
         default=3,
@@ -48,7 +48,7 @@ def parse_arguments() -> argparse.Namespace:
         type=int,
         help='Specify a timeout (in seconds) for resetting the devices.'
     )
-    
+
     args = parser.parse_args()
 
     if args.scan_timeout <= 0:
