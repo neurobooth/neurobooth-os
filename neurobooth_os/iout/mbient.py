@@ -6,11 +6,34 @@ from time import sleep
 from threading import Event
 from sys import argv
 import logging
+from typing import Dict
 
+from mbientlab.warble import BleScanner
 from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings
 from pylsl import StreamInfo, StreamOutlet, local_clock
 
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+
+
+def scan_BLE(timeout_sec: float = 10, n_devices: int = 5) -> Dict[str, str]:
+    print("scanning for devices...")
+
+    devices = {}
+    event = Event()
+
+    def handler(result):
+        if not result.has_service_uuid(MetaWear.GATT_SERVICE):
+            return
+
+        devices[result.name] = result.mac
+        if len(devices) >= n_devices:
+            event.set()
+
+    BleScanner.set_handler(handler)
+    BleScanner.start()
+    event.wait(timeout=timeout_sec)
+    BleScanner.stop()
+    return devices
 
 
 def countdown(period):
