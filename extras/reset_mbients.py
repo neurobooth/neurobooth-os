@@ -35,6 +35,16 @@ def parse_arguments() -> argparse.Namespace:
         type=int,
         help='Specify a timeout (in seconds) for resetting the devices.'
     )
+    parser.add_argument(
+        '--mac',
+        default=[],
+        required=False,
+        action='append',
+        type=str,
+        help='Instead of scanning for devices, specify the MAC address. '
+             'This argument can be specified multiple times to reset multiple devices.'
+    )
+
     args = parser.parse_args()
 
     if args.scan_timeout <= 0:
@@ -132,15 +142,20 @@ def main():
     logger = make_default_logger()
     args = parse_arguments()
 
-    t0 = time()
-    logger.info('Scanning for devices...')
-    devices = scan_BLE(timeout_sec=args.scan_timeout, n_devices=args.n_devices)
-    logger.info(f'Identified {len(devices)} devices. Scan took {time() - t0:0.1f} sec.')
-    if len(devices) == 0:
-        logger.error('No devices found!')
-        return
-    elif len(devices) < args.n_devices:
-        logger.warning('Not all devices found!')
+    if args.mac:
+        devices = {f'CL-{i}': address for i, address in enumerate(args.mac)}
+        logger.debug(f'Using {len(devices)} devices specified via command line: {devices}')
+    else:
+        t0 = time()
+        logger.info('Scanning for devices...')
+        devices = scan_BLE(timeout_sec=args.scan_timeout, n_devices=args.n_devices)
+        logger.info(f'Identified {len(devices)} devices. Scan took {time() - t0:0.1f} sec.')
+        if len(devices) == 0:
+            logger.error('No devices found!')
+            return
+        elif len(devices) < args.n_devices:
+            logger.warning('Not all devices found!')
+
     for k, v in devices.items():
         logger.debug(f'Device {k} Address: {v}')
 
