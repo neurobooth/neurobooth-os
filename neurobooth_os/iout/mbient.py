@@ -3,7 +3,7 @@ from __future__ import print_function
 import uuid
 from ctypes import c_void_p, cast, POINTER
 from time import sleep
-from threading import Event
+from threading import Event, Lock
 from sys import argv
 import logging
 from typing import Dict
@@ -16,18 +16,26 @@ from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 
 
 def scan_BLE(timeout_sec: float = 10, n_devices: int = 5) -> Dict[str, str]:
-    print("scanning for devices...")
+    """
+    Scan to identify the MAC Address for Mbient devices. See https://mbientlab.com/tutorials/PyLinux.html#usage
 
+    :param timeout_sec: How long to scan before giving up.
+    :param n_devices: The number of expected devices. Stop scanning once this count is reached.
+    :returns: A dictionary of device names as keys and MAC addresses as values.
+    """
     devices = {}
     event = Event()
+    lock = Lock()
 
     def handler(result):
+        """Callback function invoked when a new device is identified."""
         if not result.has_service_uuid(MetaWear.GATT_SERVICE):
-            return
+            return  # We only care about Mbient devices
 
-        devices[result.name] = result.mac
-        if len(devices) >= n_devices:
-            event.set()
+        with lock:  # Update the result dictionary and signal completion if we found enough devices
+            devices[result.name] = result.mac
+            if len(devices) >= n_devices:
+                event.set()
 
     BleScanner.set_handler(handler)
     BleScanner.start()
