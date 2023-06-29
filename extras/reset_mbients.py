@@ -67,17 +67,18 @@ class ResetDeviceThread(threading.Thread):
         self.success = False
 
     def run(self) -> None:
+        t0 = time()
         try:
-            t0 = time()
-
             device = self.connect()
             ResetDeviceThread.reset_device(device)
             self.success = self.disconnect_event.wait(self.reset_timeout)
-
-            if self.success:
-                self.logger.debug(f'Reset for {self.address} took {time() - t0:0.1f} sec.')
         except Exception as e:
             self.logger.exception(e)
+        finally:
+            if self.success:
+                self.logger.debug(f'Reset for {self.address} took {time() - t0:0.1f} sec.')
+            else:
+                self.logger.debug(f'Reset timeout reached for {self.address}')
 
     def connect(self) -> MetaWear:
         """
@@ -136,7 +137,10 @@ def main():
     logger.info('Scanning for devices...')
     devices = scan_BLE(timeout_sec=args.scan_timeout, n_devices=args.n_devices)
     logger.info(f'Identified {len(devices)} devices. Scan took {time() - t0:0.1f} sec.')
-    if len(devices) < args.n_devices:
+    if len(devices) == 0:
+        logger.error('No devices found!')
+        return
+    elif len(devices) < args.n_devices:
         logger.warning('Not all devices found!')
     for k, v in devices.items():
         logger.debug(f'Device {k} Address: {v}')
