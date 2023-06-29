@@ -1,11 +1,9 @@
 import socket
 import sys
 import os
-from time import time, sleep
-from collections import OrderedDict
+from time import time
 from datetime import datetime
 import copy
-import logging
 
 from psychopy import prefs
 
@@ -33,18 +31,26 @@ from neurobooth_os.netcomm import (
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
-from neurobooth_os.logging import make_session_logger
+from neurobooth_os.logging import make_session_logger, make_default_logger
 
 
 def Main():
     os.chdir(neurobooth_os.__path__[0])
-
     sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
-    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    # Initialize logging to nothing, will get overwritten during session preparation
-    logger = logging.getLogger('null')
-    logger.addHandler(logging.NullHandler())
+    # Initialize logging to default
+    logger = make_default_logger()
+
+    try:
+        run_stm(logger)
+    except Exception as e:
+        logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
+        logger.critical(e, exc_info=sys.exc_info())
+        raise
+
+
+def run_stm(logger):
+    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     if os.getenv("NB_FULLSCREEN") == "false":
         win = utl.make_win(full_screen=False)

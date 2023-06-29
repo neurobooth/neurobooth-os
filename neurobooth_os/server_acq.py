@@ -10,6 +10,7 @@ import logging
 
 import neurobooth_os
 from neurobooth_os import config
+from neurobooth_os.logging import make_default_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import (
@@ -32,13 +33,20 @@ def countdown(period):
 
 def Main():
     os.chdir(neurobooth_os.__path__[0])
-
     sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
-    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    # Initialize logging to nothing, will get overwritten during session preparation
-    logger = logging.getLogger('null')
-    logger.addHandler(logging.NullHandler())
+    # Initialize default logger
+    logger = make_default_logger()
+    try:
+        run_acq(logger)
+    except Exception as e:
+        logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
+        logger.critical(e, exc_info=sys.exc_info())
+        raise
+
+
+def run_acq(logger):
+    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     streams = {}
     lowFeed_running = False
@@ -131,12 +139,12 @@ def Main():
 
         elif "record_stop" in data:
             t0 = time()
-            for k in streams.keys():
+            for k in streams.keys():  # Call stop on streams with that method
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
                     if task_devs_kw[task].get(k):
                         streams[k].stop()
 
-            for k in streams.keys():
+            for k in streams.keys():  # Ensure the streams are stopped
                 if k.split("_")[0] in ["FLIR", "Intel", "IPhone"]:
                     if task_devs_kw[task].get(k):
                         streams[k].ensure_stopped(10)
@@ -152,6 +160,15 @@ def Main():
             if "shutdown" in data:
                 sys.stdout = sys.stdout.terminal
                 s1.close()
+
+            # TODO: It would be nice to generically register logging handlers at each stage of a stream's lifecycle.
+            for k in streams.keys():  # Log the list of files present on the iPhone
+                if k.split("_")[0] == "IPhone":
+                    iphone_files = streams[k].dumpall_getfilelist()
+                    if iphone_files is not None:
+                        logger.info(f'iPhone has {len(iphone_files)} waiting for dump: {iphone_files}')
+                    else:
+                        logger.warning(f'iPhone did not return a list of files to dump.')
 
             streams = close_streams(streams)
 
