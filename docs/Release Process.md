@@ -2,9 +2,9 @@
 This document describes the Neurobooth release process.
 
 The goals for this process are:
-1. To ensure consistency in the Neurobooth deployment process such that every deployed environment is associated with a known release version. 
+1. To ensure consistency in Neurobooth deployments such that every environment is associated with a known release version. 
 2. To ensure the code tested in staging is identical to the code deployed to production.
-3. To make it easy to determine what code modifications are in each environment, and whether issues identified in one environment are likely to affect another. 
+3. To make it easier to determine what code modifications are in each environment, and whether issues identified in one environment are likely to affect another. 
 
 For simplicity, this process uses GitHub's release support. In this model, a release is a bundle of code with a name and a git tag. By convention, the release name and tag are the same.
 
