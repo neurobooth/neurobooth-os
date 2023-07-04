@@ -12,7 +12,7 @@ Specifically, the `__init__.py` module in the neurobooth-os folder holds the att
 
 Keeping the version name in the code in sync with the release is a key part of the process:
 - When release 0.0.4 is in development, `__version__ = "v0.0.4-dev"`
-- When we're ready to make the release, the '-dev' part is removed and `__version__ = "v0.0.4"`. This version gets packaged into the release.
+- When we're ready to release, the '-dev' part is removed and `__version__ = "v0.0.4"`. This version gets packaged into the release.
 - When the release has been created, `__version__` is incremented, and the '-dev' suffix is restored so that `__version__ = "0.0.5-dev"`.
 
 (At some point all this version name shuffling can be automated.)
@@ -25,19 +25,21 @@ Development is performed on feature branches as usual. When complete, feature br
 
 1. Update the `__version__` in neurobooth_os to match the planned release name, by removing the '-dev' suffix as described above.
 3. The modified `__init__.py` is committed and pushed to master
-4. Create a candidate release in GitHub, ensuring that it is marked as "pre-release" 
-5. Increment the version in `__init__.py` and append the string '-dev' 
-9. Commit the new version of `__init__.py`
-6. Deploy the candidate release into staging and complete testing in that environment 
+4. Create a candidate release in GitHub, ensuring that it is marked as "pre-release". This tags the code in the release to the current state in the git history.
+5. Increment the version in `__init__.py`, append the string '-dev', and commit the changes.
+6. Deploy the candidate release into staging and complete testing 
 6. Publish the release in GitHub 
-7. Deploy the published release into production environments. 
+7. Deploy the published release into production environment(s). 
  
-Deploying releases: 
+Checking out and deploying releases: 
 
 The examples below show how to checkout released code install it using pip. Release v0.0.1 is used for demonstration. 
 
-To install a release using pip: 
-	pip install git+https://github.com/neurobooth/neurobooth-os@v0.0.1
+To checkout a release without installing specify the tag and branch (master):
+	`git checkout tags/<tag> -b <branch>`
 
-To checkout a release:
-	git checkout
+To install a release using pip: 
+	`pip install git+https://github.com/neurobooth/neurobooth-os@v0.0.1`
+
+If desired, the release can be installed in a particular location using the -target flag
+
