@@ -7,14 +7,14 @@ The goals for this process are:
 3. To make it easier to determine what code modifications are in each environment, and whether issues identified in one environment are likely to affect another. 
 
 For simplicity, this process uses GitHub's release support. In this model, a release is a bundle of code with a name and a git tag. By convention, the release name and tag are the same.
+The release name also appears in the deployed code so anyone looking at the environment can tell what version is deployed. In code, the name is stored in a `__version__` attribute in a way that is consistent with Python package naming standards. 
 
-The release name also appears in the deployed code so anyone looking at the environment can tell what version is deployed. Keeping the version name in the code in sync with the release is a key part of the process. 
+Keeping the version name in the code in sync with the release is a key part of the process:
+- When release 0.0.4 is in development, `__version__ = "v0.0.4-dev"`
+- When we're ready to make the release, the '-dev' part is removed and `__version__ = "v0.0.4"`. This version gets packaged into the release.
+- When the release has been created, `__version__` is incremented, and the '-dev' suffix is restored so that `__version__ = "0.0.5-dev"`.
 
-When release N is in development, `__version__` should say 'vN-dev' (e.g. v0.0.2-dev)
-When we're ready to make the release, the '-dev' part is stripped to provide the true version name (e.g. v0.0.2)
-When the release has been created, `__version__` is incremented, and the '-dev' suffix is re-added. The value of `__version__` should now be 'v0.0.3-dev'.
-
-(At some point this version name shuffling can be automated.)
+(At some point all this version name shuffling can be automated.)
 
 A release that isn't ready for production deployment should be flagged as "pre-release" when created. The "pre-release" identifier is removed when the release is "published".  
 
