@@ -8,6 +8,7 @@ The goals for this process are:
 
 This process uses GitHub's release support. In this model, a release is a bundle of code with a name and a git tag. By convention, the release name and tag are the same.
 The release name also appears in the deployed code so anyone looking at the environment can tell what version is deployed. In code, the name is stored in a `__version__` attribute in a way that is consistent with Python package naming standards. 
+Specifically, the `__init__.py` module in the neurobooth-os folder holds the attribute.  
 
 Keeping the version name in the code in sync with the release is a key part of the process:
 - When release 0.0.4 is in development, `__version__ = "v0.0.4-dev"`
@@ -20,9 +21,9 @@ A release that isn't ready for production deployment should be flagged as "pre-r
 
 The process: 
 
-Development is performed on feature branches as usual. When complete, feature branches are merged into master. Frequent merges of small branches simplifies coordination between developers and makes it easier to review code. 
+Development is performed on feature branches as usual. When complete, feature branches are merged into master. Frequent merges of small branches simplifies coordination between developers and makes it easier to review code. The rest of the process is as follows:
 
-1. To start the release process, update the version in neurobooth_os to match the planned release name. Usually, this just involves stripping the '-dev' string from the current value
+1. Update the `__version__` in neurobooth_os to match the planned release name, by removing the '-dev' suffix as described above.
 3. The modified `__init__.py` is committed and pushed to master
 4. Create a candidate release in GitHub, ensuring that it is marked as "pre-release" 
 5. Increment the version in `__init__.py` and append the string '-dev' 
