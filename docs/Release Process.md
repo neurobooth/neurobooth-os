@@ -6,7 +6,7 @@ The goals for this process are:
 2. To ensure the code tested in staging is identical to the code deployed to production.
 3. To make it easier to determine what code modifications are in each environment, and whether issues identified in one environment are likely to affect another. 
 
-For simplicity, this process uses GitHub's release support. In this model, a release is a bundle of code with a name and a git tag. By convention, the release name and tag are the same.
+This process uses GitHub's release support. In this model, a release is a bundle of code with a name and a git tag. By convention, the release name and tag are the same.
 The release name also appears in the deployed code so anyone looking at the environment can tell what version is deployed. In code, the name is stored in a `__version__` attribute in a way that is consistent with Python package naming standards. 
 
 Keeping the version name in the code in sync with the release is a key part of the process:
