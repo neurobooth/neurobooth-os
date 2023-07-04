@@ -20,7 +20,7 @@ A release that isn't ready for production deployment should be flagged as "pre-r
 
 The process: 
 
-Development is performed on feature branches as usual. When complete, feature branches are merged into master.
+Development is performed on feature branches as usual. When complete, feature branches are merged into master. Frequent merges of small branches simplifies coordination between developers and makes it easier to review code. 
 
 1. To start the release process, update the version in neurobooth_os to match the planned release name. Usually, this just involves stripping the '-dev' string from the current value
 3. The modified `__init__.py` is committed and pushed to master
