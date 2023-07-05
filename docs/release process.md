@@ -16,6 +16,8 @@ Keeping the version name in the code in sync with the release is a key part of t
 
 (At some point this version name shuffling can be automated.)
 
+Release numbering should generally follow [Semantic Versioning guidelines](https://semver.org/). Until/unless we plan to publish a release to a public index server, development release names can be used. A development release name consists of the normal three-part numbering system with ".devN" appended. 
+
 A release that isn't ready for production deployment should be flagged in GitHub as "pre-release" when created. The "pre-release" identifier is removed when the release is "published".  
 
 The process: 
