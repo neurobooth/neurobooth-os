@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-import os
 import sys
 import argparse
 import json
-from typing import Dict, List
+from typing import Callable, List, NamedTuple
 from mbientlab.metawear import MetaWear, libmetawear
 from time import sleep, time
 import threading
@@ -41,6 +40,11 @@ This script has three modes of device discovery:
         }
         <<<
 """
+
+
+class DeviceInfo(NamedTuple):
+    name: str
+    address: str
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -104,19 +108,90 @@ def parse_arguments() -> argparse.Namespace:
     return args
 
 
+ADDRESS_MAP = List[DeviceInfo]  # Type alias for return of discovery functions
+
+
+def print_device_info(devices: List[DeviceInfo], print_fn: Callable[[str], None] = print) -> None:
+    """Convenience function for logging/printing a list of devices and their addresses"""
+    for d in devices:
+        print_fn(f'Device {d.name}: {d.address}')
+
+
+class DeviceDiscoveryException(Exception):
+    pass
+
+
+def device_discovery(args: argparse.Namespace) -> ADDRESS_MAP:
+    if args.json is not None:
+        devices = discovery_json(args.json)
+    elif args.mac:
+        devices = discovery_mac(args.mac)
+    else:
+        devices = discovery_scan(timeout_sec=args.scan_timeout, n_devices=args.n_devices)
+
+    logger = logging.getLogger('default')
+
+    logger.debug(f'Devices:')
+    print_device_info(devices, print_fn=logger.debug)
+
+    return devices
+
+
+def discovery_scan(timeout_sec: float, n_devices: int) -> ADDRESS_MAP:
+    logger = logging.getLogger('default')
+    logger.info('Scanning for devices...')
+
+    t0 = time()
+    devices = scan_BLE(timeout_sec=timeout_sec, n_devices=n_devices)
+    logger.info(f'Scan took {time() - t0:0.1f} sec.')
+
+    if len(devices) == 0:
+        raise DeviceDiscoveryException('No devices found!')
+    elif len(devices) < n_devices:
+        logger.warning(f'Only {len(devices)} of {n_devices} devices found!')
+    else:
+        logger.info(f'Scan identified {len(devices)} devices.')
+
+    return [DeviceInfo(name=name, address=address) for name, address in devices.items()]
+
+
+def discovery_mac(addresses: List[str]) -> ADDRESS_MAP:
+    logger = logging.getLogger('default')
+    devices = [DeviceInfo(name=f'CL-{i}', address=address) for i, address in enumerate(addresses)]
+    logger.info(f'Using {len(devices)} devices specified via command line.')
+    return devices
+
+
+def discovery_json(file: str) -> ADDRESS_MAP:
+    logger = logging.getLogger('default')
+
+    with open(file, 'r') as f:
+        devices = json.load(f)
+
+    # File validation checks
+    if not isinstance(devices, dict):
+        raise DeviceDiscoveryException(f'{file} should contain a dictionary mapping device names to MAC addresses.')
+    if len(devices) == 0:
+        raise DeviceDiscoveryException(f'No devices specified in {file}!')
+    for k, v in devices.items():
+        if not isinstance(k, str) or not isinstance(v, str):
+            raise DeviceDiscoveryException(f'{file} should contain a dictionary mapping device names to MAC addresses.')
+
+    logger.info(f'Using {len(devices)} devices specified in: {file}')
+    return [DeviceInfo(name=name, address=address) for name, address in devices.items()]
+
+
 class ResetDeviceThread(threading.Thread):
-    def __init__(self, address: str, name: str, connect_attempts: int, reset_timeout: float):
+    def __init__(self, device_info: DeviceInfo, connect_attempts: int, reset_timeout: float):
         """
         When started, this thread will try to connect to and reset the specified Mbient device.
 
-        :param address: The MAC address of the device to reset.
-        :param name: The device's name (for logging).
+        :param device_info: The name and address of the device to reset.
         :param connect_attempts: The number of times to try to connect to the device before giving up.
         :param reset_timeout: How long to wait for the device to reset before giving up.
         """
         super().__init__()
-        self.address = address
-        self.name = name
+        self.device_info = device_info
         self.connect_attempts = connect_attempts
         self.reset_timeout = reset_timeout
         self.logger = logging.getLogger('default')
@@ -124,7 +199,7 @@ class ResetDeviceThread(threading.Thread):
         self.success = False
 
     def format_message(self, msg: str) -> str:
-        return f'{self.name} [{self.address}]: {msg}'
+        return f'{self.device_info.name} <{self.device_info.address}>: {msg}'
 
     def run(self) -> None:
         t0 = time()
@@ -146,7 +221,7 @@ class ResetDeviceThread(threading.Thread):
 
         :returns: The connected Mbient device object.
         """
-        device = MetaWear(self.address)
+        device = MetaWear(self.device_info.address)
 
         success = False
         self.logger.debug(self.format_message(f'Attempting Connection'))
@@ -188,80 +263,13 @@ class ResetDeviceThread(threading.Thread):
         libmetawear.mbl_mw_debug_disconnect(board)
 
 
-ADDRESS_MAP = Dict[str, str]  # Type alias for return of discovery functions
-
-
-class DeviceDiscoveryException(Exception):
-    pass
-
-
-def device_discovery(args: argparse.Namespace) -> ADDRESS_MAP:
-    if args.json is not None:
-        devices = discovery_json(args.json)
-    elif args.mac:
-        devices = discovery_mac(args.mac)
-    else:
-        devices = discovery_scan(timeout_sec=args.scan_timeout, n_devices=args.n_devices)
-
-    logger = logging.getLogger('default')
-    for k, v in devices.items():
-        logger.debug(f'Device {k} Address: {v}')
-
-    return devices
-
-
-def discovery_scan(timeout_sec: float, n_devices: int) -> ADDRESS_MAP:
-    logger = logging.getLogger('default')
-    logger.info('Scanning for devices...')
-
-    t0 = time()
-    devices = scan_BLE(timeout_sec=timeout_sec, n_devices=n_devices)
-    logger.info(f'Scan took {time() - t0:0.1f} sec.')
-
-    if len(devices) == 0:
-        raise DeviceDiscoveryException('No devices found!')
-    elif len(devices) < n_devices:
-        logger.warning(f'Only {len(devices)} of {n_devices} devices found!')
-    else:
-        logger.info(f'Scan identified {len(devices)} devices.')
-
-    return devices
-
-
-def discovery_mac(addresses: List[str]) -> ADDRESS_MAP:
-    logger = logging.getLogger('default')
-    devices = {f'CL-{i}': address for i, address in enumerate(addresses)}
-    logger.info(f'Using {len(devices)} devices specified via command line.')
-    return devices
-
-
-def discovery_json(file: str) -> ADDRESS_MAP:
-    logger = logging.getLogger('default')
-
-    with open(file, 'r') as f:
-        devices = json.load(f)
-
-    # File validation checks
-    if not isinstance(devices, dict):
-        raise DeviceDiscoveryException(f'{file} should contain a dictionary mapping device names to MAC addresses.')
-    if len(devices) == 0:
-        raise DeviceDiscoveryException(f'No devices specified in {file}!')
-    for k, v in devices.items():
-        if not isinstance(k, str) or not isinstance(v, str):
-            raise DeviceDiscoveryException(f'{file} should contain a dictionary mapping device names to MAC addresses.')
-
-    logger.info(f'Using {len(devices)} devices specified in: {file}')
-    return devices
-
-
 def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> None:
     reset_threads = [
         ResetDeviceThread(
-            address=address,
-            name=name,
+            device_info=device,
             connect_attempts=args.n_connect_attempts,
             reset_timeout=args.reset_timeout,
-        ) for name, address in devices.items()
+        ) for device in devices
     ]
 
     logger = logging.getLogger('default')
@@ -273,11 +281,13 @@ def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> None:
         t.join()
     logger.info(f'Device reset {time() - t0:0.1f} sec.')
 
-    success = [t.address for t in reset_threads if t.success]
-    failure = [t.address for t in reset_threads if not t.success]
-    logger.info(f'Succesfully reset {len(success)} devices: {success}')
+    success = [t.device_info for t in reset_threads if t.success]
+    failure = [t.device_info for t in reset_threads if not t.success]
+    logger.info(f'Successfully reset {len(success)} devices:')
+    print_device_info(success, print_fn=logger.info)
     if failure:
-        logger.warning(f'Failed to reset {len(failure)} devices: {failure}')
+        logger.warning(f'Failed to reset {len(failure)} devices:')
+        print_device_info(failure, print_fn=logger.warning)
 
 
 def main():
