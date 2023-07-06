@@ -48,7 +48,7 @@ class DeviceInfo(NamedTuple):
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
 
     group = parser.add_argument_group(title='Device Discovery')
     group.add_argument(
