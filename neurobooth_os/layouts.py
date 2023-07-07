@@ -333,7 +333,7 @@ def write_task_notes(subject_id, staff_id, task_name, task_notes):
         The task notes.
     """
 
-    fname = f'{cfg.paths["data_out"]}{subject_id}/{subject_id}-{task_name}-notes.txt'
+    fname = f'{cfg.neurobooth_config["data_out"]}{subject_id}/{subject_id}-{task_name}-notes.txt'
     task_txt = ""
     if not op.exists(fname):
         task_txt += f"{subject_id}, {staff_id}\n"

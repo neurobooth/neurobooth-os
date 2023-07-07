@@ -8,18 +8,12 @@ import os
 import pandas as pd
 from io import StringIO
 
-from neurobooth_os.secrets_info import secrets
+from neurobooth_os.config import neurobooth_config
 
 
 def setup_log(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
-    log_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    #filename = f"./{name}.log"
-    #log_handler = logging.FileHandler(filename)
-    #log_handler.setLevel(logging.DEBUG)
-    #log_handler.setFormatter(log_format)
-    #logger.addHandler(log_handler)
     return logger
 
 
@@ -143,22 +137,8 @@ def node_info(node_name):
     port int
         port number
     """
-    port = 12347
-    if node_name == "acquisition":
-        host = secrets[node_name]["name"]
-    elif node_name == "presentation":
-        host = secrets[node_name]["name"]
-    elif node_name == "control":
-        host = secrets[node_name]["name"]
-    elif node_name == "dummy_acq":
-        host = "localhost"
-        port = 1280
-    elif node_name == "dummy_stm":
-        host = "localhost"
-        port = 1281
-    elif node_name == "dummy_ctr":
-        host = "localhost"
-        port = 1282
+    host = neurobooth_config[node_name]["name"]
+    port = neurobooth_config[node_name]["port"]
     return host, port
 
 
