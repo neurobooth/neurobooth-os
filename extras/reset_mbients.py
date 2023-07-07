@@ -263,7 +263,15 @@ class ResetDeviceThread(threading.Thread):
         libmetawear.mbl_mw_debug_disconnect(board)
 
 
-def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> None:
+def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> (ADDRESS_MAP, ADDRESS_MAP):
+    """
+    Connect to and reset all devices in parallel.
+
+    :param args: Command line arguments.
+    :param devices: The list of devices (name and MAC address) to connect to and reset.
+    :returns: (success, failure): Lists of which devices were successfully reset and which were not.
+
+    """
     reset_threads = [
         ResetDeviceThread(
             device_info=device,
@@ -283,11 +291,7 @@ def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> None:
 
     success = [t.device_info for t in reset_threads if t.success]
     failure = [t.device_info for t in reset_threads if not t.success]
-    logger.info(f'Successfully reset {len(success)} devices:')
-    print_device_info(success, print_fn=logger.info)
-    if failure:
-        logger.warning(f'Failed to reset {len(failure)} devices:')
-        print_device_info(failure, print_fn=logger.warning)
+    return success, failure
 
 
 def main():
@@ -295,7 +299,13 @@ def main():
     try:
         args = parse_arguments()
         devices = device_discovery(args)
-        reset_devices(args, devices)
+        success, failure = reset_devices(args, devices)
+
+        logger.info(f'Successfully reset {len(success)} devices:')
+        print_device_info(success, print_fn=logger.info)
+        if failure:
+            logger.warning(f'Failed to reset {len(failure)} devices:')
+            print_device_info(failure, print_fn=logger.warning)
     except DeviceDiscoveryException as e:
         logger.exception(e)
         raise e
