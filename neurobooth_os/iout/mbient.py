@@ -4,6 +4,7 @@ import uuid
 from ctypes import c_void_p, cast, POINTER
 from time import sleep
 from threading import Event, Lock
+import multiprocessing as mp
 from sys import argv
 import logging
 from typing import Dict
@@ -24,8 +25,8 @@ def scan_BLE(timeout_sec: float = 10, n_devices: int = 5) -> Dict[str, str]:
     :returns: A dictionary of device names as keys and MAC addresses as values.
     """
     devices = {}
-    event = Event()
-    lock = Lock()
+    event = mp.Event()
+    lock = mp.Lock()
 
     def handler(result):
         """Callback function invoked when a new device is identified."""
