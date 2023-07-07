@@ -5,7 +5,7 @@ import json
 from typing import Callable, List, NamedTuple
 from mbientlab.metawear import MetaWear, libmetawear
 from time import sleep, time
-import threading
+import multiprocessing as mp
 import logging
 from neurobooth_os.iout.mbient import scan_BLE
 from neurobooth_os.logging import make_default_logger
@@ -181,10 +181,10 @@ def discovery_json(file: str) -> ADDRESS_MAP:
     return [DeviceInfo(name=name, address=address) for name, address in devices.items()]
 
 
-class ResetDeviceThread(threading.Thread):
+class ResetDeviceProcess(mp.Process):
     def __init__(self, device_info: DeviceInfo, connect_attempts: int, reset_timeout: float):
         """
-        When started, this thread will try to connect to and reset the specified Mbient device.
+        When started, this process will try to connect to and reset the specified Mbient device.
 
         :param device_info: The name and address of the device to reset.
         :param connect_attempts: The number of times to try to connect to the device before giving up.
@@ -194,8 +194,8 @@ class ResetDeviceThread(threading.Thread):
         self.device_info = device_info
         self.connect_attempts = connect_attempts
         self.reset_timeout = reset_timeout
-        self.logger = logging.getLogger('default')
-        self.disconnect_event = threading.Event()
+        self.logger = make_default_logger()
+        self.disconnect_event = mp.Event()
         self.success = False
 
     def format_message(self, msg: str) -> str:
@@ -205,7 +205,7 @@ class ResetDeviceThread(threading.Thread):
         t0 = time()
         try:
             device = self.connect()
-            ResetDeviceThread.reset_device(device)
+            ResetDeviceProcess.reset_device(device)
             self.success = self.disconnect_event.wait(self.reset_timeout)
         except Exception as e:
             self.logger.exception(e)
@@ -272,8 +272,8 @@ def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> (ADDRESS_MA
     :returns: (success, failure): Lists of which devices were successfully reset and which were not.
 
     """
-    reset_threads = [
-        ResetDeviceThread(
+    reset_processes = [
+        ResetDeviceProcess(
             device_info=device,
             connect_attempts=args.n_connect_attempts,
             reset_timeout=args.reset_timeout,
@@ -283,14 +283,14 @@ def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> (ADDRESS_MA
     logger = logging.getLogger('default')
     logger.info(f'Reset in progress...')
     t0 = time()
-    for t in reset_threads:
+    for t in reset_processes:
         t.start()
-    for t in reset_threads:
+    for t in reset_processes:
         t.join()
     logger.info(f'Device reset {time() - t0:0.1f} sec.')
 
-    success = [t.device_info for t in reset_threads if t.success]
-    failure = [t.device_info for t in reset_threads if not t.success]
+    success = [t.device_info for t in reset_processes if t.success]
+    failure = [t.device_info for t in reset_processes if not t.success]
     return success, failure
 
 
