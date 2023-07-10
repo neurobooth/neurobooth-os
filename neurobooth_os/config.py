@@ -14,7 +14,7 @@ logger = make_default_logger()
 
 fname = op.join(expanduser("~"), ".neurobooth_os_config")
 if not op.exists(fname):
-    msg = "Config file does not exist"
+    msg = "Required config file does not exist"
     logger.critical(msg)
     raise Exception(msg)
 

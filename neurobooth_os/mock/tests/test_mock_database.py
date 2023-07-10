@@ -18,7 +18,7 @@ def test_neurobooth_mock():
     ) as tunnel:
 
         with psycopg2.connect(
-            database="mock_neurobooth",
+            database=neurobooth_config["database"]["name"],
             user=neurobooth_config["database"]["user"],
             password=neurobooth_config["database"]["pass"],
             host=tunnel.local_bind_host,

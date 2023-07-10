@@ -28,28 +28,18 @@ def _get_nodes(nodes):
     return nodes
 
 
-def start_servers(nodes=("acquisition", "presentation"), remote=False, conn=None):
+def start_servers(nodes=("acquisition", "presentation")):
     """Start servers
 
     Parameters
     ----------
     nodes : tuple, optional
         The nodes at which to start server, by default ("acquisition", "presentation")
-    remote : bool, optional
-        If True, start fake servers, by default False
-    conn : callable, mandatory if remote True
-        Connector to the database, used if remote True
     """
-    if remote:
-        from neurobooth_os.mock import mock_server_stm, mock_server_acq
-
-        _ = mock_server_acq(conn)
-        _ = mock_server_stm(conn)
-    else:
-        kill_pid_txt()
-        nodes = _get_nodes(nodes)
-        for node in nodes:
-            start_server(node)
+    kill_pid_txt()
+    nodes = _get_nodes(nodes)
+    for node in nodes:
+        start_server(node)
 
 
 def prepare_feedback(nodes=("acquisition", "presentation")):

@@ -27,7 +27,8 @@ use_instruction_videos = True  # False if instruction videos not available
 
 # %%
 # Prepare for task presentation
-conn = meta.get_conn(remote=False, database='neurobooth')
+database = cfg.neurobooth_config['database']['name']
+conn = meta.get_conn(database)
 win = utl.make_win(full_screen=False)
 
 task_func_dict = get_task_funcs(collection_id, conn)

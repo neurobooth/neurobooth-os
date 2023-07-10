@@ -1,7 +1,6 @@
 """Run full session without PySimpleGUI."""
 import time
 from datetime import datetime
-from neurobooth_os.netcomm import node_info
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.gui import (_find_subject, _select_subject, _get_tasks,
@@ -14,7 +13,6 @@ from neurobooth_os.gui import (_find_subject, _select_subject, _get_tasks,
 from neurobooth_os.mock import MockWindow
 
 ####### PARAMETERS #########
-remote = False
 database = 'mock_neurobooth_1'
 staff_id = 'AN'
 first_name, last_name = "Anna", "Luddy"
@@ -23,7 +21,7 @@ collection_id = "mvp_030"
 
 
 ####### PREPARE WINDOWS #########
-database, nodes, host_ctr, port_ctr = _get_ports(remote, database=database)
+database, nodes, host_ctr, port_ctr = _get_ports(database=database)
 
 steps = list()
 stream_ids, inlets = dict(), dict()
@@ -36,7 +34,7 @@ start_window = MockWindow(['first_name', 'last_name', 'dob', 'collection_id',
 main_window = MockWindow(['-init_servs-', '-Connect-', 'Start', 'task_title',
                           'task_running'])
 
-conn = meta.get_conn(remote=remote, database=database)
+conn = meta.get_conn(database=database)
 
 ####### START WINDOW #########
 subject_df = _find_subject(start_window, conn, first_name, last_name)
@@ -55,12 +53,10 @@ sess_info = _save_session(start_window,
                           subject_id, first_name, last_name, tasks)
 
 ####### MAIN WINDOW #########
-_start_ctr_server(main_window, host_ctr, port_ctr, remote=remote)
-if not remote:
-    time.sleep(2)
-_start_servers(main_window, conn, nodes, remote=remote)
-if not remote:
-    time.sleep(5)
+_start_ctr_server(main_window, host_ctr, port_ctr)
+time.sleep(2)
+_start_servers(main_window, conn, nodes)
+time.sleep(5)
 vidf_mrkr, _, _ = _prepare_devices(main_window, nodes, collection_id,
                                    log_task, database=database)
 

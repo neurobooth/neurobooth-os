@@ -141,7 +141,7 @@ def get_client_messages(s1, port=12347, host=""):
 
 
 def get_messages_to_ctr(
-    callback=None, remote=False, host="", port=12347, *callback_args
+    callback=None, host="", port=12347, *callback_args
 ):
     """Creates socket server and run callback with socket data string.
 

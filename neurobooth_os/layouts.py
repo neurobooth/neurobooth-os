@@ -168,7 +168,7 @@ def _make_tasks_checkbox(task_list):
     return field_tasks
 
 
-def _main_layout(sess_info, remote=False, frame_sz=(270, 480)):
+def _main_layout(sess_info, frame_sz=(270, 480)):
     frame_cam = np.ones(frame_sz)
     imgbytes = cv2.imencode(".png", frame_cam)[1].tobytes()
     sg.theme("Dark Grey 9")
@@ -176,19 +176,15 @@ def _main_layout(sess_info, remote=False, frame_sz=(270, 480)):
 
     field_tasks = _make_tasks_checkbox(sess_info["tasks"])
 
-    if remote:
-        console_output = [_space(3)]
-    else:
-        console_output = [
-            sg.Text(
-                "Console \n Output:",
-                pad=((0, 0), 0),
-                justification="left",
-                auto_size_text=True,
-            ),
-            sg.Output(key="-OUTPUT-", size=(90, 28)),
-        ]
-    # console_output = [_space(3)]
+    # console_ou    console_output = [
+    #         sg.Text(
+    #             "Console \n Output:",
+    #             pad=((0, 0), 0),
+    #             justification="left",
+    #             auto_size_text=True,
+    #         ),
+    #         sg.Output(key="-OUTPUT-", size=(90, 28)),
+    #     ]tput = [_space(3)]
     subject_text = (
         f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}'
         + f' {sess_info["last_name"]}'

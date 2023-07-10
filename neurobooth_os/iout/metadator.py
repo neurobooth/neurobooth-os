@@ -37,23 +37,21 @@ def get_conn(database):
     if database is None:
         logger.critical("Database name is a required parameter.")
         raise  # TODO: Need appropriate exception type for database connection errors
-    if True:
-        tunnel = SSHTunnelForwarder(
-            neurobooth_config["database"]["remote_address"],
-            ssh_username=neurobooth_config["database"]["remote_username"],
-            ssh_config_file="~/.ssh/config",
-            ssh_pkey="~/.ssh/id_rsa",
-            remote_bind_address=(neurobooth_config["database"]["host"], 5432),
-            local_bind_address=("localhost", 6543),
-        )
-        tunnel.start()
-        host = tunnel.local_bind_host
-        port = tunnel.local_bind_port
-        print(host, port, database)
-    else:
-        host = neurobooth_config["database"]["host"]
-        port = 5432
-        print(host, port, database)
+
+    port = neurobooth_config["database"]["port"]
+    tunnel = SSHTunnelForwarder(
+        neurobooth_config["database"]["remote_address"],
+        ssh_username=neurobooth_config["database"]["remote_username"],
+        ssh_config_file="~/.ssh/config",
+        ssh_pkey="~/.ssh/id_rsa",
+        remote_bind_address=(neurobooth_config["database"]["host"], port),
+        #TODO address in config
+        local_bind_address=("localhost", 6543),
+    )
+    tunnel.start()
+    host = tunnel.local_bind_host
+    port = tunnel.local_bind_port
+    print(host, port, database)
 
     conn = psycopg2.connect(
         database=database,

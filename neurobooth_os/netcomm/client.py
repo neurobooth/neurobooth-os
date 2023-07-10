@@ -40,7 +40,6 @@ def socket_message(message, node_name, wait_data=False):
 
     def connect():
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # s.settimeout(.1)  # no time out as it's blocking process
 
         # connect to server on local computer
         s.connect((host, port))
@@ -59,19 +58,16 @@ def socket_message(message, node_name, wait_data=False):
     try:
         data = connect()
     except (TimeoutError, ConnectionRefusedError):
-        # print(f"{node_name} socket connexion timed out, trying to restart server")
         try:
-            # pid = start_server(node_name)
             data = connect()
         except Exception as e:
             return
-            # print(e)
 
     return data
 
 
 def socket_time(node_name, print_flag=1, time_out=3):
-    """Computes connextion time from client->server and client->server->client.
+    """Computes connection time from client->server and client->server->client.
 
     Parameters
     ----------
@@ -196,7 +192,7 @@ def start_server(node_name, save_pid_txt=True):
     Parameters
     ----------
     node_name : str
-        PC node name defined in `secrets_info.secrets`
+        PC node name defined in config.neurobooth_config`
     save_pid_txt : bool
         Option to save PID to file for killing PID in the future.
 
@@ -207,7 +203,7 @@ def start_server(node_name, save_pid_txt=True):
     """
 
     if node_name in ["acquisition", "presentation"]:
-        s = secrets[node_name]
+        s = neurobooth_config[node_name]
     else:
         print("Not a known node name")
         return None
@@ -276,7 +272,7 @@ def get_python_pids(output_tasklist):
 def kill_remote_pid(pids, node_name):
 
     if node_name in ["acquisition", "presentation"]:
-        s = secrets[node_name]
+        s = neurobooth_config[node_name]
     else:
         print("Not a known node name")
         return None
