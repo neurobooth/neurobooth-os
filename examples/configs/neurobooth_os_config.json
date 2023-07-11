@@ -3,7 +3,7 @@
     "nas": "Z:\\data\\\\",
     "video_tasks": "C:\\Users\\STM\\Dropbox (Partners HealthCare)\\Neurobooth Videos for tasks\\Videos_to_present",
     "cam_inx_lowfeed": 0,
-
+    "default_log_path": "D:\\neurobooth\\neurobooth_logs",
     "acquisition": {
         "name": "acq",
         "user": "ACQ",

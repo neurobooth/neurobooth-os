@@ -1,8 +1,8 @@
 @ECHO OFF
 
 :: Neurobooth folders
-setx /m setx NB_INSTALL "C:/neurobooth-os" /m
-setx /m setx NB_CONFIG "$HOME/.neurobooth-os" /m
+setx /m NB_INSTALL "C:/neurobooth-os"
+setx /m NB_CONFIG "$HOME/.neurobooth-os"
 
 :: GUI Configs
 setx /m NB_FULLSCREEN "false"
