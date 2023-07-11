@@ -36,7 +36,7 @@ Checking out and deploying releases:
 The examples below show how to checkout released code install it using pip. Release v0.0.1 is used for demonstration. 
 
 To checkout a release without installing specify the tag and branch (master):
-	`git checkout tags/<tag> -b <branch>`
+	`git checkout tags/<tag>`
 
 To install a release using pip: 
 	`pip install git+https://github.com/neurobooth/neurobooth-os@v0.0.1`
