@@ -190,7 +190,7 @@ class ResetDeviceProcess(mp.Process):
         :param connect_attempts: The number of times to try to connect to the device before giving up.
         :param reset_timeout: How long to wait for the device to reset before giving up.
         """
-        super().__init__()
+        super().__init__(target=self.run)
         self.device_info = device_info
         self.connect_attempts = connect_attempts
         self.reset_timeout = reset_timeout
