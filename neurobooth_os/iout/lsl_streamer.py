@@ -8,6 +8,7 @@ import time
 import logging
 from neurobooth_os import config
 from neurobooth_os.iout import metadator as meta
+from neurobooth_os.iout.mbient import scan_BLE
 
 
 def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
@@ -43,7 +44,8 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
     for dc in kwarg_devs.values():
         kwarg_alldevs.update(dc)
 
-    # scan_BLE()
+    ble_devices = scan_BLE(timeout_sec=10)  # Needed to wake up the mbients...
+    logger.debug(f'BLE scan found {len(ble_devices)} devices: {[mac for _, mac in ble_devices.items()]}')
 
     streams = {}
     if node_name == "acquisition":
