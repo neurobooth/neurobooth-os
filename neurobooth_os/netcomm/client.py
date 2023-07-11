@@ -61,6 +61,7 @@ def socket_message(message, node_name, wait_data=False):
         try:
             data = connect()
         except Exception as e:
+            logger.error(f"Unable to connect client: {e}")
             return
 
     return data

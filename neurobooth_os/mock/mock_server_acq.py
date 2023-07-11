@@ -6,12 +6,8 @@ Created on Tue Sep 14 15:33:40 2021
 """
 import os
 import time
-from time import sleep
 import socket
-import sys
 from collections import OrderedDict
-import cv2
-import numpy as np
 
 from neurobooth_os import config
 from neurobooth_os.iout.lsl_streamer import (
@@ -19,13 +15,8 @@ from neurobooth_os.iout.lsl_streamer import (
     close_streams,
     reconnect_streams,
 )
-from neurobooth_os.netcomm import (
-    socket_message,
-    node_info,
-    get_client_messages,
-    get_fprint,
-)
-from neurobooth_os.tasks.task_importer import get_task_funcs
+from neurobooth_os.netcomm import get_client_messages
+
 from neurobooth_os.iout import metadator as meta
 
 
@@ -59,7 +50,6 @@ def mock_acq_routine(host, port, conn):
 
             task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
             if len(streams):
-                # print("Checking prepared devices")
                 streams = reconnect_streams(streams)
             else:
                 streams = start_lsl_threads("dummy_acq", collection_id, conn=conn)
@@ -84,7 +74,7 @@ def mock_acq_routine(host, port, conn):
 
             print("Starting recording")
             filename, task = data.split("::")[1:]
-            fname = config.neurobooth_config["data_out"] + filename
+            fname = os.path.join(config.neurobooth_config["data_out"], filename)
             for k in streams.keys():
                 if any([i in k for i in ["hiFeed", "Intel", "FLIR", "IPhone"]]):
                     if task_devs_kw[task].get(k):
