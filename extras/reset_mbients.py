@@ -122,15 +122,16 @@ class DeviceDiscoveryException(Exception):
 
 
 def device_discovery(args: argparse.Namespace) -> ADDRESS_MAP:
+    # Need to do a scan no matter what to wake up the devices
+    devices = discovery_scan(timeout_sec=args.scan_timeout, n_devices=args.n_devices)
+
+    # Override devices if specified by command line
     if args.json is not None:
         devices = discovery_json(args.json)
     elif args.mac:
         devices = discovery_mac(args.mac)
-    else:
-        devices = discovery_scan(timeout_sec=args.scan_timeout, n_devices=args.n_devices)
 
     logger = logging.getLogger('default')
-
     logger.debug(f'Devices:')
     print_device_info(devices, print_fn=logger.debug)
 
