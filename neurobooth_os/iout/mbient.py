@@ -3,14 +3,111 @@ from __future__ import print_function
 import uuid
 from ctypes import c_void_p, cast, POINTER
 from time import sleep
-from threading import Event
-from sys import argv
+from threading import Event, Lock
+import multiprocessing as mp
 import logging
+from typing import Dict, Callable
 
+from mbientlab.warble import BleScanner
 from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings
 from pylsl import StreamInfo, StreamOutlet, local_clock
 
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+
+
+# --------------------------------------------------------------------------------
+# Exception Classes
+# --------------------------------------------------------------------------------
+class MbientError(Exception):
+    pass
+
+
+class MbientFailedConnection(MbientError):
+    pass
+
+
+# --------------------------------------------------------------------------------
+# Procedural Interface for External Scripts
+# --------------------------------------------------------------------------------
+def scan_BLE(timeout_sec: float = 10, n_devices: int = 5) -> Dict[str, str]:
+    """
+    Scan to identify the MAC Address for Mbient devices. See https://mbientlab.com/tutorials/PyLinux.html#usage
+
+    :param timeout_sec: How long to scan before giving up.
+    :param n_devices: The number of expected devices. Stop scanning once this count is reached.
+    :returns: A dictionary of device names as keys and MAC addresses as values.
+    """
+    devices = {}
+    event = mp.Event()
+    lock = mp.Lock()
+
+    def handler(result):
+        """Callback function invoked when a new device is identified."""
+        if not result.has_service_uuid(MetaWear.GATT_SERVICE):
+            return  # We only care about Mbient devices
+
+        with lock:  # Update the result dictionary and signal completion if we found enough devices
+            devices[result.name] = result.mac
+            if len(devices) >= n_devices:
+                event.set()
+
+    BleScanner.set_handler(handler)
+    BleScanner.start()
+    event.wait(timeout=timeout_sec)
+    BleScanner.stop()
+    return devices
+
+
+def connect_device(
+        mac_address: str,
+        n_attempts: int,
+        retry_delay_sec: float = 1,
+        log_fn: Callable[[str], None] = lambda msg: None,
+) -> MetaWear:
+    """
+    Attempt to connect to a device with the given MAC address.
+
+    :param mac_address: The address of the device to connect to.
+    :param n_attempts: The number of connection attempts.
+    :param retry_delay_sec: How long to wait after a failed attempt before retrying.
+    :param log_fn: Function used to log messages.
+    :returns: The MetaWear object for interfacing with the BLE device.
+    """
+    device = MetaWear(mac_address)
+
+    success = False
+    log_fn(f'Attempting connection to {mac_address}')
+    for attempt in range(n_attempts):
+        try:
+            if attempt > 0:  # Do not immediately try to reconnect if it just failed.
+                sleep(retry_delay_sec)
+
+            device.connect()
+            success = True
+            break
+        except Exception as e:
+            log_fn(f'Failed to connect to {mac_address} on attempt {attempt + 1}: {e}')
+
+    if not success:
+        raise MbientFailedConnection(f'Unable to connect to {mac_address}!')
+
+    return device
+
+
+def reset_device(device: MetaWear) -> None:
+    """
+    Reset the device. See https://mbientlab.com/tutorials/PyLinux.html#reset
+
+    :param device: The connected device object to reset
+    """
+    board = device.board
+    libmetawear.mbl_mw_logging_stop(board)
+    libmetawear.mbl_mw_logging_flush_page(board)
+    libmetawear.mbl_mw_logging_clear_entries(board)
+    libmetawear.mbl_mw_event_remove_all(board)
+    libmetawear.mbl_mw_macro_erase_all(board)
+    libmetawear.mbl_mw_debug_reset_after_gc(board)
+    libmetawear.mbl_mw_debug_disconnect(board)
 
 
 def countdown(period):
@@ -21,6 +118,9 @@ def countdown(period):
         t2 = local_clock()
 
 
+# --------------------------------------------------------------------------------
+# Object-Oriented Interface for Neurobooth-OS
+# --------------------------------------------------------------------------------
 class Sensor:
     def __init__(
         self,

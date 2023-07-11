@@ -6,26 +6,8 @@ Created on Tue Nov 24 15:41:42 2020
 """
 import time
 import logging
-
 from neurobooth_os import config
 from neurobooth_os.iout import metadator as meta
-
-from mbientlab.warble import BleScanner
-from time import sleep
-
-
-def scann_BLE(sleep_period=10):
-    print("scanning for devices...")
-    devices = {}
-
-    def handler(result):
-        devices[result.mac] = result.name
-
-    BleScanner.set_handler(handler)
-    BleScanner.start()
-
-    sleep(sleep_period)
-    BleScanner.stop()
 
 
 def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
@@ -61,7 +43,7 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
     for dc in kwarg_devs.values():
         kwarg_alldevs.update(dc)
 
-    scann_BLE()
+    # scan_BLE()
 
     streams = {}
     if node_name == "acquisition":
