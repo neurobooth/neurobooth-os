@@ -194,8 +194,10 @@ class ResetDeviceProcess(mp.Process):
         self.device_info = device_info
         self.connect_attempts = connect_attempts
         self.reset_timeout = reset_timeout
-        self.disconnect_event = mp.Event()
-        self.success = False
+
+        manager = mp.Manager()
+        self.disconnect_event = manager.Event()
+        self.namespace = manager.Namespace()  # Used to pass variables between processes
 
     def format_message(self, msg: str) -> str:
         return f'{self.device_info.name} <{self.device_info.address}>: {msg}'
@@ -212,13 +214,13 @@ class ResetDeviceProcess(mp.Process):
             )
             device.on_disconnect = lambda status: self.on_disconnect(status)
             reset_device(device)
-            self.success = self.disconnect_event.wait(self.reset_timeout)
+            self.namespace.success = self.disconnect_event.wait(self.reset_timeout)
         except MbientFailedConnection as e:
             logger.error(self.format_message(str(e)))
         except Exception as e:
             logger.exception(e)
         finally:
-            if self.success:
+            if self.namespace.success:
                 logger.debug(self.format_message(f'Reset took {time() - t0:0.1f} sec.'))
             else:
                 logger.debug(self.format_message(f'Reset timed out!'))
@@ -226,6 +228,10 @@ class ResetDeviceProcess(mp.Process):
     def on_disconnect(self, status) -> None:
         logging.getLogger('default').debug(self.format_message(f'Disconnected with status {status}.'))
         self.disconnect_event.set()
+
+    @property
+    def success(self) -> bool:
+        return self.namespace.success
 
 
 def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> (ADDRESS_MAP, ADDRESS_MAP):
