@@ -7,7 +7,7 @@ from mbientlab.metawear import MetaWear, libmetawear
 from time import sleep, time
 import multiprocessing as mp
 import logging
-from neurobooth_os.iout.mbient import scan_BLE
+from neurobooth_os.iout.mbient import scan_BLE, connect_device, reset_device, MbientFailedConnection
 from neurobooth_os.logging import make_default_logger
 
 
@@ -194,7 +194,6 @@ class ResetDeviceProcess(mp.Process):
         self.device_info = device_info
         self.connect_attempts = connect_attempts
         self.reset_timeout = reset_timeout
-        self.logger = make_default_logger()
         self.disconnect_event = mp.Event()
         self.success = False
 
@@ -202,65 +201,31 @@ class ResetDeviceProcess(mp.Process):
         return f'{self.device_info.name} <{self.device_info.address}>: {msg}'
 
     def run(self) -> None:
+        logger = make_default_logger()
         t0 = time()
         try:
-            device = self.connect()
-            ResetDeviceProcess.reset_device(device)
+            device = connect_device(
+                mac_address=self.device_info.address,
+                n_attempts=self.connect_attempts,
+                retry_delay_sec=3,
+                log_fn=lambda msg: logger.debug(self.format_message(msg))
+            )
+            device.on_disconnect = lambda status: self.on_disconnect(status)
+            reset_device(device)
             self.success = self.disconnect_event.wait(self.reset_timeout)
+        except MbientFailedConnection as e:
+            logger.error(self.format_message(str(e)))
         except Exception as e:
-            self.logger.exception(e)
+            logger.exception(e)
         finally:
             if self.success:
-                self.logger.debug(self.format_message(f'Reset took {time() - t0:0.1f} sec.'))
+                logger.debug(self.format_message(f'Reset took {time() - t0:0.1f} sec.'))
             else:
-                self.logger.debug(self.format_message(f'Reset timed out!'))
-
-    def connect(self) -> MetaWear:
-        """
-        Attempt to connect to the device. Raise an exception if the maximum number of attempts is exceeded.
-
-        :returns: The connected Mbient device object.
-        """
-        device = MetaWear(self.device_info.address)
-
-        success = False
-        self.logger.debug(self.format_message(f'Attempting Connection'))
-        for i in range(self.connect_attempts):
-            try:
-                if i > 0:  # Do not immediately try to reconnect if it just failed.
-                    sleep(3)
-
-                device.connect()
-                success = True
-                break
-            except Exception as e:
-                self.logger.debug(self.format_message(f'Failed to connect on attempt {i + 1}: {e}'))
-
-        if not success:
-            raise Exception(self.format_message(f'Unable to connect!'))
-
-        device.on_disconnect = lambda status: self.on_disconnect(status)
-        return device
+                logger.debug(self.format_message(f'Reset timed out!'))
 
     def on_disconnect(self, status) -> None:
-        self.logger.debug(self.format_message(f'Disconnected with status {status}.'))
+        logging.getLogger('default').debug(self.format_message(f'Disconnected with status {status}.'))
         self.disconnect_event.set()
-
-    @staticmethod
-    def reset_device(device: MetaWear) -> None:
-        """
-        Reset the device. See https://mbientlab.com/tutorials/PyLinux.html#reset
-
-        :param device: The connected device object to reset
-        """
-        board = device.board
-        libmetawear.mbl_mw_logging_stop(board)
-        libmetawear.mbl_mw_logging_flush_page(board)
-        libmetawear.mbl_mw_logging_clear_entries(board)
-        libmetawear.mbl_mw_event_remove_all(board)
-        libmetawear.mbl_mw_macro_erase_all(board)
-        libmetawear.mbl_mw_debug_reset_after_gc(board)
-        libmetawear.mbl_mw_debug_disconnect(board)
 
 
 def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> (ADDRESS_MAP, ADDRESS_MAP):
