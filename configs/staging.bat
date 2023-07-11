@@ -1,7 +1,8 @@
 @ECHO OFF
 
-:: Database
-setx /m DATABASE_NAME "mock_neurobooth_1"
+:: Neurobooth folders
+setx /m setx NB_INSTALL "C:/neurobooth-os" /m
+setx /m setx NB_CONFIG "$HOME/.neurobooth-os" /m
 
 :: GUI Configs
 setx /m NB_FULLSCREEN "false"

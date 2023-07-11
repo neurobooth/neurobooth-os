@@ -11,7 +11,6 @@ import logging
 import sys
 import time
 import threading
-from optparse import OptionParser
 from datetime import datetime
 import cv2
 import numpy as np
@@ -25,9 +24,9 @@ from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 from neurobooth_os.netcomm import (
     get_messages_to_ctr,
     node_info,
-    NewStdout,
     socket_message,
 )
+from neurobooth_os.config import neurobooth_config
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
 from neurobooth_os.logging import make_default_logger
 import neurobooth_os.iout.metadator as meta
@@ -389,14 +388,10 @@ def _get_ports(database):
     return database, nodes, host_ctr, port_ctr
 
 
-def gui(database):
+def gui():
     """Start the Graphical User Interface.
-
-    Parameters
-    ----------
-    database : str
-        The database name
     """
+    database = neurobooth_config["database"]["dbname"]
     database, nodes, host_ctr, port_ctr = _get_ports(database=database)
 
     conn = meta.get_conn(database=database)
@@ -607,18 +602,8 @@ def gui(database):
 
 def main():
     """The starting point of Neurobooth"""
-    parser = OptionParser()
-    parser.add_option(
-        "-d",
-        "--database",
-        dest="database",
-        type="string",
-        default="neurobooth",
-        help="Specify which database to connect",
-    )
-    (options, args) = parser.parse_args()
     try:
-        gui(database=options.database)
+        gui()
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())

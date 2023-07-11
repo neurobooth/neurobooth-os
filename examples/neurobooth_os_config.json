@@ -1,0 +1,34 @@
+{
+    "data_out": "C:\\neurobooth\\neurobooth_data\\\\",
+    "nas": "Z:\\data\\\\",
+    "video_tasks": "C:\\Users\\STM\\Dropbox (Partners HealthCare)\\Neurobooth Videos for tasks\\Videos_to_present",
+    "cam_inx_lowfeed": 0,
+
+    "acquisition": {
+        "name": "acq",
+        "user": "ACQ",
+        "pass": "",
+	"port": 1280
+    },
+    "presentation": {
+        "name": "stm",
+        "user": "STM",
+        "pass": "",
+	"port": 1281
+    },
+    "control": {
+        "name": "ctr",
+        "user": "CTR",
+        "pass": "5519",
+	"port": 1282
+    },
+    "database": {
+        "dbname": "neurobooth",
+        "user": "neuroboother",
+        "pass": "",
+        "host": "192.168.100.1",
+        "port": 5432,
+        "remote_username": "ab123",
+        "remote_address": "neurodoor.nmr.mgh.harvard.edu"
+    }
+}

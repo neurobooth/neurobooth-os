@@ -1,8 +1,5 @@
 @ECHO OFF
 
-:: Database
-setx /m DATABASE_NAME "neurobooth"
-
 :: GUI Configs
 setx /m NB_FULLSCREEN "true"
 

@@ -1,4 +1,4 @@
 call  C:\Users\CTR\anaconda3\Scripts\activate.bat C:\Users\CTR\anaconda3\envs\neurobooth-staging
-call start/W ipython --pdb C:\neurobooth-os\neurobooth_os\gui.py -- -d %DATABASE_NAME%
-robocopy  /MOVE  C:\neurobooth\neurobooth_data Z:\data /e
-mkdir C:\neurobooth\neurobooth_data
+call start/W ipython --pdb %NB_INSTALL%\neurobooth_os\gui.py
+robocopy  /MOVE  %NB_INSTALL%\neurobooth_data Z:\data /e
+mkdir %NB_INSTALL%\neurobooth_data
