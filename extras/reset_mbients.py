@@ -198,6 +198,7 @@ class ResetDeviceProcess(mp.Process):
         manager = mp.Manager()
         self.disconnect_event = manager.Event()
         self.namespace = manager.Namespace()  # Used to pass variables between processes
+        self.namespace.success = False
 
     def format_message(self, msg: str) -> str:
         return f'{self.device_info.name} <{self.device_info.address}>: {msg}'
