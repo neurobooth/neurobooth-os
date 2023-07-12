@@ -134,21 +134,20 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         '--timeout',
-        default=None,
+        default=600,
         type=int,
-        help='Specify a timeout (in seconds) for each file retrieval. No timeout if not specified.'
+        help='Specify a timeout (in seconds) for each file retrieval. Default is 10 min. No timeout if <= 0.'
     )
     args = parser.parse_args()
 
     if args.delete_zero_byte:
         logger.warning('USE CAUTION: the --delete-zero-byte argument could potentially lead to data deletion.')
 
-    if args.timeout is not None:
-        if args.timeout <= 0:
-            logger.error(f'Invalid timeout specified ({args.timeout} sec).')
-            parser.error(f'Invalid timeout specified ({args.timeout} sec).')
-        if args.timeout < 15:
-            logger.warning(f'Short timeout ({args.timeout} sec) specified. Not all files may be transferred.')
+    if args.timeout <= 0:
+        logger.warning(f'Infinite timeout specified. The script may hang if an error occurs.')
+        args.timeout = None
+    elif args.timeout < 15:
+        logger.warning(f'Short timeout ({args.timeout} sec) specified. Not all files may be transferred.')
 
     return args
 
