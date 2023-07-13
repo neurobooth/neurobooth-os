@@ -112,7 +112,7 @@ class ConnectionParameters(NamedTuple):
     timeout: int = 6000
 
 
-def setup_connection_settings(device: MetaWear, connection_params: ConnectionParameters) -> Any:
+def setup_connection_settings(device: MetaWear, connection_params: ConnectionParameters) -> None:
     board = device.board
     libmetawear.mbl_mw_settings_set_connection_parameters(
         board,
@@ -122,9 +122,7 @@ def setup_connection_settings(device: MetaWear, connection_params: ConnectionPar
         connection_params.timeout,
     )
     libmetawear.mbl_mw_settings_set_tx_power(board, 8)
-    tx = libmetawear.mbl_mw_settings_get_power_status_data_signal(board)
     sleep(1)
-    return tx
 
 
 class SensorParameters(NamedTuple):
@@ -374,13 +372,12 @@ class Mbient:
         self.n_samples_streamed += 1
 
     def setup(self):
-        tx = setup_connection_settings(self.device, self.connection_params)
-        self.logger.debug(self.format_message(f'tx={tx}'))
-
+        setup_connection_settings(self.device, self.connection_params)
         sensor_signals = setup_sensor_settings(self.device, self.accel_params, self.gyro_params)
 
         processor = DataFusionCreator().create_processor(sensor_signals)
         if DISABLE_LSL:
+            self.logger.warning('Using Debugging Data Handler')
             callback = cbindings.FnVoid_VoidP_DataP(self.debug_data_handler)
         else:
             callback = cbindings.FnVoid_VoidP_DataP(self.lsl_data_handler)
@@ -392,6 +389,7 @@ class Mbient:
 
     def start_battery_log(self):
         self.logger.debug(self.format_message('Subscribing to battery data stream.'))
+
         def callback(ctx, data):
             value = parse_value(data, n_elem=1)
             self.logger.debug(self.format_message(f'Voltage={value.voltage} mV; Charge={value.charge}%'))
