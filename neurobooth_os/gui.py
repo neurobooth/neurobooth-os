@@ -11,7 +11,6 @@ import logging
 import sys
 import time
 import threading
-from optparse import OptionParser
 from datetime import datetime
 import cv2
 import numpy as np
@@ -25,9 +24,9 @@ from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 from neurobooth_os.netcomm import (
     get_messages_to_ctr,
     node_info,
-    NewStdout,
     socket_message,
 )
+from neurobooth_os.config import neurobooth_config
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
 from neurobooth_os.logging import make_default_logger
 import neurobooth_os.iout.metadator as meta
@@ -215,7 +214,7 @@ def _start_lsl_session(window, inlets, folder=""):
     # Create LSL session
     streamargs = [{"name": n} for n in list(inlets)]
     session = liesl.Session(
-        prefix=folder, streamargs=streamargs, mainfolder=cfg.paths["data_out"]
+        prefix=folder, streamargs=streamargs, mainfolder=cfg.neurobooth_config["data_out"]
     )
     print("LSL session with: ", list(inlets))
     return session
@@ -296,15 +295,15 @@ def _stop_lsl_and_save(
 ######### Server communication ############
 
 
-def _start_servers(window, conn, nodes, remote=True):
+def _start_servers(window, conn, nodes):
     window["-init_servs-"].Update(button_color=("black", "red"))
     event, values = window.read(0.1)
-    ctr_rec.start_servers(nodes=nodes, remote=remote, conn=conn)
+    ctr_rec.start_servers(nodes=nodes, conn=conn)
     time.sleep(1)
     return event, values
 
 
-def _start_ctr_server(window, host_ctr, port_ctr, remote=True):
+def _start_ctr_server(window, host_ctr, port_ctr):
     """Start threaded control server and new window."""
 
     # Start a threaded socket CTR server once main window generated
@@ -313,7 +312,6 @@ def _start_ctr_server(window, host_ctr, port_ctr, remote=True):
         target=get_messages_to_ctr,
         args=(
             _process_received_data,
-            remote,
             host_ctr,
             port_ctr,
             callback_args,
@@ -322,14 +320,8 @@ def _start_ctr_server(window, host_ctr, port_ctr, remote=True):
     )
     server_thread.start()
 
-    # Rerout print for ctr server to capture data in remote case
-    if remote:
-        time.sleep(0.1)
-        sys.stdout = NewStdout("mock", target_node="dummy_ctr", terminal_print=True)
-
 
 ######### Visualization ############
-
 
 def _plot_realtime(window, plttr, inlets):
     # if no inlets send event to prepare devices and make popup error
@@ -390,31 +382,19 @@ def _prepare_devices(window, nodes, collection_id, log_task, database):
     return vidf_mrkr, event, values
 
 
-def _get_ports(remote, database="neurobooth"):
-    if remote:
-        database = "mock_neurobooth"
-        nodes = ("dummy_acq", "dummy_stm")
-        host_ctr, port_ctr = node_info("dummy_ctr")
-    else:
-        nodes = ("acquisition", "presentation")
-        host_ctr, port_ctr = node_info("control")
+def _get_ports(database):
+    nodes = ("acquisition", "presentation")
+    host_ctr, port_ctr = node_info("control")
     return database, nodes, host_ctr, port_ctr
 
 
-def gui(remote=False, database="neurobooth"):
+def gui():
     """Start the Graphical User Interface.
-
-    Parameters
-    ----------
-    remote : bool
-        If True, uses ssh_tunnel to connect and database = mock_neurobooth
-        to the database. Use False if on site.
-    database : str
-        The database name
     """
-    database, nodes, host_ctr, port_ctr = _get_ports(remote, database=database)
+    database = neurobooth_config["database"]["dbname"]
+    database, nodes, host_ctr, port_ctr = _get_ports(database=database)
 
-    conn = meta.get_conn(remote=remote, database=database)
+    conn = meta.get_conn(database=database)
     window = _win_gen(_init_layout, conn)
 
     plttr = stream_plotter()
@@ -473,8 +453,8 @@ def gui(remote=False, database="neurobooth"):
                     tasks,
                 )
                 # Open new layout with main window
-                window = _win_gen(_main_layout, sess_info, remote)
-                _start_ctr_server(window, host_ctr, port_ctr, remote=remote)
+                window = _win_gen(_main_layout, sess_info)
+                _start_ctr_server(window, host_ctr, port_ctr)
 
         ############################################################
         # Main Window -> Run neurobooth session
@@ -482,7 +462,7 @@ def gui(remote=False, database="neurobooth"):
 
         # Start servers on STM, ACQ
         elif event == "-init_servs-":
-            _start_servers(window, conn, nodes, remote=remote)
+            _start_servers(window, conn, nodes)
 
         # Turn on devices
         elif event == "-Connect-":
@@ -510,8 +490,8 @@ def gui(remote=False, database="neurobooth"):
                     "Pressed saving notes without task, select one in the dropdown list"
                 )
                 continue
-            if not op.exists(f"{cfg.paths['data_out']}/{sess_info['subject_id_date']}"):
-                os.mkdir(f"{cfg.paths['data_out']}/{sess_info['subject_id_date']}")
+            if not op.exists(f"{cfg.neurobooth_config['data_out']}/{sess_info['subject_id_date']}"):
+                os.mkdir(f"{cfg.neurobooth_config['data_out']}/{sess_info['subject_id_date']}")
 
             if values["_notes_taskname_"] == "All tasks":
                 for task in sess_info["tasks"].split(", "):
@@ -616,35 +596,14 @@ def gui(remote=False, database="neurobooth"):
             window["inlet_State"].update("\n".join(inlet_keys))
 
     window.close()
-    if remote:
-        sys.stdout = sys.stdout.terminal
-    else:
-        window["-OUTPUT-"].__del__()
+    window["-OUTPUT-"].__del__()
     print("Session terminated")
 
 
 def main():
     """The starting point of Neurobooth"""
-    parser = OptionParser()
-    parser.add_option(
-        "-r",
-        "--remote",
-        dest="remote",
-        action="store_true",
-        default=False,
-        help="Access database using remote connection",
-    )
-    parser.add_option(
-        "-d",
-        "--database",
-        dest="database",
-        type="string",
-        default="neurobooth",
-        help="Specify which database to connect",
-    )
-    (options, args) = parser.parse_args()
     try:
-        gui(remote=options.remote, database=options.database)
+        gui()
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())

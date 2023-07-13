@@ -33,7 +33,7 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
 
     if conn is None:
         print("getting conn")
-        conn = meta.get_conn()
+        conn = meta.get_conn(database)
 
     logger = logging.getLogger('session')
 

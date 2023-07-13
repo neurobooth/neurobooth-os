@@ -4,9 +4,11 @@ import sys
 from datetime import datetime
 from typing import Optional
 
+from neurobooth_os.config import neurobooth_config
+
 LOG_FORMAT = logging.Formatter('|%(levelname)s| [%(asctime)s] %(filename)s, %(funcName)s, L%(lineno)d> %(message)s')
 
-DEFAULT_LOG_PATH = r"D:\neurobooth\neurobooth_logs"
+DEFAULT_LOG_PATH = neurobooth_config["default_log_path"]
 
 
 def make_session_logger(session_folder: str, machine_name: str, log_level=logging.DEBUG) -> logging.Logger:
