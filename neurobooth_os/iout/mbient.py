@@ -448,6 +448,10 @@ class Mbient:
 # Testing Script
 # --------------------------------------------------------------------------------
 def test_script() -> None:
+    global DISABLE_LSL, DEBUG_PRINT_DATA
+    DISABLE_LSL = True
+    DEBUG_PRINT_DATA = True
+
     parser = argparse.ArgumentParser(description='Run a standalone test capture using an Mbient.')
     parser.add_argument(
         '--mac',
