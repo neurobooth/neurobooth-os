@@ -15,7 +15,7 @@ import psycopg2
 from neurobooth_terra import Table
 
 import neurobooth_os.config as cfg
-from neurobooth_os.iout.mbient import Sensor
+from neurobooth_os.iout.mbient import Mbient
 from neurobooth_os.iout.metadator import get_conn
 
 ############# INSERT ROWS IN DATABASE #############
@@ -169,7 +169,7 @@ insert_to_table("nb_device", dev_intels)
 dev_mbient = []
 for k, mac in cfg.mbient_macs.items():
     try:
-        mbt = Sensor(mac)
+        mbt = Mbient(mac)
         mbient_info = mbt.device.info
         mbient_info["address"] = mbt.device.address
         mbient_info["device_name"] = mbt.dev_name
