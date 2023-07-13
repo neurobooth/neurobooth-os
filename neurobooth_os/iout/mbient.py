@@ -473,7 +473,11 @@ def test_script() -> None:
     )
 
     args = parser.parse_args()
+
     logger = logging.getLogger('default')
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.DEBUG)
+    logger.addHandler(console_handler)
 
     device = Mbient(mac=args.mac, dev_name=args.name)
     success = device.prepare()
