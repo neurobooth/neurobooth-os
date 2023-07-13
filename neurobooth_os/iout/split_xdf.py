@@ -17,7 +17,7 @@ from h5io import write_hdf5
 
 from neurobooth_os.iout import metadator as meta
 from neurobooth_terra import Table
-from neurobooth_os.config import paths
+from neurobooth_os.config import neurobooth_config
 
 
 def compute_clocks_diff():
@@ -203,7 +203,7 @@ def create_h5_from_csv(dont_split_xdf_fpath, conn):
         for row in lines:
             # change to NAS path if necessary
             if not os.path.exists(row[0]):
-                row[0] = row[0].replace(paths["data_out"][:-1], paths["nas"])
+                row[0] = row[0].replace(neurobooth_config["data_out"][:-1], neurobooth_config["nas"])
             out = split_sens_files(row[0], task_id=row[1], conn=conn)
 
             if len(out) == 0:

@@ -1,24 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jan 14 08:21:16 2021
-
-@author: adona
+    Ensures that the base neurobooth-os config file exists and makes config file available as neurobooth_config
 """
 import os.path as op
 from os.path import expanduser
+from os import environ
 import json
 
-# if files does not exist create it in user root dir
-fname = op.join(expanduser("~"), ".neurobooth_os_config")
-if not op.exists(fname):
-    paths = {
-        "data_out": r"C:\neurobooth\neurobooth_data\\",
-        "nas": r"Z:\data\\",
-        "video_tasks": r"C:\Users\STM\Dropbox (Partners HealthCare)\Neurobooth Videos for tasks\Videos_to_present",
-        "cam_inx_lowfeed": 0,
-    }
-    with open(fname, "w+") as f:
-        json.dump(paths, f, ensure_ascii=False, indent=4)
+# from neurobooth_os.logging import make_default_logger
 
+# if files does not exist raise an exception
+# logger = make_default_logger()
+
+# fname = op.join(expanduser("~"), ".neurobooth_os_config")
+fname = op.join(environ.get("NB_CONFIG"), ".neurobooth_os_config")
+print(fname)
+if not op.exists(fname):
+    msg = "Required config file does not exist"
+    # logger.critical(msg)
+    raise IOError(msg)
+
+# TODO: Add another exception here?
 with open(fname, "r") as f:
-    paths = json.load(f)
+    neurobooth_config = json.load(f)

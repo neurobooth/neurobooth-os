@@ -1,9 +1,9 @@
 from neurobooth_os.iout import metadator as meta
 
 
-def test_task_addition():
+def test_task_addition(database):
 
-    conn = meta.get_conn(remote=True, database="mock_neurobooth")
+    conn = meta.get_conn(database)
     subj_id = "Test"
     task_id = meta._make_new_task_row(conn, subj_id)
 
