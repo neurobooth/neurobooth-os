@@ -474,7 +474,7 @@ def test_script() -> None:
 
     args = parser.parse_args()
 
-    logger = logging.getLogger('default')
+    logger = logging.getLogger('session')
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.DEBUG)
     logger.addHandler(console_handler)
