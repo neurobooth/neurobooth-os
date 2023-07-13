@@ -391,6 +391,7 @@ class Mbient:
         self.logger.debug(self.format_message('Setup Completed'))
 
     def start_battery_log(self):
+        self.logger.debug(self.format_message('Subscribing to battery data stream.'))
         def callback(ctx, data):
             value = parse_value(data, n_elem=1)
             self.logger.debug(self.format_message(f'Voltage={value.voltage} mV; Charge={value.charge}%'))
@@ -467,25 +468,31 @@ def test_script() -> None:
     )
     parser.add_argument(
         '--duration',
-        default=1,
+        default=10,
         type=int,
         help='Duration of data capture.'
     )
 
     args = parser.parse_args()
 
+    if args.duration < 1:
+        parser.error('Invalid duration specified!')
+
     logger = logging.getLogger('session')
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.DEBUG)
+    console_handler.setFormatter(logging.Formatter('|%(levelname)s| [%(asctime)s] L%(lineno)d> %(message)s'))
     logger.addHandler(console_handler)
+    logger.setLevel(logging.DEBUG)
 
+    logger.info(f'Creating Device {args.name} at {args.mac}')
     device = Mbient(mac=args.mac, dev_name=args.name)
     success = device.prepare()
     if not success:
         logger.critical(f'Unable to connect to device at {args.mac}')
         return
 
-    device.start_battery_log()
+    # device.start_battery_log()
 
     logger.info('Beginning Recording')
     device.start()
