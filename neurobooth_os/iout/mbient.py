@@ -366,9 +366,12 @@ class Mbient:
         self.n_samples_streamed += 1
 
     def debug_data_handler(self, ctx, data):
-        values = parse_value(data, n_elem=2)
-        if DEBUG_PRINT_DATA and (self.n_samples_streamed % 100) == 0:
-            print(f'Epoch={data.contents.epoch}, Accel={values[0]}, Gyro={values[1]}')
+        try:
+            values = parse_value(data, n_elem=2)
+            if DEBUG_PRINT_DATA and (self.n_samples_streamed % 100) == 0:
+                print(f'Epoch={data.contents.epoch}, Accel={values[0]}, Gyro={values[1]}', flush=True)
+        except Exception as e:
+            self.logger.error(self.format_message(f'Data Handler Error: {e}'), exc_info=sys.exc_info())
         self.n_samples_streamed += 1
 
     def setup(self):
@@ -449,7 +452,7 @@ class Mbient:
 def test_script() -> None:
     global DISABLE_LSL, DEBUG_PRINT_DATA
     DISABLE_LSL = True
-    DEBUG_PRINT_DATA = True
+    DEBUG_PRINT_DATA = False
 
     parser = argparse.ArgumentParser(description='Run a standalone test capture using an Mbient.')
     parser.add_argument(
