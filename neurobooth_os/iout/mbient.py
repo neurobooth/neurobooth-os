@@ -281,7 +281,7 @@ class Mbient:
         self.device: Optional[MetaWear] = None
         self.subscribed_signals = []
         self.outlet: Optional[StreamOutlet] = None
-        self.callback: Optional[Callable] = None
+        self.callback: Callable = lambda *args: None
 
         # Streaming-related variables
         self.streaming: bool = False
