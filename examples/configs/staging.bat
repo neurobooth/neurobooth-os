@@ -1,4 +1,4 @@
-@ECHO OFF
+:: @ECHO OFF
 
 :: Neurobooth folders
 setx /m NB_INSTALL C:\neurobooth\
@@ -14,6 +14,11 @@ setx /m NB_FULLSCREEN "false"
 setx /m MICROPHONE_NAME "Yeti"
 setx /m FLIR_SN "22348141"
 
-:: 
+:: Create folder for holding config files
+powershell -Command "mkdir -Force %NB_CONFIG%/"
 
-PAUSE
+powershell -Command "cp ./neurobooth_os_config.json %NB_CONFIG%.neurobooth_os_config.json"
+
+::
+
+:: PAUSE
