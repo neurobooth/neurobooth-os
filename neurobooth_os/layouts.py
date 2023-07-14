@@ -176,15 +176,15 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
 
     field_tasks = _make_tasks_checkbox(sess_info["tasks"])
 
-    # console_ou    console_output = [
-    #         sg.Text(
-    #             "Console \n Output:",
-    #             pad=((0, 0), 0),
-    #             justification="left",
-    #             auto_size_text=True,
-    #         ),
-    #         sg.Output(key="-OUTPUT-", size=(90, 28)),
-    #     ]tput = [_space(3)]
+    console_output = [
+        sg.Text(
+            "Console \n Output:",
+            pad=((0, 0), 0),
+            justification="left",
+            auto_size_text=True,
+        ),
+        sg.Output(key="-OUTPUT-", size=(90, 28)),
+    ]
     subject_text = (
         f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}'
         + f' {sess_info["last_name"]}'
