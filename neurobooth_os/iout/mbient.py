@@ -247,6 +247,11 @@ def reset_device(device: MetaWear) -> None:
 # Object-Oriented Interface for Neurobooth-OS
 # --------------------------------------------------------------------------------
 class Mbient:
+    # Class variables to ensure that the BLE scan only happens during one prepare() call.
+    # Will need to switch to a multiprocess.Manager if intending to use multiprocessing.
+    SCAN_LOCK = mp.Lock()
+    SCAN_PERFORMED = False
+
     def __init__(
         self,
         mac: str,
@@ -286,6 +291,15 @@ class Mbient:
     def format_message(self, msg: str) -> str:
         return f'Mbient [{self.dev_name}; {self.mac}]: {msg}'
 
+    def prepare_scan(self):
+        with self.SCAN_LOCK:
+            if self.SCAN_PERFORMED:  # Only need to scan once if multiple devices are present
+                return
+            self.logger.debug('Performing BLE Scan')
+            ble_devices = scan_BLE(timeout_sec=10)
+            self.logger.debug(f'BLE scan found {len(ble_devices)} devices: {[mac for _, mac in ble_devices.items()]}')
+            self.SCAN_PERFORMED = True
+
     def connect(self, n_attempts: int, retry_delay_sec: float):
         self.device = connect_device(
             mac_address=self.mac,
@@ -307,10 +321,11 @@ class Mbient:
             self.logger.error(self.format_message(f'Failed to Reconnect: {e}'))
         except Exception as e:
             print(f"Couldn't setup for {self.dev_name}")
-            self.logger.error(self.format_message(f'Error during setup: {e}'), exc_info=sys.exc_info())
+            self.logger.error(self.format_message(f'Error during reconnect: {e}'), exc_info=sys.exc_info())
 
     def prepare(self) -> bool:
         try:
+            self.prepare_scan()
             self.connect(n_attempts=self.max_connect_attempts, retry_delay_sec=1)
             # TODO: attempt a device reset and reconnect
             if not DISABLE_LSL:
@@ -323,7 +338,7 @@ class Mbient:
             self.logger.error(self.format_message(str(e)))
             return False
         except Exception as e:
-            self.logger.error(self.format_message(f'Error during setup: {e}'), exc_info=sys.exc_info())
+            self.logger.error(self.format_message(f'Error during prepare: {e}'), exc_info=sys.exc_info())
             return False
 
     def create_outlet(self):
@@ -488,6 +503,7 @@ def test_script() -> None:
 
     logger.info(f'Creating Device {args.name} at {args.mac}')
     device = Mbient(mac=args.mac, dev_name=args.name)
+    device.SCAN_PERFORMED = True  # Make repeated runs of test scrip faster; comment out if needed.
     success = device.prepare()
     if not success:
         logger.critical(f'Unable to connect to device at {args.mac}')
