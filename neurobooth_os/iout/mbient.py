@@ -1,7 +1,7 @@
 import sys
 import argparse
 import uuid
-from ctypes import c_void_p, cast, POINTER
+from ctypes import c_void_p
 from time import sleep
 import multiprocessing as mp
 import logging
@@ -19,7 +19,8 @@ if not DISABLE_LSL:  # Conditional imports based on flags
     from pylsl import StreamInfo, StreamOutlet
     from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 
-DEBUG_PRINT_DATA: bool = False  # If True and LSL is disabled, print every 100th data point to the console.
+DEBUG_PRINT_DATA: bool = False  # If True and LSL is disabled, print data to the console.
+DEBUG_PRINT_DECIMATE: int = 20  # If using DEBUG_PRINT_DATA, only print every Nth data point.
 
 
 # --------------------------------------------------------------------------------
@@ -462,7 +463,7 @@ class Mbient:
     def _debug_data_handler(self, ctx, data) -> None:
         """Callback for debugging; may print data to the console."""
         values = parse_value(data, n_elem=2)
-        if DEBUG_PRINT_DATA and (self.n_samples_streamed % 100) == 0:
+        if DEBUG_PRINT_DATA and (self.n_samples_streamed % DEBUG_PRINT_DECIMATE) == 0:
             print(f'Epoch={data.contents.epoch}, Accel={values[0]}, Gyro={values[1]}', flush=True)
         self.n_samples_streamed += 1
 
@@ -471,6 +472,10 @@ class Mbient:
         setup_connection_settings(self.device, self.connection_params)
         sensor_signals = setup_sensor_settings(self.device, self.accel_params, self.gyro_params)
 
+        # Hard-Learned Note: The callback function needs to "stick around" and be an instance variable.
+        # (As opposed to an anonymous lambda or function-scoped variable.)
+        # If not, then the program will silently fail when the callback gets triggered.
+        # Speculation: Python can garbage collect variables that the C bindings expect to exist => memory access error.
         processor = DataFusionCreator().create_processor(sensor_signals)
         if DISABLE_LSL:
             self.logger.warning('Using Debugging Data Handler')
@@ -485,17 +490,14 @@ class Mbient:
 
     def log_battery_info(self) -> None:
         """Query the device for its battery status and print it to the log."""
-        callback_event = mp.Event()
-
         def callback(ctx, data):
             value = parse_value(data, n_elem=1)
             self.logger.info(self.format_message(f'Voltage={value.voltage} mV; Charge={value.charge}%'))
-            callback_event.set()
         callback = cbindings.FnVoid_VoidP_DataP(callback)
 
         signal = libmetawear.mbl_mw_settings_get_battery_state_data_signal(self.device.board)
         libmetawear.mbl_mw_datasignal_subscribe(signal, None, callback)
-        callback_event.wait()
+        libmetawear.mbl_mw_datasignal_read(signal)
         libmetawear.mbl_mw_datasignal_unsubscribe(signal)
 
     def start(self) -> None:
@@ -552,7 +554,7 @@ class Mbient:
 def test_script() -> None:
     global DISABLE_LSL, DEBUG_PRINT_DATA
     DISABLE_LSL = True
-    DEBUG_PRINT_DATA = False
+    DEBUG_PRINT_DATA = True
 
     parser = argparse.ArgumentParser(description='Run a standalone test capture using an Mbient.')
     parser.add_argument(
@@ -594,7 +596,7 @@ def test_script() -> None:
         logger.critical(f'Unable to connect to device at {args.mac}')
         return
 
-    # device.log_battery_info()
+    device.log_battery_info()
 
     logger.info('Beginning Recording')
     device.start()
