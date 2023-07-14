@@ -98,6 +98,7 @@ def connect_device(
     if not success:
         raise MbientFailedConnection(f'Unable to connect to {mac_address}!')
 
+    log_fn(f'Connected to {mac_address} via {"USB" if device.usb.is_connected else "BLE"}')
     return device
 
 
@@ -184,7 +185,7 @@ class DataFusionCreator:
         signals = (c_void_p * 1)()
         signals[0] = sensor_signals.gyro_signal
 
-        callback = cbindings.FnVoid_VoidP_VoidP(lambda *args: self._processor_created_callback(*args))
+        callback = cbindings.FnVoid_VoidP_VoidP(self._processor_created_callback)
         libmetawear.mbl_mw_dataprocessor_fuser_create(sensor_signals.accel_signal, signals, 1, None, callback)
         self.processor_created.wait()
 
@@ -280,6 +281,7 @@ class Mbient:
         self.device: Optional[MetaWear] = None
         self.subscribed_signals = []
         self.outlet: Optional[StreamOutlet] = None
+        self.callback: Optional[Callable] = None
 
         # Streaming-related variables
         self.streaming: bool = False
@@ -327,11 +329,15 @@ class Mbient:
         try:
             self.prepare_scan()
             self.connect(n_attempts=self.max_connect_attempts, retry_delay_sec=1)
+
             # TODO: attempt a device reset and reconnect
+
             if not DISABLE_LSL:
                 self.outlet = self.create_outlet()
             self.setup()
-            print(f"-OUTLETID-:mbient_{self.dev_name}:{self.outlet_id}")  # Signal to GUI that everything is OK
+            if not DISABLE_LSL:
+                print(f"-OUTLETID-:mbient_{self.dev_name}:{self.outlet_id}")  # Signal to GUI that everything is OK
+
             return True
         except MbientFailedConnection as e:
             print(f"Failed to connect mbient {self.dev_name}")
@@ -396,26 +402,29 @@ class Mbient:
         processor = DataFusionCreator().create_processor(sensor_signals)
         if DISABLE_LSL:
             self.logger.warning('Using Debugging Data Handler')
-            callback = cbindings.FnVoid_VoidP_DataP(self.debug_data_handler)
+            self.callback = cbindings.FnVoid_VoidP_DataP(self.debug_data_handler)
         else:
-            callback = cbindings.FnVoid_VoidP_DataP(self.lsl_data_handler)
-        libmetawear.mbl_mw_datasignal_subscribe(processor, None, callback)
+            self.callback = cbindings.FnVoid_VoidP_DataP(self.lsl_data_handler)
+        libmetawear.mbl_mw_datasignal_subscribe(processor, None, self.callback)
         self.subscribed_signals.append(processor)
 
         print(f"Mbient {self.dev_name} setup")
         self.logger.debug(self.format_message('Setup Completed'))
 
-    def start_battery_log(self):
+    def log_battery_info(self):
         self.logger.debug(self.format_message('Subscribing to battery data stream.'))
+        callback_event = mp.Event()
 
         def callback(ctx, data):
             value = parse_value(data, n_elem=1)
             self.logger.debug(self.format_message(f'Voltage={value.voltage} mV; Charge={value.charge}%'))
+            callback_event.set()
         callback = cbindings.FnVoid_VoidP_DataP(callback)
 
         signal = libmetawear.mbl_mw_settings_get_battery_state_data_signal(self.device.board)
         libmetawear.mbl_mw_datasignal_subscribe(signal, None, callback)
-        self.subscribed_signals.append(signal)
+        callback_event.wait()
+        libmetawear.mbl_mw_datasignal_unsubscribe(signal)
 
     def start(self):
         enable_inertial_sampling(self.device)
@@ -509,7 +518,7 @@ def test_script() -> None:
         logger.critical(f'Unable to connect to device at {args.mac}')
         return
 
-    # device.start_battery_log()
+    # device.log_battery_info()
 
     logger.info('Beginning Recording')
     device.start()
