@@ -114,6 +114,14 @@ class ConnectionParameters(NamedTuple):
 
 
 def setup_connection_settings(device: MetaWear, connection_params: ConnectionParameters) -> None:
+    """
+    Configure the connection settings and transmission power.
+    See: https://mbientlab.com/documents/metawear/cpp/latest/settings_8h.html#a1cf3cae052fe7981c26124340a41d66d
+    See: https://mbientlab.com/documents/metawear/cpp/latest/settings_8h.html#a335f712d5fc0587eff9671b8b105d3ed
+
+    :param device: The device to update.
+    :param connection_params: Arguments for mbl_mw_settings_set_connection_parameters.
+    """
     board = device.board
     libmetawear.mbl_mw_settings_set_connection_parameters(
         board,
@@ -128,11 +136,12 @@ def setup_connection_settings(device: MetaWear, connection_params: ConnectionPar
 
 class SensorParameters(NamedTuple):
     """
+    Generic parameters for a sensor.
     See: https://mbientlab.com/documents/metawear/cpp/latest/accelerometer_8h.html#a5b7609e6a950d87215be8bea52ffe48c
     See: https://mbientlab.com/documents/metawear/cpp/latest/gyro__bosch_8h.html#ab6c0e565c919ee7ccb859d03e06b29d5
     """
-    output_data_rate: int
-    range: float  # gs for accelerometer, degrees per second for gyroscope
+    sample_rate: float  # Hz; anything beyond 100 may not work well
+    data_range: float  # gs for accelerometer, degrees per second for gyroscope
 
 
 class SensorSignals(NamedTuple):
@@ -146,20 +155,30 @@ def setup_sensor_settings(
         accel_params: SensorParameters,
         gyro_params: SensorParameters,
 ) -> SensorSignals:
+    """
+    Configure the settings of the accelerometer and gyroscope.
+    See: https://mbientlab.com/documents/metawear/cpp/latest/accelerometer_8h.html
+    See: https://mbientlab.com/documents/metawear/cpp/latest/gyro__bosch_8h.html
+
+    :param device: The device to update.
+    :param accel_params: Settings for the accelerometer.
+    :param gyro_params: Settings for the gyroscope.
+    :returns: A NamedTuple containing the signal objects for the accelerometer and gyroscope.
+    """
     board = device.board
     # Configure accelerometer
-    libmetawear.mbl_mw_acc_set_odr(board, accel_params.output_data_rate)
-    libmetawear.mbl_mw_acc_set_range(board, accel_params.range)
+    libmetawear.mbl_mw_acc_set_odr(board, accel_params.sample_rate)
+    libmetawear.mbl_mw_acc_set_range(board, accel_params.data_range)
     libmetawear.mbl_mw_acc_write_acceleration_config(board)
 
     # Configure gyroscope
     try:  # MMRS only
-        libmetawear.mbl_mw_gyro_bmi270_set_odr(board, gyro_params.output_data_rate)
-        libmetawear.mbl_mw_gyro_bmi270_set_range(board, gyro_params.range)
+        libmetawear.mbl_mw_gyro_bmi270_set_odr(board, gyro_params.sample_rate)
+        libmetawear.mbl_mw_gyro_bmi270_set_range(board, gyro_params.data_range)
         libmetawear.mbl_mw_gyro_bmi270_write_config(board)
     except:  # MMR1, MMR and MMC only
-        libmetawear.mbl_mw_gyro_bmi160_set_odr(board, gyro_params.output_data_rate)
-        libmetawear.mbl_mw_gyro_bmi160_set_range(board, gyro_params.range)
+        libmetawear.mbl_mw_gyro_bmi160_set_odr(board, gyro_params.sample_rate)
+        libmetawear.mbl_mw_gyro_bmi160_set_range(board, gyro_params.data_range)
         libmetawear.mbl_mw_gyro_bmi160_write_config(board)
 
     acc = libmetawear.mbl_mw_acc_get_acceleration_data_signal(board)
@@ -172,7 +191,10 @@ def setup_sensor_settings(
 
 
 class DataFusionCreator:
-    """Helper class for creating a data fusion processor"""
+    """Helper class for creating a data fusion processor.
+    The class provides a limited scope for the callback and event variable needed to wait for the response.
+    See: https://github.com/mbientlab/MetaWear-SDK-Python/blob/master/examples/data_processor.py
+    """
     def __init__(self):
         self.processor_created = mp.Event()
         self.processor = None
@@ -182,6 +204,12 @@ class DataFusionCreator:
         self.processor_created.set()
 
     def create_processor(self, sensor_signals: SensorSignals):
+        """
+        Create a data processor that fuses the accelerometer and gyroscope signals.
+
+        :param sensor_signals: A NamedTuple containing the signal objects for the accelerometer and gyroscope.
+        :returns: The data processor object that scan be subscribed to.
+        """
         signals = (c_void_p * 1)()
         signals[0] = sensor_signals.gyro_signal
 
@@ -193,6 +221,10 @@ class DataFusionCreator:
 
 
 def enable_inertial_sampling(device: MetaWear) -> None:
+    """
+    Enable sampling on the accelerometer and gyroscope.
+    :param device: The device to update.
+    """
     board = device.board
     libmetawear.mbl_mw_acc_enable_acceleration_sampling(board)
     try:  # MMRS only
@@ -202,6 +234,10 @@ def enable_inertial_sampling(device: MetaWear) -> None:
 
 
 def disable_inertial_sampling(device: MetaWear) -> None:
+    """
+    Disable sampling on the accelerometer and gyroscope.
+    :param device: The device to update.
+    """
     board = device.board
     libmetawear.mbl_mw_acc_disable_acceleration_sampling(board)
     try:  # MMRS only
@@ -211,6 +247,10 @@ def disable_inertial_sampling(device: MetaWear) -> None:
 
 
 def start_inertial_sampling(device: MetaWear) -> None:
+    """
+    Start sampling on the accelerometer and gyroscope.
+    :param device: The device to update.
+    """
     board = device.board
     libmetawear.mbl_mw_acc_start(board)
     try:  # MMRS only
@@ -220,6 +260,10 @@ def start_inertial_sampling(device: MetaWear) -> None:
 
 
 def stop_inertial_sampling(device: MetaWear) -> None:
+    """
+    Stop sampling on the accelerometer and gyroscope.
+    :param device: The device to update.
+    """
     board = device.board
     libmetawear.mbl_mw_acc_stop(board)
     try:  # MMRS only
@@ -231,7 +275,6 @@ def stop_inertial_sampling(device: MetaWear) -> None:
 def reset_device(device: MetaWear) -> None:
     """
     Reset the device. See https://mbientlab.com/tutorials/PyLinux.html#reset
-
     :param device: The connected device object to reset
     """
     board = device.board
@@ -248,6 +291,16 @@ def reset_device(device: MetaWear) -> None:
 # Object-Oriented Interface for Neurobooth-OS
 # --------------------------------------------------------------------------------
 class Mbient:
+    """
+    Handles interactions with an Mbient wearable sensor.
+    Intended Lifecycle:
+        1. Create object.
+        2. prepare() to connect to and configure the sensor.
+        3. start() to begin data collection.
+        4. stop() to cease data collection. Note: Recalling start() after this may not work. Needs testing.
+        5. close() to disconnect the sensor.
+    If the sensor disconnects at any point, a reconnect will be attempted.
+    """
     # Class variables to ensure that the BLE scan only happens during one prepare() call.
     # Will need to switch to a multiprocess.Manager if intending to use multiprocessing.
     SCAN_LOCK = mp.Lock()
@@ -274,12 +327,12 @@ class Mbient:
 
         # Device configuration settings
         self.connection_params = ConnectionParameters()  # Use the default params
-        self.accel_params = SensorParameters(output_data_rate=acc_hz, range=16.0)
-        self.gyro_params = SensorParameters(output_data_rate=gyro_hz, range=2000)
+        self.accel_params = SensorParameters(sample_rate=acc_hz, data_range=16.0)
+        self.gyro_params = SensorParameters(sample_rate=gyro_hz, data_range=2000)
 
         # Uninitialized Variables
         self.device: Optional[MetaWear] = None
-        self.subscribed_signals = []
+        self.subscribed_signals: List[Any] = []
         self.outlet: Optional[StreamOutlet] = None
         self.callback: Callable = lambda *args: None
 
@@ -293,7 +346,12 @@ class Mbient:
     def format_message(self, msg: str) -> str:
         return f'Mbient [{self.dev_name}; {self.mac}]: {msg}'
 
-    def prepare_scan(self):
+    def prepare_scan(self) -> None:
+        """
+        Perform a BLE scan to wake up devices before trying to connect.
+        (The alternative is to physically push the button on the devices.)
+        We only need to do this once, so this function ensures it is only done once per machine/server.
+        """
         with self.SCAN_LOCK:
             if self.SCAN_PERFORMED:  # Only need to scan once if multiple devices are present
                 return
@@ -302,7 +360,13 @@ class Mbient:
             self.logger.debug(f'BLE scan found {len(ble_devices)} devices: {[mac for _, mac in ble_devices.items()]}')
             self.SCAN_PERFORMED = True
 
-    def connect(self, n_attempts: int, retry_delay_sec: float):
+    def connect(self, n_attempts: int, retry_delay_sec: float) -> None:
+        """
+        Attempt to connect to the device and set a disconnect handler.
+
+        :param n_attempts: How many times to attempt a connection before giving up.
+        :param retry_delay_sec: How long to wait in-between attempts.
+        """
         self.device = connect_device(
             mac_address=self.mac,
             n_attempts=n_attempts,
@@ -312,12 +376,16 @@ class Mbient:
         self.device.on_disconnect = lambda status: self.on_disconnect(status)
 
     def on_disconnect(self, status=None) -> None:
+        """
+        Callback for disconnect events. Attempt to reconnect to and configure the device.
+        :param status: The status code passed by the callback handler.
+        """
         print(f"-WARNING mbient- {self.dev_name} diconnected prematurely")
         self.logger.warning(self.format_message(f'Disconnected Prematurely (status={status})'))
 
         try:
             self.connect(n_attempts=3, retry_delay_sec=0.5)
-            self.setup()
+            self._setup()
         except MbientFailedConnection as e:
             print(f"Failed to reconnect {self.dev_name}... bye")
             self.logger.error(self.format_message(f'Failed to Reconnect: {e}'))
@@ -326,15 +394,19 @@ class Mbient:
             self.logger.error(self.format_message(f'Error during reconnect: {e}'), exc_info=sys.exc_info())
 
     def prepare(self) -> bool:
+        """
+        Connect to and configure the device.
+        :returns: Whether the connection and setup was successful.
+        """
         try:
-            self.prepare_scan()
+            self.prepare_scan()  # Wake up devices
             self.connect(n_attempts=self.max_connect_attempts, retry_delay_sec=1)
 
             # TODO: attempt a device reset and reconnect
 
             if not DISABLE_LSL:
-                self.outlet = self.create_outlet()
-            self.setup()
+                self.outlet = self._create_outlet()
+            self._setup()
             if not DISABLE_LSL:
                 print(f"-OUTLETID-:mbient_{self.dev_name}:{self.outlet_id}")  # Signal to GUI that everything is OK
 
@@ -347,8 +419,8 @@ class Mbient:
             self.logger.error(self.format_message(f'Error during prepare: {e}'), exc_info=sys.exc_info())
             return False
 
-    def create_outlet(self):
-        # Setup outlet stream infos
+    def _create_outlet(self) -> StreamOutlet:
+        """Create an LSL outlet; helper for prepare."""
         stream_mbient = set_stream_description(
             stream_info=StreamInfo(
                 name=f"mbient_{self.dev_name}",
@@ -373,7 +445,8 @@ class Mbient:
         )
         return StreamOutlet(stream_mbient)
 
-    def lsl_data_handler(self, ctx, data):
+    def _lsl_data_handler(self, ctx, data) -> None:
+        """Callback to push data to LSL"""
         values = parse_value(data, n_elem=2)
         self.outlet.push_sample([
             data.contents.epoch,
@@ -386,38 +459,37 @@ class Mbient:
         ])
         self.n_samples_streamed += 1
 
-    def debug_data_handler(self, ctx, data):
-        try:
-            values = parse_value(data, n_elem=2)
-            if DEBUG_PRINT_DATA and (self.n_samples_streamed % 100) == 0:
-                print(f'Epoch={data.contents.epoch}, Accel={values[0]}, Gyro={values[1]}', flush=True)
-        except Exception as e:
-            self.logger.error(self.format_message(f'Data Handler Error: {e}'), exc_info=sys.exc_info())
+    def _debug_data_handler(self, ctx, data) -> None:
+        """Callback for debugging; may print data to the console."""
+        values = parse_value(data, n_elem=2)
+        if DEBUG_PRINT_DATA and (self.n_samples_streamed % 100) == 0:
+            print(f'Epoch={data.contents.epoch}, Accel={values[0]}, Gyro={values[1]}', flush=True)
         self.n_samples_streamed += 1
 
-    def setup(self):
+    def _setup(self) -> None:
+        """Configure the device (i.e., connection settings, sensor settings, data streaming callback)"""
         setup_connection_settings(self.device, self.connection_params)
         sensor_signals = setup_sensor_settings(self.device, self.accel_params, self.gyro_params)
 
         processor = DataFusionCreator().create_processor(sensor_signals)
         if DISABLE_LSL:
             self.logger.warning('Using Debugging Data Handler')
-            self.callback = cbindings.FnVoid_VoidP_DataP(self.debug_data_handler)
+            self.callback = cbindings.FnVoid_VoidP_DataP(self._debug_data_handler)
         else:
-            self.callback = cbindings.FnVoid_VoidP_DataP(self.lsl_data_handler)
+            self.callback = cbindings.FnVoid_VoidP_DataP(self._lsl_data_handler)
         libmetawear.mbl_mw_datasignal_subscribe(processor, None, self.callback)
         self.subscribed_signals.append(processor)
 
         print(f"Mbient {self.dev_name} setup")
         self.logger.debug(self.format_message('Setup Completed'))
 
-    def log_battery_info(self):
-        self.logger.debug(self.format_message('Subscribing to battery data stream.'))
+    def log_battery_info(self) -> None:
+        """Query the device for its battery status and print it to the log."""
         callback_event = mp.Event()
 
         def callback(ctx, data):
             value = parse_value(data, n_elem=1)
-            self.logger.debug(self.format_message(f'Voltage={value.voltage} mV; Charge={value.charge}%'))
+            self.logger.info(self.format_message(f'Voltage={value.voltage} mV; Charge={value.charge}%'))
             callback_event.set()
         callback = cbindings.FnVoid_VoidP_DataP(callback)
 
@@ -426,7 +498,8 @@ class Mbient:
         callback_event.wait()
         libmetawear.mbl_mw_datasignal_unsubscribe(signal)
 
-    def start(self):
+    def start(self) -> None:
+        """Begin streaming data."""
         enable_inertial_sampling(self.device)
 
         if self.buzz_time:  # Vibrate and then start acquisition
@@ -438,13 +511,15 @@ class Mbient:
         self.streaming = True
         start_inertial_sampling(self.device)
 
-    def stop(self):
+    def stop(self) -> None:
+        """Stop streaming data."""
         self.logger.debug(self.format_message('Stopping Streaming'))
         stop_inertial_sampling(self.device)
         disable_inertial_sampling(self.device)
         self.streaming = False
 
-    def disconnect(self):
+    def disconnect(self) -> None:
+        """Disconnect the device."""
         self.logger.debug(self.format_message('Disconnecting...'))
         e = mp.Event()
         self.device.on_disconnect = lambda status: e.set()
@@ -454,7 +529,8 @@ class Mbient:
         else:
             self.logger.error(self.format_message('Timed Out on Disconnect'))
 
-    def close(self):
+    def close(self) -> None:
+        """Stop streaming data, unsubscribe from data signals, and disconnect the device."""
         try:
             if self.streaming:
                 self.stop()
