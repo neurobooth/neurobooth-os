@@ -23,12 +23,12 @@
 	"port": 1282
     },
     "database": {
-        "dbname": "neurobooth",
+        "dbname": "mock_neurobooth_1",
         "user": "neuroboother",
         "pass": "",
         "host": "192.168.100.1",
         "port": 5432,
-        "remote_username": "ab123",
+        "remote_username": "sp1022",
         "remote_address": "neurodoor.nmr.mgh.harvard.edu"
     }
 }
