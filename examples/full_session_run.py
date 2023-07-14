@@ -55,7 +55,7 @@ sess_info = _save_session(start_window,
 ####### MAIN WINDOW #########
 _start_ctr_server(main_window, host_ctr, port_ctr)
 time.sleep(2)
-_start_servers(main_window, conn, nodes)
+_start_servers(main_window, nodes)
 time.sleep(5)
 vidf_mrkr, _, _ = _prepare_devices(main_window, nodes, collection_id,
                                    log_task, database=database)
