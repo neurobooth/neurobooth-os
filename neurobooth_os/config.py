@@ -13,7 +13,7 @@ import json
 # logger = make_default_logger()
 
 # fname = op.join(expanduser("~"), ".neurobooth_os_config")
-fname = op.join(environ.get("NB_CONFIG"), ".neurobooth_os_config")
+fname = op.join(environ.get("NB_CONFIG"), "neurobooth_os_config.json")
 print(fname)
 if not op.exists(fname):
     msg = "Required config file does not exist"
