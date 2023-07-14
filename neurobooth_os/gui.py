@@ -295,10 +295,10 @@ def _stop_lsl_and_save(
 ######### Server communication ############
 
 
-def _start_servers(window, conn, nodes):
+def _start_servers(window, nodes):
     window["-init_servs-"].Update(button_color=("black", "red"))
     event, values = window.read(0.1)
-    ctr_rec.start_servers(nodes=nodes, conn=conn)
+    ctr_rec.start_servers(nodes=nodes)
     time.sleep(1)
     return event, values
 
@@ -462,7 +462,7 @@ def gui():
 
         # Start servers on STM, ACQ
         elif event == "-init_servs-":
-            _start_servers(window, conn, nodes)
+            _start_servers(window, nodes)
 
         # Turn on devices
         elif event == "-Connect-":
