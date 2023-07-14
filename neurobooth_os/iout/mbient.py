@@ -488,16 +488,23 @@ class Mbient:
         print(f"Mbient {self.dev_name} setup")
         self.logger.debug(self.format_message('Setup Completed'))
 
-    def log_battery_info(self) -> None:
-        """Query the device for its battery status and print it to the log."""
+    def log_battery_info(self, max_wait_sec: float = 5) -> None:
+        """
+        Query the device for its battery status and print it to the log.
+        :param max_wait_sec: How long to wait for the callback to fire before giving up.
+        """
+        event = mp.Event()
+
         def callback(ctx, data):
             value = parse_value(data, n_elem=1)
-            self.logger.info(self.format_message(f'Voltage={value.voltage} mV; Charge={value.charge}%'))
+            self.logger.info(self.format_message(f'Voltage = {value.voltage/1e3:.1f} V; Charge = {value.charge}%'))
+            event.set()
         callback = cbindings.FnVoid_VoidP_DataP(callback)
 
         signal = libmetawear.mbl_mw_settings_get_battery_state_data_signal(self.device.board)
         libmetawear.mbl_mw_datasignal_subscribe(signal, None, callback)
         libmetawear.mbl_mw_datasignal_read(signal)
+        event.wait(max_wait_sec)
         libmetawear.mbl_mw_datasignal_unsubscribe(signal)
 
     def start(self) -> None:
