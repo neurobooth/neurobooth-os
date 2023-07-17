@@ -55,14 +55,8 @@ $ ssh-keygen
 $ ssh-copy-id userID@neurodoor.nmr.mgh.harvard.edu
 
 
-Next, set up secrets and configuration files. In a python session, run::
-
-$ import neurobooth_os.secrets_info
-$ import neurobooth_os.config
-
-
-This will generate `~/.neurobooth_os_secrets` and `~/.neurobooth_os_config`.
-Edit them with your info and path to folders. 
+Next, set up the configuration data. Please see the instructions at:
+https://github.com/neurobooth/neurobooth-os/blob/master/docs/system_configuration.md
 
 
 Run
