@@ -21,7 +21,7 @@ if server_name not in server_names:
 
 destination = config.neurobooth_config["remote_data_dir"]
 
-source = config.neurobooth_config[server_name]["data_out"]
+source = config.neurobooth_config[server_name]["local_data_dir"]
 
 # Move data to remote
 result_step_1 = subprocess.run(["robocopy", "/MOVE", source, destination, "/e"])

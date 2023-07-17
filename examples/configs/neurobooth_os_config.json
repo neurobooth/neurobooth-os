@@ -8,21 +8,21 @@
         "user": "ACQ",
         "pass": "",
 	    "port": 1280,
-        "data_out": "D:\\neurobooth\\neurobooth_data\\\\"
+        "local_data_dir": "D:\\neurobooth\\neurobooth_data\\\\"
     },
     "presentation": {
         "name": "stm",
         "user": "STM",
         "pass": "",
 	    "port": 1281,
-        "data_out": "C:\\neurobooth\\neurobooth_data\\\\"
+        "local_data_dir": "C:\\neurobooth\\neurobooth_data\\\\"
     },
     "control": {
         "name": "ctr",
         "user": "CTR",
         "pass": "5519",
         "port": 1282,
-        "data_out": "C:\\neurobooth\\neurobooth_data\\\\"
+        "local_data_dir": "C:\\neurobooth\\neurobooth_data\\\\"
     },
     "database": {
         "dbname": "mock_neurobooth_1",

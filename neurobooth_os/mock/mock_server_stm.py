@@ -49,7 +49,7 @@ def mock_stm_routine(host, port, conn):
             log_task = eval(data.replace(f"prepare:{collection_id}:{database_name}:", ""))
             subject_id_date = log_task["subject_id-date"]
 
-            ses_folder = os.path.join(config.neurobooth_config["data_out"], subject_id_date)
+            ses_folder = os.path.join(config.neurobooth_config["local_data_dir"], subject_id_date)
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
@@ -74,7 +74,7 @@ def mock_stm_routine(host, port, conn):
             log_task["log_session_id"] = session_id
 
             task_karg = {
-                "path": config.neurobooth_config["data_out"],
+                "path": config.neurobooth_config["local_data_dir"],
                 "subj_id": subject_id_date,
                 "marker_outlet": streams["marker"],
             }

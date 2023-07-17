@@ -75,7 +75,7 @@ def run_acq(logger):
             subject_id_date = log_task["subject_id-date"]
 
             conn = meta.get_conn(database=database_name)
-            ses_folder = f"{config.neurobooth_config['data_out']}{subject_id_date}"
+            ses_folder = f"{config.neurobooth_config['local_data_dir']}{subject_id_date}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
@@ -111,7 +111,7 @@ def run_acq(logger):
             print("Starting recording")
             t0 = time()
             fname, task = data.split("::")[1:]
-            fname = f"{config.neurobooth_config['data_out']}{subject_id_date}/{fname}"
+            fname = f"{config.neurobooth_config['local_data_dir']}{subject_id_date}/{fname}"
 
             for k in streams.keys():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:

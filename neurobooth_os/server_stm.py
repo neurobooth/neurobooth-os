@@ -85,7 +85,7 @@ def run_stm(logger):
             subject_id_date = log_task["subject_id-date"]
 
             conn = meta.get_conn(database=database_name)
-            ses_folder = f"{config.neurobooth_config['data_out']}{subject_id_date}"
+            ses_folder = f"{config.neurobooth_config['local_data_dir']}{subject_id_date}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
@@ -116,7 +116,7 @@ def run_stm(logger):
 
             task_karg = {
                 "win": win,
-                "path": config.neurobooth_config["data_out"] + f"{subject_id_date}/",
+                "path": config.neurobooth_config["local_data_dir"] + f"{subject_id_date}/",
                 "subj_id": subject_id_date,
                 "marker_outlet": streams["marker"],
                 "prompt": True,
