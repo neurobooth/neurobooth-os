@@ -6,27 +6,34 @@ import sys
 
 from neurobooth_os import config
 
-server_names = ("presentation", "acquisition", "control")
 
-if len(sys.argv) < 2:
-    raise Exception("Server name is a required argument for this script.")
+def main():
 
-server_name = sys.argv[1]
+    server_names = ("presentation", "acquisition", "control")
 
-if server_name is None or server_name == '':
-    raise Exception("You must provide a server name to transfer data")
+    if len(sys.argv) < 2:
+        raise Exception("Server name is a required argument for this script.")
 
-if server_name not in server_names:
-    raise Exception(f"The server name argument must be one of {server_names}.")
+    server_name = sys.argv[1]
 
-destination = config.neurobooth_config["remote_data_dir"]
+    if server_name is None or server_name == '':
+        raise Exception("You must provide a server name to transfer data")
 
-source = config.neurobooth_config[server_name]["local_data_dir"]
+    if server_name not in server_names:
+        raise Exception(f"The server name argument must be one of {server_names}.")
 
-# Move data to remote
-result_step_1 = subprocess.run(["robocopy", "/MOVE", source, destination, "/e"])
-print(str(result_step_1))
+    destination = config.neurobooth_config["remote_data_dir"]
 
-# Recreate local data folder
-result_step_2 = subprocess.run(["mkdir", source])
-print(str(result_step_2))
+    source = config.neurobooth_config[server_name]["local_data_dir"]
+
+    # Move data to remote
+    result_step_1 = subprocess.run(["robocopy", "/MOVE", source, destination, "/e"])
+    print(str(result_step_1))
+
+    # Recreate local data folder
+    result_step_2 = subprocess.run(["mkdir", source])
+    print(str(result_step_2))
+
+
+if __name__ == "__main__":
+    main()
