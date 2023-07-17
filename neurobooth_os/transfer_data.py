@@ -23,10 +23,10 @@ destination = config.neurobooth_config["remote_data_dir"]
 
 source = config.neurobooth_config[server_name]["data_out"]
 
-# Copy as: robocopy  /MOVE  %NB_INSTALL%\neurobooth_data Z:\data /e
+# Move data to remote
 result_step_1 = subprocess.run(["robocopy", "/MOVE", source, destination, "/e"])
 print(str(result_step_1))
 
-# Recreate folder as: mkdir %NB_ACQ_DATA%
+# Recreate local data folder
 result_step_2 = subprocess.run(["mkdir", source])
 print(str(result_step_2))
