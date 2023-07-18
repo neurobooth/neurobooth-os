@@ -5,5 +5,4 @@ from .server import (
     get_messages_to_ctr,
     NewStdout,
     get_data_timeout)
-from .types import NODE_NAMES
 

@@ -1,11 +1,12 @@
 """
     Moves data from local storage to network storage
 """
+import os
 from subprocess import PIPE, Popen, STDOUT, CalledProcessError
 import argparse
 
 from neurobooth_os import config
-from neurobooth_os.netcomm.types import NODE_NAMES
+from neurobooth_os.util.constants import NODE_NAMES
 from neurobooth_os.log_manager import make_default_logger
 
 
@@ -31,11 +32,13 @@ def main(args: argparse.Namespace):
         logger.info(f"Transfer data to remote. Return code: {return_code}")
 
         # Recreate local data folder
-        process = Popen(["mkdir", source], stdout=PIPE, stderr=STDOUT)
-        with process.stdout:
-            log_output(logger, process.stdout)
-        return_code = process.wait()
-        logger.info(f"Recreate local data directory. Return code: {return_code}")
+        if not os.path.exists(source):
+            process = Popen(["mkdir", source], stdout=PIPE, stderr=STDOUT)
+            with process.stdout:
+                log_output(logger, process.stdout)
+            return_code = process.wait()
+            logger.info(f"Recreate local data directory. Return code: {return_code}")
+
 
     except (OSError, CalledProcessError) as exception:
         logger.critical('Exception occurred: ' + str(exception))
