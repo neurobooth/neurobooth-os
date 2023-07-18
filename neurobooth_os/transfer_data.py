@@ -11,7 +11,7 @@ from neurobooth_os.log_manager import make_default_logger
 
 def main(args: argparse.Namespace):
 
-    logger = make_default_logger(log_level='logging.INFO')
+    logger = make_default_logger()
 
     destination = config.neurobooth_config["remote_data_dir"]
 
