@@ -2,29 +2,20 @@
     Moves data from local storage to network storage
 """
 import subprocess
-import sys
+import argparse
 
 from neurobooth_os import config
+from neurobooth_os.netcomm.types import NODE_NAMES
+from neurobooth_os.log_manager import make_default_logger
 
 
-def main():
+def main(args: argparse.Namespace):
 
-    server_names = ("presentation", "acquisition", "control")
-
-    if len(sys.argv) < 2:
-        raise Exception("Server name is a required argument for this script.")
-
-    server_name = sys.argv[1]
-
-    if server_name is None or server_name == '':
-        raise Exception("You must provide a server name to transfer data")
-
-    if server_name not in server_names:
-        raise Exception(f"The server name argument must be one of {server_names}.")
+    logger = make_default_logger(log_level='logging.INFO')
 
     destination = config.neurobooth_config["remote_data_dir"]
 
-    source = config.neurobooth_config[server_name]["local_data_dir"]
+    source = config.neurobooth_config[args.source_node_name]["local_data_dir"]
 
     # Move data to remote
     result_step_1 = subprocess.run(["robocopy", "/MOVE", source, destination, "/e"])
@@ -35,5 +26,21 @@ def main():
     print(str(result_step_2))
 
 
+def parse_arguments() -> argparse.Namespace:
+
+    parser = argparse.ArgumentParser(
+        prog='transfer_data',
+        description='Transfer data copies data from local folders into remote storage.',
+    )
+
+    parser.add_argument(
+        'source_node_name',  # positional argument
+        choices=NODE_NAMES,
+        help=f'You must provide the name of the node to transfer data from, which must be one of {NODE_NAMES}'
+    )
+    args = parser.parse_args()
+    return args
+
+
 if __name__ == "__main__":
-    main()
+    main(parse_arguments())

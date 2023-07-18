@@ -32,7 +32,7 @@ from neurobooth_os.netcomm import (
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
-from neurobooth_os.logging import make_session_logger, make_default_logger
+from neurobooth_os.log_manager import make_session_logger, make_default_logger
 
 
 def Main():

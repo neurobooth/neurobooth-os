@@ -10,7 +10,7 @@ import logging
 
 import neurobooth_os
 from neurobooth_os import config
-from neurobooth_os.logging import make_default_logger
+from neurobooth_os.log_manager import make_default_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import (
@@ -20,7 +20,7 @@ from neurobooth_os.iout.lsl_streamer import (
     connect_mbient,
 )
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.logging import make_session_logger
+from neurobooth_os.log_manager import make_session_logger
 
 
 def countdown(period):

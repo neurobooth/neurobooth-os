@@ -4,7 +4,7 @@ import shutil
 import sys
 import unittest
 
-from neurobooth_os.logging import make_default_logger
+from neurobooth_os.log_manager import make_default_logger
 
 log_path = r"C:\neurobooth\test_data\test_logs"
 logger = make_default_logger(log_path)

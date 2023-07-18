@@ -6,7 +6,7 @@ import os.path as op
 import datetime
 import logging
 from typing import Optional
-from neurobooth_os.logging import make_default_logger
+from neurobooth_os.log_manager import make_default_logger
 import argparse
 import sys
 

@@ -28,7 +28,7 @@ from neurobooth_os.netcomm import (
 )
 from neurobooth_os.config import neurobooth_config
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
-from neurobooth_os.logging import make_default_logger
+from neurobooth_os.log_manager import make_default_logger
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, get_xdf_name
 from neurobooth_os.iout import marker_stream
