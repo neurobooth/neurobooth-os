@@ -1,12 +1,17 @@
 """
     Moves data from local storage to network storage
 """
-import subprocess
+from subprocess import PIPE, Popen, STDOUT, CalledProcessError
 import argparse
 
 from neurobooth_os import config
 from neurobooth_os.netcomm.types import NODE_NAMES
 from neurobooth_os.log_manager import make_default_logger
+
+
+def log_output(logger, pipe):
+    for line in iter(pipe.readline, b''):  # b'\n'-separated lines
+        logger.info(str(line, "utf-8").strip('\r\n'))
 
 
 def main(args: argparse.Namespace):
@@ -17,13 +22,25 @@ def main(args: argparse.Namespace):
 
     source = config.neurobooth_config[args.source_node_name]["local_data_dir"]
 
-    # Move data to remote
-    result_step_1 = subprocess.run(["robocopy", "/MOVE", source, destination, "/e"])
-    print(str(result_step_1))
+    try:
+        # Move data to remote
+        process = Popen(["robocopy", "/MOVE", source, destination, "/e"], stdout=PIPE, stderr=STDOUT)
+        with process.stdout:
+            log_output(logger, process.stdout)
+        return_code = process.wait()
+        logger.info(f"Transfer data to remote. Return code: {return_code}")
 
-    # Recreate local data folder
-    result_step_2 = subprocess.run(["mkdir", source])
-    print(str(result_step_2))
+        # Recreate local data folder
+        process = Popen(["mkdir", source], stdout=PIPE, stderr=STDOUT)
+        with process.stdout:
+            log_output(logger, process.stdout)
+        return_code = process.wait()
+        logger.info(f"Recreate local data directory. Return code: {return_code}")
+
+    except (OSError, CalledProcessError) as exception:
+        logger.critical('Exception occurred: ' + str(exception))
+        logger.critical('Subprocess failed')
+        raise exception
 
 
 def parse_arguments() -> argparse.Namespace:
