@@ -9,15 +9,15 @@ from neurobooth_os import config
 from neurobooth_os.util.constants import NODE_NAMES
 from neurobooth_os.log_manager import make_default_logger
 
+logger = make_default_logger()
 
-def log_output(logger, pipe):
+
+def log_output(pipe):
     for line in iter(pipe.readline, b''):  # b'\n'-separated lines
         logger.info(str(line, "utf-8").strip('\r\n'))
 
 
 def main(args: argparse.Namespace):
-
-    logger = make_default_logger()
 
     destination = config.neurobooth_config["remote_data_dir"]
 
@@ -27,18 +27,13 @@ def main(args: argparse.Namespace):
         # Move data to remote
         process = Popen(["robocopy", "/MOVE", source, destination, "/e"], stdout=PIPE, stderr=STDOUT)
         with process.stdout:
-            log_output(logger, process.stdout)
+            log_output(process.stdout)
         return_code = process.wait()
         logger.info(f"Transfer data to remote. Return code: {return_code}")
 
         # Recreate local data folder
-        if not os.path.exists(source):
-            process = Popen(["mkdir", source], stdout=PIPE, stderr=STDOUT)
-            with process.stdout:
-                log_output(logger, process.stdout)
-            return_code = process.wait()
-            logger.info(f"Recreate local data directory. Return code: {return_code}")
-
+        os.makedirs(source, exist_ok=True)
+        logger.info(f"Recreated local data directory: '{source}'")
 
     except (OSError, CalledProcessError) as exception:
         logger.critical('Exception occurred: ' + str(exception))
@@ -63,4 +58,7 @@ def parse_arguments() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
-    main(parse_arguments())
+    try:
+        main(parse_arguments())
+    except Exception as e:
+        logger.critical(e)
