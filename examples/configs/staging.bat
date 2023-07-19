@@ -3,9 +3,7 @@
 :: Neurobooth folders
 setx /m NB_INSTALL C:\neurobooth-os\
 setx /m NB_CONFIG %USERPROFILE%\.neurobooth_os\
-setx /m NB_ACQ_CONDA C:\Users\ACQ\anaconda3\envs\neurobooth-staging
-setx /m NB_STM_CONDA C:\Users\STM\anaconda3\envs\neurobooth-staging
-setx /m NB_ACQ_DATA D:\neurobooth\neurobooth_data
+setx /m NB_CONDA %USERPROFILE%\anaconda3\envs\neurobooth-staging
 
 :: GUI Configs
 setx /m NB_FULLSCREEN "false"
