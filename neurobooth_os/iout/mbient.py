@@ -34,8 +34,15 @@ class MbientFailedConnection(MbientError):
     pass
 
 
+class MbientResetTimeout(MbientError):
+    pass
+
+
 # --------------------------------------------------------------------------------
-# Procedural Interface for External Scripts
+# Procedural Interface
+#
+# Used for external scripts (e.g. device reset) and to abstract / group together
+# related mbientlab function calls.
 # --------------------------------------------------------------------------------
 def scan_BLE(timeout_sec: float = 10, n_devices: int = 5) -> Dict[str, str]:
     """
@@ -211,7 +218,7 @@ class DataFusionCreator:
         :param sensor_signals: A NamedTuple containing the signal objects for the accelerometer and gyroscope.
         :returns: The data processor object that scan be subscribed to.
         """
-        signals = (c_void_p * 1)()
+        signals = (c_void_p * 1)()  # This is sorcery, but it's how the examples do things...
         signals[0] = sensor_signals.gyro_signal
 
         callback = cbindings.FnVoid_VoidP_VoidP(self._processor_created_callback)
@@ -325,6 +332,7 @@ class Mbient:
         self.outlet_id = str(uuid.uuid4())
         self.buzz_time = buzz_time_sec
         self.max_connect_attempts = try_nmax
+        self.retry_delay_sec = 1
 
         # Device configuration settings
         self.connection_params = ConnectionParameters()  # Use the default params
@@ -361,13 +369,18 @@ class Mbient:
             self.logger.debug(f'BLE scan found {len(ble_devices)} devices: {[mac for _, mac in ble_devices.items()]}')
             self.SCAN_PERFORMED = True
 
-    def connect(self, n_attempts: int, retry_delay_sec: float) -> None:
+    def connect(self, n_attempts: Optional[int] = None, retry_delay_sec: Optional[float] = None) -> None:
         """
         Attempt to connect to the device and set a disconnect handler.
 
         :param n_attempts: How many times to attempt a connection before giving up.
         :param retry_delay_sec: How long to wait in-between attempts.
         """
+        if n_attempts is None:
+            n_attempts = self.max_connect_attempts
+        if retry_delay_sec is None:
+            retry_delay_sec = self.retry_delay_sec
+
         self.device = connect_device(
             mac_address=self.mac,
             n_attempts=n_attempts,
@@ -386,13 +399,52 @@ class Mbient:
 
         try:
             self.connect(n_attempts=3, retry_delay_sec=0.5)
-            self._setup()
+            self.setup()
         except MbientFailedConnection as e:
             print(f"Failed to reconnect {self.dev_name}... bye")
             self.logger.error(self.format_message(f'Failed to Reconnect: {e}'))
         except Exception as e:
             print(f"Couldn't setup for {self.dev_name}")
             self.logger.error(self.format_message(f'Error during reconnect: {e}'), exc_info=sys.exc_info())
+
+    def reset(self, timeout_sec: float = 10) -> None:
+        """
+        Perform a board reset (which disconnects the device).
+        This call blocks until the reset is complete or the timeout is reached.
+
+        :param timeout_sec: How long to wait for the disconnect to occur.
+        """
+        event = mp.Event()
+
+        def disconnect_callback(status):
+            self.logger.info(self.format_message('Disconnected during reset'))
+            event.set()
+
+        self.logger.info(self.format_message('Resetting Device'))
+        self.device.on_disconnect = disconnect_callback
+        reset_device(self.device)
+        if not event.wait(timeout=timeout_sec):
+            raise MbientResetTimeout('Device reset timed out.')
+
+    def reset_and_reconnect(self, timeout_sec: float = 10) -> None:
+        """
+        Stop streaming, perform a board reset (which disconnects the device), reconnect, and resume streaming.
+        :param timeout_sec: How long to wait for the reset to occur before timing out.
+        """
+        try:
+            was_streaming = self.streaming
+            if was_streaming:
+                self.stop()
+
+            self.reset(timeout_sec=timeout_sec)
+            self.connect()
+            self.setup()
+
+            if was_streaming:
+                self.start()
+        except Exception as e:
+            self.logger.error(self.format_message(f'Error during reset and reconnect: {e}'))
+            raise e
 
     def prepare(self) -> bool:
         """
@@ -401,18 +453,22 @@ class Mbient:
         """
         try:
             self.prepare_scan()  # Wake up devices
-            self.connect(n_attempts=self.max_connect_attempts, retry_delay_sec=1)
+            self.connect()
 
-            # TODO: attempt a device reset and reconnect
+            # Perform a sensor reset and reconnect
+            self.reset()
+            sleep(self.retry_delay_sec)  # Wait a moment before trying to re-connect after the reset
+            self.connect()
 
+            # Set up the device to stream acceleration and angular velocity
             if not DISABLE_LSL:
                 self.outlet = self._create_outlet()
-            self._setup()
+            self.setup()
             if not DISABLE_LSL:
                 print(f"-OUTLETID-:mbient_{self.dev_name}:{self.outlet_id}")  # Signal to GUI that everything is OK
 
             return True
-        except MbientFailedConnection as e:
+        except (MbientFailedConnection, MbientResetTimeout) as e:
             print(f"Failed to connect mbient {self.dev_name}")
             self.logger.error(self.format_message(str(e)))
             return False
@@ -467,7 +523,7 @@ class Mbient:
             print(f'Epoch={data.contents.epoch}, Accel={values[0]}, Gyro={values[1]}', flush=True)
         self.n_samples_streamed += 1
 
-    def _setup(self) -> None:
+    def setup(self) -> None:
         """Configure the device (i.e., connection settings, sensor settings, data streaming callback)"""
         setup_connection_settings(self.device, self.connection_params)
         sensor_signals = setup_sensor_settings(self.device, self.accel_params, self.gyro_params)
@@ -533,7 +589,7 @@ class Mbient:
         e = mp.Event()
         self.device.on_disconnect = lambda status: e.set()
         self.device.disconnect()
-        if e.wait(10):
+        if e.wait(timeout=10):
             self.logger.debug(self.format_message('Disconnected'))
         else:
             self.logger.error(self.format_message('Timed Out on Disconnect'))
