@@ -6,7 +6,7 @@ import os.path as op
 import datetime
 import logging
 from typing import Optional
-from neurobooth_os.logging import make_default_logger
+from neurobooth_os.log_manager import make_default_logger
 import argparse
 import sys
 
@@ -25,7 +25,7 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
     args
         Command line arguments.
     """
-    session_root = cfg.neurobooth_config["data_out"]
+    session_root = cfg.neurobooth_config["local_data_dir"]
     logger = logging.getLogger('default')
     logger.debug(f'Session Root: {session_root}')
 

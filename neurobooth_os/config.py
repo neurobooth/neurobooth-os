@@ -2,24 +2,37 @@
 """
     Ensures that the base neurobooth-os config file exists and makes config file available as neurobooth_config
 """
-import os.path as op
-from os.path import expanduser
-from os import environ
+
+from os import environ, path
 import json
 
-# from neurobooth_os.logging import make_default_logger
+from neurobooth_os.util.constants import NODE_NAMES
 
-# if files does not exist raise an exception
-# logger = make_default_logger()
 
-# fname = op.join(expanduser("~"), ".neurobooth_os_config")
-fname = op.join(environ.get("NB_CONFIG"), "neurobooth_os_config.json")
-print(fname)
-if not op.exists(fname):
+def validate_folder(value):
+    if not path.exists(value):
+        raise FileNotFoundError(f"The folder '{value}' does not exist.")
+    if not path.isdir(value):
+        raise IOError(f"The path '{value}' is not a folder.")
+
+
+fname = path.join(environ.get("NB_CONFIG"), "neurobooth_os_config.json")
+
+if not path.exists(fname):
     msg = "Required config file does not exist"
-    # logger.critical(msg)
     raise IOError(msg)
 
-# TODO: Add another exception here?
 with open(fname, "r") as f:
     neurobooth_config = json.load(f)
+
+    validate_folder(neurobooth_config["remote_data_dir"])
+    validate_folder(neurobooth_config["video_tasks"])
+    validate_folder(neurobooth_config["default_log_path"])
+
+    for name in NODE_NAMES:
+        source = neurobooth_config[name]["local_data_dir"]
+        if not path.exists(source):
+            raise FileNotFoundError(f"The local_data_dir '{source}' for server {name} does not exist.")
+        if not path.isdir(source):
+            raise IOError(f"The local_data_dir '{source}' for server {name} is not a folder.")
+
