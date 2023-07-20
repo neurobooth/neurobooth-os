@@ -10,7 +10,7 @@ import logging
 
 import neurobooth_os
 from neurobooth_os import config
-from neurobooth_os.logging import make_default_logger
+from neurobooth_os.log_manager import make_default_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import (
@@ -20,7 +20,7 @@ from neurobooth_os.iout.lsl_streamer import (
     connect_mbient,
 )
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.logging import make_session_logger
+from neurobooth_os.log_manager import make_session_logger
 
 
 def countdown(period):
@@ -75,7 +75,7 @@ def run_acq(logger):
             subject_id_date = log_task["subject_id-date"]
 
             conn = meta.get_conn(database=database_name)
-            ses_folder = f"{config.neurobooth_config['data_out']}{subject_id_date}"
+            ses_folder = f"{config.neurobooth_config['local_data_dir']}{subject_id_date}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
@@ -111,7 +111,7 @@ def run_acq(logger):
             print("Starting recording")
             t0 = time()
             fname, task = data.split("::")[1:]
-            fname = f"{config.neurobooth_config['data_out']}{subject_id_date}/{fname}"
+            fname = f"{config.neurobooth_config['local_data_dir']}{subject_id_date}/{fname}"
 
             for k in streams.keys():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:

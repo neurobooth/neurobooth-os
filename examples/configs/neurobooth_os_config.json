@@ -1,26 +1,28 @@
 {
-    "data_out": "C:\\neurobooth\\neurobooth_data\\\\",
-    "nas": "Z:\\data\\\\",
-    "video_tasks": "C:\\Users\\STM\\Dropbox (Partners HealthCare)\\Neurobooth Videos for tasks\\Videos_to_present",
+    "remote_data_dir": "C:/data/",
+    "video_tasks": "C:/neurobooth/video-tasks",
     "cam_inx_lowfeed": 0,
-    "default_log_path": "D:\\neurobooth\\neurobooth_logs",
+    "default_log_path": "C:/neurobooth/neurobooth_logs",
     "acquisition": {
         "name": "acq",
         "user": "ACQ",
         "pass": "",
-	"port": 1280
+	    "port": 1280,
+        "local_data_dir": "C:/neurobooth/neurobooth_data/"
     },
     "presentation": {
         "name": "stm",
         "user": "STM",
         "pass": "",
-	"port": 1281
+	    "port": 1281,
+        "local_data_dir": "C:/neurobooth/neurobooth_data/"
     },
     "control": {
         "name": "ctr",
         "user": "CTR",
-        "pass": "5519",
-	"port": 1282
+        "pass": "",
+        "port": 1282,
+        "local_data_dir": "C:/neurobooth/neurobooth_data/"
     },
     "database": {
         "dbname": "mock_neurobooth_1",

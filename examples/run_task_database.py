@@ -35,7 +35,7 @@ task_func_dict = get_task_funcs(collection_id, conn)
 task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
 
 task_karg ={"win": win,
-            "path": cfg.neurobooth_config['data_out'],
+            "path": cfg.neurobooth_config['local_data_dir'],
             "subj_id": subj_id,            
             }
 

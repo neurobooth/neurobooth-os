@@ -63,7 +63,7 @@ win.color = [0, 0, 0]
 win.flip()
 task_karg = {
     "win": win,
-    "path": config.neurobooth_config["data_out"],
+    "path": config.neurobooth_config["local_data_dir"],
     "subj_id": subj_id,
     "eye_tracker": streams["eye_tracker"],
     "marker_outlet": streams["marker"],
@@ -80,7 +80,7 @@ tsk_fun(**task_karg)
 streams["eye_tracker"].stop()
 
 
-# fname =  f"{config.neurobooth_config['data_out']}{subj_id}{task}2.edf"
+# fname =  f"{config.neurobooth_config['local_data_dir']}{subj_id}{task}2.edf"
 # streams['eye_tracker'].start(fname)
 
 # # res = run_task(tsk_fun, s2, cmd, subj_id, task, send_stdout, task_karg)

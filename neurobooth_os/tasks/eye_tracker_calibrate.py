@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     win = utils.make_win(False)
     eye_tracker = EyeTracker(win=win, ip="192.168.100.15")
-    fname = f"{config.neurobooth_config['data_out']}calibration.edf"
+    fname = f"{config.neurobooth_config['local_data_dir']}calibration.edf"
     cal = Calibrate(eye_tracker=eye_tracker, win=win, fname=fname)
     cal.run()
     cal.win.close()

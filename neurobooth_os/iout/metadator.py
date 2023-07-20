@@ -15,7 +15,7 @@ import psycopg2
 from neurobooth_terra import Table
 
 import neurobooth_os
-from neurobooth_os.logging import make_default_logger
+from neurobooth_os.log_manager import make_default_logger
 from neurobooth_os.config import neurobooth_config
 
 
