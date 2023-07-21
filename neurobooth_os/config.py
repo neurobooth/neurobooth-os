@@ -3,7 +3,7 @@
     Ensures that the base neurobooth-os config file exists and makes config file available as neurobooth_config
 """
 
-from os import environ, path
+from os import environ, path, getenv
 import json
 
 from neurobooth_os.util.constants import NODE_NAMES
@@ -25,8 +25,10 @@ if not path.exists(fname):
 with open(fname, "r") as f:
     neurobooth_config = json.load(f)
 
+    if "STM" in getenv("USERPROFILE"):
+        validate_folder(neurobooth_config["video_tasks"])
+
     validate_folder(neurobooth_config["remote_data_dir"])
-    validate_folder(neurobooth_config["video_tasks"])
     validate_folder(neurobooth_config["default_log_path"])
 
     for name in NODE_NAMES:
