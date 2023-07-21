@@ -25,16 +25,20 @@ if not path.exists(fname):
 with open(fname, "r") as f:
     neurobooth_config = json.load(f)
 
-    if "STM" in getenv("USERPROFILE"):
+    user_profile = getenv("USERPROFILE")
+
+    if "STM" in user_profile:
         validate_folder(neurobooth_config["video_tasks"])
 
     validate_folder(neurobooth_config["remote_data_dir"])
     validate_folder(neurobooth_config["default_log_path"])
 
     for name in NODE_NAMES:
-        source = neurobooth_config[name]["local_data_dir"]
-        if not path.exists(source):
-            raise FileNotFoundError(f"The local_data_dir '{source}' for server {name} does not exist.")
-        if not path.isdir(source):
-            raise IOError(f"The local_data_dir '{source}' for server {name} is not a folder.")
+        user = neurobooth_config[name]["user"]
+        if user in user_profile:
+            source = neurobooth_config[name]["local_data_dir"]
+            if not path.exists(source):
+                raise FileNotFoundError(f"The local_data_dir '{source}' for server {name} does not exist.")
+            if not path.isdir(source):
+                raise IOError(f"The local_data_dir '{source}' for server {name} is not a folder.")
 
