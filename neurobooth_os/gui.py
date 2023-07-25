@@ -603,6 +603,7 @@ def gui():
 def main():
     """The starting point of Neurobooth"""
     try:
+        logger.info("Starting GUI")
         gui()
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")

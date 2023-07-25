@@ -37,6 +37,7 @@ def Main():
 
     # Initialize default logger
     logger = make_default_logger()
+    logger.info("Starting ACQ")
     try:
         run_acq(logger)
     except Exception as e:
@@ -51,7 +52,11 @@ def run_acq(logger):
     streams = {}
     lowFeed_running = False
     recording = False
-    for data, connx in get_client_messages(s1):
+    device_config = config.neurobooth_config["acquisition"]
+    port = device_config["port"]
+    host = ''
+
+    for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 
         if "vis_stream" in data:
