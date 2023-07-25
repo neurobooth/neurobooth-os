@@ -57,13 +57,16 @@ def socket_message(message, node_name, wait_data=False):
 
     try:
         data = connect()
-    except (TimeoutError, ConnectionRefusedError):
+    except (TimeoutError, ConnectionRefusedError) as e:
+        logger.error(f"Unable to connect to client: {e}. Retrying.")
         try:
             data = connect()
         except Exception as e:
-            logger.error(f"Unable to connect client: {e}")
+            logger.error(f"Unable to connect client after retry: {e}.")
             return
-
+    except Exception as e:
+        logger.error(f"An unexpected exception occurred while connecting to client: {e}.")
+        return
     return data
 
 
@@ -136,6 +139,7 @@ def node_info(node_name):
     """
     host = neurobooth_config[node_name]["name"]
     port = neurobooth_config[node_name]["port"]
+    logger.debug(f"Host is {host}, and port is {port}.")
     return host, port
 
 
@@ -211,9 +215,13 @@ def start_server(node_name, save_pid_txt=True):
     # Kill any previous server
     kill_pid_txt(node_name=node_name)
 
+    logger.debug(f"Attempting to start server: {node_name}")
+    logger.debug(f"Server {node_name} has configuration: {s} ")
+
     # get list of python processes
     task_cmd = f"tasklist.exe /S {s['name']} /U {s['user']} /P {s['pass']}"
     out = os.popen(task_cmd).read()
+    logger.debug(f"Python processes found: {out}")
     pids_old = get_python_pids(out)
 
     # Get list of scheduled tasks and run TaskOnEvent if not running
@@ -234,16 +242,24 @@ def start_server(node_name, save_pid_txt=True):
 
     # Run scheduled task cmd1 creates a scheduled task, cmd2 initiates it
     cmd_str = f"SCHTASKS /S {s['name']} /U {s['name']}\\{s['user']} /P {s['pass']}"
+    print("Value of command string: " + cmd_str)
     cmd_1 = (
         cmd_str
         + f" /Create /TN {task_name} /TR {s['bat']} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
     )
-    cmd_2 = cmd_str + f" /Run /TN {task_name}"
+    print("Value of cmd_1: " + cmd_1)
     out = os.popen(cmd_1).read()
+    print("Result of cmd_1: " + out)
+
+    cmd_2 = cmd_str + f" /Run /TN {task_name}"
+    print("Value of cmd_2: " + cmd_2)
     out = os.popen(cmd_2).read()
+    print("Result of cmd_2: " + out)
 
     sleep(0.3)
     out = os.popen(task_cmd).read()
+    print("Result of task_cmd: " + out)
+
     pids_new = get_python_pids(out)
 
     pid = [p for p in pids_new if p not in pids_old]
