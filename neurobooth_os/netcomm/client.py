@@ -234,10 +234,12 @@ def start_server(node_name, save_pid_txt=True):
 
     # Run scheduled task cmd1 creates a scheduled task, cmd2 initiates it
     cmd_str = f"SCHTASKS /S {s['name']} /U {s['name']}\\{s['user']} /P {s['pass']}"
+    print(cmd_str)
     cmd_1 = (
         cmd_str
         + f" /Create /TN {task_name} /TR {s['bat']} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
     )
+    print(cmd_1)
     cmd_2 = cmd_str + f" /Run /TN {task_name}"
     out = os.popen(cmd_1).read()
     out = os.popen(cmd_2).read()
