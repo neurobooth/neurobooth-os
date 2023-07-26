@@ -10,6 +10,8 @@ from neurobooth_os.log_manager import make_default_logger
 import argparse
 import sys
 
+# Run this script from the following server, so it gets the correct value of local_data_dir
+server_name = "acquisition"
 
 class TimeoutException(Exception):
     pass
@@ -25,7 +27,7 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
     args
         Command line arguments.
     """
-    session_root = cfg.neurobooth_config["local_data_dir"]
+    session_root = cfg.neurobooth_config[server_name]["local_data_dir"]
     logger = logging.getLogger('default')
     logger.debug(f'Session Root: {session_root}')
 
