@@ -22,6 +22,7 @@ from neurobooth_os.iout.lsl_streamer import (
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import make_session_logger
 
+server_config = config.neurobooth_config["acquisition"]
 
 def countdown(period):
     t1 = local_clock()
@@ -52,8 +53,7 @@ def run_acq(logger):
     streams = {}
     lowFeed_running = False
     recording = False
-    device_config = config.neurobooth_config["acquisition"]
-    port = device_config["port"]
+    port = server_config["port"]
     host = ''
 
     for data, connx in get_client_messages(s1, port, host):
@@ -80,7 +80,7 @@ def run_acq(logger):
             subject_id_date = log_task["subject_id-date"]
 
             conn = meta.get_conn(database=database_name)
-            ses_folder = f"{config.neurobooth_config['local_data_dir']}{subject_id_date}"
+            ses_folder = f"{server_config['local_data_dir']}{subject_id_date}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
@@ -116,7 +116,7 @@ def run_acq(logger):
             print("Starting recording")
             t0 = time()
             fname, task = data.split("::")[1:]
-            fname = f"{config.neurobooth_config['local_data_dir']}{subject_id_date}/{fname}"
+            fname = f"{server_config['local_data_dir']}{subject_id_date}/{fname}"
 
             for k in streams.keys():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:

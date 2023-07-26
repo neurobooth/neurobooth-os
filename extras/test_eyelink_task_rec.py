@@ -29,6 +29,8 @@ from neurobooth_os.tasks.task_importer import get_task_funcs
 os.chdir(r"C:\neurobooth-eel\neurobooth_os\\")
 print(os.getcwd())
 
+server_name = "presentation"
+server_config = config.neurobooth_config[server_name]
 
 def fake_task(**kwarg):
     sleep(10)
@@ -53,7 +55,7 @@ def run_task(task_funct, s2, cmd, subj_id, task, send_stdout, task_karg={}):
 win = utl.make_win(full_screen=False)
 streams, screen_running = {}, False
 collection_id = "mvp_025"
-streams = start_lsl_threads("presentation", collection_id, win=win)
+streams = start_lsl_threads(server_name, collection_id, win=win)
 task_func_dict = get_task_funcs(collection_id)
 
 task = "pursuit_task_1"
@@ -63,7 +65,7 @@ win.color = [0, 0, 0]
 win.flip()
 task_karg = {
     "win": win,
-    "path": config.neurobooth_config["local_data_dir"],
+    "path": server_config["local_data_dir"],
     "subj_id": subj_id,
     "eye_tracker": streams["eye_tracker"],
     "marker_outlet": streams["marker"],
@@ -80,7 +82,7 @@ tsk_fun(**task_karg)
 streams["eye_tracker"].stop()
 
 
-# fname =  f"{config.neurobooth_config['local_data_dir']}{subj_id}{task}2.edf"
+# fname =  f"{server_config['local_data_dir']}{subj_id}{task}2.edf"
 # streams['eye_tracker'].start(fname)
 
 # # res = run_task(tsk_fun, s2, cmd, subj_id, task, send_stdout, task_karg)

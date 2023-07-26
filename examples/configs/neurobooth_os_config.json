@@ -3,6 +3,7 @@
     "video_tasks": "C:/neurobooth/video-tasks",
     "cam_inx_lowfeed": 0,
     "default_log_path": "C:/neurobooth/neurobooth_logs",
+    "server_name": "control",
     "acquisition": {
         "name": "acq",
         "user": "ACQ",
