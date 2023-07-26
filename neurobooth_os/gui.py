@@ -34,6 +34,7 @@ from neurobooth_os.iout.split_xdf import split_sens_files, get_xdf_name
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
 
+server_config = cfg.neurobooth_config["control"]
 
 def setup_log(sg_handler = None):
     logger = make_default_logger()
@@ -214,7 +215,7 @@ def _start_lsl_session(window, inlets, folder=""):
     # Create LSL session
     streamargs = [{"name": n} for n in list(inlets)]
     session = liesl.Session(
-        prefix=folder, streamargs=streamargs, mainfolder=cfg.neurobooth_config["local_data_dir"]
+        prefix=folder, streamargs=streamargs, mainfolder=server_config["local_data_dir"]
     )
     print("LSL session with: ", list(inlets))
     return session
@@ -490,8 +491,8 @@ def gui():
                     "Pressed saving notes without task, select one in the dropdown list"
                 )
                 continue
-            if not op.exists(f"{cfg.neurobooth_config['local_data_dir']}/{sess_info['subject_id_date']}"):
-                os.mkdir(f"{cfg.neurobooth_config['local_data_dir']}/{sess_info['subject_id_date']}")
+            if not op.exists(f"{server_config['local_data_dir']}/{sess_info['subject_id_date']}"):
+                os.mkdir(f"{server_config['local_data_dir']}/{sess_info['subject_id_date']}")
 
             if values["_notes_taskname_"] == "All tasks":
                 for task in sess_info["tasks"].split(", "):
