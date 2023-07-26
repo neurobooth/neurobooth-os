@@ -27,7 +27,7 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
     args
         Command line arguments.
     """
-    session_root = cfg.neurobooth_config[server_name]["local_data_dir"]
+    session_root = cfg.neurobooth_config[args.server]["local_data_dir"]
     logger = logging.getLogger('default')
     logger.debug(f'Session Root: {session_root}')
 
@@ -139,6 +139,12 @@ def parse_arguments() -> argparse.Namespace:
         default=600,
         type=int,
         help='Specify a timeout (in seconds) for each file retrieval. Default is 10 min. No timeout if <= 0.'
+    )
+    parser.add_argument(
+        '--server',
+        default='acquisition',
+        type=int,
+        help='Specify the server to run on so the proper value of local_data_dir is used. Default is "acquisition".'
     )
     args = parser.parse_args()
 

@@ -35,7 +35,7 @@ from neurobooth_os.tasks.task_importer import get_task_funcs
 from neurobooth_os.log_manager import make_session_logger, make_default_logger
 
 
-device_config = config.neurobooth_config["presentation"]
+server_config = config.neurobooth_config["presentation"]
 
 
 def Main():
@@ -63,7 +63,7 @@ def run_stm(logger):
         win = utl.make_win(full_screen=True)
 
     streams, screen_running, presented = {}, False, False
-    port = device_config["port"]
+    port = server_config["port"]
     host = ''
 
     for data, connx in get_client_messages(s1, port, host):
@@ -91,7 +91,7 @@ def run_stm(logger):
             subject_id_date = log_task["subject_id-date"]
             conn = meta.get_conn(database=database_name)
             logger.info(f"Database name is {database_name}.")
-            ses_folder = f"{device_config['local_data_dir']}{subject_id_date}"
+            ses_folder = f"{server_config['local_data_dir']}{subject_id_date}"
 
             logger.info(f"Creating session folder: {ses_folder}")
             if not os.path.exists(ses_folder):
@@ -126,7 +126,7 @@ def run_stm(logger):
 
             task_karg = {
                 "win": win,
-                "path": device_config["local_data_dir"] + f"{subject_id_date}/",
+                "path": server_config["local_data_dir"] + f"{subject_id_date}/",
                 "subj_id": subject_id_date,
                 "marker_outlet": streams["marker"],
                 "prompt": True,
