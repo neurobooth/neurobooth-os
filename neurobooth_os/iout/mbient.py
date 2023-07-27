@@ -21,9 +21,6 @@ if not DISABLE_LSL:  # Conditional imports based on flags
     from pylsl import StreamInfo, StreamOutlet
     from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 
-DEBUG_PRINT_DATA: bool = False  # If True and LSL is disabled, print data to the console.
-DEBUG_PRINT_DECIMATE: int = 20  # If using DEBUG_PRINT_DATA, only print every Nth data point.
-
 
 # --------------------------------------------------------------------------------
 # Exception Classes
@@ -453,6 +450,9 @@ class Mbient:
     SCAN_LOCK = mp.Lock()
     SCAN_PERFORMED = False
 
+    # Type definitions
+    DATA_HANDLER = Callable[[float, Any, Any], None]
+
     def __init__(
         self,
         mac: str,
@@ -482,9 +482,10 @@ class Mbient:
         self.device_wrapper: Optional[MetaWearWrapper] = None
         self.subscribed_signals: List[Any] = []
         self.outlet: Optional[StreamOutlet] = None
-        self.callback: Callable = lambda *args: None
+        self.data_handlers: List['Mbient.DATA_HANDLER'] = []
 
         # Streaming-related variables
+        self.callback = cbindings.FnVoid_VoidP_DataP(self._callback)
         self.streaming: bool = False
         self.n_samples_streamed = 0
 
@@ -493,6 +494,9 @@ class Mbient:
 
     def format_message(self, msg: str) -> str:
         return f'Mbient [{self.dev_name}; {self.mac}]: {msg}'
+
+    def register_data_handler(self, handler_fn: 'Mbient.DATA_HANDLER'):
+        self.data_handlers.append(handler_fn)
 
     def prepare_scan(self) -> None:
         """
@@ -649,26 +653,16 @@ class Mbient:
         )
         return StreamOutlet(stream_mbient)
 
-    def _lsl_data_handler(self, ctx, data) -> None:
-        """Callback to push data to LSL"""
-        values = parse_value(data, n_elem=2)
-        self.outlet.push_sample([
-            data.contents.epoch,
-            values[0].x,
-            values[0].y,
-            values[0].z,
-            values[1].x,
-            values[1].y,
-            values[1].z,
-        ])
+    def _callback(self, context: Any, data: Any) -> None:
+        """Process data streamed from the device"""
         self.n_samples_streamed += 1
+        acc, gyro = parse_value(data, n_elem=2)
+        for handler in self.data_handlers:
+            handler(data.contents.epoch, acc, gyro)
 
-    def _debug_data_handler(self, ctx, data) -> None:
-        """Callback for debugging; may print data to the console."""
-        values = parse_value(data, n_elem=2)
-        if DEBUG_PRINT_DATA and (self.n_samples_streamed % DEBUG_PRINT_DECIMATE) == 0:
-            print(f'Epoch={data.contents.epoch}, Accel={values[0]}, Gyro={values[1]}', flush=True)
-        self.n_samples_streamed += 1
+    def _lsl_data_handler(self, epoch: float, acc: Any, gyro: Any) -> None:
+        """Push data to LSL"""
+        self.outlet.push_sample([epoch, acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z])
 
     def setup(self) -> None:
         """Configure the device (i.e., connection settings, sensor settings, data streaming callback)"""
@@ -681,10 +675,9 @@ class Mbient:
         # Speculation: Python can garbage collect variables that the C bindings expect to exist => memory access error.
         processor = MetaWearWrapper.create_data_fusion_processor(sensor_signals)
         if DISABLE_LSL:
-            self.logger.warning('Using Debugging Data Handler')
-            self.callback = cbindings.FnVoid_VoidP_DataP(self._debug_data_handler)
+            self.logger.warning('LSL Disabled!')
         else:
-            self.callback = cbindings.FnVoid_VoidP_DataP(self._lsl_data_handler)
+            self.data_handlers = [self._lsl_data_handler, *self.data_handlers]  # Make sure LSL is called first!
         libmetawear.mbl_mw_datasignal_subscribe(processor, None, self.callback)
         self.subscribed_signals.append(processor)
 
@@ -751,11 +744,14 @@ class Mbient:
 # Testing Script
 # --------------------------------------------------------------------------------
 def test_script() -> None:
-    global DISABLE_LSL, DEBUG_PRINT_DATA
+    """
+    Connect to the specified device, print battery status, capture data for some time (printing to the console),
+    and then disconnect.
+    """
+    global DISABLE_LSL
     DISABLE_LSL = True
-    DEBUG_PRINT_DATA = True
 
-    parser = argparse.ArgumentParser(description='Run a standalone test capture using an Mbient.')
+    parser = argparse.ArgumentParser(description='Run a standalone test data capture using an Mbient.')
     parser.add_argument(
         '--mac',
         required=True,
@@ -774,11 +770,19 @@ def test_script() -> None:
         type=int,
         help='Duration of data capture.'
     )
+    parser.add_argument(
+        '--decimate',
+        default=20,
+        type=int,
+        help='Only print every Nth received sample to the console.'
+    )
 
     args = parser.parse_args()
 
     if args.duration < 1:
         parser.error('Invalid duration specified!')
+    if args.decimate < 1:
+        parser.error('Invalid decimate specified!')
 
     logger = logging.getLogger('session')
     console_handler = logging.StreamHandler(sys.stdout)
@@ -790,6 +794,13 @@ def test_script() -> None:
     logger.info(f'Creating Device {args.name} at {args.mac}')
     device = Mbient(mac=args.mac, dev_name=args.name)
     device.SCAN_PERFORMED = True  # Make repeated runs of test scrip faster; comment out if needed.
+
+    def _test_data_handler(epoch: float, acc: Any, gyro: Any) -> None:
+        """Prints data to the console"""
+        if (device.n_samples_streamed - 1) % args.decimate == 0:
+            print(f'Epoch={epoch}, Accel={acc}, Gyro={gyro}', flush=True)
+
+    device.register_data_handler(_test_data_handler)
     success = device.prepare()
     if not success:
         logger.critical(f'Unable to connect to device at {args.mac}')
