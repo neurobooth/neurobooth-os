@@ -3,8 +3,7 @@ import sys
 import argparse
 import json
 from typing import Callable, List, NamedTuple
-from mbientlab.metawear import MetaWear, libmetawear
-from time import sleep, time
+from time import time
 import multiprocessing as mp
 import logging
 from neurobooth_os.iout.mbient import scan_BLE, connect_device, reset_device, MbientFailedConnection

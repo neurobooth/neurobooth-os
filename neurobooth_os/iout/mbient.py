@@ -6,9 +6,11 @@ from time import sleep
 import multiprocessing as mp
 import logging
 from typing import Any, Dict, List, Callable, NamedTuple, Optional
+from abc import ABC, abstractmethod
+from enum import IntEnum
 
 from mbientlab.warble import BleScanner
-from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings
+from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings, Module, Model
 
 
 # --------------------------------------------------------------------------------
@@ -30,6 +32,10 @@ class MbientError(Exception):
     pass
 
 
+class UnsupportedDevice(MbientError):
+    pass
+
+
 class MbientFailedConnection(MbientError):
     pass
 
@@ -39,10 +45,10 @@ class MbientResetTimeout(MbientError):
 
 
 # --------------------------------------------------------------------------------
-# Procedural Interface
+# Mbientlab Wrapper and Procedures
 #
-# Used for external scripts (e.g. device reset) and to abstract / group together
-# related mbientlab function calls.
+# Provides an additional layer of abstraction around mbientlab functions.
+# Can be used by external scripts (e.g., reset device script).
 # --------------------------------------------------------------------------------
 def scan_BLE(timeout_sec: float = 10, n_devices: int = 5) -> Dict[str, str]:
     """
@@ -110,176 +116,7 @@ def connect_device(
     return device
 
 
-class ConnectionParameters(NamedTuple):
-    """
-    Arguments for mbl_mw_settings_set_connection_parameters
-    See: https://mbientlab.com/documents/metawear/cpp/latest/settings_8h.html#a1cf3cae052fe7981c26124340a41d66d
-    """
-    min_conn_interval: float = 7.5
-    max_conn_interval: float = 7.5
-    latency: int = 0
-    timeout: int = 6000
-
-
-def setup_connection_settings(device: MetaWear, connection_params: ConnectionParameters) -> None:
-    """
-    Configure the connection settings and transmission power.
-    See: https://mbientlab.com/documents/metawear/cpp/latest/settings_8h.html#a1cf3cae052fe7981c26124340a41d66d
-    See: https://mbientlab.com/documents/metawear/cpp/latest/settings_8h.html#a335f712d5fc0587eff9671b8b105d3ed
-
-    :param device: The device to update.
-    :param connection_params: Arguments for mbl_mw_settings_set_connection_parameters.
-    """
-    board = device.board
-    libmetawear.mbl_mw_settings_set_connection_parameters(
-        board,
-        connection_params.min_conn_interval,
-        connection_params.max_conn_interval,
-        connection_params.latency,
-        connection_params.timeout,
-    )
-    libmetawear.mbl_mw_settings_set_tx_power(board, 8)
-    sleep(1)
-
-
-class SensorParameters(NamedTuple):
-    """
-    Generic parameters for a sensor.
-    See: https://mbientlab.com/documents/metawear/cpp/latest/accelerometer_8h.html#a5b7609e6a950d87215be8bea52ffe48c
-    See: https://mbientlab.com/documents/metawear/cpp/latest/gyro__bosch_8h.html#ab6c0e565c919ee7ccb859d03e06b29d5
-    """
-    sample_rate: float  # Hz; anything beyond 100 may not work well
-    data_range: float  # gs for accelerometer, degrees per second for gyroscope
-
-
-class SensorSignals(NamedTuple):
-    """The data signal objects for each onboard sensor."""
-    accel_signal: Any
-    gyro_signal: Any
-
-
-def setup_sensor_settings(
-        device: MetaWear,
-        accel_params: SensorParameters,
-        gyro_params: SensorParameters,
-) -> SensorSignals:
-    """
-    Configure the settings of the accelerometer and gyroscope.
-    See: https://mbientlab.com/documents/metawear/cpp/latest/accelerometer_8h.html
-    See: https://mbientlab.com/documents/metawear/cpp/latest/gyro__bosch_8h.html
-
-    :param device: The device to update.
-    :param accel_params: Settings for the accelerometer.
-    :param gyro_params: Settings for the gyroscope.
-    :returns: A NamedTuple containing the signal objects for the accelerometer and gyroscope.
-    """
-    board = device.board
-    # Configure accelerometer
-    libmetawear.mbl_mw_acc_set_odr(board, accel_params.sample_rate)
-    libmetawear.mbl_mw_acc_set_range(board, accel_params.data_range)
-    libmetawear.mbl_mw_acc_write_acceleration_config(board)
-
-    # Configure gyroscope
-    try:  # MMRS only
-        libmetawear.mbl_mw_gyro_bmi270_set_odr(board, gyro_params.sample_rate)
-        libmetawear.mbl_mw_gyro_bmi270_set_range(board, gyro_params.data_range)
-        libmetawear.mbl_mw_gyro_bmi270_write_config(board)
-    except:  # MMR1, MMR and MMC only
-        libmetawear.mbl_mw_gyro_bmi160_set_odr(board, gyro_params.sample_rate)
-        libmetawear.mbl_mw_gyro_bmi160_set_range(board, gyro_params.data_range)
-        libmetawear.mbl_mw_gyro_bmi160_write_config(board)
-
-    acc = libmetawear.mbl_mw_acc_get_acceleration_data_signal(board)
-    try:  # MMRS only
-        gyro = libmetawear.mbl_mw_gyro_bmi270_get_rotation_data_signal(board)
-    except:  # MMR1, MMR and MMC only
-        gyro = libmetawear.mbl_mw_gyro_bmi160_get_rotation_data_signal(board)
-
-    return SensorSignals(accel_signal=acc, gyro_signal=gyro)
-
-
-class DataFusionCreator:
-    """Helper class for creating a data fusion processor.
-    The class provides a limited scope for the callback and event variable needed to wait for the response.
-    See: https://github.com/mbientlab/MetaWear-SDK-Python/blob/master/examples/data_processor.py
-    """
-    def __init__(self):
-        self.processor_created = mp.Event()
-        self.processor = None
-
-    def _processor_created_callback(self, context, pointer):
-        self.processor = pointer
-        self.processor_created.set()
-
-    def create_processor(self, sensor_signals: SensorSignals):
-        """
-        Create a data processor that fuses the accelerometer and gyroscope signals.
-
-        :param sensor_signals: A NamedTuple containing the signal objects for the accelerometer and gyroscope.
-        :returns: The data processor object that scan be subscribed to.
-        """
-        signals = (c_void_p * 1)()  # This is sorcery, but it's how the examples do things...
-        signals[0] = sensor_signals.gyro_signal
-
-        callback = cbindings.FnVoid_VoidP_VoidP(self._processor_created_callback)
-        libmetawear.mbl_mw_dataprocessor_fuser_create(sensor_signals.accel_signal, signals, 1, None, callback)
-        self.processor_created.wait()
-
-        return self.processor
-
-
-def enable_inertial_sampling(device: MetaWear) -> None:
-    """
-    Enable sampling on the accelerometer and gyroscope.
-    :param device: The device to update.
-    """
-    board = device.board
-    libmetawear.mbl_mw_acc_enable_acceleration_sampling(board)
-    try:  # MMRS only
-        libmetawear.mbl_mw_gyro_bmi270_enable_rotation_sampling(board)
-    except:  # MMR1, MMR and MMC only
-        libmetawear.mbl_mw_gyro_bmi160_enable_rotation_sampling(board)
-
-
-def disable_inertial_sampling(device: MetaWear) -> None:
-    """
-    Disable sampling on the accelerometer and gyroscope.
-    :param device: The device to update.
-    """
-    board = device.board
-    libmetawear.mbl_mw_acc_disable_acceleration_sampling(board)
-    try:  # MMRS only
-        libmetawear.mbl_mw_gyro_bmi270_disable_rotation_sampling(board)
-    except:  # MMR1, MMR and MMC only
-        libmetawear.mbl_mw_gyro_bmi160_disable_rotation_sampling(board)
-
-
-def start_inertial_sampling(device: MetaWear) -> None:
-    """
-    Start sampling on the accelerometer and gyroscope.
-    :param device: The device to update.
-    """
-    board = device.board
-    libmetawear.mbl_mw_acc_start(board)
-    try:  # MMRS only
-        libmetawear.mbl_mw_gyro_bmi270_start(board)
-    except:  # MMR1, MMR and MMC only
-        libmetawear.mbl_mw_gyro_bmi160_start(board)
-
-
-def stop_inertial_sampling(device: MetaWear) -> None:
-    """
-    Stop sampling on the accelerometer and gyroscope.
-    :param device: The device to update.
-    """
-    board = device.board
-    libmetawear.mbl_mw_acc_stop(board)
-    try:  # MMRS only
-        libmetawear.mbl_mw_gyro_bmi270_stop(board)
-    except:  # MMR1, MMR and MMC only
-        libmetawear.mbl_mw_gyro_bmi160_stop(board)
-
-
+# This procedure is external to the wrapper so that it can be called on an unwrapped device object in the reset script
 def reset_device(device: MetaWear) -> None:
     """
     Reset the device. See https://mbientlab.com/tutorials/PyLinux.html#reset
@@ -293,6 +130,308 @@ def reset_device(device: MetaWear) -> None:
     libmetawear.mbl_mw_macro_erase_all(board)
     libmetawear.mbl_mw_debug_reset_after_gc(board)
     libmetawear.mbl_mw_debug_disconnect(board)
+
+
+class CallbackManager:
+    """
+    Helper class to provide limited scope and blocking function for mbientlab callbacks.
+    Example of code that can be refactored to use this helper:
+    https://github.com/mbientlab/MetaWear-SDK-Python/blob/master/examples/data_processor.py
+    """
+
+    def __init__(self, binding: cbindings.CFUNCTYPE):
+        """
+        :param binding: FnVoid_VoidP_DataP or FnVoid_VoidP_VoidP, depending on the what the callback is subscribed to.
+        """
+        self.callback_completed_event = mp.Event()
+        self.callback_value = None
+        self.callback = binding(self._callback)
+
+    def _callback(self, context: Any, value: Any) -> None:
+        self.callback_value = value
+        self.callback_completed_event.set()
+
+    def wait_on_value(self) -> Any:
+        self.callback_completed_event.wait()
+        return self.callback_value
+
+
+class ConnectionParameters(NamedTuple):
+    """
+    Arguments for mbl_mw_settings_set_connection_parameters
+    See: https://mbientlab.com/documents/metawear/cpp/latest/settings_8h.html#a1cf3cae052fe7981c26124340a41d66d
+    """
+    min_conn_interval: float = 7.5
+    max_conn_interval: float = 7.5
+    latency: int = 0
+    timeout: int = 6000
+
+
+class SensorParameters(NamedTuple):
+    """
+    Generic parameters for a sensor.
+    See: https://mbientlab.com/documents/metawear/cpp/latest/accelerometer_8h.html#a5b7609e6a950d87215be8bea52ffe48c
+    See: https://mbientlab.com/documents/metawear/cpp/latest/gyro__bosch_8h.html#ab6c0e565c919ee7ccb859d03e06b29d5
+    """
+    sample_rate: float  # Hz; anything beyond 100 may not work well
+    data_range: float  # gs for accelerometer, degrees per second for gyroscope
+
+
+class BatteryState(NamedTuple):
+    """See https://mbientlab.com/documents/metawear/cpp/latest/structMblMwBatteryState.html"""
+    voltage: float  # mV
+    charge: float  # Percent, [0-100]
+
+
+class SensorSignals(NamedTuple):
+    """The data signal objects for each onboard sensor."""
+    accel_signal: Any
+    gyro_signal: Any
+
+
+class GyroscopeType(IntEnum):
+    """
+    Gyroscope type constants (can't seem to find the in the mbientlab library...)
+
+    See: https://mbientlab.com/documents/metawear/cpp/latest/gyro__bosch_8h.html
+    MBL_MW_MODULE_GYRO_TYPE_BMI160 = 0
+    MBL_MW_MODULE_GYRO_TYPE_BMI270 = 1
+    """
+    BMI160 = 0
+    BMI270 = 1
+
+
+class MetaWearWrapper(ABC):
+    """
+    A wrapper around a MetaWear object that provices an additional layer of abstraction.
+    """
+    SUPPORTED_DEVICE_MODELS = [  # Should be the models with both accelerometer and gyroscope
+        Model.METAMOTION_S,
+        Model.METAMOTION_R,
+        Model.METAMOTION_RL,
+        Model.METAMOTION_C,
+        Model.METAWEAR_RG,
+        Model.METAWEAR_RPRO
+    ]
+
+    @staticmethod
+    def create_wrapper(device: MetaWear) -> 'MetaWearWrapper':
+        """
+        Inspect the device and return an appropriate wrapper subclass.
+
+        :param device: The MetaWear object to wrap.
+        :returns: An appropriate wrapper selected based on the board's configuration.
+        """
+        board = device.board
+        model = libmetawear.mbl_mw_metawearboard_get_model(board)
+        if model not in MetaWearWrapper.SUPPORTED_DEVICE_MODELS:
+            model_name = str(libmetawear.mbl_mw_metawearboard_get_model_name(board))
+            raise UnsupportedDevice(f'Unsupported Device Model: {model_name}')
+
+        gyro_type = libmetawear.mbl_mw_metawearboard_lookup_module(board, Module.GYRO)
+        if gyro_type == GyroscopeType.BMI270:
+            return MetaWearWrapperBMI270(device)
+        elif gyro_type == GyroscopeType.BMI160:
+            return MetaWearWrapperBMI160(device)
+        else:
+            raise UnsupportedDevice(f'Unrecognized gyroscope return value: {gyro_type}')
+
+    def __init__(self, device):
+        self.device = device
+        self.board = device.board
+        self.disconnect = self.device.disconnect  # Convenience binding
+        self.model_name = str(libmetawear.mbl_mw_metawearboard_get_model_name(self.board))
+        self.battery_state: Optional[BatteryState] = None
+
+    # The on_disconnect property of the wrapper binds to the wrapped MetaWear object for convenience
+    @property
+    def on_disconnect(self):
+        return self.device.on_disconnect
+
+    @on_disconnect.setter
+    def on_disconnect(self, callback_fn: Callable[[int], None]):
+        self.device.on_disconnect = callback_fn
+
+    def setup_connection_settings(self, connection_params: ConnectionParameters) -> None:
+        """
+        Configure the connection settings and transmission power.
+        See: https://mbientlab.com/documents/metawear/cpp/latest/settings_8h.html#a1cf3cae052fe7981c26124340a41d66d
+        See: https://mbientlab.com/documents/metawear/cpp/latest/settings_8h.html#a335f712d5fc0587eff9671b8b105d3ed
+
+        :param connection_params: Arguments for mbl_mw_settings_set_connection_parameters.
+        """
+        libmetawear.mbl_mw_settings_set_connection_parameters(
+            self.board,
+            connection_params.min_conn_interval,
+            connection_params.max_conn_interval,
+            connection_params.latency,
+            connection_params.timeout,
+        )
+        libmetawear.mbl_mw_settings_set_tx_power(self.board, 8)
+        sleep(1)
+
+    @abstractmethod
+    def setup_sensor_settings(self, accel_params: SensorParameters, gyro_params: SensorParameters) -> SensorSignals:
+        """
+        Configure the settings of the accelerometer and gyroscope.
+        See: https://mbientlab.com/documents/metawear/cpp/latest/accelerometer_8h.html
+        See: https://mbientlab.com/documents/metawear/cpp/latest/gyro__bosch_8h.html
+
+        :param accel_params: Settings for the accelerometer.
+        :param gyro_params: Settings for the gyroscope.
+        :returns: A NamedTuple containing the signal objects for the accelerometer and gyroscope.
+        """
+        raise NotImplementedError()
+
+    @staticmethod
+    def create_data_fusion_processor(sensor_signals: SensorSignals) -> Any:
+        """
+        Create a data processor that fuses the accelerometer and gyroscope signals.
+        See: https://github.com/mbientlab/MetaWear-SDK-Python/blob/master/examples/data_processor.py
+
+        :param sensor_signals: A NamedTuple containing the signal objects for the accelerometer and gyroscope.
+        :returns: The data processor object that scan be subscribed to.
+        """
+        callback_manager = CallbackManager(binding=cbindings.FnVoid_VoidP_VoidP)
+        signals = (c_void_p * 1)()  # This is sorcery, but it's how the examples do things...
+        signals[0] = sensor_signals.gyro_signal
+        libmetawear.mbl_mw_dataprocessor_fuser_create(
+            sensor_signals.accel_signal, signals, 1, None, callback_manager.callback
+        )
+        return callback_manager.wait_on_value()
+
+    def get_battery_state(self) -> BatteryState:
+        """
+        :returns: The device's battery voltage and charge.
+        """
+        callback_manager = CallbackManager(binding=cbindings.FnVoid_VoidP_DataP)
+        signal = libmetawear.mbl_mw_settings_get_battery_state_data_signal(self.board)
+        libmetawear.mbl_mw_datasignal_subscribe(signal, None, callback_manager.callback)
+        libmetawear.mbl_mw_datasignal_read(signal)
+        battery_state = callback_manager.wait_on_value()
+        libmetawear.mbl_mw_datasignal_unsubscribe(signal)
+        return BatteryState(voltage=battery_state.voltage, charge=battery_state.charge)
+
+    def buzz(self, motor_strength: float, buzz_time_sec: float) -> None:
+        """
+        Buzz the sensor for the specified amount of time and wait.
+
+        :param motor_strength: Motor strength as a percent (0-100)
+        :param buzz_time_sec: Buzz time in seconds
+        """
+        if motor_strength < 0 or motor_strength > 100:
+            raise ValueError(f'Invalid motor strength: {motor_strength}')
+        buzz_time_ms = int(buzz_time_sec * 1e3)
+        libmetawear.mbl_mw_haptic_start_motor(self.board, motor_strength, buzz_time_ms)
+        sleep(buzz_time_sec)
+
+    @abstractmethod
+    def enable_inertial_sampling(self) -> None:
+        """
+        Enable sampling on the accelerometer and gyroscope.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def disable_inertial_sampling(self) -> None:
+        """
+        Disable sampling on the accelerometer and gyroscope.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def start_inertial_sampling(self) -> None:
+        """
+        Start sampling on the accelerometer and gyroscope.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def stop_inertial_sampling(self) -> None:
+        """
+        Stop sampling on the accelerometer and gyroscope.
+        """
+        raise NotImplementedError()
+
+    def reset_device(self) -> None:
+        """
+        Reset the device. See https://mbientlab.com/tutorials/PyLinux.html#reset
+        """
+        reset_device(self.device)
+
+
+class MetaWearWrapperBMI270(MetaWearWrapper):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def setup_sensor_settings(self, accel_params: SensorParameters, gyro_params: SensorParameters) -> SensorSignals:
+        # Configure accelerometer
+        libmetawear.mbl_mw_acc_set_odr(self.board, accel_params.sample_rate)
+        libmetawear.mbl_mw_acc_set_range(self.board, accel_params.data_range)
+        libmetawear.mbl_mw_acc_write_acceleration_config(self.board)
+
+        # Configure gyroscope
+        libmetawear.mbl_mw_gyro_bmi270_set_odr(self.board, gyro_params.sample_rate)
+        libmetawear.mbl_mw_gyro_bmi270_set_range(self.board, gyro_params.data_range)
+        libmetawear.mbl_mw_gyro_bmi270_write_config(self.board)
+
+        # Get data signals
+        acc = libmetawear.mbl_mw_acc_get_acceleration_data_signal(self.board)
+        gyro = libmetawear.mbl_mw_gyro_bmi270_get_rotation_data_signal(self.board)
+        return SensorSignals(accel_signal=acc, gyro_signal=gyro)
+
+    def enable_inertial_sampling(self) -> None:
+        libmetawear.mbl_mw_acc_enable_acceleration_sampling(self.board)
+        libmetawear.mbl_mw_gyro_bmi270_enable_rotation_sampling(self.board)
+
+    def disable_inertial_sampling(self) -> None:
+        libmetawear.mbl_mw_acc_disable_acceleration_sampling(self.board)
+        libmetawear.mbl_mw_gyro_bmi270_disable_rotation_sampling(self.board)
+
+    def start_inertial_sampling(self) -> None:
+        libmetawear.mbl_mw_acc_start(self.board)
+        libmetawear.mbl_mw_gyro_bmi270_start(self.board)
+
+    def stop_inertial_sampling(self) -> None:
+        libmetawear.mbl_mw_acc_stop(self.board)
+        libmetawear.mbl_mw_gyro_bmi270_stop(self.board)
+
+
+class MetaWearWrapperBMI160(MetaWearWrapper):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def setup_sensor_settings(self, accel_params: SensorParameters, gyro_params: SensorParameters) -> SensorSignals:
+        # Configure accelerometer
+        libmetawear.mbl_mw_acc_set_odr(self.board, accel_params.sample_rate)
+        libmetawear.mbl_mw_acc_set_range(self.board, accel_params.data_range)
+        libmetawear.mbl_mw_acc_write_acceleration_config(self.board)
+
+        # Configure gyroscope
+        libmetawear.mbl_mw_gyro_bmi160_set_odr(self.board, gyro_params.sample_rate)
+        libmetawear.mbl_mw_gyro_bmi160_set_range(self.board, gyro_params.data_range)
+        libmetawear.mbl_mw_gyro_bmi160_write_config(self.board)
+
+        # Get data signals
+        acc = libmetawear.mbl_mw_acc_get_acceleration_data_signal(self.board)
+        gyro = libmetawear.mbl_mw_gyro_bmi160_get_rotation_data_signal(self.board)
+        return SensorSignals(accel_signal=acc, gyro_signal=gyro)
+
+    def enable_inertial_sampling(self) -> None:
+        libmetawear.mbl_mw_acc_enable_acceleration_sampling(self.board)
+        libmetawear.mbl_mw_gyro_bmi160_enable_rotation_sampling(self.board)
+
+    def disable_inertial_sampling(self) -> None:
+        libmetawear.mbl_mw_acc_disable_acceleration_sampling(self.board)
+        libmetawear.mbl_mw_gyro_bmi160_disable_rotation_sampling(self.board)
+
+    def start_inertial_sampling(self) -> None:
+        libmetawear.mbl_mw_acc_start(self.board)
+        libmetawear.mbl_mw_gyro_bmi160_start(self.board)
+
+    def stop_inertial_sampling(self) -> None:
+        libmetawear.mbl_mw_acc_stop(self.board)
+        libmetawear.mbl_mw_gyro_bmi160_stop(self.board)
 
 
 # --------------------------------------------------------------------------------
@@ -340,7 +479,7 @@ class Mbient:
         self.gyro_params = SensorParameters(sample_rate=gyro_hz, data_range=2000)
 
         # Uninitialized Variables
-        self.device: Optional[MetaWear] = None
+        self.device_wrapper: Optional[MetaWearWrapper] = None
         self.subscribed_signals: List[Any] = []
         self.outlet: Optional[StreamOutlet] = None
         self.callback: Callable = lambda *args: None
@@ -358,7 +497,7 @@ class Mbient:
     def prepare_scan(self) -> None:
         """
         Perform a BLE scan to wake up devices before trying to connect.
-        (The alternative is to physically push the button on the devices.)
+        (The alternative is to physically push the button on the devices or scan for devices from a Windows computer.)
         We only need to do this once, so this function ensures it is only done once per machine/server.
         """
         with self.SCAN_LOCK:
@@ -381,15 +520,16 @@ class Mbient:
         if retry_delay_sec is None:
             retry_delay_sec = self.retry_delay_sec
 
-        self.device = connect_device(
+        device = connect_device(
             mac_address=self.mac,
             n_attempts=n_attempts,
             retry_delay_sec=retry_delay_sec,
             log_fn=lambda msg: self.logger.debug(self.format_message(msg)),
         )
-        self.device.on_disconnect = lambda status: self.on_disconnect(status)
+        self.device_wrapper = MetaWearWrapper.create_wrapper(device)
+        self.device_wrapper.on_disconnect = lambda status: self.attempt_reconnect(status)
 
-    def on_disconnect(self, status=None) -> None:
+    def attempt_reconnect(self, status: Optional[int] = None) -> None:
         """
         Callback for disconnect events. Attempt to reconnect to and configure the device.
         :param status: The status code passed by the callback handler.
@@ -421,10 +561,15 @@ class Mbient:
             event.set()
 
         self.logger.info(self.format_message('Resetting Device'))
-        self.device.on_disconnect = disconnect_callback
-        reset_device(self.device)
+        self.device_wrapper.on_disconnect = disconnect_callback
+        self.device_wrapper.reset_device()
         if not event.wait(timeout=timeout_sec):
             raise MbientResetTimeout('Device reset timed out.')
+
+        # Re-supply a generic disconnect event
+        self.device_wrapper.on_disconnect = lambda status: self.logger.info(self.format_message(
+            f'Disconnect with status={status}'
+        ))
 
     def reset_and_reconnect(self, timeout_sec: float = 10) -> None:
         """
@@ -454,6 +599,8 @@ class Mbient:
         try:
             self.prepare_scan()  # Wake up devices
             self.connect()
+            self.logger.debug(self.format_message(f'Device Model: {self.device_wrapper.model_name}'))
+            self.logger.debug(self.format_message(f'Wrapper Class: {self.device_wrapper.__class__.__name__}'))
 
             # Perform a sensor reset and reconnect
             self.reset()
@@ -525,14 +672,14 @@ class Mbient:
 
     def setup(self) -> None:
         """Configure the device (i.e., connection settings, sensor settings, data streaming callback)"""
-        setup_connection_settings(self.device, self.connection_params)
-        sensor_signals = setup_sensor_settings(self.device, self.accel_params, self.gyro_params)
+        self.device_wrapper.setup_connection_settings(self.connection_params)
+        sensor_signals = self.device_wrapper.setup_sensor_settings(self.accel_params, self.gyro_params)
 
         # Hard-Learned Note: The callback function needs to "stick around" and be an instance variable.
         # (As opposed to an anonymous lambda or function-scoped variable.)
         # If not, then the program will silently fail when the callback gets triggered.
         # Speculation: Python can garbage collect variables that the C bindings expect to exist => memory access error.
-        processor = DataFusionCreator().create_processor(sensor_signals)
+        processor = MetaWearWrapper.create_data_fusion_processor(sensor_signals)
         if DISABLE_LSL:
             self.logger.warning('Using Debugging Data Handler')
             self.callback = cbindings.FnVoid_VoidP_DataP(self._debug_data_handler)
@@ -544,51 +691,40 @@ class Mbient:
         print(f"Mbient {self.dev_name} setup")
         self.logger.debug(self.format_message('Setup Completed'))
 
-    def log_battery_info(self, max_wait_sec: float = 5) -> None:
+    def log_battery_info(self) -> None:
         """
         Query the device for its battery status and print it to the log.
-        :param max_wait_sec: How long to wait for the callback to fire before giving up.
         """
-        event = mp.Event()
-
-        def callback(ctx, data):
-            value = parse_value(data, n_elem=1)
-            self.logger.info(self.format_message(f'Voltage = {value.voltage/1e3:.1f} V; Charge = {value.charge}%'))
-            event.set()
-        callback = cbindings.FnVoid_VoidP_DataP(callback)
-
-        signal = libmetawear.mbl_mw_settings_get_battery_state_data_signal(self.device.board)
-        libmetawear.mbl_mw_datasignal_subscribe(signal, None, callback)
-        libmetawear.mbl_mw_datasignal_read(signal)
-        event.wait(max_wait_sec)
-        libmetawear.mbl_mw_datasignal_unsubscribe(signal)
+        battery_state = self.device_wrapper.get_battery_state()
+        self.logger.info(self.format_message(
+            f'Voltage = {battery_state.voltage / 1e3:.1f} V; Charge = {battery_state.charge}%'
+        ))
 
     def start(self) -> None:
         """Begin streaming data."""
-        enable_inertial_sampling(self.device)
+        self.device_wrapper.enable_inertial_sampling()
 
         if self.buzz_time:  # Vibrate and then start acquisition
             self.logger.debug(self.format_message(f'Buzz for {self.buzz_time} s'))
-            libmetawear.mbl_mw_haptic_start_motor(self.device.board, 100.0, self.buzz_time*1e3)
-            sleep(self.buzz_time)
+            self.device_wrapper.buzz(100, self.buzz_time)
 
         self.logger.debug(self.format_message('Starting Streaming'))
         self.streaming = True
-        start_inertial_sampling(self.device)
+        self.device_wrapper.start_inertial_sampling()
 
     def stop(self) -> None:
         """Stop streaming data."""
         self.logger.debug(self.format_message('Stopping Streaming'))
-        stop_inertial_sampling(self.device)
-        disable_inertial_sampling(self.device)
+        self.device_wrapper.stop_inertial_sampling()
+        self.device_wrapper.disable_inertial_sampling()
         self.streaming = False
 
     def disconnect(self) -> None:
         """Disconnect the device."""
         self.logger.debug(self.format_message('Disconnecting...'))
         e = mp.Event()
-        self.device.on_disconnect = lambda status: e.set()
-        self.device.disconnect()
+        self.device_wrapper.on_disconnect = lambda status: e.set()
+        self.device_wrapper.disconnect()
         if e.wait(timeout=10):
             self.logger.debug(self.format_message('Disconnected'))
         else:

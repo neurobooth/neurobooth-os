@@ -169,11 +169,11 @@ insert_to_table("nb_device", dev_intels)
 dev_mbient = []
 for k, mac in cfg.mbient_macs.items():
     try:
-        mbt = Mbient(mac)
-        mbient_info = mbt.device.info
-        mbient_info["address"] = mbt.device.address
-        mbient_info["device_name"] = mbt.dev_name
-        mbt.close()
+        mbient = Mbient(mac)
+        mbient_info = mbient.device_wrapper.device.info
+        mbient_info["address"] = mbient.device_wrapper.device.address
+        mbient_info["device_name"] = mbient.dev_name
+        mbient.close()
 
         dev_mbient_dict = {
             "device_id": f"Mbient_{k}_1",
