@@ -44,7 +44,7 @@ def mock_acq_routine(host, port, conn):
             database_name = data.split(":")[2]
             log_task = eval(data.replace(f"prepare:{collection_id}:{database_name}:", ""))
             subject_id_date = log_task["subject_id-date"]
-            ses_folder = f"{config.neurobooth_config['local_data_dir']}{subject_id_date}"
+            ses_folder = f"{config.neurobooth_config['acquisition']['local_data_dir']}{subject_id_date}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
@@ -74,7 +74,7 @@ def mock_acq_routine(host, port, conn):
 
             print("Starting recording")
             filename, task = data.split("::")[1:]
-            fname = os.path.join(config.neurobooth_config["local_data_dir"], filename)
+            fname = os.path.join(config.neurobooth_config["acquisition"]["local_data_dir"], filename)
             for k in streams.keys():
                 if any([i in k for i in ["hiFeed", "Intel", "FLIR", "IPhone"]]):
                     if task_devs_kw[task].get(k):
