@@ -17,7 +17,6 @@ from neurobooth_os.iout.lsl_streamer import (
     start_lsl_threads,
     close_streams,
     reconnect_streams,
-    connect_mbient,
 )
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import make_session_logger
