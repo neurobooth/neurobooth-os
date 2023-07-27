@@ -9,6 +9,25 @@ import json
 from neurobooth_os.util.constants import NODE_NAMES
 
 
+def get_server_name_from_env():
+    """
+        This is a hack to get the role of the machine that this code is being executed on. It's based on the
+        assumption that the Windows User Profile in use matches one of the servers defined in the config file
+        return: str
+            a server name, or None.
+    """
+    user = getenv("USERPROFILE")
+
+    if "STM" in user:
+        return 'presentation'
+    if "ACQ" in user:
+        return 'acquisition'
+    if "CTR" in user:
+        return 'control'
+
+    return None
+
+
 def validate_folder(value):
     if not path.exists(value):
         raise FileNotFoundError(f"The folder '{value}' does not exist.")
@@ -25,17 +44,16 @@ if not path.exists(fname):
 with open(fname, "r") as f:
     neurobooth_config = json.load(f)
 
-    user_profile = getenv("USERPROFILE")
+    server_name = get_server_name_from_env()
 
-    if "STM" in user_profile:
+    if server_name == "presentation":
         validate_folder(neurobooth_config["video_tasks"])
 
     validate_folder(neurobooth_config["remote_data_dir"])
     validate_folder(neurobooth_config["default_log_path"])
 
     for name in NODE_NAMES:
-        user = neurobooth_config[name]["user"]
-        if user in user_profile:
+        if name == server_name:
             source = neurobooth_config[name]["local_data_dir"]
             if not path.exists(source):
                 raise FileNotFoundError(f"The local_data_dir '{source}' for server {name} does not exist.")
