@@ -242,12 +242,16 @@ class MetaWearWrapper(ABC):
 
     # The on_disconnect property of the wrapper binds to the wrapped MetaWear object for convenience
     @property
-    def on_disconnect(self):
+    def on_disconnect(self) -> Callable:
         return self.device.on_disconnect
 
     @on_disconnect.setter
     def on_disconnect(self, callback_fn: Callable[[int], None]):
         self.device.on_disconnect = callback_fn
+
+    @property
+    def is_connected(self) -> bool:
+        return self.device.is_connected
 
     def setup_connection_settings(self, connection_params: ConnectionParameters) -> None:
         """
