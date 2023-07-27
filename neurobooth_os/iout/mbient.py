@@ -305,7 +305,7 @@ class MetaWearWrapper(ABC):
         signal = libmetawear.mbl_mw_settings_get_battery_state_data_signal(self.board)
         libmetawear.mbl_mw_datasignal_subscribe(signal, None, callback_manager.callback)
         libmetawear.mbl_mw_datasignal_read(signal)
-        battery_state = callback_manager.wait_on_value()
+        battery_state = parse_value(callback_manager.wait_on_value(), n_elem=1)
         libmetawear.mbl_mw_datasignal_unsubscribe(signal)
         return BatteryState(voltage=battery_state.voltage, charge=battery_state.charge)
 
