@@ -842,7 +842,7 @@ def script_parse_args() -> argparse.Namespace:
     args = parser.parse_args()
 
     if args.log_console or args.log_file is not None:
-        from neurobooth_os.logging import make_session_logger_debug
+        from neurobooth_os.log_manager import make_session_logger_debug
         make_session_logger_debug(file=args.log_file, console=args.log_console)
 
     return args

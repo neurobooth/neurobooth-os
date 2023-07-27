@@ -8,18 +8,12 @@ import os
 import pandas as pd
 from io import StringIO
 
-from neurobooth_os.secrets_info import secrets
+from neurobooth_os.config import neurobooth_config
 
 
 def setup_log(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
-    log_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    #filename = f"./{name}.log"
-    #log_handler = logging.FileHandler(filename)
-    #log_handler.setLevel(logging.DEBUG)
-    #log_handler.setFormatter(log_format)
-    #logger.addHandler(log_handler)
     return logger
 
 
@@ -46,7 +40,6 @@ def socket_message(message, node_name, wait_data=False):
 
     def connect():
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # s.settimeout(.1)  # no time out as it's blocking process
 
         # connect to server on local computer
         s.connect((host, port))
@@ -64,20 +57,21 @@ def socket_message(message, node_name, wait_data=False):
 
     try:
         data = connect()
-    except (TimeoutError, ConnectionRefusedError):
-        # print(f"{node_name} socket connexion timed out, trying to restart server")
+    except (TimeoutError, ConnectionRefusedError) as e:
+        logger.error(f"Unable to connect to client: {e}. Retrying.")
         try:
-            # pid = start_server(node_name)
             data = connect()
         except Exception as e:
+            logger.error(f"Unable to connect client after retry: {e}.")
             return
-            # print(e)
-
+    except Exception as e:
+        logger.error(f"An unexpected exception occurred while connecting to client: {e}.")
+        return
     return data
 
 
 def socket_time(node_name, print_flag=1, time_out=3):
-    """Computes connextion time from client->server and client->server->client.
+    """Computes connection time from client->server and client->server->client.
 
     Parameters
     ----------
@@ -143,22 +137,9 @@ def node_info(node_name):
     port int
         port number
     """
-    port = 12347
-    if node_name == "acquisition":
-        host = secrets[node_name]["name"]
-    elif node_name == "presentation":
-        host = secrets[node_name]["name"]
-    elif node_name == "control":
-        host = secrets[node_name]["name"]
-    elif node_name == "dummy_acq":
-        host = "localhost"
-        port = 1280
-    elif node_name == "dummy_stm":
-        host = "localhost"
-        port = 1281
-    elif node_name == "dummy_ctr":
-        host = "localhost"
-        port = 1282
+    host = neurobooth_config[node_name]["name"]
+    port = neurobooth_config[node_name]["port"]
+    logger.debug(f"Host is {host}, and port is {port}.")
     return host, port
 
 
@@ -216,7 +197,7 @@ def start_server(node_name, save_pid_txt=True):
     Parameters
     ----------
     node_name : str
-        PC node name defined in `secrets_info.secrets`
+        PC node name defined in config.neurobooth_config`
     save_pid_txt : bool
         Option to save PID to file for killing PID in the future.
 
@@ -227,16 +208,20 @@ def start_server(node_name, save_pid_txt=True):
     """
 
     if node_name in ["acquisition", "presentation"]:
-        s = secrets[node_name]
+        s = neurobooth_config[node_name]
     else:
         print("Not a known node name")
         return None
     # Kill any previous server
     kill_pid_txt(node_name=node_name)
 
+    logger.debug(f"Attempting to start server: {node_name}")
+    logger.debug(f"Server {node_name} has configuration: {s} ")
+
     # get list of python processes
     task_cmd = f"tasklist.exe /S {s['name']} /U {s['user']} /P {s['pass']}"
     out = os.popen(task_cmd).read()
+    logger.debug(f"Python processes found: {out}")
     pids_old = get_python_pids(out)
 
     # Get list of scheduled tasks and run TaskOnEvent if not running
@@ -261,12 +246,14 @@ def start_server(node_name, save_pid_txt=True):
         cmd_str
         + f" /Create /TN {task_name} /TR {s['bat']} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
     )
-    cmd_2 = cmd_str + f" /Run /TN {task_name}"
     out = os.popen(cmd_1).read()
+
+    cmd_2 = cmd_str + f" /Run /TN {task_name}"
     out = os.popen(cmd_2).read()
 
     sleep(0.3)
     out = os.popen(task_cmd).read()
+
     pids_new = get_python_pids(out)
 
     pid = [p for p in pids_new if p not in pids_old]
@@ -296,7 +283,7 @@ def get_python_pids(output_tasklist):
 def kill_remote_pid(pids, node_name):
 
     if node_name in ["acquisition", "presentation"]:
-        s = secrets[node_name]
+        s = neurobooth_config[node_name]
     else:
         print("Not a known node name")
         return None

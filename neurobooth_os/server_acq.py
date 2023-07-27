@@ -10,7 +10,7 @@ import logging
 
 import neurobooth_os
 from neurobooth_os import config
-from neurobooth_os.logging import make_default_logger
+from neurobooth_os.log_manager import make_default_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import (
@@ -20,8 +20,9 @@ from neurobooth_os.iout.lsl_streamer import (
     connect_mbient,
 )
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.logging import make_session_logger
+from neurobooth_os.log_manager import make_session_logger
 
+server_config = config.neurobooth_config["acquisition"]
 
 def countdown(period):
     t1 = local_clock()
@@ -37,6 +38,7 @@ def Main():
 
     # Initialize default logger
     logger = make_default_logger()
+    logger.info("Starting ACQ")
     try:
         run_acq(logger)
     except Exception as e:
@@ -51,13 +53,16 @@ def run_acq(logger):
     streams = {}
     lowFeed_running = False
     recording = False
-    for data, connx in get_client_messages(s1):
+    port = server_config["port"]
+    host = ''
+
+    for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 
         if "vis_stream" in data:
             if not lowFeed_running:
                 lowFeed = VidRec_Brio(
-                    camindex=config.paths["cam_inx_lowfeed"], doPreview=True
+                    camindex=config.neurobooth_config["cam_inx_lowfeed"], doPreview=True
                 )
                 print("LowFeed running")
                 lowFeed_running = True
@@ -75,7 +80,7 @@ def run_acq(logger):
             subject_id_date = log_task["subject_id-date"]
 
             conn = meta.get_conn(database=database_name)
-            ses_folder = f"{config.paths['data_out']}{subject_id_date}"
+            ses_folder = f"{server_config['local_data_dir']}{subject_id_date}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
@@ -111,7 +116,7 @@ def run_acq(logger):
             print("Starting recording")
             t0 = time()
             fname, task = data.split("::")[1:]
-            fname = f"{config.paths['data_out']}{subject_id_date}/{fname}"
+            fname = f"{server_config['local_data_dir']}{subject_id_date}/{fname}"
 
             for k in streams.keys():
                 if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:

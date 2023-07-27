@@ -32,7 +32,10 @@ from neurobooth_os.netcomm import (
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
-from neurobooth_os.logging import make_session_logger, make_default_logger
+from neurobooth_os.log_manager import make_session_logger, make_default_logger
+
+
+server_config = config.neurobooth_config["presentation"]
 
 
 def Main():
@@ -41,6 +44,7 @@ def Main():
 
     # Initialize logging to default
     logger = make_default_logger()
+    logger.info("Starting STM")
 
     try:
         run_stm(logger)
@@ -59,8 +63,10 @@ def run_stm(logger):
         win = utl.make_win(full_screen=True)
 
     streams, screen_running, presented = {}, False, False
+    port = server_config["port"]
+    host = ''
 
-    for data, connx in get_client_messages(s1):
+    for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 
         if "scr_stream" in data:
@@ -76,19 +82,22 @@ def run_stm(logger):
 
         elif "prepare" in data:
             # data = "prepare:collection_id:database:str(log_task_dict)"
-
+            logger.info("Preparing STM for operation.")
             collection_id = data.split(":")[1]
             database_name = data.split(":")[2]
             log_task = eval(
                 data.replace(f"prepare:{collection_id}:{database_name}:", "")
             )
             subject_id_date = log_task["subject_id-date"]
-
             conn = meta.get_conn(database=database_name)
-            ses_folder = f"{config.paths['data_out']}{subject_id_date}"
+            logger.info(f"Database name is {database_name}.")
+            ses_folder = f"{server_config['local_data_dir']}{subject_id_date}"
+
+            logger.info(f"Creating session folder: {ses_folder}")
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
+            logger.info("Creating session logger in session folder.")
             logger = make_session_logger(ses_folder, 'STM')
             logger.info('LOGGER CREATED')
 
@@ -109,14 +118,15 @@ def run_stm(logger):
             print("UPDATOR:-Connect-")
 
         elif "present" in data:  # -> "present:TASKNAME:subj_id:session_id"
-            # task_name can be list of task1-task2-task3
+            # task_name can be list of tk1-task2-task3
 
+            logger.info("Beginning Presentation")
             tasks, subj_id, session_id = data.split(":")[1:]
             log_task["log_session_id"] = session_id
 
             task_karg = {
                 "win": win,
-                "path": config.paths["data_out"] + f"{subject_id_date}/",
+                "path": server_config["local_data_dir"] + f"{subject_id_date}/",
                 "subj_id": subject_id_date,
                 "marker_outlet": streams["marker"],
                 "prompt": True,
@@ -312,6 +322,7 @@ def run_stm(logger):
 
         elif data in ["close", "shutdown"]:
             if "shutdown" in data:
+                logger.info("Shutting down")
                 win.close()
                 sys.stdout = sys.stdout.terminal
                 s1.close()

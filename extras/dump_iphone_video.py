@@ -6,10 +6,12 @@ import os.path as op
 import datetime
 import logging
 from typing import Optional
-from neurobooth_os.logging import make_default_logger
+from neurobooth_os.log_manager import make_default_logger
 import argparse
 import sys
 
+# Run this script from the following server, so it gets the correct value of local_data_dir
+server_name = "acquisition"
 
 class TimeoutException(Exception):
     pass
@@ -25,7 +27,7 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
     args
         Command line arguments.
     """
-    session_root = cfg.paths["data_out"]
+    session_root = cfg.neurobooth_config[args.server]["local_data_dir"]
     logger = logging.getLogger('default')
     logger.debug(f'Session Root: {session_root}')
 
@@ -137,6 +139,12 @@ def parse_arguments() -> argparse.Namespace:
         default=600,
         type=int,
         help='Specify a timeout (in seconds) for each file retrieval. Default is 10 min. No timeout if <= 0.'
+    )
+    parser.add_argument(
+        '--server',
+        default='acquisition',
+        type=int,
+        help='Specify the server to run on so the proper value of local_data_dir is used. Default is "acquisition".'
     )
     args = parser.parse_args()
 

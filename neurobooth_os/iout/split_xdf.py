@@ -17,7 +17,7 @@ from h5io import write_hdf5
 
 from neurobooth_os.iout import metadator as meta
 from neurobooth_terra import Table
-from neurobooth_os.config import paths
+from neurobooth_os.config import neurobooth_config, get_server_name_from_env
 
 
 def compute_clocks_diff():
@@ -41,7 +41,7 @@ def split_sens_files(
     task_id=None,
     conn=None,
     folder="",
-    dont_split_xdf_fpath=None,
+    dont_split_xdf_fpath=None
 ):
     """Split xdf file per sensor
 
@@ -57,12 +57,12 @@ def split_sens_files(
         Connector to the database, if None does not insert rows, by default None
     folder : str
         path to fname
-
     Returns
     -------
     files : list
         list of files for each stream
     """
+
     t0 = time.time()
     # Read xdf file
     data, header = pyxdf.load_xdf(fname, dejitter_timestamps=False)
@@ -189,7 +189,23 @@ def get_xdf_name(session, fname_prefix):
     return final_fname
 
 
-def create_h5_from_csv(dont_split_xdf_fpath, conn):
+def create_h5_from_csv(dont_split_xdf_fpath, conn, server_name=None):
+    """
+    dont_split_xdf_fpath: str
+        a file path indicating the location of the csv file containing path filename and task ID
+    conn:
+        a database connection
+    server_name : str
+        a string matching one of the servers defined in the neurobooth_config.json file. If None, the name will
+        be determined from the Windows User Profile, if possible
+    """
+
+    if server_name is None:
+        server_name = get_server_name_from_env()
+        if server_name is None:
+            raise Exception("A server name is required if the Windows user is not in (CTR, ACQ, or STM)")
+
+
     # dont_split_xdf_fpath : path where split_tohdf5.csv is located
     # connn = connectore to db
     lines_todo = []
@@ -203,7 +219,7 @@ def create_h5_from_csv(dont_split_xdf_fpath, conn):
         for row in lines:
             # change to NAS path if necessary
             if not os.path.exists(row[0]):
-                row[0] = row[0].replace(paths["data_out"][:-1], paths["nas"])
+                row[0] = row[0].replace(neurobooth_config[server_name]["local_data_dir"][:-1], neurobooth_config["remote_data_dir"])
             out = split_sens_files(row[0], task_id=row[1], conn=conn)
 
             if len(out) == 0:

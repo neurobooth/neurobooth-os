@@ -1,24 +1,62 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jan 14 08:21:16 2021
-
-@author: adona
+    Ensures that the base neurobooth-os config file exists and makes config file available as neurobooth_config
 """
-import os.path as op
-from os.path import expanduser
+
+from os import environ, path, getenv
 import json
 
-# if files does not exist create it in user root dir
-fname = op.join(expanduser("~"), ".neurobooth_os_config")
-if not op.exists(fname):
-    paths = {
-        "data_out": r"C:\neurobooth\neurobooth_data\\",
-        "nas": r"Z:\data\\",
-        "video_tasks": r"C:\Users\STM\Dropbox (Partners HealthCare)\Neurobooth Videos for tasks\Videos_to_present",
-        "cam_inx_lowfeed": 0,
-    }
-    with open(fname, "w+") as f:
-        json.dump(paths, f, ensure_ascii=False, indent=4)
+from neurobooth_os.util.constants import NODE_NAMES
+
+
+def get_server_name_from_env():
+    """
+        This is a hack to get the role of the machine that this code is being executed on. It's based on the
+        assumption that the Windows User Profile in use matches one of the servers defined in the config file
+        return: str
+            a server name, or None.
+    """
+    user = getenv("USERPROFILE")
+
+    if "STM" in user:
+        return 'presentation'
+    if "ACQ" in user:
+        return 'acquisition'
+    if "CTR" in user:
+        return 'control'
+
+    return None
+
+
+def validate_folder(value):
+    if not path.exists(value):
+        raise FileNotFoundError(f"The folder '{value}' does not exist.")
+    if not path.isdir(value):
+        raise IOError(f"The path '{value}' is not a folder.")
+
+
+fname = path.join(environ.get("NB_CONFIG"), "neurobooth_os_config.json")
+
+if not path.exists(fname):
+    msg = "Required config file does not exist"
+    raise IOError(msg)
 
 with open(fname, "r") as f:
-    paths = json.load(f)
+    neurobooth_config = json.load(f)
+
+    server_name = get_server_name_from_env()
+
+    if server_name == "presentation":
+        validate_folder(neurobooth_config["video_tasks"])
+
+    validate_folder(neurobooth_config["remote_data_dir"])
+    validate_folder(neurobooth_config["default_log_path"])
+
+    for name in NODE_NAMES:
+        if name == server_name:
+            source = neurobooth_config[name]["local_data_dir"]
+            if not path.exists(source):
+                raise FileNotFoundError(f"The local_data_dir '{source}' for server {name} does not exist.")
+            if not path.isdir(source):
+                raise IOError(f"The local_data_dir '{source}' for server {name} is not a folder.")
+

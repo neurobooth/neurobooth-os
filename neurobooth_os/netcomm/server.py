@@ -91,7 +91,7 @@ class NewStdout:
         pass
 
 
-def get_client_messages(s1, port=12347, host=""):
+def get_client_messages(s1, port, host):
     """Create socket server and get messages from clients.
 
     Parameters
@@ -101,7 +101,7 @@ def get_client_messages(s1, port=12347, host=""):
     port : int
         The port
     host : str
-        The socket address, '' for local host. Default ''
+        The socket address, '' for local host
 
     Returns
     -------
@@ -113,7 +113,7 @@ def get_client_messages(s1, port=12347, host=""):
 
     s1.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s1.bind((host, port))
-    print("socket binded to port", port)
+    print("socket bound to port", port)
 
     # put the socket into listening mode
     s1.listen(5)
@@ -141,7 +141,7 @@ def get_client_messages(s1, port=12347, host=""):
 
 
 def get_messages_to_ctr(
-    callback=None, remote=False, host="", port=12347, *callback_args
+    callback=None, host="", port=12347, *callback_args
 ):
     """Creates socket server and run callback with socket data string.
 
@@ -173,8 +173,7 @@ def get_messages_to_ctr(
             continue
 
         data = data.decode("utf-8")
-        if not remote:
-            print(data)
+        print(data)
         if callback is not None:
             callback(data, *callback_args)
 

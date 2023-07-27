@@ -7,7 +7,7 @@ from time import time
 import multiprocessing as mp
 import logging
 from neurobooth_os.iout.mbient import scan_BLE, connect_device, reset_device, MbientFailedConnection
-from neurobooth_os.logging import make_default_logger
+from neurobooth_os.log_manager import make_default_logger
 
 
 DESCRIPTION = """Find and reset Mbient wearable devices.
