@@ -128,7 +128,7 @@ def run_acq(logger):
             for k in streams.keys():
                 if "Mbient" in k:
                     try:
-                        if not streams[k].device.is_connected:
+                        if not streams[k].device_wrapper.is_connected:
                             streams[k].attempt_reconnect()
                     except Exception as e:
                         print(e)
