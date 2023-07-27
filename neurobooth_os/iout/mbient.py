@@ -222,7 +222,7 @@ class MetaWearWrapper(ABC):
         board = device.board
         model = libmetawear.mbl_mw_metawearboard_get_model(board)
         if model not in MetaWearWrapper.SUPPORTED_DEVICE_MODELS:
-            model_name = str(libmetawear.mbl_mw_metawearboard_get_model_name(board))
+            model_name = libmetawear.mbl_mw_metawearboard_get_model_name(board).decode()
             raise UnsupportedDevice(f'Unsupported Device Model: {model_name}')
 
         gyro_type = libmetawear.mbl_mw_metawearboard_lookup_module(board, Module.GYRO)
@@ -237,7 +237,7 @@ class MetaWearWrapper(ABC):
         self.device = device
         self.board = device.board
         self.disconnect = self.device.disconnect  # Convenience binding
-        self.model_name = str(libmetawear.mbl_mw_metawearboard_get_model_name(self.board))
+        self.model_name = libmetawear.mbl_mw_metawearboard_get_model_name(self.board).decode()
         self.battery_state: Optional[BatteryState] = None
 
     # The on_disconnect property of the wrapper binds to the wrapped MetaWear object for convenience
