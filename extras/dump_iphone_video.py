@@ -10,8 +10,6 @@ from neurobooth_os.log_manager import make_default_logger
 import argparse
 import sys
 
-# Run this script from the following server, so it gets the correct value of local_data_dir
-server_name = "acquisition"
 
 class TimeoutException(Exception):
     pass
