@@ -143,7 +143,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--server',
         default='acquisition',
-        type=int,
+        type=str,
         help='Specify the server to run on so the proper value of local_data_dir is used. Default is "acquisition".'
     )
     args = parser.parse_args()
