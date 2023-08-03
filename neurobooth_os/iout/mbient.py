@@ -643,7 +643,7 @@ class Mbient:
             ),
             device_id=self.device_id,
             sensor_ids=self.sensor_ids,
-            data_version=DataVersion(1, 0),
+            data_version=DataVersion(1, 1),
             columns=['Time_Mbient', 'AccelX', 'AccelY', 'AccelZ', 'GyroX', 'GyroY', 'GyroZ'],
             column_desc={
                 'Time_Mbient': 'Device timestamp (ms; epoch)',
