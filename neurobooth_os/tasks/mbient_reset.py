@@ -30,13 +30,17 @@ class MbientResetPause(Task):
         self.continue_key = continue_key
         self.reset_key = reset_key
 
+        self.header_text_size = 48
+        self.text_size = 32
+
+        width, height = self.win.size
         self._screen = visual.TextStim(
             self.win,
             "Please wait while we reset the wearable devices.",
-            height=32,
+            height=48,
             color=[1, 1, 1],
-            pos=(0, (-self.win.size[1] / 2) + 32),
-            wrapWidth=1920,
+            pos=(0, (height / 2) - (self.header_text_size * 1.5)),
+            wrapWidth=width,
             units="pix",
         )
 
@@ -62,7 +66,7 @@ class MbientResetPause(Task):
         elif self.reset_key in keys:
             return UserInputEvent.RESET
         else:
-            raise MbientResetPauseError(f'Reached "impossible" case with key={key}')
+            raise MbientResetPauseError(f'Reached "impossible" case with keys: {keys}')
 
     def reset_mbients(self) -> None:
         pass
