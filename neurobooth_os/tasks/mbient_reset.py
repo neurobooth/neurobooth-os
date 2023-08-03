@@ -1,3 +1,4 @@
+import os
 from typing import Optional, Dict, List
 from enum import IntEnum, auto
 from neurobooth_os.tasks.task import Task
@@ -25,14 +26,22 @@ class MbientResetPause(Task):
             mbients: Optional[Dict[str, Mbient]] = None,
             continue_key: str = 'return',
             reset_key: str = 'r',
+            end_screen: Optional[str] = None,
             **kwargs
     ):
+        """
+        :param mbients: Stream names and associated Mbient objects for STM Mbients
+        :param continue_key: Which key will continue/complete the task
+        :param reset_key: Which kill will trigger a reset of the Mbients
+        :param end_screen: If not None, present the specified image after the reset is complete
+        :param kwargs: Keyword arguments to be passed on to the task constructor
+        """
         super().__init__(**kwargs)
-        self.mbients = mbients  # TODO: Need some way to signal ACQ mbients to reset
+        self.mbients = mbients  # These are the mbients connected to STM
         self.continue_key = continue_key
         self.reset_key = reset_key
         self.text_size = 48
-        self.header_message = "Please wait while we reset the wearable devices."
+        self.header_message = "Please wait while we reset the wearable devices.\n"
 
         width, height = self.win.size
         self._screen = visual.TextStim(
@@ -45,8 +54,18 @@ class MbientResetPause(Task):
             units="pix",
         )
 
+        self.show_end_screen = end_screen is not None
+        if self.show_end_screen:
+            self.end_screen = visual.ImageStim(
+                self.win,
+                image=os.path.join(self.root_pckg, "tasks", "assets", end_screen),
+                pos=(0, 0),
+                units="deg",
+            )
+
     def run(self, **kwargs):
-        print('Mbient Reset: R to trigger reset, ENTER to continue.')  # Send message to GUI terminal
+        # Send message to GUI terminal
+        print(f'Mbient Reset: {self.reset_key.upper()} to trigger reset, {self.continue_key.upper()} to continue.')
 
         # Present Intro Screen
         self.update_message()
@@ -59,9 +78,19 @@ class MbientResetPause(Task):
         except MbientResetPauseError as e:
             self.logger.exception(e)
 
-        # Clean Up
+        # Progress to the end screen
+        if not self.show_end_screen:
+            return
+
+        self.end_screen.draw()
+        self.win.flip()
+        print(f'Pause: Press {self.continue_key.upper()} to continue.')  # Send message to GUI terminal
+        get_keys([self.continue_key])  # Wait until continue key is pressed
 
     def wait_for_key(self) -> UserInputEvent:
+        """Wait for a valid key input event.
+        :returns: The type of detected event.
+        """
         keys = get_keys(keyList=[self.continue_key, self.reset_key])
         if self.continue_key in keys:
             return UserInputEvent.CONTINUE
@@ -71,12 +100,16 @@ class MbientResetPause(Task):
             raise MbientResetPauseError(f'Reached "impossible" case with keys: {keys}')
 
     def update_message(self, contents: List[str] = ()):
+        """Update the message on the screen.
+        :param contents: A list of messages to be displayed on separate lines.
+        """
         message = '\n'.join([self.header_message, *contents])
         self._screen.text = message
         self._screen.draw()
         self.win.flip()
 
     def reset_mbients(self) -> None:
+        """Reset the Mbient devices and report their status to the screen."""
         self.update_message(['Reset in progress...'])
 
         # Reset ACQ devices
