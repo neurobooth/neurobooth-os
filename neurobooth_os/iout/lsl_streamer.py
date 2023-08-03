@@ -8,7 +8,7 @@ import time
 import logging
 from neurobooth_os import config
 from neurobooth_os.iout import metadator as meta
-from neurobooth_os.iout.mbient import scan_BLE
+from neurobooth_os.iout.mbient import Mbient
 
 
 def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
@@ -44,9 +44,6 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
     for dc in kwarg_devs.values():
         kwarg_alldevs.update(dc)
 
-    ble_devices = scan_BLE(timeout_sec=10)  # Needed to wake up the mbients...
-    logger.debug(f'BLE scan found {len(ble_devices)} devices: {[mac for _, mac in ble_devices.items()]}')
-
     streams = {}
     if node_name == "acquisition":
         from neurobooth_os.iout.microphone import MicStream
@@ -64,8 +61,8 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
                     continue
 
                 logger.debug(f'LSL Streamer Starting: {kdev}')
-                streams[kdev] = connect_mbient(**argsdev)
-                if streams[kdev] is None:
+                streams[kdev] = Mbient(**argsdev)
+                if not streams[kdev].prepare():
                     del streams[kdev]
                 else:
                     streams[kdev].start()
@@ -105,8 +102,8 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
 
             elif any([d in kdev for d in ["Mbient_LF", "Mbient_RF"]]):
                 logger.debug(f'LSL Streamer Starting: {kdev}')
-                streams[kdev] = connect_mbient(**argsdev)
-                if streams[kdev] is None:
+                streams[kdev] = Mbient(**argsdev)
+                if not streams[kdev].prepare():
                     del streams[kdev]
                 else:
                     streams[kdev].start()
@@ -136,35 +133,6 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
     return streams
 
 
-def connect_mbient(dev_name="LH", mac="CE:F3:BD:BD:04:8F", try_nmax=5, **kwarg):
-    from neurobooth_os.iout.mbient import Sensor, reset_mbient
-
-    logger = logging.getLogger('session')
-    logger.debug(f'Connect Mbient: {dev_name} [{mac}]')
-
-    tinx = 0
-    print(f"Trying to connect mbient {dev_name}, mac {mac}")
-    while True:
-        try:
-            sens = Sensor(mac, dev_name, **kwarg)
-            return sens
-        except Exception as e:
-            print(
-                f"Trying to connect mbient {dev_name}, {tinx} out of {try_nmax} tries {e}"
-            )
-            tinx += 1
-            if tinx >= try_nmax:
-                try:
-                    reset_mbient(mac, dev_name)
-                    sens = Sensor(mac, dev_name, **kwarg)
-                    return sens
-                except:
-                    print(f"Failed to connect mbient {dev_name}")
-                    logger.debug(f"Failed to connect mbient {dev_name}")
-                break
-            time.sleep(1)
-
-
 def close_streams(streams):
     logger = logging.getLogger('session')
 
@@ -190,6 +158,6 @@ def reconnect_streams(streams):
         if not streams[k].streaming:
             print(f"Re-streaming {k} stream")
             streams[k].start()
-        print(f"-OUTLETID-:{k}:{streams[k].oulet_id}")
+        print(f"-OUTLETID-:{k}:{streams[k].outlet_id}")
 
     return streams

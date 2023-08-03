@@ -17,7 +17,6 @@ from neurobooth_os.iout.lsl_streamer import (
     start_lsl_threads,
     close_streams,
     reconnect_streams,
-    connect_mbient,
 )
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import make_session_logger
@@ -129,8 +128,8 @@ def run_acq(logger):
             for k in streams.keys():
                 if "Mbient" in k:
                     try:
-                        if not streams[k].device.is_connected:
-                            streams[k].try_reconnect()
+                        if not streams[k].device_wrapper.is_connected:
+                            streams[k].attempt_reconnect()
                     except Exception as e:
                         print(e)
                         pass
