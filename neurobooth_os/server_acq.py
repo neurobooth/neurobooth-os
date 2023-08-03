@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from pylsl import local_clock
 import logging
+import json
 
 import neurobooth_os
 from neurobooth_os import config
@@ -109,6 +110,16 @@ def run_acq(logger):
             frame = frame_prefix + frame
             connx.send(frame)
             logger.debug('Frame preview sent')
+
+        elif "reset_mbients" in data:
+            reset_results = {}
+            for stream_name, stream in streams.items():
+                if 'mbient' in stream_name.lower():
+                    reset_results[stream_name] = True  # TODO: Implement actual reset logic
+                else:
+                    reset_results[stream_name] = False  # TODO: Temporary
+            connx.send(json.dumps(reset_results))
+            logger.debug('Reset results sent')
 
         elif "record_start" in data:
             # "record_start::filename::task_id" FILENAME = {subj_id}_{obs_id}
