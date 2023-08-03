@@ -26,7 +26,7 @@ class MbientResetPause(Task):
             **kwargs
     ):
         super().__init__(**kwargs)
-        self.mbients = mbients
+        self.mbients = mbients  # TODO: Need some way to signal ACQ mbients to reset
         self.continue_key = continue_key
         self.reset_key = reset_key
 
@@ -35,7 +35,8 @@ class MbientResetPause(Task):
             "Please wait while we reset the wearable devices.",
             height=32,
             color=[1, 1, 1],
-            pos=(0, 32),
+            pos=(0, (-self.win.size[1] / 2) + 32),
+            wrapWidth=1920,
             units="pix",
         )
 
@@ -55,10 +56,10 @@ class MbientResetPause(Task):
         # Clean Up
 
     def wait_for_key(self) -> UserInputEvent:
-        key = get_keys(keyList=[self.continue_key, self.reset_key])
-        if key == self.continue_key:
+        keys = get_keys(keyList=[self.continue_key, self.reset_key])
+        if self.continue_key in keys:
             return UserInputEvent.CONTINUE
-        elif key == self.reset_key:
+        elif self.reset_key in keys:
             return UserInputEvent.RESET
         else:
             raise MbientResetPauseError(f'Reached "impossible" case with key={key}')
