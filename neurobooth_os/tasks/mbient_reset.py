@@ -46,6 +46,8 @@ class MbientResetPause(Task):
         )
 
     def run(self, **kwargs):
+        print('Mbient Reset: R to trigger reset, ENTER to continue.')  # Send message to GUI terminal
+
         # Present Intro Screen
         self.update_message()
 
@@ -76,7 +78,23 @@ class MbientResetPause(Task):
 
     def reset_mbients(self) -> None:
         self.update_message(['Reset in progress...'])
+
+        # Reset ACQ devices
         acq_reset_results: str = socket_message('reset_mbients', 'acquisition', wait_data=True)
         acq_reset_results: Dict[str, bool] = json.loads(acq_reset_results)
-        result_messages = [f'{stream_name}: {status}' for stream_name, status in acq_reset_results.items()]
-        self.update_message(result_messages)
+
+        # Reset STM devices
+        stm_reset_results = {
+            stream_name: stream.reset_and_reconnect()
+            for stream_name, stream in self.mbients.items()
+        }
+
+        # Combine and display results
+        results = {**acq_reset_results, **stm_reset_results}
+        results = {
+            stream_name: 'CONNECTED' if connected else 'DISCONNECTED'
+            for stream_name, connected in results.items()
+        }
+        self.update_message([f'{stream_name}: {status}' for stream_name, status in results.items()])
+        for stream_name, status in results.items():
+            print(f'{stream_name} is {status}')  # Send message to GUI terminal

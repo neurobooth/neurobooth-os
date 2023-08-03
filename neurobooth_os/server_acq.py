@@ -111,14 +111,13 @@ def run_acq(logger):
             connx.send(frame)
             logger.debug('Frame preview sent')
 
+        # TODO: Both reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
         elif "reset_mbients" in data:
             reset_results = {}
             for stream_name, stream in streams.items():
                 if 'mbient' in stream_name.lower():
-                    reset_results[stream_name] = True  # TODO: Implement actual reset logic
-                else:
-                    reset_results[stream_name] = False  # TODO: Temporary
-            connx.send(json.dumps(reset_results))
+                    reset_results[stream_name] = stream.reset_and_reconnect()
+            connx.send(json.dumps(reset_results).encode('utf-8'))
             logger.debug('Reset results sent')
 
         elif "record_start" in data:
