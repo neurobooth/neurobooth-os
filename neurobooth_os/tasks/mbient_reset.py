@@ -134,7 +134,7 @@ class MbientResetPause(Task):
 
         # Display the results
         results = {
-            stream_name: 'CONNECTED' if connected else 'DISCONNECTED'
+            stream_name: 'CONNECTED' if connected else 'ERROR'
             for stream_name, connected in results.items()
         }
         self.update_message([f'{stream_name}: {status}' for stream_name, status in results.items()])

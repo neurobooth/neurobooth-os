@@ -150,7 +150,7 @@ def run_acq(logger):
                         except:
                             continue
 
-            for k in streams.keys():
+            for k in streams.keys():  # Attempt to reconnect mbients if disconnected
                 if "Mbient" in k:
                     try:
                         if not streams[k].device_wrapper.is_connected:
