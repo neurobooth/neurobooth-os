@@ -8,9 +8,9 @@ License: BSD-3-Clause
 """
 
 from __future__ import absolute_import, division
-from psychopy import logging
-
-logging.console.setLevel(logging.CRITICAL)
+from psychopy import logging as psychopy_logging
+psychopy_logging.console.setLevel(psychopy_logging.CRITICAL)
+import logging
 import os.path as op
 from datetime import datetime
 import time
@@ -38,6 +38,7 @@ class Task:
         countdown=None,
         **kwargs,
     ):
+        self.logger = logging.getLogger('session')
 
         # Common markers
         self.marker_task_start = "Task_start"

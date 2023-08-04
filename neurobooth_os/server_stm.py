@@ -124,6 +124,7 @@ def run_stm(logger):
             tasks, subj_id, session_id = data.split(":")[1:]
             log_task["log_session_id"] = session_id
 
+            # Shared task keyword arguments
             task_karg = {
                 "win": win,
                 "path": server_config["local_data_dir"] + f"{subject_id_date}/",
@@ -131,8 +132,14 @@ def run_stm(logger):
                 "marker_outlet": streams["marker"],
                 "prompt": True,
             }
-            if streams.get("Eyelink"):
+
+            # Pass device streams as keyword arguments if needed.
+            # TODO: This needs to be cleaned up and not hard-coded
+            if streams.get("Eyelink"):  # For eye tracker tasks
                 task_karg["eye_tracker"] = streams["Eyelink"]
+            task_karg['mbients'] = {  # For the mbient reset task
+                stream_name: stream for stream_name, stream in streams.items() if 'mbient' in stream_name.lower()
+            }
 
             if presented:
                 task_func_dict = get_task_funcs(collection_id, conn)

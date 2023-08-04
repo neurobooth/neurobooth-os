@@ -542,17 +542,17 @@ class Mbient:
         Callback for disconnect events. Attempt to reconnect to and configure the device.
         :param status: The status code passed by the callback handler.
         """
-        print(f"-WARNING mbient- {self.dev_name} diconnected prematurely")
+        print(f"-WARNING mbient- {self.dev_name} diconnected prematurely")  # Send message to GUI terminal
         self.logger.warning(self.format_message(f'Disconnected Prematurely (status={status})'))
 
         try:
             self.connect(n_attempts=3, retry_delay_sec=0.5)
             self.setup()
         except MbientFailedConnection as e:
-            print(f"Failed to reconnect {self.dev_name}... bye")
+            print(f"Failed to reconnect {self.dev_name}... bye")  # Send message to GUI terminal
             self.logger.error(self.format_message(f'Failed to Reconnect: {e}'))
         except Exception as e:
-            print(f"Couldn't setup for {self.dev_name}")
+            print(f"Couldn't setup for {self.dev_name}")  # Send message to GUI terminal
             self.logger.error(self.format_message(f'Error during reconnect: {e}'), exc_info=sys.exc_info())
 
     def reset(self, timeout_sec: float = 10) -> None:
@@ -579,11 +579,15 @@ class Mbient:
             f'Disconnect with status={status}'
         ))
 
-    def reset_and_reconnect(self, timeout_sec: float = 10) -> None:
+    def reset_and_reconnect(self, timeout_sec: float = 10) -> bool:
         """
         Stop streaming, perform a board reset (which disconnects the device), reconnect, and resume streaming.
         :param timeout_sec: How long to wait for the reset to occur before timing out.
+        :return: Whether the device is connected after the function call is complete.
         """
+        print(f'Resetting {self.dev_name}.')  # Send message to GUI terminal
+        self.logger.info(self.format_message('Resetting'))
+
         try:
             was_streaming = self.streaming
             if was_streaming:
@@ -595,9 +599,12 @@ class Mbient:
 
             if was_streaming:
                 self.start()
+
+            self.logger.info(self.format_message(f'Reset Completed'))
         except Exception as e:
             self.logger.error(self.format_message(f'Error during reset and reconnect: {e}'))
-            raise e
+        finally:
+            return self.device_wrapper.is_connected
 
     def prepare(self) -> bool:
         """
@@ -624,7 +631,7 @@ class Mbient:
 
             return True
         except (MbientFailedConnection, MbientResetTimeout) as e:
-            print(f"Failed to connect mbient {self.dev_name}")
+            print(f"Failed to connect mbient {self.dev_name}")  # Send message to GUI terminal
             self.logger.error(self.format_message(str(e)))
             return False
         except Exception as e:
@@ -685,7 +692,7 @@ class Mbient:
         libmetawear.mbl_mw_datasignal_subscribe(processor, None, self.callback)
         self.subscribed_signals.append(processor)
 
-        print(f"Mbient {self.dev_name} setup")
+        print(f"Mbient {self.dev_name} setup")  # Send message to GUI terminal
         self.logger.debug(self.format_message('Setup Completed'))
 
     def log_battery_info(self) -> None:
