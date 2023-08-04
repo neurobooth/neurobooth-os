@@ -5,6 +5,7 @@ from time import time, sleep
 from collections import OrderedDict
 import cv2
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor, wait
 from pylsl import local_clock
 import logging
 import json
@@ -113,10 +114,24 @@ def run_acq(logger):
 
         # TODO: Both reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
         elif "reset_mbients" in data:
-            reset_results = {}
-            for stream_name, stream in streams.items():
-                if 'mbient' in stream_name.lower():
-                    reset_results[stream_name] = stream.reset_and_reconnect()
+            mbient_streams = {
+                stream_name: stream
+                for stream_name, stream in streams.items()
+                if 'mbient' in stream_name.lower()
+            }
+
+            with ThreadPoolExecutor(max_workers=len(mbient_streams)) as executor:
+                # Begin concurrent reset of devices
+                reset_results = {
+                    stream_name: executor.submit(stream.reset_and_reconnect)
+                    for stream_name, stream in mbient_streams.items()
+                }
+
+                # Wait for resets to complete, then resolve the futures
+                wait(reset_results.values())
+                reset_results = {stream_name: result.result() for stream_name, result in reset_results.items()}
+
+            # Reply with the results of the reset
             connx.send(json.dumps(reset_results).encode('utf-8'))
             logger.debug('Reset results sent')
 

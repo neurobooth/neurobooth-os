@@ -1,12 +1,13 @@
 import os
+import json
 from typing import Optional, Dict, List
 from enum import IntEnum, auto
+from concurrent.futures import ThreadPoolExecutor, wait
 from neurobooth_os.tasks.task import Task
 from neurobooth_os.tasks.utils import get_keys
 from psychopy import visual
 from neurobooth_os.iout.mbient import Mbient
 from neurobooth_os.netcomm import socket_message
-import json
 
 
 class UserInputEvent(IntEnum):
@@ -112,18 +113,26 @@ class MbientResetPause(Task):
         """Reset the Mbient devices and report their status to the screen."""
         self.update_message(['Reset in progress...'])
 
-        # Reset ACQ devices
-        acq_reset_results: str = socket_message('reset_mbients', 'acquisition', wait_data=True)
-        acq_reset_results: Dict[str, bool] = json.loads(acq_reset_results)
+        # Concurrently reset devices
+        with ThreadPoolExecutor(max_workers=len(self.mbients)+1) as executor:
+            # Signal ACQ to reset its Mbients
+            acq_results = executor.submit(socket_message, 'reset_mbients', 'acquisition', wait_data=True)
 
-        # Reset STM devices
-        stm_reset_results = {
-            stream_name: stream.reset_and_reconnect()
-            for stream_name, stream in self.mbients.items()
-        }
+            # Begin reset of local Mbients
+            stm_results = {
+                stream_name: executor.submit(stream.reset_and_reconnect)
+                for stream_name, stream in self.mbients.items()
+            }
 
-        # Combine and display results
-        results = {**acq_reset_results, **stm_reset_results}
+            # Wait for all resets to complete, then resolve the futures
+            wait([acq_results, *stm_results.values()])
+            acq_results = json.loads(acq_results.result())  # Parse result from ACQ
+            stm_results = {stream_name: result.result() for stream_name, result in stm_results.items()}
+
+            # Combine results from all serves
+            results = {**acq_results, **stm_results}
+
+        # Display the results
         results = {
             stream_name: 'CONNECTED' if connected else 'DISCONNECTED'
             for stream_name, connected in results.items()
