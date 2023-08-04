@@ -227,12 +227,11 @@ def run_stm(logger):
                     wait_data=10,
                 )
 
-                # mbient check connectin and start streaming
-                for k in streams.keys():
+                for k in streams.keys():  # Attempt to reconnect mbients if disconnected
                     if "Mbient" in k:
                         try:
-                            if not streams[k].device.is_connected:
-                                streams[k].try_reconnect()
+                            if not streams[k].device_wrapper.is_connected:
+                                streams[k].attempt_reconnect()
                         except Exception as e:
                             print(e)
                             pass
