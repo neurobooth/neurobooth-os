@@ -545,11 +545,19 @@ class Mbient:
         print(f"-WARNING mbient- {self.dev_name} diconnected prematurely")  # Send message to GUI terminal
         self.logger.warning(self.format_message(f'Disconnected Prematurely (status={status})'))
 
+        self.device_wrapper.on_disconnect = lambda status_: self.logger.info(self.format_message(
+            f'Disconnect during attempt_reconnect with status={status_}'
+        ))
+
         try:
+            was_streaming = self.streaming
             self.connect(n_attempts=3, retry_delay_sec=0.5)
             self.setup()
+            if was_streaming:
+                self.start(buzz=False)
+            self.logger.info(self.format_message('Reconnect Completed'))
         except MbientFailedConnection as e:
-            print(f"Failed to reconnect {self.dev_name}... bye")  # Send message to GUI terminal
+            print(f"Failed to reconnect {self.dev_name}")  # Send message to GUI terminal
             self.logger.error(self.format_message(f'Failed to Reconnect: {e}'))
         except Exception as e:
             print(f"Couldn't setup for {self.dev_name}")  # Send message to GUI terminal
@@ -598,13 +606,13 @@ class Mbient:
             self.setup()
 
             if was_streaming:
-                self.start()
+                self.start(buzz=False)
 
             self.logger.info(self.format_message(f'Reset Completed'))
+            return self.device_wrapper.is_connected
         except Exception as e:
             self.logger.error(self.format_message(f'Error during reset and reconnect: {e}'))
-        finally:
-            return self.device_wrapper.is_connected
+            return False
 
     def prepare(self) -> bool:
         """
@@ -704,11 +712,13 @@ class Mbient:
             f'Voltage = {battery_state.voltage / 1e3:.1f} V; Charge = {battery_state.charge}%'
         ))
 
-    def start(self) -> None:
-        """Begin streaming data."""
+    def start(self, buzz: bool = False) -> None:
+        """Begin streaming data.
+        :param buzz: Whether to enable the sensor buzz when stating data capture.
+        """
         self.device_wrapper.enable_inertial_sampling()
 
-        if self.buzz_time:  # Vibrate and then start acquisition
+        if buzz and self.buzz_time:  # Vibrate and then start acquisition
             self.logger.debug(self.format_message(f'Buzz for {self.buzz_time} s'))
             self.device_wrapper.buzz(100, self.buzz_time)
 
