@@ -597,6 +597,9 @@ class Mbient:
         self.logger.info(self.format_message('Resetting'))
 
         try:
+            if not self.device_wrapper.is_connected:  # Attempt to reconnect if previously disconnected
+                self.connect()
+
             was_streaming = self.streaming
             if was_streaming:
                 self.stop()
