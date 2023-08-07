@@ -25,9 +25,9 @@ setx /m MICROPHONE_NAME "Yeti"
 setx /m FLIR_SN "22348141"
 
 :: Create folder for holding config files
-powershell -Command "mkdir -Force %NB_CONFIG%/"
+start powershell -Command "mkdir -Force %NB_CONFIG%/"
 :: Copy config file to config folder
-powershell -Command "cp ./%server_name%/neurobooth_os_config.json %NB_CONFIG%neurobooth_os_config.json"
+start powershell -Command "cp ./%server_name%/neurobooth_os_config.json %NB_CONFIG%neurobooth_os_config.json"
 
 ::
 
