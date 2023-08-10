@@ -18,7 +18,7 @@ from pathlib import Path
 from h5io import read_hdf5
 import neurobooth_os.mock.mock_device_streamer as mocker
 from neurobooth_os.iout.marker import marker_stream
-from neurobooth_os.iout.split_xdf import split
+from neurobooth_os.iout.split_xdf import split, get_xdf_name
 from neurobooth_os.tasks import SitToStand
 from neurobooth_os.tasks import utils
 
@@ -83,14 +83,7 @@ mbient.stop()
 
 # %%
 # getting recorded filename to split
-fname = session.folder / Path(task + ".xdf")
-base_stem = fname.stem.split("_R")[0]
-count = 0
-for f in fname.parent.glob(fname.stem + "*.xdf"):
-    base_stem, run_counter = f.stem.split("_R")
-    count = max(int(run_counter), count)
-run_str = "_R{0:03d}".format(count)
-final_fname = str(fname.with_name(base_stem + run_str).with_suffix(".xdf"))
+final_fname = get_xdf_name(session, task)
 
 
 # %%

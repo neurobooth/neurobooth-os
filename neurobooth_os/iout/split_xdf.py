@@ -1,18 +1,14 @@
-# -*- coding: utf-8 -*-
-# Authors: Sheraz Khan <sheraz@khansheraz.com>
-#
-# License: BSD-3-Clause
-# Split xdf file per sensor
-
 import os
 import pyxdf
 import pylsl
+import liesl
 import time
 import numpy as np
 import os.path as op
 from datetime import datetime
 from pathlib import Path
 from typing import NamedTuple, Optional, Any, List
+import psycopg2
 
 from h5io import write_hdf5
 
@@ -21,13 +17,10 @@ from neurobooth_terra import Table
 from neurobooth_os.config import neurobooth_config, get_server_name_from_env
 
 
-def compute_clocks_diff():
-    """Compute difference between local LSL and Unix clock
-
-    Returns
-    -------
-    time_offset : float
-        time_offset (float): Offset between the clocks
+def compute_clocks_diff() -> float:
+    """
+    Compute difference between local LSL and Unix clock.
+    :returns: The offset between the clocks (in seconds).
     """
 
     time_local = pylsl.local_clock()
@@ -177,17 +170,9 @@ def parse_xdf(file_path: str, device_ids: Optional[List[str]] = None) -> List[De
     """
     Split an XDF file into device/stream-specific HDF5 files.
 
-    Parameters
-    ----------
-    file_path: str
-        The path to the XDF file to parse
-    device_ids: Optional[List[str]]
-        If provided, only parse files corresponding to the specified devices.
-
-    Returns
-    -------
-    results: List[DeviceData]
-        A structured representation of information extracted from the XDF file for each device.
+    :param file_path: The path to the XDF file to parse.
+    :param device_ids: If provided, only parse files corresponding to the specified devices.
+    :returns: A structured representation of information extracted from the XDF file for each device.
     """
     folder, file_name = os.path.split(file_path)
     data, _ = pyxdf.load_xdf(file_path, dejitter_timestamps=False)
@@ -219,7 +204,7 @@ def parse_xdf(file_path: str, device_ids: Optional[List[str]] = None) -> List[De
             continue
 
         device_id = device_data["info"]["desc"][0]["device_id"][0]
-        sensors_ids = eval(device_data["info"]["desc"][0]["sensor_ids"][0])  # Dirty trick for converting into a List
+        sensors_ids = eval(device_data["info"]["desc"][0]["sensor_ids"][0])  # Dirty trick for converting into a list
 
         if (device_ids is not None) and (device_id not in device_ids):  # Only split specified devices
             continue
@@ -246,20 +231,12 @@ def parse_xdf(file_path: str, device_ids: Optional[List[str]] = None) -> List[De
 # TODO: Implement file logging
 
 
-def get_xdf_name(session, fname_prefix):
-    """Get with most recent session xdf file name.
+def get_xdf_name(session: liesl.Session, fname_prefix: str) -> str:
+    """Get with most recent session XDF file name.
 
-    Parameters
-    ----------
-    session : instance of liesl.Session
-        Callable with session.folder path
-    fname_prefix : str
-        Prefix name of the xdf file name
-
-    Returns
-    -------
-    final file name : str
-        File name of the xdf file
+    :param session: The current liesl Session object. Or object with the session.folder attribute.
+    :param fname_prefix: Prefix of the xdf file name.
+    :returns: File name of the XDF file.
     """
     fname = session.folder / Path(fname_prefix + ".xdf")
     base_stem = fname.stem.split("_R")[0]
@@ -272,25 +249,22 @@ def get_xdf_name(session, fname_prefix):
     return final_fname
 
 
-def create_h5_from_csv(dont_split_xdf_fpath, conn, server_name=None):
+def create_h5_from_csv(
+        dont_split_xdf_fpath: str,
+        conn: psycopg2.connection,
+        server_name: Optional[str] = None
+) -> None:
     """
-    dont_split_xdf_fpath: str
-        a file path indicating the location of the csv file containing path filename and task ID
-    conn:
-        a database connection
-    server_name : str
-        a string matching one of the servers defined in the neurobooth_config.json file. If None, the name will
-        be determined from the Windows User Profile, if possible
+    :param dont_split_xdf_fpath: Path to the CSV file containing filenames and task IDs.
+    :param conn: Connection to the database.
+    :param server_name: A string matching one of the servers defined in the neurobooth_config.json file.
+        If None, the name will be determined from the Windows User Profile, if possible.
     """
-
     if server_name is None:
         server_name = get_server_name_from_env()
         if server_name is None:
             raise Exception("A server name is required if the Windows user is not in (CTR, ACQ, or STM)")
 
-
-    # dont_split_xdf_fpath : path where split_tohdf5.csv is located
-    # connn = connectore to db
     lines_todo = []
     fname = os.path.join(dont_split_xdf_fpath, "split_tohdf5.csv")
     import csv
@@ -302,7 +276,10 @@ def create_h5_from_csv(dont_split_xdf_fpath, conn, server_name=None):
         for row in lines:
             # change to NAS path if necessary
             if not os.path.exists(row[0]):
-                row[0] = row[0].replace(neurobooth_config[server_name]["local_data_dir"][:-1], neurobooth_config["remote_data_dir"])
+                row[0] = row[0].replace(
+                    neurobooth_config[server_name]["local_data_dir"][:-1],
+                    neurobooth_config["remote_data_dir"]
+                )
             out = split_sens_files(row[0], task_id=row[1], conn=conn)
 
             if len(out) == 0:
