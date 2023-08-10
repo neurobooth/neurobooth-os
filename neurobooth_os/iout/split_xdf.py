@@ -9,8 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import NamedTuple, Optional, Any, List
 import psycopg2
-
-from h5io import write_hdf5
+import h5io
 
 from neurobooth_os.iout import metadator as meta
 from neurobooth_terra import Table
@@ -22,11 +21,7 @@ def compute_clocks_diff() -> float:
     Compute difference between local LSL and Unix clock.
     :returns: The offset between the clocks (in seconds).
     """
-
-    time_local = pylsl.local_clock()
-    time_ux = time.time()
-    time_offset = time_ux - time_local
-    return time_offset
+    return time.time() - pylsl.local_clock()
 
 
 # TODO: Refactor into parse XDF, (Future: correct device metadata), write hdf5s, log to DB
@@ -109,7 +104,7 @@ def split_sens_files(
         fname_full = f"{head}-{device_id}-{sensors}.hdf5"
 
         if dont_split_xdf_fpath is None:
-            write_hdf5(fname_full, data_sens, overwrite=True)
+            h5io.write_hdf5(fname_full, data_sens, overwrite=True)
 
         # print(f"Saving stream {name} to {fname_full}")
         files.append(fname_full)
@@ -164,18 +159,19 @@ class DeviceData(NamedTuple):
     marker_data: Any
     video_files: Optional[str]
     sensor_ids: List[str]
+    hdf5_path: str
 
 
-def parse_xdf(file_path: str, device_ids: Optional[List[str]] = None) -> List[DeviceData]:
+def _parse_xdf(xdf_path: str, device_ids: Optional[List[str]] = None) -> List[DeviceData]:
     """
     Split an XDF file into device/stream-specific HDF5 files.
 
-    :param file_path: The path to the XDF file to parse.
+    :param xdf_path: The path to the XDF file to parse.
     :param device_ids: If provided, only parse files corresponding to the specified devices.
     :returns: A structured representation of information extracted from the XDF file for each device.
     """
-    folder, file_name = os.path.split(file_path)
-    data, _ = pyxdf.load_xdf(file_path, dejitter_timestamps=False)
+    folder, file_name = os.path.split(xdf_path)
+    data, _ = pyxdf.load_xdf(xdf_path, dejitter_timestamps=False)
 
     # Find marker stream to associate with each device
     marker = [d for d in data if d["info"]["name"] == ["Marker"]]
@@ -200,6 +196,8 @@ def parse_xdf(file_path: str, device_ids: Optional[List[str]] = None) -> List[De
     results = []
     for device_data in data:
         device_name = device_data["info"]["name"][0]
+
+        # Exclude streams are associated with other devices and not represented by their own HDF5 file
         if device_name in ["Marker", "videofiles"]:
             continue
 
@@ -209,26 +207,95 @@ def parse_xdf(file_path: str, device_ids: Optional[List[str]] = None) -> List[De
         if (device_ids is not None) and (device_id not in device_ids):  # Only split specified devices
             continue
 
-        # sensors = "-".join(sensors_ids)
-        # head, _ = op.splitext(file_name)
-        # hdf5_name = f"{head}-{device_id}-{sensors}.hdf5"
-        # hdf5_path = f'{folder}/{hdf5_name}' if folder else hdf5_name
-
         results.append(DeviceData(
             device_id=device_id,
             device_data=device_data,
             marker_data=marker,
             video_files=video_files[device_name] if device_name in video_files else None,
             sensor_ids=sensors_ids,
+            hdf5_path=_make_hdf5_path(xdf_path, device_id, sensors_ids),
         ))
 
     return results
 
 
-# TODO: Implement write hdf
+def _make_hdf5_path(xdf_path: str, device_id: str, sensor_ids: List[str]) -> str:
+    """
+    Generate a path for a device HDF5 file extracted from an XDF file.
+
+    :param xdf_path: Full path to the XDF file.
+    :param device_id: ID string for the device.
+    :param sensor_ids: List of ID strings for each included sensor.
+    :returns: A standardized file name for corresponding device HDF5 file.
+    """
+    sensor_list = "-".join(sensor_ids)
+    head, _ = op.splitext(xdf_path)
+    return f"{head}-{device_id}-{sensor_list}.hdf5"
 
 
-# TODO: Implement file logging
+def _write_device_hdf5(device_data: List[DeviceData]) -> None:
+    """
+    Write the HDF5 files containing extracted device data.
+    :param device_data: A list of objects containing the extracted device information.
+    """
+    for dev in device_data:
+        marker = dev.marker_data[0] if dev.marker_data else []
+        data_to_write = {"marker": marker, "device_data": dev.device_data}
+        h5io.write_hdf5(dev.hdf5_path, data_to_write, overwrite=True)
+
+
+LOG_SENSOR_COLUMNS = [
+    "log_task_id",
+    "true_temporal_resolution",
+    "true_spatial_resolution",
+    "file_start_time",
+    "file_end_time",
+    "device_id",
+    "sensor_id",
+    "sensor_file_path",
+]
+
+
+def _log_to_database(
+        device_data: List[DeviceData],
+        conn: psycopg2.connection,
+        log_task_id: str,
+) -> None:
+    """
+    Log the names of sensor data files to the database.
+    :param device_data: A list of objects containing the extracted device information.
+    :param conn: A database connection object.
+    :param log_task_id: The value to insert into the log_task_id column.
+    """
+    table_sens_log = Table("log_sensor_file", conn=conn)
+
+    for dev in device_data:
+        # Calculate timing characteristics of the data stream
+        time_offset = compute_clocks_diff()
+        timestamps = dev.device_data["time_stamps"]
+        start_time = datetime.fromtimestamp(timestamps[0] + time_offset).strftime("%Y-%m-%d %H:%M:%S")
+        end_time = datetime.fromtimestamp(timestamps[-1] + time_offset).strftime("%Y-%m-%d %H:%M:%S")
+        temporal_resolution = 1 / np.median(np.diff(timestamps))
+
+        # Construct the set of file names associated with the sensor
+        if dev.video_files is None:
+            sensor_file_paths = dev.hdf5_path
+        else:
+            sensor_file_paths = f"{dev.hdf5_path}, {dev.video_files}"
+        sensor_file_paths = "{" + sensor_file_paths + "}"
+
+        for sensor_id in dev.sensor_ids:
+            vals = [(
+                log_task_id,
+                temporal_resolution,
+                None,
+                start_time,
+                end_time,
+                dev.device_id,
+                sensor_id,
+                sensor_file_paths,
+            )]
+            table_sens_log.insert_rows(vals, LOG_SENSOR_COLUMNS)
 
 
 def get_xdf_name(session: liesl.Session, fname_prefix: str) -> str:
