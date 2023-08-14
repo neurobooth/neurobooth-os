@@ -170,14 +170,6 @@ def rewind_video(win, mov):
         return True
 
 
-def repeat_advance():
-    key = get_keys(keyList=["space", "r"])
-    if key == ["space"]:
-        return False
-    elif key == ["r"]:
-        return True
-
-
 def advance():
     key = get_keys(keyList=["space"])
     if key == ["space"]:

@@ -123,6 +123,17 @@ class DSC(Task_Eyetracker):
         self.present_complete(last_task)
         return self.events
 
+    def repeat_advance(self):
+        """
+         Repeat the current task or continue to next, based on the key pressed.
+         Returns False to continue; True to repeat
+         """
+        key = utils.get_keys(keyList=["space", "r"])
+        if key == ["space"]:
+            return False
+        elif key == ["r"]:
+            return True
+
     def wait_release(self, keys=None):
         while True:
             rels = self.keyboard.getReleases(keys=keys)

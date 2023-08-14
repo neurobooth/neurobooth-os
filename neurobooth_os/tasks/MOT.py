@@ -83,6 +83,17 @@ class MOT(Task_Eyetracker):
         # create the trials chain
         self.frameSequence = self.setFrameSequence()
 
+    def repeat_advance(self):
+        """
+         Repeat the current task or continue to next, based on the key pressed.
+         Returns False to continue; True to repeat
+         """
+        key = utils.get_keys(keyList=["space", "r"])
+        if key == ["space"]:
+            return False
+        elif key == ["r"]:
+            return True
+
     def trial_info_msg(self, msg_type=None):
         if msg_type == "practice":
             msg = self.trial_info_str

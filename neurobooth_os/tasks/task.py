@@ -36,6 +36,7 @@ class Task:
         text_task=utils.text_task,
         text_end=utils.text_end,
         countdown=None,
+        task_repeatable_by_subject=True,
         **kwargs,
     ):
         self.logger = logging.getLogger('session')
@@ -94,9 +95,14 @@ class Task:
             pos=(0, 0),
             units="deg",
         )
+        if task_repeatable_by_subject:
+            task_end_image = "tasks/assets/task_end.png"
+        else:
+            task_end_image = "tasks/assets/task_end_disabled.png"
+
         self.press_task_screen = visual.ImageStim(
             self.win,
-            image=op.join(self.root_pckg, "tasks/assets/task_end.png"),
+            image=op.join(self.root_pckg, task_end_image),
             pos=(0, 0),
             units="deg",
         )
@@ -123,6 +129,17 @@ class Task:
             pos=(0, 0),
             units="deg",
         )
+
+    def repeat_advance(self):
+        """
+         Repeat the current task or continue to next, based on the key pressed.
+         Returns False to continue; True to repeat
+         """
+        key = utils.get_keys(keyList=["space", "r", ","])
+        if key == ["space"]:
+            return False
+        elif key == ["r"] or key == [","]:
+            return True
 
     def send_marker(self, msg=None, add_event=False):
         if self.with_lsl:
@@ -159,7 +176,7 @@ class Task:
         self.send_marker(f"{msg}_end", True)
 
         if func is not None:
-            if utils.repeat_advance():
+            if self.repeat_advance():
                 func(**func_kwargs)
 
     def show_video(self, video, msg, stop=False):
