@@ -219,6 +219,7 @@ def create_h5_from_csv(dont_split_xdf_fpath, conn, server_name=None):
         for row in lines:
             # change to NAS path if necessary
             if not os.path.exists(row[0]):
+                row[0] = row[0].replace('\\', '/')
                 row[0] = row[0].replace(neurobooth_config[server_name]["local_data_dir"][:-1], neurobooth_config["remote_data_dir"])
             out = split_sens_files(row[0], task_id=row[1], conn=conn)
 
