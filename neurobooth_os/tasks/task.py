@@ -36,6 +36,7 @@ class Task:
         text_task=utils.text_task,
         text_end=utils.text_end,
         countdown=None,
+        task_repeatable_by_subject=True,
         **kwargs,
     ):
         self.logger = logging.getLogger('session')
@@ -57,6 +58,13 @@ class Task:
         self.path_instruction_video = instruction_file
         self.full_screen = full_screen
         self.events = []
+
+        self.advance_keys = ['space']
+        if task_repeatable_by_subject:
+            self.repeat_keys = ['r', ',']
+        else:
+            self.repeat_keys = ['r']
+
         if self.path_instruction_video:
             print(f"Loading {self.path_instruction_video}")
 
@@ -94,9 +102,14 @@ class Task:
             pos=(0, 0),
             units="deg",
         )
+        if task_repeatable_by_subject:
+            task_end_image = "tasks/assets/task_end.png"
+        else:
+            task_end_image = "tasks/assets/task_end_disabled.png"
+
         self.press_task_screen = visual.ImageStim(
             self.win,
-            image=op.join(self.root_pckg, "tasks/assets/task_end.png"),
+            image=op.join(self.root_pckg, task_end_image),
             pos=(0, 0),
             units="deg",
         )
@@ -123,6 +136,19 @@ class Task:
             pos=(0, 0),
             units="deg",
         )
+
+    def repeat_advance(self):
+        """
+         Repeat the current task or continue to next, based on the key pressed.
+         :returns: False to continue; True to repeat
+         """
+        keys = utils.get_keys(keyList=[*self.advance_keys, *self.repeat_keys])
+        for key in keys:
+            if key in self.advance_keys:
+                return False
+            elif key in self.repeat_keys:
+                return True
+        self.logger.warning(f'Unreachable case during task repeat_advance: keys={keys}')
 
     def send_marker(self, msg=None, add_event=False):
         if self.with_lsl:
@@ -159,7 +185,7 @@ class Task:
         self.send_marker(f"{msg}_end", True)
 
         if func is not None:
-            if utils.repeat_advance():
+            if self.repeat_advance():
                 func(**func_kwargs)
 
     def show_video(self, video, msg, stop=False):
