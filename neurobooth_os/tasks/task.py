@@ -58,6 +58,13 @@ class Task:
         self.path_instruction_video = instruction_file
         self.full_screen = full_screen
         self.events = []
+
+        self.advance_keys = ['space']
+        if task_repeatable_by_subject:
+            self.repeat_keys = ['r', ',']
+        else:
+            self.repeat_keys = ['r']
+
         if self.path_instruction_video:
             print(f"Loading {self.path_instruction_video}")
 
@@ -133,13 +140,15 @@ class Task:
     def repeat_advance(self):
         """
          Repeat the current task or continue to next, based on the key pressed.
-         Returns False to continue; True to repeat
+         :returns: False to continue; True to repeat
          """
-        key = utils.get_keys(keyList=["space", "r", ","])
-        if key == ["space"]:
-            return False
-        elif key == ["r"] or key == [","]:
-            return True
+        keys = utils.get_keys(keyList=[*self.advance_keys, *self.repeat_keys])
+        for key in keys:
+            if key in self.advance_keys:
+                return False
+            elif key in self.repeat_keys:
+                return True
+        self.logger.warning(f'Unreachable case during task repeat_advance: keys={keys}')
 
     def send_marker(self, msg=None, add_event=False):
         if self.with_lsl:
