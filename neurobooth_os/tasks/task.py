@@ -61,7 +61,7 @@ class Task:
 
         self.advance_keys = ['space']
         if task_repeatable_by_subject:
-            self.repeat_keys = ['r', ',']
+            self.repeat_keys = ['r', 'comma']
         else:
             self.repeat_keys = ['r']
 
