@@ -61,8 +61,10 @@ class Task:
 
         self.advance_keys = ['space']
         if task_repeatable_by_subject:
-            self.repeat_keys = ['r', ',']
+            task_end_image = "tasks/assets/task_end.png"
+            self.repeat_keys = ['r', 'comma']
         else:
+            task_end_image = "tasks/assets/task_end_disabled.png"
             self.repeat_keys = ['r']
 
         if self.path_instruction_video:
@@ -102,10 +104,6 @@ class Task:
             pos=(0, 0),
             units="deg",
         )
-        if task_repeatable_by_subject:
-            task_end_image = "tasks/assets/task_end.png"
-        else:
-            task_end_image = "tasks/assets/task_end_disabled.png"
 
         self.press_task_screen = visual.ImageStim(
             self.win,
