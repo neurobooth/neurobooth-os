@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Callable
 from enum import IntEnum, auto
 from concurrent.futures import ThreadPoolExecutor, wait
 from neurobooth_os.tasks.task import Task
@@ -10,9 +10,10 @@ from neurobooth_os.iout.mbient import Mbient
 from neurobooth_os.netcomm import socket_message
 
 
-class UserInputEvent(IntEnum):
-    CONTINUE = auto()
-    RESET = auto()
+class TaskState(IntEnum):
+    RESET_NO_SUCCESS = auto()
+    RESET_POST_SUCCESS = auto()
+    END_SCREEN = auto
 
 
 class MbientResetPauseError(Exception):
@@ -26,23 +27,28 @@ class MbientResetPause(Task):
             self,
             mbients: Optional[Dict[str, Mbient]] = None,
             continue_key: str = 'return',
-            reset_key: str = 'r',
+            repeat_key: str = 'r',
+            skip_key: str = 'q',
             end_screen: Optional[str] = None,
             **kwargs
     ):
         """
         :param mbients: Stream names and associated Mbient objects for STM Mbients
-        :param continue_key: Which key will continue/complete the task
-        :param reset_key: Which kill will trigger a reset of the Mbients
+        :param continue_key: Which key will continue/complete the task.
+        :param repeat_key: Which key will trigger a repeated Mbient reset after a successful reset has already occured.
+        :param skip_key: Which key will skip the reset.
         :param end_screen: If not None, present the specified image after the reset is complete
         :param kwargs: Keyword arguments to be passed on to the task constructor
         """
         super().__init__(**kwargs)
         self.mbients = mbients  # These are the mbients connected to STM
-        self.continue_key = continue_key
-        self.reset_key = reset_key
         self.text_size = 48
         self.header_message = "Please wait while we reset the wearable devices.\n"
+
+        self.task_state: TaskState = TaskState.RESET_NO_SUCCESS
+        self.continue_key = continue_key
+        self.repeat_key = repeat_key
+        self.skip_key = skip_key
 
         width, height = self.win.size
         self._screen = visual.TextStim(
@@ -65,40 +71,66 @@ class MbientResetPause(Task):
             )
 
     def run(self, **kwargs):
-        # Send message to GUI terminal
-        print(f'Mbient Reset: {self.reset_key.upper()} to trigger reset, {self.continue_key.upper()} to continue.')
+        self.task_state: TaskState = TaskState.RESET_NO_SUCCESS
+        self.update_message()  # Present Intro Screen
 
-        # Present Intro Screen
-        self.update_message()
+        while self.task_state != TaskState.END_SCREEN:
+            if self.task_state == TaskState.RESET_NO_SUCCESS:
+                self.task_state = self.present_reset_no_success()
+            elif self.task_state == TaskState.RESET_POST_SUCCESS:
+                self.task_state = self.present_reset_post_success()
 
-        try:  # Perform resets until the continue key is pressed
-            event = self.wait_for_key()
-            while event == UserInputEvent.RESET:
-                self.reset_mbients()
-                event = self.wait_for_key()
+        if self.show_end_screen:
+            self.present_end_screen()
+
+    def present_reset_no_success(self) -> TaskState:
+        print(  # Send message to GUI terminal
+            'Mbient Reset: '
+            f'{self.continue_key.upper()} to trigger reset, '
+            f'{self.skip_key.upper()} to skip.'
+        )
+
+        keys = get_keys([self.continue_key, self.skip_key, self.repeat_key])
+        if self.skip_key in keys:
+            return TaskState.END_SCREEN
+        elif (self.continue_key in keys) or (self.repeat_key in keys):  # Also accept repeat key for convenience
+            return self.reset_mbient_wrapper()
+        else:
+            self.logger.error(f'Unreachable case! keys={keys}')
+            return TaskState.RESET_NO_SUCCESS
+
+    def present_reset_post_success(self) -> TaskState:
+        print(  # Send message to GUI terminal
+            'Mbient Reset Successful: '
+            f'{self.continue_key.upper()} to advance, '
+            f'{self.repeat_key.upper()} to repeat reset.'
+        )
+
+        keys = get_keys([self.continue_key, self.skip_key, self.repeat_key])
+        if (self.continue_key in keys) or (self.skip_key in keys):  # Also accept skip key for convenience
+            return TaskState.END_SCREEN
+        elif self.repeat_key in keys:
+            return self.reset_mbient_wrapper()
+        else:
+            self.logger.error(f'Unreachable case! keys={keys}')
+            return TaskState.RESET_POST_SUCCESS
+
+    def reset_mbient_wrapper(self) -> TaskState:
+        try:
+            if self.reset_mbients():
+                return TaskState.RESET_POST_SUCCESS
+            else:
+                return TaskState.RESET_NO_SUCCESS
         except MbientResetPauseError as e:
             self.logger.exception(e)
+            print('Error encountered during reset...')  # Send message to GUI terminal
+            return TaskState.RESET_NO_SUCCESS
 
-        # Progress to the end screen
-        if not self.show_end_screen:
-            return
-
+    def present_end_screen(self) -> None:
         self.end_screen.draw()
         self.win.flip()
         print(f'Pause: Press {self.continue_key.upper()} to continue.')  # Send message to GUI terminal
         get_keys([self.continue_key])  # Wait until continue key is pressed
-
-    def wait_for_key(self) -> UserInputEvent:
-        """Wait for a valid key input event.
-        :returns: The type of detected event.
-        """
-        keys = get_keys(keyList=[self.continue_key, self.reset_key])
-        if self.continue_key in keys:
-            return UserInputEvent.CONTINUE
-        elif self.reset_key in keys:
-            return UserInputEvent.RESET
-        else:
-            raise MbientResetPauseError(f'Reached "impossible" case with keys: {keys}')
 
     def update_message(self, contents: List[str] = ()):
         """Update the message on the screen.
@@ -109,8 +141,10 @@ class MbientResetPause(Task):
         self._screen.draw()
         self.win.flip()
 
-    def reset_mbients(self) -> None:
-        """Reset the Mbient devices and report their status to the screen."""
+    def reset_mbients(self) -> bool:
+        """Reset the Mbient devices and report their status to the screen.
+        :returns: Whether all devices successfully reset and reconnected.
+        """
         self.update_message(['Reset in progress...'])
 
         # Concurrently reset devices
@@ -132,6 +166,8 @@ class MbientResetPause(Task):
             # Combine results from all serves
             results = {**acq_results, **stm_results}
 
+        all_success = all([connected for _, connected in results.items()])
+
         # Display the results
         results = {
             stream_name: 'CONNECTED' if connected else 'ERROR'
@@ -140,3 +176,5 @@ class MbientResetPause(Task):
         self.update_message([f'{stream_name}: {status}' for stream_name, status in results.items()])
         for stream_name, status in results.items():
             print(f'{stream_name} is {status}')  # Send message to GUI terminal
+
+        return all_success
