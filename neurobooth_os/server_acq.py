@@ -159,7 +159,7 @@ def run_acq(logger):
 
             # Attempt to reconnect Mbients if disconnected
             Mbient.task_start_reconnect([
-                stream for stream_name, stream in streams
+                stream for stream_name, stream in streams.items()
                 if 'Mbient' in stream_name
             ])
 
