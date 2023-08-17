@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Optional, Dict, List, Callable
+from typing import Optional, Dict, List
 from enum import IntEnum, auto
 from concurrent.futures import ThreadPoolExecutor, wait
 from neurobooth_os.tasks.task import Task
@@ -13,7 +13,7 @@ from neurobooth_os.netcomm import socket_message
 class TaskState(IntEnum):
     RESET_NO_SUCCESS = auto()
     RESET_POST_SUCCESS = auto()
-    END_SCREEN = auto
+    END_SCREEN = auto()
 
 
 class MbientResetPauseError(Exception):
