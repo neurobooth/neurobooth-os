@@ -103,7 +103,7 @@ def run_stm(logger):
             logger.info('LOGGER CREATED')
 
             if system_resource_logger is None:
-                system_resource_logger = SystemResourceLogger(ses_folder, 'ACQ')
+                system_resource_logger = SystemResourceLogger(ses_folder, 'STM')
                 system_resource_logger.start()
 
             # delete subj_date as not present in DB
