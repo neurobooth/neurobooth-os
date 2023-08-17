@@ -2,8 +2,9 @@ import sys
 import argparse
 import uuid
 from ctypes import c_void_p
-from time import sleep
+from time import sleep, time
 import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor, wait
 import logging
 from typing import Any, Dict, List, Callable, NamedTuple, Optional
 from abc import ABC, abstractmethod
@@ -537,13 +538,16 @@ class Mbient:
         self.device_wrapper = MetaWearWrapper.create_wrapper(device)
         self.device_wrapper.on_disconnect = lambda status: self.attempt_reconnect(status)
 
-    def attempt_reconnect(self, status: Optional[int] = None) -> None:
+    def attempt_reconnect(self, status: Optional[int] = None, notify: bool = True) -> None:
         """
         Callback for disconnect events. Attempt to reconnect to and configure the device.
         :param status: The status code passed by the callback handler.
+        :param notify: Whether to prompt a warning about premature disconnection.
         """
-        print(f"-WARNING mbient- {self.dev_name} diconnected prematurely")  # Send message to GUI terminal
-        self.logger.warning(self.format_message(f'Disconnected Prematurely (status={status})'))
+        t0 = time()
+        if notify:
+            print(f"-WARNING mbient- {self.dev_name} diconnected prematurely")  # Send message to GUI terminal
+            self.logger.warning(self.format_message(f'Disconnected Prematurely (status={status})'))
 
         self.device_wrapper.on_disconnect = lambda status_: self.logger.info(self.format_message(
             f'Disconnect during attempt_reconnect with status={status_}'
@@ -562,6 +566,29 @@ class Mbient:
         except Exception as e:
             print(f"Couldn't setup for {self.dev_name}")  # Send message to GUI terminal
             self.logger.error(self.format_message(f'Error during reconnect: {e}'), exc_info=sys.exc_info())
+        finally:
+            self.logger.debug(self.format_message(f'attempt_reconnect took {time() - t0} seconds.'))
+
+    @staticmethod
+    def task_start_reconnect(devices: List['Mbient']) -> None:
+        """
+        Given a list of Mbient devices, attempt reconnection in parallel if any are disconnected.
+        :param devices: The devices to check and attempt reconnection on if necessary.
+        """
+        disconnected_devices = [dev for dev in devices if not dev.device_wrapper.is_connected]
+        if len(disconnected_devices) == 0:
+            return  # Everything is connected; do nothing
+
+        # Print message to GUI terminal
+        device_names = [dev.dev_name for dev in disconnected_devices]
+        print(f'The following Mbients are disconnected: {device_names}. Attempting to reconnect...')
+
+        # Attempt reconnection in parallel
+        with ThreadPoolExecutor(max_workers=len(disconnected_devices)) as executor:
+            results = [executor.submit(dev.attempt_reconnect, notify=False) for dev in disconnected_devices]
+            wait(results)  # Wait for reconnects to complete
+
+        print('Pre-task reconnect attempts complete.')  # Print message to GUI terminal
 
     def reset(self, timeout_sec: float = 10) -> None:
         """

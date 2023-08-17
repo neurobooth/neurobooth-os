@@ -20,6 +20,7 @@ from neurobooth_os.iout.lsl_streamer import (
     close_streams,
     reconnect_streams,
 )
+from neurobooth_os.iout.mbient import Mbient
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import make_session_logger
 
@@ -150,14 +151,11 @@ def run_acq(logger):
                         except:
                             continue
 
-            for k in streams.keys():  # Attempt to reconnect mbients if disconnected
-                if "Mbient" in k:
-                    try:
-                        if not streams[k].device_wrapper.is_connected:
-                            streams[k].attempt_reconnect()
-                    except Exception as e:
-                        print(e)
-                        pass
+            # Attempt to reconnect Mbients if disconnected
+            Mbient.task_start_reconnect([
+                stream for stream_name, stream in streams
+                if 'Mbient' in stream_name
+            ])
 
             elapsed_time = time() - t0
             print(f"Device start took {elapsed_time:.2f}")
