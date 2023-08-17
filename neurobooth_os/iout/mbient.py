@@ -508,13 +508,13 @@ class Mbient:
         (The alternative is to physically push the button on the devices or scan for devices from a Windows computer.)
         We only need to do this once, so this function ensures it is only done once per machine/server.
         """
-        with self.SCAN_LOCK:
-            if self.SCAN_PERFORMED:  # Only need to scan once if multiple devices are present
+        with Mbient.SCAN_LOCK:
+            if Mbient.SCAN_PERFORMED:  # Only need to scan once if multiple devices are present
                 return
             self.logger.debug('Performing BLE Scan')
             ble_devices = scan_BLE(timeout_sec=10)
             self.logger.debug(f'BLE scan found {len(ble_devices)} devices: {[mac for _, mac in ble_devices.items()]}')
-            self.SCAN_PERFORMED = True
+            Mbient.SCAN_PERFORMED = True
 
     def connect(self, n_attempts: Optional[int] = None, retry_delay_sec: Optional[float] = None) -> None:
         """
@@ -817,7 +817,7 @@ def test_script() -> None:
 
     logger.info(f'Creating Device {args.name} at {args.mac}')
     device = Mbient(mac=args.mac, dev_name=args.name)
-    device.SCAN_PERFORMED = True  # Make repeated runs of test scrip faster; comment out if needed.
+    Mbient.SCAN_PERFORMED = True  # Make repeated runs of test script faster; comment out if needed.
 
     def _test_data_handler(epoch: float, acc: Any, gyro: Any) -> None:
         """Prints data to the console"""
