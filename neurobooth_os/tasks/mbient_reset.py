@@ -21,7 +21,19 @@ class MbientResetPauseError(Exception):
 
 
 class MbientResetPause(Task):
-    """Pause the session so that the Mbient wearables can be reset to improve data quality."""
+    """
+    Pause the session so that the Mbient wearables can be reset to improve data quality.
+
+    This pause-like task has three phases/states.
+    These states ensure that pressing the continue key will always produce a reasonable default effect.
+    1. RESET_NO_SUCCESS: The initial state. The continue key will trigger a reset. If the reset is successful, the state
+        will advance to RESET_POST_SUCCESS. If the skip key is pressed instead, the state will advance to END_SCREEN
+        without performing a reset.
+    2. RESET_POST_SUCCESS: The continue key will advance to END_SCREEN without performing a reset. If a repeat is
+        desired, the repeat key will advance to either RESET_NO_SUCCESS or RESET_POST_SUCCESS depending on whether the
+        reset was successful.
+    3. END_SCREEN: Simply wait for the continue key to be pressed.
+    """
 
     def __init__(
             self,
