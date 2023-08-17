@@ -102,10 +102,10 @@ class MbientResetPause(Task):
             f'{self.skip_key.upper()} to skip.'
         )
 
-        keys = get_keys([self.continue_key, self.skip_key, self.repeat_key])
+        keys = get_keys([self.continue_key, self.skip_key])
         if self.skip_key in keys:
             return TaskState.END_SCREEN
-        elif (self.continue_key in keys) or (self.repeat_key in keys):  # Also accept repeat key for convenience
+        elif self.continue_key in keys:
             return self.reset_mbient_wrapper()
         else:
             self.logger.error(f'Unreachable case! keys={keys}')
