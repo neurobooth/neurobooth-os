@@ -5,6 +5,7 @@ from time import time, sleep
 from collections import OrderedDict
 import cv2
 import numpy as np
+from typing import Dict, Any
 from concurrent.futures import ThreadPoolExecutor, wait
 from pylsl import local_clock
 import logging
@@ -47,6 +48,11 @@ def Main():
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
         raise
+
+
+def is_camera(stream_name: str) -> bool:
+    """Test to see if a stream is a camera stream based on its name."""
+    return stream_name.split("_")[0] in ["FLIR", "Intel", "IPhone"]
 
 
 def run_acq(logger):
@@ -143,13 +149,13 @@ def run_acq(logger):
             fname, task = data.split("::")[1:]
             fname = f"{server_config['local_data_dir']}{subject_id_date}/{fname}"
 
-            for k in streams.keys():
-                if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
-                    if task_devs_kw[task].get(k):
-                        try:
-                            streams[k].start(fname)
-                        except:
-                            continue
+            # Start cameras
+            for stream_name, stream in streams.items():
+                if is_camera(stream_name) and stream_name in task_devs_kw[task]:
+                    try:
+                        stream.start(fname)
+                    except Exception as e:
+                        logger.exception(e)
 
             # Attempt to reconnect Mbients if disconnected
             Mbient.task_start_reconnect([
@@ -166,15 +172,16 @@ def run_acq(logger):
 
         elif "record_stop" in data:
             t0 = time()
-            for k in streams.keys():  # Call stop on streams with that method
-                if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
-                    if task_devs_kw[task].get(k):
-                        streams[k].stop()
 
-            for k in streams.keys():  # Ensure the streams are stopped
-                if k.split("_")[0] in ["FLIR", "Intel", "IPhone"]:
-                    if task_devs_kw[task].get(k):
-                        streams[k].ensure_stopped(10)
+            # Stop cameras
+            for stream_name, stream in streams.items():
+                if is_camera(stream_name) and stream_name in task_devs_kw[task]:
+                    stream.stop()
+
+            # Wait for cameras to actually stop
+            for stream_name, stream in streams.items():
+                if is_camera(stream_name) and stream_name in task_devs_kw[task]:
+                    stream.ensure_stopped(10)
 
             elapsed_time = time() - t0
             print(f"Device stop took {elapsed_time:.2f}")
