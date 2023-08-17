@@ -126,7 +126,15 @@ class MbientResetPause(Task):
 
             # Wait for all resets to complete, then resolve the futures
             wait([acq_results, *stm_results.values()])
-            acq_results = json.loads(acq_results.result())  # Parse result from ACQ
+
+            # Parse result from ACQ
+            acq_results = acq_results.result()
+            if acq_results is not None:
+                acq_results = json.loads(acq_results)
+            else:
+                self.logger.warn('Received None response from ACQ reset_mbients.')
+                acq_results = {}
+
             stm_results = {stream_name: result.result() for stream_name, result in stm_results.items()}
 
             # Combine results from all serves

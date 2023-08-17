@@ -126,6 +126,11 @@ def run_acq(logger):
                 if 'mbient' in stream_name.lower()
             }
 
+            if len(mbient_streams) == 0:
+                logger.debug('No mbients to reset.')
+                connx.send(json.dumps({}).encode('utf-8'))
+                continue
+
             with ThreadPoolExecutor(max_workers=len(mbient_streams)) as executor:
                 # Begin concurrent reset of devices
                 reset_results = {
