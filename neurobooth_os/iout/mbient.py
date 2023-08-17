@@ -538,11 +538,12 @@ class Mbient:
         self.device_wrapper = MetaWearWrapper.create_wrapper(device)
         self.device_wrapper.on_disconnect = lambda status: self.attempt_reconnect(status)
 
-    def attempt_reconnect(self, status: Optional[int] = None, notify: bool = True) -> None:
+    def attempt_reconnect(self, status: Optional[int] = None, notify: bool = True, n_attempts: int = 3) -> None:
         """
         Callback for disconnect events. Attempt to reconnect to and configure the device.
         :param status: The status code passed by the callback handler.
         :param notify: Whether to prompt a warning about premature disconnection.
+        :param n_attempts: How many reconnection attempts to make.
         """
         t0 = time()
         if notify:
@@ -555,7 +556,7 @@ class Mbient:
 
         try:
             was_streaming = self.streaming
-            self.connect(n_attempts=3, retry_delay_sec=0.5)
+            self.connect(n_attempts=n_attempts, retry_delay_sec=0.5)
             self.setup()
             if was_streaming:
                 self.start(buzz=False)
@@ -585,7 +586,9 @@ class Mbient:
 
         # Attempt reconnection in parallel
         with ThreadPoolExecutor(max_workers=len(disconnected_devices)) as executor:
-            results = [executor.submit(dev.attempt_reconnect, notify=False) for dev in disconnected_devices]
+            results = [
+                executor.submit(dev.attempt_reconnect, notify=False, n_attempts=1) for dev in disconnected_devices
+            ]
             wait(results)  # Wait for reconnects to complete
 
         print('Pre-task reconnect attempts complete.')  # Print message to GUI terminal

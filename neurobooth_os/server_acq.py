@@ -5,7 +5,6 @@ from time import time, sleep
 from collections import OrderedDict
 import cv2
 import numpy as np
-from typing import Dict, Any
 from concurrent.futures import ThreadPoolExecutor, wait
 from pylsl import local_clock
 import logging
