@@ -94,8 +94,9 @@ class SystemResourceLogger(Thread):
     @staticmethod
     def __create_log(session_folder: str, machine_name: str) -> logging.Logger:
         logger = logging.getLogger('resource_log')
+        time_str = datetime.now().strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
         file_handler = logging.FileHandler(
-            os.path.join(session_folder, f'{machine_name}_system_resource.log'), mode='a',
+            os.path.join(session_folder, f'{machine_name}_system_resource_{time_str}.log')
         )
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(SystemResourceLogger.LOG_FORMAT)
