@@ -5,6 +5,7 @@ from time import time
 from datetime import datetime
 import copy
 from collections import OrderedDict  # NOT an unused import, very naughtily used by an eval
+from concurrent.futures import ThreadPoolExecutor, wait
 
 from psychopy import prefs
 
@@ -21,6 +22,7 @@ from neurobooth_os.iout.lsl_streamer import (
     reconnect_streams,
 )
 from neurobooth_os.iout import metadator as meta
+from neurobooth_os.iout.mbient import Mbient
 
 from neurobooth_os.netcomm import (
     socket_message,
@@ -205,36 +207,32 @@ def run_stm(logger):
                 print(f"Waiting for CTR took: {elapsed_time:.2f}")
                 logger.info(f'Waiting for CTR took: {elapsed_time:.2f}')
 
-                # Start eyetracker if device in task
-                if streams.get("Eyelink") and any(
-                    "Eyelink" in d for d in list(task_devs_kw[task])
-                ):
-                    fname = f"{task_karg['path']}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    # Start recording on ACQ in parallel to starting on STM
+                    logger.info(f'SENDING record_start TO ACQ')
+                    acq_result = executor.submit(
+                        socket_message,
+                        f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
+                        "acquisition",
+                        wait_data=10,
+                    )
 
-                    # if not calibration record with start method
-                    if "calibration_task" in task:
-                        this_task_kwargs.update(
-                            {"fname": fname, "instructions": calib_instructions}
-                        )
-                    else:
-                        streams["Eyelink"].start(fname)
+                    # Start eyetracker if device in task
+                    if "Eyelink" in streams and any("Eyelink" in d for d in list(task_devs_kw[task])):
+                        fname = f"{task_karg['path']}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
+                        if "calibration_task" in task:  # if not calibration record with start method
+                            this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
+                        else:
+                            streams["Eyelink"].start(fname)
 
-                # Start rec in ACQ and run task
-                logger.info(f'SENDING record_start TO ACQ')
-                _ = socket_message(
-                    f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
-                    "acquisition",
-                    wait_data=10,
-                )
+                    # Attempt to reconnect Mbients if disconnected
+                    Mbient.task_start_reconnect([
+                        stream for stream_name, stream in streams.items()
+                        if 'Mbient' in stream_name
+                    ])
 
-                for k in streams.keys():  # Attempt to reconnect mbients if disconnected
-                    if "Mbient" in k:
-                        try:
-                            if not streams[k].device_wrapper.is_connected:
-                                streams[k].attempt_reconnect()
-                        except Exception as e:
-                            print(e)
-                            pass
+                    wait([acq_result])  # Wait for ACQ to finish
+                    acq_result.result()  # Raise any exceptions swallowed by the executor
 
                 if len(tasks) == 0:
                     this_task_kwargs.update({"last_task": True})
@@ -249,24 +247,18 @@ def run_stm(logger):
                 events = tsk_fun.run(**this_task_kwargs)
                 logger.debug(f"TASK FUNCTION RETURNED")
 
-                # Stop rec in ACQ
-                t0 = t00 = time()
-                logger.info(f'SENDING record_stop TO ACQ')
-                _ = socket_message("record_stop", "acquisition", wait_data=15)
-                elapsed_time = time() - t0
-                print(f"ACQ stop took: {elapsed_time:.2f}")
-                logger.info(f"ACQ stop took: {elapsed_time:.2f}")
-                # mbient stop streaming
-                for k in streams.keys():
-                    if "Mbient" in k:
-                        streams[k].lsl_push = False
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    # Stop recording on ACQ in parallel to stopping on STM
+                    logger.info(f'SENDING record_stop TO ACQ')
+                    acq_result = executor.submit(socket_message, "record_stop", "acquisition", wait_data=15)
 
-                # Stop eyetracker
-                if streams.get("Eyelink") and any(
-                    "Eyelink" in d for d in list(task_devs_kw[task])
-                ):
-                    if "calibration_task" not in task:
-                        streams["Eyelink"].stop()
+                    # Stop eyetracker
+                    if "Eyelink" in streams and any("Eyelink" in d for d in list(task_devs_kw[task])):
+                        if "calibration_task" not in task:
+                            streams["Eyelink"].stop()
+
+                    wait([acq_result])  # Wait for ACQ to finish
+                    acq_result.result()  # Raise any exceptions swallowed by the executor
 
                 # Signal CTR to start LSL rec and wait for start confirmation
                 print(f"Finished task: {task}")
