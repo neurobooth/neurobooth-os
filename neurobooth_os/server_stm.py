@@ -16,11 +16,7 @@ import neurobooth_os
 from neurobooth_os import config
 
 # from neurobooth_os.iout.screen_capture import ScreenMirror
-from neurobooth_os.iout.lsl_streamer import (
-    start_lsl_threads,
-    close_streams,
-    reconnect_streams,
-)
+from neurobooth_os.iout.lsl_streamer import DeviceManager
 from neurobooth_os.iout import metadator as meta
 from neurobooth_os.iout.mbient import Mbient
 
@@ -64,9 +60,10 @@ def run_stm(logger):
     else:
         win = utl.make_win(full_screen=True)
 
-    streams, screen_running, presented = {}, False, False
+    screen_running, presented = False, False
     port = server_config["port"]
     host = ''
+    device_manager = None
 
     for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
@@ -109,14 +106,13 @@ def run_stm(logger):
             task_func_dict = get_task_funcs(collection_id, conn)
             task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
 
-            if len(streams):
+            device_manager = DeviceManager(node_name='presentation')
+            if device_manager.streams:
                 print("Checking prepared devices")
-                streams = reconnect_streams(streams)
+                device_manager.reconnect_streams()
             else:
-                streams = start_lsl_threads(
-                    "presentation", collection_id, win=win, conn=conn
-                )
-
+                device_manager.create_streams(collection_id=collection_id, win=win, conn=conn)
+            eyelink_stream = device_manager.get_eyelink_stream()
             print("UPDATOR:-Connect-")
 
         elif "present" in data:  # -> "present:TASKNAME:subj_id:session_id"
@@ -131,17 +127,15 @@ def run_stm(logger):
                 "win": win,
                 "path": server_config["local_data_dir"] + f"{subject_id_date}/",
                 "subj_id": subject_id_date,
-                "marker_outlet": streams["marker"],
+                "marker_outlet": device_manager.streams["marker"],
                 "prompt": True,
             }
 
             # Pass device streams as keyword arguments if needed.
             # TODO: This needs to be cleaned up and not hard-coded
-            if streams.get("Eyelink"):  # For eye tracker tasks
-                task_karg["eye_tracker"] = streams["Eyelink"]
-            task_karg['mbients'] = {  # For the mbient reset task
-                stream_name: stream for stream_name, stream in streams.items() if 'mbient' in stream_name.lower()
-            }
+            if eyelink_stream is not None:  # For eye tracker tasks
+                task_karg["eye_tracker"] = eyelink_stream
+            task_karg['mbients'] = device_manager.get_mbient_streams()  # For the mbient reset task
 
             if presented:
                 task_func_dict = get_task_funcs(collection_id, conn)
@@ -218,18 +212,14 @@ def run_stm(logger):
                     )
 
                     # Start eyetracker if device in task
-                    if "Eyelink" in streams and any("Eyelink" in d for d in list(task_devs_kw[task])):
+                    if eyelink_stream is not None and any("Eyelink" in d for d in list(task_devs_kw[task])):
                         fname = f"{task_karg['path']}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
                         if "calibration_task" in task:  # if not calibration record with start method
                             this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
                         else:
-                            streams["Eyelink"].start(fname)
+                            eyelink_stream.start(fname)
 
-                    # Attempt to reconnect Mbients if disconnected
-                    Mbient.task_start_reconnect([
-                        stream for stream_name, stream in streams.items()
-                        if 'Mbient' in stream_name
-                    ])
+                    device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
 
                     wait([acq_result])  # Wait for ACQ to finish
                     acq_result.result()  # Raise any exceptions swallowed by the executor
@@ -253,9 +243,9 @@ def run_stm(logger):
                     acq_result = executor.submit(socket_message, "record_stop", "acquisition", wait_data=15)
 
                     # Stop eyetracker
-                    if "Eyelink" in streams and any("Eyelink" in d for d in list(task_devs_kw[task])):
+                    if eyelink_stream is not None and any("Eyelink" in d for d in list(task_devs_kw[task])):
                         if "calibration_task" not in task:
-                            streams["Eyelink"].stop()
+                            eyelink_stream.stop()
 
                     wait([acq_result])  # Wait for ACQ to finish
                     acq_result.result()  # Raise any exceptions swallowed by the executor
@@ -325,7 +315,7 @@ def run_stm(logger):
                 sys.stdout = sys.stdout.terminal
                 s1.close()
 
-            streams = close_streams(streams)
+            device_manager.close_streams()
 
             if "shutdown" in data:
                 # if screen_running:
