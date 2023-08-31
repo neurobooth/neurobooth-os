@@ -30,7 +30,7 @@ from neurobooth_os.netcomm import (
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
-from neurobooth_os.log_manager import make_session_logger, make_default_logger
+from neurobooth_os.log_manager import make_session_logger, make_default_logger, SystemResourceLogger
 
 
 server_config = config.neurobooth_config["presentation"]
@@ -64,6 +64,7 @@ def run_stm(logger):
     port = server_config["port"]
     host = ''
     device_manager = None
+    system_resource_logger = None
 
     for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
@@ -99,6 +100,10 @@ def run_stm(logger):
             logger.info("Creating session logger in session folder.")
             logger = make_session_logger(ses_folder, 'STM')
             logger.info('LOGGER CREATED')
+
+            if system_resource_logger is None:
+                system_resource_logger = SystemResourceLogger(ses_folder, 'STM')
+                system_resource_logger.start()
 
             # delete subj_date as not present in DB
             del log_task["subject_id-date"]
@@ -309,6 +314,10 @@ def run_stm(logger):
             presented = True
 
         elif data in ["close", "shutdown"]:
+            if system_resource_logger is not None:
+                system_resource_logger.stop()
+                system_resource_logger = None
+
             if "shutdown" in data:
                 logger.info("Shutting down")
                 win.close()

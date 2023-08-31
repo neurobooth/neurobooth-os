@@ -17,7 +17,7 @@ from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import DeviceManager
 from neurobooth_os.iout.mbient import Mbient
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.log_manager import make_session_logger
+from neurobooth_os.log_manager import make_session_logger, SystemResourceLogger
 
 server_config = config.neurobooth_config["acquisition"]
 
@@ -52,6 +52,7 @@ def run_acq(logger):
     port = server_config["port"]
     host = ''
     device_manager = None
+    system_resource_logger = None
 
     for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
@@ -83,6 +84,10 @@ def run_acq(logger):
 
             logger = make_session_logger(ses_folder, 'ACQ')
             logger.info('LOGGER CREATED')
+
+            if system_resource_logger is None:
+                system_resource_logger = SystemResourceLogger(ses_folder, 'ACQ')
+                system_resource_logger.start()
 
             task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
 
@@ -139,6 +144,10 @@ def run_acq(logger):
             recording = False
 
         elif data in ["close", "shutdown"]:
+            if system_resource_logger is not None:
+                system_resource_logger.stop()
+                system_resource_logger = None
+
             if "shutdown" in data:
                 sys.stdout = sys.stdout.terminal
                 s1.close()
