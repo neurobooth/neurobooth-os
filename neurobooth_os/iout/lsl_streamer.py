@@ -2,7 +2,7 @@ import logging
 import threading
 from neurobooth_os.iout import metadator as meta
 from typing import Any, Dict, List, Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
 
 # --------------------------------------------------------------------------------
