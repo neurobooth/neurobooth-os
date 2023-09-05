@@ -71,6 +71,9 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
                 f'Timeout encountered when retrieving {fname}. Discontinuing transfer to prevent out-of-order files.'
             )
             break
+        except iphone.IPhoneHashMismatch:
+            logger.error(f'Hash mismatch detected for {fname}. Skipping this file.')
+            continue
 
     logger.debug('Disconnecting iPhone')
     phone.disconnect()

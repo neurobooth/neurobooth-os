@@ -13,6 +13,7 @@ import logging
 import time
 from typing import Dict, List, Tuple, Any, Optional, Union, ByteString
 from enum import IntEnum
+from hashlib import md5
 
 from neurobooth_os.iout.usbmux import USBMux
 
@@ -53,7 +54,7 @@ class MessageTag(IntEnum):
 # Exceptions
 # --------------------------------------------------------------------------------
 class IPhoneError(Exception):
-    """Errors intended to be raised to calling code (instead of handled here, like panic)."""
+    """Base class for iPhone-related errors."""
     pass
 
 
@@ -64,6 +65,11 @@ class IPhonePanic(IPhoneError):
 
 class IPhoneTimeout(IPhoneError):
     """Signals that waiting on a particular response or threading condition failed."""
+    pass
+
+
+class IPhoneHashMismatch(IPhoneError):
+    """Signals that a transferred file does not have the expected hash"""
     pass
 
 
@@ -684,11 +690,17 @@ class IPhone:
                 self.logger.debug(f"iPhone [state={self._state}]: File List (N={len(filelist)}) = {filelist}")
             return filelist
 
-    def dump(self, filename: str, timeout_sec=None) -> (bool, ByteString):
+    def dump(
+            self,
+            filename: str,
+            file_hash: Optional[bytes] = None,
+            timeout_sec: Optional[float] = None,
+    ) -> (bool, ByteString):
         """
         Retrieve a file from the iPhone.
 
         :param filename: The file (from the list returned by dumpall_getfilelist) to retrieve.
+        :param file_hash: Verify the transferred data using an MD5 hash, if specified.
         :param timeout_sec: Wait the specified amount of time for the file transfer to complete. No timeout if None.
         :returns: The raw data returned from the phone, or zero bytes if timed out.
         """
@@ -701,6 +713,13 @@ class IPhone:
                     self._raise_timeout("@DUMP")
             except IPhonePanic as e:
                 self.panic(e)
+
+            if file_hash is None:
+                self.logger.warning(f'No hash check performed for {filename}')
+            elif file_hash != md5(self._dump_video_data).digest():
+                self.logger.warning(f'Received file ({filename}) does not match given hash.')
+                raise IPhoneHashMismatch(f'Received file ({filename}) does not match given hash.')
+
             return self._dump_video_data
 
     @_handle_panic
