@@ -12,6 +12,7 @@ import uuid
 import logging
 import time
 from typing import Dict, List, Tuple, Any, Optional, Union, ByteString
+from enum import IntEnum
 
 from neurobooth_os.iout.usbmux import USBMux
 
@@ -37,6 +38,15 @@ MESSAGE = Dict[str, Any]
 PACKET_PAYLOAD = Union[MESSAGE, ByteString]
 PACKET_CONTENTS = Tuple[PACKET_PAYLOAD, int, int, int]
 CONFIG = Dict[str, Any]
+
+
+class MessageTag(IntEnum):
+    """Packets/messages sent by the iPhone are accompanied by a integer tag denoting the type of contents."""
+    NORMAL_MESSAGE = 0
+    FRAME_PREVIEW = 1
+    DUMP_FILE = 2
+    DUMP_FILE_CHUNK = 3
+    DUMP_LAST_FILE_CHUNK = 4
 
 
 # --------------------------------------------------------------------------------
@@ -113,6 +123,14 @@ class IPhone:
         },  # NO SPECIAL state for after received ready to dump. Dump is done from 'Connected' state
         "#DUMP": {
             "@DUMPRECEIVE": "#READY",
+            "@CHUNKRECEIVE": "#DUMPCHUNK",
+            "@LASTCHUNKRECEIVE": "#READY",
+            "@DISCONNECT": "#DISCONNECTED",
+            "@ERROR": "#ERROR",
+        },
+        "#DUMPCHUNK": {
+            "@CHUNKRECEIVE": "#DUMPCHUNK",
+            "@LASTCHUNKRECEIVE": "#READY",
             "@DISCONNECT": "#DISCONNECTED",
             "@ERROR": "#ERROR",
         },
@@ -359,7 +377,7 @@ class IPhone:
         payload, _, _, resp_tag = self._get_packet()
 
         if DEBUG_LOGGING:
-            debug_msg = payload if resp_tag == 0 else f'Tag {resp_tag}'
+            debug_msg = payload if resp_tag == MessageTag.NORMAL_MESSAGE else f'Tag {resp_tag}'
             self.logger.debug(f'Listener Received: {debug_msg}')
 
         self._process_received_message(payload, resp_tag)
@@ -406,10 +424,15 @@ class IPhone:
         first_frame = self.sock.recv(16)
         version, type_, tag, payload_size = struct.unpack("!IIII", first_frame)
 
-        if tag in (1, 2):
+        if tag in (
+                MessageTag.FRAME_PREVIEW,
+                MessageTag.DUMP_FILE,
+                MessageTag.DUMP_FILE_CHUNK,
+                MessageTag.DUMP_LAST_FILE_CHUNK
+        ):
             payload = IPhone.recvall(self.sock, payload_size)
             return payload, version, type_, tag
-        elif tag == 0:
+        elif tag == MessageTag.NORMAL_MESSAGE:
             payload = self.sock.recv(payload_size)
             msg = IPhone._json_unwrap(payload)
             self._validate_message(msg)
@@ -425,15 +448,24 @@ class IPhone:
         :param msg: The payload received from the iPhone. (Either a message or raw data depending on the tag.)
         :param tag: The message tag that indicates how to handle the payload.
         """
-        if tag == 1:
+        if tag == MessageTag.FRAME_PREVIEW:
             self._update_state("@PREVIEWRECEIVE")
             with self._frame_preview_cond:
                 self._frame_preview_data = msg
                 self._frame_preview_cond.notify()
-        elif tag == 2:
+        elif tag == MessageTag.DUMP_FILE:
             self._update_state("@DUMPRECEIVE")
             with self._dump_video_cond:
                 self._dump_video_data = msg
+                self._dump_video_cond.notify()
+        elif tag == MessageTag.DUMP_FILE_CHUNK:
+            self._update_state("@CHUNKRECEIVE")
+            with self._dump_video_cond:
+                self._dump_video_data += msg
+        elif tag == MessageTag.DUMP_LAST_FILE_CHUNK:
+            self._update_state("@LASTCHUNKRECEIVE")
+            with self._dump_video_cond:
+                self._dump_video_data += msg
                 self._dump_video_cond.notify()
         else:
             self._lsl_push_sample(msg)  # Push before trying to acquire locks to ensure accurate timing
@@ -662,7 +694,7 @@ class IPhone:
         """
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMP Message')
         with self._dump_video_cond:
-            self._dump_video_data = b""
+            self._dump_video_data = b""  # Clean slate is necessary for file chunk receipt logic
             try:
                 self._send_packet("@DUMP", msg_contents={"Message": filename})
                 if not self._dump_video_cond.wait(timeout=timeout_sec):
