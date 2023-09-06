@@ -721,7 +721,14 @@ class IPhone:
 
             if file_hash is None:
                 self.logger.warning(f'No hash check performed for {filename}')
-            elif b64decode(file_hash).hex() != md5(self._dump_video_data).hexdigest():
+                return self._dump_video_data
+
+            self.logger.debug(f'iPhone [state={self._state}]: Computing Hashes')
+            dumpall_hash = b64decode(file_hash).hex()  # Transform base64 encoded string to hex encoding
+            dump_hash = md5(self._dump_video_data).hexdigest()
+            self.logger.debug(f'iPhone [state={self._state}]: dumpall_hash={dumpall_hash}; dump_hash={dump_hash}')
+
+            if dumpall_hash != dump_hash:
                 self.logger.warning(f'Received file ({filename}) does not match given hash.')
                 raise IPhoneHashMismatch(f'Received file ({filename}) does not match given hash.')
 
