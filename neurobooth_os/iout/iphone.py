@@ -467,12 +467,12 @@ class IPhone:
                 self._dump_video_cond.notify()
         elif tag == MessageTag.DUMP_FILE_CHUNK:
             self._update_state("@CHUNKRECEIVE")
-            self.logger.debug(f'Received File Chunk ({len(msg)/(1<<20):0.1f} MiB)')
+            self.logger.debug(f'iPhone: Received File Chunk ({len(msg)/(1<<20):0.1f} MiB)')
             with self._dump_video_cond:
                 self._dump_video_data += msg
         elif tag == MessageTag.DUMP_LAST_FILE_CHUNK:
             self._update_state("@LASTCHUNKRECEIVE")
-            self.logger.debug(f'Received Last File Chunk ({len(msg) / (1 << 20):0.1f} MiB)')
+            self.logger.debug(f'iPhone: Received Last File Chunk ({len(msg) / (1 << 20):0.1f} MiB)')
             with self._dump_video_cond:
                 self._dump_video_data += msg
                 self._dump_video_cond.notify()
@@ -480,7 +480,10 @@ class IPhone:
             self._lsl_push_sample(msg)  # Push before trying to acquire locks to ensure accurate timing
 
             message_type = msg["MessageType"]
+            if message_type == '@ERROR':
+                self.logger.error(f'iPhone: Error received from phone: {msg["Message"]}')
             self._update_state(message_type)
+
             with self._wait_for_reply_cond:
                 self._latest_message = msg
                 self._latest_message_type = message_type
