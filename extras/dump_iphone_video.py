@@ -39,19 +39,19 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
         return
 
     # Get a list of stored files
-    flist = phone.dumpall_getfilelist()
-    if flist is None:
+    file_names, file_hashes = phone.dumpall_getfilelist()
+    if file_names is None:
         logger.error(f'Unable to retrieve file list [state={phone._state}]!')
         phone.disconnect()
         return
-    logger.debug(f'{len(flist)} files to transfer: {str(flist)}')
+    logger.debug(f'{len(file_names)} files to transfer: {str(file_names)}')
 
     # Try to extract and save each file
-    for fname in flist:
+    for file_name, file_hash in zip(file_names, file_hashes):
         # Parse the session folder out of the file name
-        sess_name = re.findall("[0-9]*_[0-9]{4}-[0-9]{2}-[0-9]{2}", fname)
+        sess_name = re.findall("[0-9]*_[0-9]{4}-[0-9]{2}-[0-9]{2}", file_name)
         if len(sess_name) == 0 or sess_name is None:
-            logger.error(f'Invalid session name: file={fname}; name={sess_name}.')
+            logger.error(f'Invalid session name: file={file_name}; name={sess_name}.')
             continue
 
         # Make the session folder if it does not exist
@@ -62,17 +62,17 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
 
         try:
             dump_file(
-                phone, fname, op.join(sess_folder, fname),
+                phone, file_name, op.join(sess_folder, file_name),
                 timeout_sec=args.timeout,
                 delete_zero_byte=args.delete_zero_byte,
             )
         except iphone.IPhoneTimeout:
             logger.error(
-                f'Timeout encountered when retrieving {fname}. Discontinuing transfer to prevent out-of-order files.'
+                f'Timeout encountered when retrieving {file_name}. Discontinuing transfer to prevent out-of-order files.'
             )
             break
         except iphone.IPhoneHashMismatch:
-            logger.error(f'Hash mismatch detected for {fname}. Skipping this file.')
+            logger.error(f'Hash mismatch detected for {file_name}. Skipping this file.')
             continue
 
     logger.debug('Disconnecting iPhone')
@@ -81,8 +81,9 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
 
 def dump_file(
         phone: iphone.IPhone,
-        fname: str,
-        fname_out: str,
+        file_name: str,
+        file_name_out: str,
+        file_hash,
         timeout_sec: Optional[float] = None,
         delete_zero_byte: bool = False,
 ) -> None:
@@ -93,38 +94,40 @@ def dump_file(
     ----------
     phone
         The iPhone object to interface with.
-    fname
+    file_name
         The name of the file on the iPhone (returned by dumpall_getfilelist).
-    fname_out
+    file_name_out
         The path to save the retrieved file to.
+    file_hash
+        The hash value of the file, used to check the integrity of the transfer.
     timeout_sec
         If not None, log an error and return if the file transfer exceeds the timeout.
     delete_zero_byte
         If true, delete files from the iPhone if no data is observed.
     """
     logger = logging.getLogger('default')
-    if op.exists(fname_out):  # Do not overwrite a file that already exists
-        logger.error(f'Cannot write {fname_out} as it already exists!')
+    if op.exists(file_name_out):  # Do not overwrite a file that already exists
+        logger.error(f'Cannot write {file_name_out} as it already exists!')
         return
 
     # Attempt to retrieve the file from the iPhone
-    logger.info(f'Dump {fname} -> {fname_out}')
-    file_data = phone.dump(fname, timeout_sec=timeout_sec)
+    logger.info(f'Dump {file_name} -> {file_name_out}')
+    file_data = phone.dump(file_name, file_hash=file_hash, timeout_sec=timeout_sec)
 
     zero_byte = len(file_data) == 0
     if zero_byte:
-        logger.error(f'{fname} returned a zero-byte file!')
+        logger.error(f'{file_name} returned a zero-byte file!')
 
     try:  # Save the file and delete from the iphone
-        with open(fname_out, "wb") as f:
+        with open(file_name_out, "wb") as f:
             f.write(file_data)
-        logger.debug(f'Wrote {fname_out}, {len(file_data)/(1<<20):0.1f} MiB')
+        logger.debug(f'Wrote {file_name_out}, {len(file_data) / (1 << 20):0.1f} MiB')
 
         if not zero_byte or delete_zero_byte:
-            phone.dump_success(fname)  # Delete file from iPhone
-            logger.debug(f'Sent @DUMPSUCCESS for {fname}')
+            phone.dump_success(file_name)  # Delete file from iPhone
+            logger.debug(f'Sent @DUMPSUCCESS for {file_name}')
     except Exception as e:
-        logger.error(f'Unable to write file {fname_out}; error={e}')
+        logger.error(f'Unable to write file {file_name_out}; error={e}')
 
 
 def parse_arguments() -> argparse.Namespace:

@@ -666,11 +666,11 @@ class IPhone:
             return self._frame_preview_data
 
     @_handle_panic
-    def dumpall_getfilelist(self) -> Optional[List[str]]:
+    def dumpall_getfilelist(self) -> Optional[List[str], List[bytes]]:
         """
         Fetch a list of files saved on the iPhone.
 
-        :returns: The list of files saved on the iPhone, or None if the condition times out.
+        :returns: The list of names and hashes of files saved on the iPhone, or None if the condition times out.
         """
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMPALL Message')
         with self._wait_for_reply_cond:
@@ -681,16 +681,18 @@ class IPhone:
                 timeout=self._timeout_cond,
             ):
                 self._raise_timeout("@DUMPALL")
-                return None
+                return None, None
 
             if self._state == '#ERROR':  # Usually occurs when no files present
                 self.logger.error(f'iPhone [state={self._state}]: {self._latest_message["Message"]}')
-                return None
+                return None, None
 
-            filelist = self._latest_message["Message"]
+            file_info = self._latest_message["Message"]
+            file_names = [file_name for file_name, _ in file_info]
+            file_hashes = [file_hash for _, file_hash in file_info]
             if DEBUG_LOGGING:
-                self.logger.debug(f"iPhone [state={self._state}]: File List (N={len(filelist)}) = {filelist}")
-            return filelist
+                self.logger.debug(f"iPhone [state={self._state}]: File List (N={len(file_info)}) = {file_names}")
+            return file_names, file_hashes
 
     def dump(
             self,
