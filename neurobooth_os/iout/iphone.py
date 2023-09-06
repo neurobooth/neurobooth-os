@@ -14,6 +14,7 @@ import time
 from typing import Dict, List, Tuple, Any, Optional, Union, ByteString
 from enum import IntEnum
 from hashlib import md5
+from base64 import b64decode
 
 from neurobooth_os.iout.usbmux import USBMux
 
@@ -666,7 +667,7 @@ class IPhone:
             return self._frame_preview_data
 
     @_handle_panic
-    def dumpall_getfilelist(self) -> Tuple[Optional[List[str]], Optional[List[bytes]]]:
+    def dumpall_getfilelist(self) -> Tuple[Optional[List[str]], Optional[List[str]]]:
         """
         Fetch a list of files saved on the iPhone.
 
@@ -697,7 +698,7 @@ class IPhone:
     def dump(
             self,
             filename: str,
-            file_hash: Optional[bytes] = None,
+            file_hash: Optional[str] = None,
             timeout_sec: Optional[float] = None,
     ) -> (bool, ByteString):
         """
@@ -720,7 +721,7 @@ class IPhone:
 
             if file_hash is None:
                 self.logger.warning(f'No hash check performed for {filename}')
-            elif file_hash != md5(self._dump_video_data).digest():
+            elif b64decode(file_hash).hex() != md5(self._dump_video_data).hexdigest():
                 self.logger.warning(f'Received file ({filename}) does not match given hash.')
                 raise IPhoneHashMismatch(f'Received file ({filename}) does not match given hash.')
 

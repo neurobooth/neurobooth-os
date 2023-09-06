@@ -62,7 +62,7 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
 
         try:
             dump_file(
-                phone, file_name, op.join(sess_folder, file_name),
+                phone, file_name, op.join(sess_folder, file_name), file_hash,
                 timeout_sec=args.timeout,
                 delete_zero_byte=args.delete_zero_byte,
             )
