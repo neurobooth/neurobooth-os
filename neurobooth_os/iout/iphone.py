@@ -688,8 +688,8 @@ class IPhone:
                 return None, None
 
             file_info = self._latest_message["Message"]
-            file_names = [file_name for file_name, _ in file_info]
-            file_hashes = [file_hash for _, file_hash in file_info]
+            file_names = [info['file'] for info in file_info]
+            file_hashes = [info['md5'] for info in file_info]
             if DEBUG_LOGGING:
                 self.logger.debug(f"iPhone [state={self._state}]: File List (N={len(file_info)}) = {file_names}")
             return file_names, file_hashes
