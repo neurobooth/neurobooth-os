@@ -460,10 +460,12 @@ class IPhone:
                 self._dump_video_cond.notify()
         elif tag == MessageTag.DUMP_FILE_CHUNK:
             self._update_state("@CHUNKRECEIVE")
+            self.logger.debug(f'Received File Chunk ({len(msg)/(1<<20):0.1f} MiB)')
             with self._dump_video_cond:
                 self._dump_video_data += msg
         elif tag == MessageTag.DUMP_LAST_FILE_CHUNK:
             self._update_state("@LASTCHUNKRECEIVE")
+            self.logger.debug(f'Received Last File Chunk ({len(msg) / (1 << 20):0.1f} MiB)')
             with self._dump_video_cond:
                 self._dump_video_data += msg
                 self._dump_video_cond.notify()
