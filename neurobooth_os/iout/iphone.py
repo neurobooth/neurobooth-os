@@ -666,7 +666,7 @@ class IPhone:
             return self._frame_preview_data
 
     @_handle_panic
-    def dumpall_getfilelist(self) -> Optional[List[str], List[bytes]]:
+    def dumpall_getfilelist(self) -> Tuple[Optional[List[str]], Optional[List[bytes]]]:
         """
         Fetch a list of files saved on the iPhone.
 
