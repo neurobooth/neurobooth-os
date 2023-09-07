@@ -83,7 +83,7 @@ def dump_file(
         phone: iphone.IPhone,
         file_name: str,
         file_name_out: str,
-        file_hash,
+        file_hash: str,
         timeout_sec: Optional[float] = None,
         delete_zero_byte: bool = False,
 ) -> None:
