@@ -708,7 +708,7 @@ class IPhone:
         Retrieve a file from the iPhone.
 
         :param filename: The file (from the list returned by dumpall_getfilelist) to retrieve.
-        :param file_hash: Verify the transferred data using an MD5 hash, if specified.
+        :param file_hash: Verify the transferred data using an MD5 (base64 encoded) hash, if specified.
         :param timeout_sec: Wait the specified amount of time for the file transfer to complete. No timeout if None.
         :returns: The raw data returned from the phone, or zero bytes if timed out.
         """
@@ -727,11 +727,11 @@ class IPhone:
                 return self._dump_video_data
 
             self.logger.debug(f'iPhone [state={self._state}]: Computing Hashes')
-            dumpall_hash = b64decode(file_hash).hex()  # Transform base64 encoded string to hex encoding
-            dump_hash = md5(self._dump_video_data).hexdigest()
-            self.logger.debug(f'iPhone [state={self._state}]: dumpall_hash={dumpall_hash}; dump_hash={dump_hash}')
+            iphone_hash = b64decode(file_hash).hex()  # Transform base64 encoded string to hex encoding
+            local_hash = md5(self._dump_video_data).hexdigest()
+            self.logger.debug(f'iPhone [state={self._state}]: iphone_hash={iphone_hash}; local_hash={local_hash}')
 
-            if dumpall_hash != dump_hash:
+            if iphone_hash != local_hash:
                 self.logger.warning(f'Received file ({filename}) does not match given hash.')
                 raise IPhoneHashMismatch(f'Received file ({filename}) does not match given hash.')
 
