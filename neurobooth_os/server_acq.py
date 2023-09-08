@@ -211,7 +211,7 @@ def run_acq(logger):
             # TODO: It would be nice to generically register logging handlers at each stage of a stream's lifecycle.
             for k in streams.keys():  # Log the list of files present on the iPhone
                 if k.split("_")[0] == "IPhone":
-                    iphone_files = streams[k].dumpall_getfilelist()
+                    iphone_files, _ = streams[k].dumpall_getfilelist()
                     if iphone_files is not None:
                         logger.info(f'iPhone has {len(iphone_files)} waiting for dump: {iphone_files}')
                     else:
