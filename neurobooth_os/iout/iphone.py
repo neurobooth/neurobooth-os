@@ -701,14 +701,14 @@ class IPhone:
     def dump(
             self,
             filename: str,
-            file_hash: Optional[str] = None,
+            expected_hash: str,
             timeout_sec: Optional[float] = None,
     ) -> (bool, ByteString):
         """
         Retrieve a file from the iPhone.
 
         :param filename: The file (from the list returned by dumpall_getfilelist) to retrieve.
-        :param file_hash: Verify the transferred data using an MD5 (base64 encoded) hash, if specified.
+        :param expected_hash: Verify the transferred data using an MD5 (base64 encoded) hash.
         :param timeout_sec: Wait the specified amount of time for the file transfer to complete. No timeout if None.
         :returns: The raw data returned from the phone, or zero bytes if timed out.
         """
@@ -722,16 +722,13 @@ class IPhone:
             except IPhonePanic as e:
                 self.panic(e)
 
-            if file_hash is None:
-                self.logger.warning(f'No hash check performed for {filename}')
-                return self._dump_video_data
-
+            # Compute/transform Hashes
             self.logger.debug(f'iPhone [state={self._state}]: Computing Hashes')
-            iphone_hash = b64decode(file_hash).hex()  # Transform base64 encoded string to hex encoding
+            iphone_hash = b64decode(expected_hash).hex()  # Transform base64 encoded string to hex encoding
             local_hash = md5(self._dump_video_data).hexdigest()
             self.logger.debug(f'iPhone [state={self._state}]: iphone_hash={iphone_hash}; local_hash={local_hash}')
 
-            if iphone_hash != local_hash:
+            if iphone_hash != local_hash:  # Compare hashes
                 self.logger.warning(f'Received file ({filename}) does not match given hash.')
                 raise IPhoneHashMismatch(f'Received file ({filename}) does not match given hash.')
 

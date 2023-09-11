@@ -112,7 +112,7 @@ def dump_file(
 
     # Attempt to retrieve the file from the iPhone
     logger.info(f'Dump {file_name} -> {file_name_out}')
-    file_data = phone.dump(file_name, file_hash=file_hash, timeout_sec=timeout_sec)
+    file_data = phone.dump(file_name, expected_hash=file_hash, timeout_sec=timeout_sec)
 
     zero_byte = len(file_data) == 0
     if zero_byte:
