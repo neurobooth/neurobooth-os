@@ -263,7 +263,7 @@ class DeviceManager:
     def iphone_log_file_list(self):
         for stream_name, stream in self.streams.items():
             if "IPhone" in stream_name:
-                iphone_files = stream.dumpall_getfilelist()
+                iphone_files, _ = stream.dumpall_getfilelist()
                 if iphone_files is not None:
                     self.logger.info(f'iPhone has {len(iphone_files)} waiting for dump: {iphone_files}')
                 else:
