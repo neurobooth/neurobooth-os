@@ -106,7 +106,7 @@ DEVICE_START_FUNCS: Dict[str, Callable] = {
 }
 
 
-N_ASYNC_THREADS: int = 3
+N_ASYNC_THREADS: int = 3  # The maximum number of mbients on one machine
 ASYNC_STARTUP: List[str] = [
     'Mbient_BK_1',
     'Mbient_LF_1',
