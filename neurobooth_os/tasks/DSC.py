@@ -387,10 +387,7 @@ class DSC(Task_Eyetracker):
         df_res.to_csv(self.path_out + res_fname)
         df_out.to_csv(self.path_out + out_fname)
         if len(self.task_files) >= 1:
-            self.task_files = self.task_files[-1] + f", {res_fname}, {out_fname}" + "}"
             self.task_files = self.task_files.replace("}", "") + f", {res_fname}, {out_fname}" + "}"
-
-            print(self.task_files)
         else:
             self.task_files += "{" + f"{res_fname}, {out_fname}" + "}"
 
