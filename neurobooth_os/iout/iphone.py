@@ -201,7 +201,8 @@ class IPhone:
         # --------------------------------------------------------------------------------
         # Lock-based threading objects and their associated protected data
         # --------------------------------------------------------------------------------
-        self._timeout_cond = 5  # Default threading timeout
+        self._default_timeout_sec = 5
+        self._dumpall_timeout_sec = 120  # @DUMPALL can take a while since it computes MD5 hashes
 
         self._state = "#DISCONNECTED"  # Entry point of state machine
         self._state_lock = RLock()
@@ -369,11 +370,11 @@ class IPhone:
             self._send_packet(msg_type, msg_contents=msg_contents)
 
             if wait_on is None:
-                success = self._wait_for_reply_cond.wait(timeout=self._timeout_cond)
+                success = self._wait_for_reply_cond.wait(timeout=self._default_timeout_sec)
             else:
                 success = self._wait_for_reply_cond.wait_for(
                         lambda: self._latest_message_type in wait_on,
-                        timeout=self._timeout_cond,
+                        timeout=self._default_timeout_sec,
                 )
 
             if not success:
@@ -663,7 +664,7 @@ class IPhone:
             self._frame_preview_data = b""
             try:
                 self._send_packet("@PREVIEW")
-                if not self._frame_preview_cond.wait(timeout=self._timeout_cond):
+                if not self._frame_preview_cond.wait(timeout=self._default_timeout_sec):
                     self._raise_timeout("@PREVIEW")
             except IPhonePanic as e:
                 self.panic(e)
@@ -682,7 +683,7 @@ class IPhone:
 
             if not self._wait_for_reply_cond.wait_for(
                 lambda: self._latest_message_type in self.STATE_TRANSITIONS['#DUMPALL'].keys(),
-                timeout=self._timeout_cond,
+                timeout=self._dumpall_timeout_sec,
             ):
                 self._raise_timeout("@DUMPALL")
                 return None, None
