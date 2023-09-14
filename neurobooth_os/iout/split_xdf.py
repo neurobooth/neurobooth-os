@@ -60,6 +60,9 @@ def split_sens_files(
     # Read XDF file
     device_data = _parse_xdf(xdf_path, device_ids)
 
+    # Correct old data stream formats
+    device_data = [_correct_hdf5(d) for d in device_data]
+
     # Either 1) Write the HDF5 files or 2) save note to do so later
     if dont_split_xdf_fpath is None:
         _write_device_hdf5(device_data)
@@ -218,6 +221,20 @@ def _log_to_database(
                 sensor_file_paths,
             )]
             table_sens_log.insert_rows(vals, LOG_SENSOR_COLUMNS)
+
+
+def _correct_hdf5(device_data: DeviceData) -> DeviceData:
+    """
+    Correct the format of old HDF5 data streams (in memory prior to writing).
+
+    :param device_data: The device data stream to correct.
+    :returns: The corrected device data stream.
+    """
+    device_id = device_data.device_id
+    data = device_data.device_data
+    print(data.keys())
+
+    return device_data
 
 
 def get_xdf_name(session: liesl.Session, fname_prefix: str) -> str:
