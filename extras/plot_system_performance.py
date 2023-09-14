@@ -29,19 +29,17 @@ MiB = 1 << 20
 
 def main() -> None:
     args = parse_arguments()
-    stm_figure = plot_system_performance(args.session_dir, 'STM')
-    acq_figure = plot_system_performance(args.session_dir, 'ACQ')
+    for server_name in args.server_names:
+        print(f'Creating plots for {server_name}')
+        figure = plot_system_performance(args.session_dir, server_name)
 
-    if args.interactive:
-        plt.show()
-        return
+        if args.interactive:
+            plt.show()
+            continue
 
-    stm_figure.savefig(os.path.join(args.figure_dir, 'STM_system_resource.svg'))
-    stm_figure.savefig(os.path.join(args.figure_dir, 'STM_system_resource.png'))
-    plt.close(stm_figure)
-    acq_figure.savefig(os.path.join(args.figure_dir, 'ACQ_system_resource.svg'))
-    acq_figure.savefig(os.path.join(args.figure_dir, 'ACQ_system_resource.png'))
-    plt.close(acq_figure)
+        figure.savefig(os.path.join(args.figure_dir, f'{server_name}_system_resource.svg'))
+        figure.savefig(os.path.join(args.figure_dir, f'{server_name}_system_resource.png'))
+        plt.close(figure)
 
 
 def plot_system_performance(session_dir: str, server_name: str) -> plt.Figure:
@@ -248,13 +246,30 @@ def parse_arguments() -> argparse.Namespace:
         action='store_true',
         help='Interactively display the figure instead of saving it to a file.',
     )
+    parser.add_argument(
+        '--acq',
+        action='append_const',
+        dest='server_names',
+        const='ACQ',
+        help='Plot data for ACQ.'
+    )
+    parser.add_argument(
+        '--stm',
+        action='append_const',
+        dest='server_names',
+        const='STM',
+        help='Plot data for STM.'
+    )
     args = parser.parse_args()
 
     args.session_dir = os.path.abspath(args.session_dir)
     if args.figure_dir is None:
         args.figure_dir = args.session_dir
     else:
-        args.figure_dir = os.path.abspath(args.figure_dir )
+        args.figure_dir = os.path.abspath(args.figure_dir)
+
+    if not args.server_names:
+        parser.error('No server specified. Try adding --acq or --stm.')
 
     return args
 
