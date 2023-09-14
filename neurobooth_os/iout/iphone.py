@@ -12,6 +12,9 @@ import uuid
 import logging
 import time
 from typing import Dict, List, Tuple, Any, Optional, Union, ByteString
+from enum import IntEnum
+from hashlib import md5
+from base64 import b64decode
 
 from neurobooth_os.iout.usbmux import USBMux
 
@@ -39,11 +42,20 @@ PACKET_CONTENTS = Tuple[PACKET_PAYLOAD, int, int, int]
 CONFIG = Dict[str, Any]
 
 
+class MessageTag(IntEnum):
+    """Packets/messages sent by the iPhone are accompanied by a integer tag denoting the type of contents."""
+    NORMAL_MESSAGE = 0
+    FRAME_PREVIEW = 1
+    DUMP_FILE = 2
+    DUMP_FILE_CHUNK = 3
+    DUMP_LAST_FILE_CHUNK = 4
+
+
 # --------------------------------------------------------------------------------
 # Exceptions
 # --------------------------------------------------------------------------------
 class IPhoneError(Exception):
-    """Errors intended to be raised to calling code (instead of handled here, like panic)."""
+    """Base class for iPhone-related errors."""
     pass
 
 
@@ -54,6 +66,11 @@ class IPhonePanic(IPhoneError):
 
 class IPhoneTimeout(IPhoneError):
     """Signals that waiting on a particular response or threading condition failed."""
+    pass
+
+
+class IPhoneHashMismatch(IPhoneError):
+    """Signals that a transferred file does not have the expected hash"""
     pass
 
 
@@ -113,6 +130,14 @@ class IPhone:
         },  # NO SPECIAL state for after received ready to dump. Dump is done from 'Connected' state
         "#DUMP": {
             "@DUMPRECEIVE": "#READY",
+            "@CHUNKRECEIVE": "#DUMPCHUNK",
+            "@LASTCHUNKRECEIVE": "#READY",
+            "@DISCONNECT": "#DISCONNECTED",
+            "@ERROR": "#ERROR",
+        },
+        "#DUMPCHUNK": {
+            "@CHUNKRECEIVE": "#DUMPCHUNK",
+            "@LASTCHUNKRECEIVE": "#READY",
             "@DISCONNECT": "#DISCONNECTED",
             "@ERROR": "#ERROR",
         },
@@ -176,7 +201,8 @@ class IPhone:
         # --------------------------------------------------------------------------------
         # Lock-based threading objects and their associated protected data
         # --------------------------------------------------------------------------------
-        self._timeout_cond = 5  # Default threading timeout
+        self._default_timeout_sec = 5
+        self._dumpall_timeout_sec = 120  # @DUMPALL can take a while since it computes MD5 hashes
 
         self._state = "#DISCONNECTED"  # Entry point of state machine
         self._state_lock = RLock()
@@ -344,11 +370,11 @@ class IPhone:
             self._send_packet(msg_type, msg_contents=msg_contents)
 
             if wait_on is None:
-                success = self._wait_for_reply_cond.wait(timeout=self._timeout_cond)
+                success = self._wait_for_reply_cond.wait(timeout=self._default_timeout_sec)
             else:
                 success = self._wait_for_reply_cond.wait_for(
                         lambda: self._latest_message_type in wait_on,
-                        timeout=self._timeout_cond,
+                        timeout=self._default_timeout_sec,
                 )
 
             if not success:
@@ -359,7 +385,7 @@ class IPhone:
         payload, _, _, resp_tag = self._get_packet()
 
         if DEBUG_LOGGING:
-            debug_msg = payload if resp_tag == 0 else f'Tag {resp_tag}'
+            debug_msg = payload if resp_tag == MessageTag.NORMAL_MESSAGE else f'Tag {resp_tag}'
             self.logger.debug(f'Listener Received: {debug_msg}')
 
         self._process_received_message(payload, resp_tag)
@@ -406,10 +432,15 @@ class IPhone:
         first_frame = self.sock.recv(16)
         version, type_, tag, payload_size = struct.unpack("!IIII", first_frame)
 
-        if tag in (1, 2):
+        if tag in (
+                MessageTag.FRAME_PREVIEW,
+                MessageTag.DUMP_FILE,
+                MessageTag.DUMP_FILE_CHUNK,
+                MessageTag.DUMP_LAST_FILE_CHUNK
+        ):
             payload = IPhone.recvall(self.sock, payload_size)
             return payload, version, type_, tag
-        elif tag == 0:
+        elif tag == MessageTag.NORMAL_MESSAGE:
             payload = self.sock.recv(payload_size)
             msg = IPhone._json_unwrap(payload)
             self._validate_message(msg)
@@ -425,21 +456,35 @@ class IPhone:
         :param msg: The payload received from the iPhone. (Either a message or raw data depending on the tag.)
         :param tag: The message tag that indicates how to handle the payload.
         """
-        if tag == 1:
+        if tag == MessageTag.FRAME_PREVIEW:
             self._update_state("@PREVIEWRECEIVE")
             with self._frame_preview_cond:
                 self._frame_preview_data = msg
                 self._frame_preview_cond.notify()
-        elif tag == 2:
+        elif tag == MessageTag.DUMP_FILE:
             self._update_state("@DUMPRECEIVE")
             with self._dump_video_cond:
                 self._dump_video_data = msg
+                self._dump_video_cond.notify()
+        elif tag == MessageTag.DUMP_FILE_CHUNK:
+            self._update_state("@CHUNKRECEIVE")
+            self.logger.debug(f'iPhone: Received File Chunk ({len(msg)/(1<<20):0.1f} MiB)')
+            with self._dump_video_cond:
+                self._dump_video_data += msg
+        elif tag == MessageTag.DUMP_LAST_FILE_CHUNK:
+            self._update_state("@LASTCHUNKRECEIVE")
+            self.logger.debug(f'iPhone: Received Last File Chunk ({len(msg) / (1 << 20):0.1f} MiB)')
+            with self._dump_video_cond:
+                self._dump_video_data += msg
                 self._dump_video_cond.notify()
         else:
             self._lsl_push_sample(msg)  # Push before trying to acquire locks to ensure accurate timing
 
             message_type = msg["MessageType"]
+            if message_type == '@ERROR':
+                self.logger.error(f'iPhone: Error received from phone: {msg["Message"]}')
             self._update_state(message_type)
+
             with self._wait_for_reply_cond:
                 self._latest_message = msg
                 self._latest_message_type = message_type
@@ -619,18 +664,18 @@ class IPhone:
             self._frame_preview_data = b""
             try:
                 self._send_packet("@PREVIEW")
-                if not self._frame_preview_cond.wait(timeout=self._timeout_cond):
+                if not self._frame_preview_cond.wait(timeout=self._default_timeout_sec):
                     self._raise_timeout("@PREVIEW")
             except IPhonePanic as e:
                 self.panic(e)
             return self._frame_preview_data
 
     @_handle_panic
-    def dumpall_getfilelist(self) -> Optional[List[str]]:
+    def dumpall_getfilelist(self) -> Tuple[Optional[List[str]], Optional[List[str]]]:
         """
         Fetch a list of files saved on the iPhone.
 
-        :returns: The list of files saved on the iPhone, or None if the condition times out.
+        :returns: The list of names and hashes of files saved on the iPhone, or None if the condition times out.
         """
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMPALL Message')
         with self._wait_for_reply_cond:
@@ -638,37 +683,56 @@ class IPhone:
 
             if not self._wait_for_reply_cond.wait_for(
                 lambda: self._latest_message_type in self.STATE_TRANSITIONS['#DUMPALL'].keys(),
-                timeout=self._timeout_cond,
+                timeout=self._dumpall_timeout_sec,
             ):
                 self._raise_timeout("@DUMPALL")
-                return None
+                return None, None
 
             if self._state == '#ERROR':  # Usually occurs when no files present
                 self.logger.error(f'iPhone [state={self._state}]: {self._latest_message["Message"]}')
-                return None
+                return None, None
 
-            filelist = self._latest_message["Message"]
+            file_info = self._latest_message["Message"]
+            file_names = [info['file'] for info in file_info]
+            file_hashes = [info['md5'] for info in file_info]
             if DEBUG_LOGGING:
-                self.logger.debug(f"iPhone [state={self._state}]: File List (N={len(filelist)}) = {filelist}")
-            return filelist
+                self.logger.debug(f"iPhone [state={self._state}]: File List (N={len(file_info)}) = {file_names}")
+            return file_names, file_hashes
 
-    def dump(self, filename: str, timeout_sec=None) -> (bool, ByteString):
+    def dump(
+            self,
+            filename: str,
+            expected_hash: str,
+            timeout_sec: Optional[float] = None,
+    ) -> (bool, ByteString):
         """
         Retrieve a file from the iPhone.
 
         :param filename: The file (from the list returned by dumpall_getfilelist) to retrieve.
+        :param expected_hash: Verify the transferred data using an MD5 (base64 encoded) hash.
         :param timeout_sec: Wait the specified amount of time for the file transfer to complete. No timeout if None.
         :returns: The raw data returned from the phone, or zero bytes if timed out.
         """
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMP Message')
         with self._dump_video_cond:
-            self._dump_video_data = b""
+            self._dump_video_data = b""  # Clean slate is necessary for file chunk receipt logic
             try:
                 self._send_packet("@DUMP", msg_contents={"Message": filename})
                 if not self._dump_video_cond.wait(timeout=timeout_sec):
                     self._raise_timeout("@DUMP")
             except IPhonePanic as e:
                 self.panic(e)
+
+            # Compute/transform Hashes
+            self.logger.debug(f'iPhone [state={self._state}]: Computing Hashes')
+            iphone_hash = b64decode(expected_hash).hex()  # Transform base64 encoded string to hex encoding
+            local_hash = md5(self._dump_video_data).hexdigest()
+            self.logger.debug(f'iPhone [state={self._state}]: iphone_hash={iphone_hash}; local_hash={local_hash}')
+
+            if iphone_hash != local_hash:  # Compare hashes
+                self.logger.warning(f'Received file ({filename}) does not match given hash.')
+                raise IPhoneHashMismatch(f'Received file ({filename}) does not match given hash.')
+
             return self._dump_video_data
 
     @_handle_panic

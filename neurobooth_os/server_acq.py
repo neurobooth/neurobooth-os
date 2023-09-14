@@ -20,8 +20,9 @@ from neurobooth_os.iout.lsl_streamer import (
     close_streams,
     reconnect_streams,
 )
+from neurobooth_os.iout.mbient import Mbient
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.log_manager import make_session_logger
+from neurobooth_os.log_manager import make_session_logger, SystemResourceLogger
 
 server_config = config.neurobooth_config["acquisition"]
 
@@ -48,6 +49,11 @@ def Main():
         raise
 
 
+def is_camera(stream_name: str) -> bool:
+    """Test to see if a stream is a camera stream based on its name."""
+    return stream_name.split("_")[0] in ["FLIR", "Intel", "IPhone"]
+
+
 def run_acq(logger):
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -56,6 +62,7 @@ def run_acq(logger):
     recording = False
     port = server_config["port"]
     host = ''
+    system_resource_logger = None
 
     for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
@@ -87,6 +94,10 @@ def run_acq(logger):
 
             logger = make_session_logger(ses_folder, 'ACQ')
             logger.info('LOGGER CREATED')
+
+            if system_resource_logger is None:
+                system_resource_logger = SystemResourceLogger(ses_folder, 'ACQ')
+                system_resource_logger.start()
 
             task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
             if len(streams):
@@ -120,6 +131,11 @@ def run_acq(logger):
                 if 'mbient' in stream_name.lower()
             }
 
+            if len(mbient_streams) == 0:
+                logger.debug('No mbients to reset.')
+                connx.send(json.dumps({}).encode('utf-8'))
+                continue
+
             with ThreadPoolExecutor(max_workers=len(mbient_streams)) as executor:
                 # Begin concurrent reset of devices
                 reset_results = {
@@ -142,22 +158,19 @@ def run_acq(logger):
             fname, task = data.split("::")[1:]
             fname = f"{server_config['local_data_dir']}{subject_id_date}/{fname}"
 
-            for k in streams.keys():
-                if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
-                    if task_devs_kw[task].get(k):
-                        try:
-                            streams[k].start(fname)
-                        except:
-                            continue
-
-            for k in streams.keys():  # Attempt to reconnect mbients if disconnected
-                if "Mbient" in k:
+            # Start cameras
+            for stream_name, stream in streams.items():
+                if is_camera(stream_name) and stream_name in task_devs_kw[task]:
                     try:
-                        if not streams[k].device_wrapper.is_connected:
-                            streams[k].attempt_reconnect()
+                        stream.start(fname)
                     except Exception as e:
-                        print(e)
-                        pass
+                        logger.exception(e)
+
+            # Attempt to reconnect Mbients if disconnected
+            Mbient.task_start_reconnect([
+                stream for stream_name, stream in streams.items()
+                if 'Mbient' in stream_name
+            ])
 
             elapsed_time = time() - t0
             print(f"Device start took {elapsed_time:.2f}")
@@ -168,15 +181,16 @@ def run_acq(logger):
 
         elif "record_stop" in data:
             t0 = time()
-            for k in streams.keys():  # Call stop on streams with that method
-                if k.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]:
-                    if task_devs_kw[task].get(k):
-                        streams[k].stop()
 
-            for k in streams.keys():  # Ensure the streams are stopped
-                if k.split("_")[0] in ["FLIR", "Intel", "IPhone"]:
-                    if task_devs_kw[task].get(k):
-                        streams[k].ensure_stopped(10)
+            # Stop cameras
+            for stream_name, stream in streams.items():
+                if is_camera(stream_name) and stream_name in task_devs_kw[task]:
+                    stream.stop()
+
+            # Wait for cameras to actually stop
+            for stream_name, stream in streams.items():
+                if is_camera(stream_name) and stream_name in task_devs_kw[task]:
+                    stream.ensure_stopped(10)
 
             elapsed_time = time() - t0
             print(f"Device stop took {elapsed_time:.2f}")
@@ -186,6 +200,10 @@ def run_acq(logger):
             recording = False
 
         elif data in ["close", "shutdown"]:
+            if system_resource_logger is not None:
+                system_resource_logger.stop()
+                system_resource_logger = None
+
             if "shutdown" in data:
                 sys.stdout = sys.stdout.terminal
                 s1.close()
@@ -193,7 +211,7 @@ def run_acq(logger):
             # TODO: It would be nice to generically register logging handlers at each stage of a stream's lifecycle.
             for k in streams.keys():  # Log the list of files present on the iPhone
                 if k.split("_")[0] == "IPhone":
-                    iphone_files = streams[k].dumpall_getfilelist()
+                    iphone_files, _ = streams[k].dumpall_getfilelist()
                     if iphone_files is not None:
                         logger.info(f'iPhone has {len(iphone_files)} waiting for dump: {iphone_files}')
                     else:

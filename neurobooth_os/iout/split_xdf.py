@@ -343,6 +343,7 @@ def create_h5_from_csv(
         for row in lines:
             # change to NAS path if necessary
             if not os.path.exists(row[0]):
+                row[0] = row[0].replace('\\', '/')
                 row[0] = row[0].replace(
                     neurobooth_config[server_name]["local_data_dir"][:-1],
                     neurobooth_config["remote_data_dir"]
