@@ -1,11 +1,17 @@
+"""Retrieve log files to local folder for analysis.
+
+All log files are retrieved, as determined by the string '.log' in the file name
+Files are retrieved using SFTP.
+Further filtering of log types, date ranges, etc. should be performed on the local log copies as needed.
+
+"""
 import os
 from stat import S_ISDIR, S_ISREG
 import paramiko
 import argparse
 
 
-DESCRIPTION = """Retrieve log flies from a remove drive for analysis."""
-
+DESCRIPTION = "Securely retrieve log flies from a remove drive for analysis."
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -15,21 +21,21 @@ def parse_arguments() -> argparse.Namespace:
         '--url',
         default='neurodoor.nmr.mgh.harvard.edu',
         type=str,
-        help='The address fo the remote server holding the log files.'
+        help='The address of the remote server holding the log files.'
     )
     group.add_argument(
         '--user',
         default=None,
         required=True,
         type=str,
-        help='The sftp user performing the transfer. Required.'
+        help='The sftp user performing the transfer.'
     )
     group.add_argument(
         '--pwd',
         default=None,
         required=True,
         type=str,
-        help='The sftp password for the user performing the transfer. Required'
+        help='The sftp password for the user performing the transfer.'
     )
     group.add_argument(
         '--remote-dir',
