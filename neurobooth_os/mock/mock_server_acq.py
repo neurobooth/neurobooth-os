@@ -33,6 +33,7 @@ def mock_acq_routine(host, port, conn):
         Connector to the database
     """
 
+    config.load_config()
     streams = {}
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     recording = False

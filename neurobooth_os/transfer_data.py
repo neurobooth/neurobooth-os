@@ -18,9 +18,8 @@ def log_output(pipe):
 
 
 def main(args: argparse.Namespace):
-
+    config.load_config()
     destination = config.neurobooth_config["remote_data_dir"]
-
     source = config.neurobooth_config[args.source_node_name]["local_data_dir"]
 
     try:
