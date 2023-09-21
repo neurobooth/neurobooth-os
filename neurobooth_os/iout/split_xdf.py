@@ -8,7 +8,6 @@ import os.path as op
 from datetime import datetime
 from pathlib import Path
 from typing import NamedTuple, Optional, Any, List
-import psycopg2
 import h5io
 
 from neurobooth_os.iout import metadator as meta
@@ -33,7 +32,7 @@ def split_sens_files(
     fname: str,
     log_task_id: Optional[str] = None,
     task_id: Optional[str] = None,
-    conn: Optional[psycopg2.connection] = None,
+    conn=None,
     folder: str = "",
     dont_split_xdf_fpath: Optional[str] = None,
 ) -> List[str]:
@@ -183,7 +182,7 @@ LOG_SENSOR_COLUMNS = [
 
 def _log_to_database(
         device_data: List[DeviceData],
-        conn: psycopg2.connection,
+        conn,
         log_task_id: str,
 ) -> None:
     """
@@ -257,7 +256,7 @@ def get_xdf_name(session: liesl.Session, fname_prefix: str) -> str:
 
 def create_h5_from_csv(
         dont_split_xdf_fpath: str,
-        conn: psycopg2.connection,
+        conn,
         server_name: Optional[str] = None
 ) -> None:
     """

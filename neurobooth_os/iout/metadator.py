@@ -32,11 +32,12 @@ def get_conn(database):
     conn : object
         connector to psycopg database
     """
-    logger = make_default_logger(log_level=logging.ERROR)
-
-    if database is None:
-        logger.critical("Database name is a required parameter.")
-        raise  # TODO: Need appropriate exception type for database connection errors
+    # TODO: Re-enable logging, this may be why we get duplicate logs.
+    # logger = make_default_logger(log_level=logging.ERROR)
+    #
+    # if database is None:
+    #     logger.critical("Database name is a required parameter.")
+    #     raise  # TODO: Need appropriate exception type for database connection errors
 
     port = cfg.neurobooth_config["database"]["port"]
     tunnel = SSHTunnelForwarder(
