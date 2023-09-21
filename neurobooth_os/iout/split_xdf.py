@@ -13,7 +13,7 @@ import h5io
 
 from neurobooth_os.iout import metadator as meta
 from neurobooth_terra import Table
-from neurobooth_os.config import neurobooth_config, get_server_name_from_env
+import neurobooth_os.config as cfg
 
 
 # This file keeps track of XDF files that have yet to be split
@@ -267,7 +267,7 @@ def create_h5_from_csv(
         If None, the name will be determined from the Windows User Profile, if possible.
     """
     if server_name is None:
-        server_name = get_server_name_from_env()
+        server_name = cfg.get_server_name_from_env()
         if server_name is None:
             raise Exception("A server name is required if the Windows user is not in (CTR, ACQ, or STM)")
 
@@ -284,8 +284,8 @@ def create_h5_from_csv(
             if not os.path.exists(row[0]):
                 xdf_path = xdf_path.replace('\\', '/')
                 xdf_path = xdf_path.replace(
-                    neurobooth_config[server_name]["local_data_dir"][:-1],
-                    neurobooth_config["remote_data_dir"]
+                    cfg.neurobooth_config[server_name]["local_data_dir"][:-1],
+                    cfg.neurobooth_config["remote_data_dir"]
                 )
 
             out = split_sens_files(xdf_path, task_id=task_id, conn=conn)

@@ -16,7 +16,7 @@ from neurobooth_terra import Table
 
 import neurobooth_os
 from neurobooth_os.log_manager import make_default_logger
-from neurobooth_os.config import neurobooth_config
+import neurobooth_os.config as cfg
 
 
 def get_conn(database):
@@ -38,13 +38,13 @@ def get_conn(database):
         logger.critical("Database name is a required parameter.")
         raise  # TODO: Need appropriate exception type for database connection errors
 
-    port = neurobooth_config["database"]["port"]
+    port = cfg.neurobooth_config["database"]["port"]
     tunnel = SSHTunnelForwarder(
-        neurobooth_config["database"]["remote_address"],
-        ssh_username=neurobooth_config["database"]["remote_username"],
+        cfg.neurobooth_config["database"]["remote_address"],
+        ssh_username=cfg.neurobooth_config["database"]["remote_username"],
         ssh_config_file="~/.ssh/config",
         ssh_pkey="~/.ssh/id_rsa",
-        remote_bind_address=(neurobooth_config["database"]["host"], port),
+        remote_bind_address=(cfg.neurobooth_config["database"]["host"], port),
         #TODO address in config
         local_bind_address=("localhost", 6543),
     )
@@ -55,8 +55,8 @@ def get_conn(database):
 
     conn = psycopg2.connect(
         database=database,
-        user=neurobooth_config["database"]["user"],
-        password=neurobooth_config["database"]["pass"],
+        user=cfg.neurobooth_config["database"]["user"],
+        password=cfg.neurobooth_config["database"]["pass"],
         host=host,
         port=port,
     )
