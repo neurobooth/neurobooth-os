@@ -27,7 +27,6 @@ from neurobooth_os.netcomm import (
     node_info,
     socket_message,
 )
-from neurobooth_os.config import neurobooth_config
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
 from neurobooth_os.log_manager import make_default_logger
 import neurobooth_os.iout.metadator as meta
@@ -389,7 +388,7 @@ def _get_ports(database):
 def gui():
     """Start the Graphical User Interface.
     """
-    database = neurobooth_config["database"]["dbname"]
+    database = cfg.neurobooth_config["database"]["dbname"]
     database, nodes, host_ctr, port_ctr = _get_ports(database=database)
 
     conn = meta.get_conn(database=database)

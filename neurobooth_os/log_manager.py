@@ -7,7 +7,7 @@ import psutil
 from threading import Thread, Event
 import json
 
-from neurobooth_os.config import neurobooth_config
+import neurobooth_os.config as config
 
 LOG_FORMAT = logging.Formatter('|%(levelname)s| [%(asctime)s] %(filename)s, %(funcName)s, L%(lineno)d> %(message)s')
 
@@ -51,7 +51,7 @@ def make_default_logger(
         log_level: int = logging.DEBUG,
 ) -> logging.Logger:
     if log_path is None:
-        log_path = neurobooth_config["default_log_path"]
+        log_path = config.neurobooth_config["default_log_path"]
 
     if not os.path.exists(log_path):
         os.makedirs(log_path)
