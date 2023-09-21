@@ -600,10 +600,10 @@ def gui():
 
 def main():
     """The starting point of Neurobooth"""
+    cfg.load_config()  # Load Neurobooth-OS configuration
     logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
     try:
         logger.info("Starting GUI")
-        cfg.load_config()  # Load Neurobooth-OS configuration
         gui()
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")

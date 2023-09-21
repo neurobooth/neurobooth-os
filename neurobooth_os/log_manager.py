@@ -11,8 +11,6 @@ from neurobooth_os.config import neurobooth_config
 
 LOG_FORMAT = logging.Formatter('|%(levelname)s| [%(asctime)s] %(filename)s, %(funcName)s, L%(lineno)d> %(message)s')
 
-DEFAULT_LOG_PATH = neurobooth_config["default_log_path"]
-
 
 def make_session_logger(session_folder: str, machine_name: str, log_level=logging.DEBUG) -> logging.Logger:
     logger = logging.getLogger('session')
@@ -49,9 +47,12 @@ def make_session_logger_debug(
 
 
 def make_default_logger(
-        log_path=DEFAULT_LOG_PATH,
-        log_level=logging.DEBUG,
+        log_path: Optional[str] = None,
+        log_level: int = logging.DEBUG,
 ) -> logging.Logger:
+    if log_path is None:
+        log_path = neurobooth_config["default_log_path"]
+
     if not os.path.exists(log_path):
         os.makedirs(log_path)
 

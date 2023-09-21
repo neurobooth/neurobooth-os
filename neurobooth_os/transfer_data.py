@@ -9,8 +9,6 @@ from neurobooth_os import config
 from neurobooth_os.util.constants import NODE_NAMES
 from neurobooth_os.log_manager import make_default_logger
 
-logger = make_default_logger()
-
 
 def log_output(pipe):
     for line in iter(pipe.readline, b''):  # b'\n'-separated lines
@@ -18,7 +16,6 @@ def log_output(pipe):
 
 
 def main(args: argparse.Namespace):
-    config.load_config()
     destination = config.neurobooth_config["remote_data_dir"]
     source = config.neurobooth_config[args.source_node_name]["local_data_dir"]
 
@@ -57,6 +54,8 @@ def parse_arguments() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
+    config.load_config()
+    logger = make_default_logger()
     try:
         main(parse_arguments())
     except Exception as e:

@@ -38,11 +38,10 @@ from neurobooth_os.log_manager import make_session_logger, make_default_logger, 
 
 
 def main():
+    config.load_config()  # Load Neurobooth-OS configuration
     logger = make_default_logger()  # Initialize logging to default
     try:
         logger.info("Starting STM")
-
-        config.load_config()  # Load Neurobooth-OS configuration
 
         os.chdir(neurobooth_os.__path__[0])
         sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
