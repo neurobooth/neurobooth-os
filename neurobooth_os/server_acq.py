@@ -12,7 +12,7 @@ import json
 
 import neurobooth_os
 from neurobooth_os import config
-from neurobooth_os.log_manager import make_default_logger
+from neurobooth_os.log_manager import make_default_logger, make_db_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import (
@@ -22,7 +22,7 @@ from neurobooth_os.iout.lsl_streamer import (
 )
 from neurobooth_os.iout.mbient import Mbient
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.log_manager import make_session_logger, SystemResourceLogger
+from neurobooth_os.log_manager import SystemResourceLogger
 
 server_config = config.neurobooth_config["acquisition"]
 
@@ -85,21 +85,20 @@ def run_acq(logger):
             log_task = eval(
                 data.replace(f"prepare:{collection_id}:{database_name}:", "")
             )
-            subject_id_date = log_task["subject_id-date"]
+            subject_id: str = log_task["subject_id"]
+            session_name: str = log_task["subject_id-date"]
 
             conn = meta.get_conn(database=database_name)
-            ses_folder = f"{server_config['local_data_dir']}{subject_id_date}"
-            if not os.path.exists(ses_folder):
-                os.mkdir(ses_folder)
 
-            logger = make_session_logger(ses_folder, 'ACQ')
+            logger = make_db_logger(subject_id, session_name)
             logger.info('LOGGER CREATED')
 
             if system_resource_logger is None:
+                ses_folder = _make_session_folder(session_name)
                 system_resource_logger = SystemResourceLogger(ses_folder, 'ACQ')
                 system_resource_logger.start()
 
-            task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
+            task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
             if len(streams):
                 # print("Checking prepared devices")
                 streams = reconnect_streams(streams)
@@ -156,7 +155,7 @@ def run_acq(logger):
             print("Starting recording")
             t0 = time()
             fname, task = data.split("::")[1:]
-            fname = f"{server_config['local_data_dir']}{subject_id_date}/{fname}"
+            fname = f"{server_config['local_data_dir']}{session_name}/{fname}"
 
             # Start cameras
             for stream_name, stream in streams.items():
@@ -232,6 +231,13 @@ def run_acq(logger):
 
         else:
             print(data)
+
+
+def _make_session_folder(session_name):
+    ses_folder = f"{server_config['local_data_dir']}{session_name}"
+    if not os.path.exists(ses_folder):
+        os.mkdir(ses_folder)
+    return ses_folder
 
 
 Main()

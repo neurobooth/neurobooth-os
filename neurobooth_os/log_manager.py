@@ -13,6 +13,10 @@ LOG_FORMAT = logging.Formatter('|%(levelname)s| [%(asctime)s] %(filename)s, %(fu
 
 DEFAULT_LOG_PATH = neurobooth_config["default_log_path"]
 
+SESSION_ID: str = ""
+
+SUBJECT_ID: str = ""
+
 
 def make_session_logger(session_folder: str, machine_name: str, log_level=logging.DEBUG) -> logging.Logger:
     logger = logging.getLogger('session')
@@ -45,6 +49,33 @@ def make_session_logger_debug(
         logger.addHandler(console_handler)
 
     logger.setLevel(log_level)
+    return logger
+
+
+def make_db_logger(subject: str, session: str, device: str = None) -> logging.Logger:
+    """Returns a logger that logs to the database and sets the subject id and session to be used for subsequent
+    logging calls.
+
+    If the subject or session should be cleared, the argument should be an empty string. Passing None, will not reset
+    to allow this logger to be used when the function that is logging does not itself have access to the session/subject,
+    but it remains valid none-the-less
+    """
+    import neurobooth_os.iout.metadator
+
+    global SUBJECT_ID, SESSION_ID
+    if subject is not None:
+        SUBJECT_ID = subject
+    if session is not None:
+        SESSION_ID = session
+
+    logger = logging.getLogger('default')
+    logger.addHandler(neurobooth_os.iout.metadator.get_db_log_handler())
+    extra = {
+        "session": SESSION_ID,
+        "subject": SUBJECT_ID,
+        "device": device
+    }
+    logging.LoggerAdapter(logger, extra)
     return logger
 
 

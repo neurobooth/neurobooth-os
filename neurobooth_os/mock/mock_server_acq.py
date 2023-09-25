@@ -48,7 +48,7 @@ def mock_acq_routine(host, port, conn):
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
-            task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
+            task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
             if len(streams):
                 streams = reconnect_streams(streams)
             else:

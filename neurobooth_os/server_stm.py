@@ -34,8 +34,7 @@ from neurobooth_os.netcomm import (
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
-from neurobooth_os.log_manager import make_session_logger, make_default_logger, SystemResourceLogger
-
+from neurobooth_os.log_manager import make_default_logger, SystemResourceLogger, make_db_logger
 
 server_config = config.neurobooth_config["presentation"]
 
@@ -91,17 +90,18 @@ def run_stm(logger):
             log_task = eval(
                 data.replace(f"prepare:{collection_id}:{database_name}:", "")
             )
-            subject_id_date = log_task["subject_id-date"]
+            subject_id: str = log_task["subject_id"]
+            session_name = log_task["subject_id-date"]
             conn = meta.get_conn(database=database_name)
             logger.info(f"Database name is {database_name}.")
-            ses_folder = f"{server_config['local_data_dir']}{subject_id_date}"
+            ses_folder = f"{server_config['local_data_dir']}{session_name}"
 
             logger.info(f"Creating session folder: {ses_folder}")
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
-            logger.info("Creating session logger in session folder.")
-            logger = make_session_logger(ses_folder, 'STM')
+            logger.info("Creating db logger initialized for the session.")
+            logger = make_db_logger(subject_id, session_name)
             logger.info('LOGGER CREATED')
 
             if system_resource_logger is None:
@@ -112,7 +112,7 @@ def run_stm(logger):
             del log_task["subject_id-date"]
 
             task_func_dict = get_task_funcs(collection_id, conn)
-            task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
+            task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
 
             if len(streams):
                 print("Checking prepared devices")
@@ -134,8 +134,8 @@ def run_stm(logger):
             # Shared task keyword arguments
             task_karg = {
                 "win": win,
-                "path": server_config["local_data_dir"] + f"{subject_id_date}/",
-                "subj_id": subject_id_date,
+                "path": server_config["local_data_dir"] + f"{session_name}/",
+                "subj_id": session_name,
                 "marker_outlet": streams["marker"],
                 "prompt": True,
             }
@@ -217,14 +217,14 @@ def run_stm(logger):
                     logger.info(f'SENDING record_start TO ACQ')
                     acq_result = executor.submit(
                         socket_message,
-                        f"record_start::{subject_id_date}_{tsk_strt_time}_{t_obs_id}::{task}",
+                        f"record_start::{session_name}_{tsk_strt_time}_{t_obs_id}::{task}",
                         "acquisition",
                         wait_data=10,
                     )
 
                     # Start eyetracker if device in task
                     if "Eyelink" in streams and any("Eyelink" in d for d in list(task_devs_kw[task])):
-                        fname = f"{task_karg['path']}/{subject_id_date}_{tsk_strt_time}_{t_obs_id}.edf"
+                        fname = f"{task_karg['path']}/{session_name}_{tsk_strt_time}_{t_obs_id}.edf"
                         if "calibration_task" in task:  # if not calibration record with start method
                             this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
                         else:
@@ -279,7 +279,7 @@ def run_stm(logger):
                     if events is not None
                     else "event:datestamp"
                 )
-                log_task["task_notes_file"] = f"{subject_id_date}-{task}-notes.txt"
+                log_task["task_notes_file"] = f"{session_name}-{task}-notes.txt"
 
                 if tsk_fun.task_files is not None:
                     log_task["task_output_files"] = tsk_fun.task_files
