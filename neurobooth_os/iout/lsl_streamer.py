@@ -35,7 +35,7 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
         print("getting conn")
         conn = meta.get_conn(database)
 
-    logger = logging.getLogger('session')
+    logger = logging.getLogger('db')
 
     # Get params from all tasks
     kwarg_devs = meta.get_device_kwargs_by_task(collection_id, conn)
@@ -134,7 +134,7 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
 
 
 def close_streams(streams):
-    logger = logging.getLogger('session')
+    logger = logging.getLogger('db')
 
     for k in list(streams):
         print(f"Closing {k} stream")
@@ -148,7 +148,7 @@ def close_streams(streams):
 
 
 def reconnect_streams(streams):
-    logger = logging.getLogger('session')
+    logger = logging.getLogger('db')
 
     for k in list(streams):
         if k.split("_")[0] in ["hiFeed", "Intel", "FLIR", "IPhone"]:

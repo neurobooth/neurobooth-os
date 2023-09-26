@@ -39,7 +39,7 @@ class Task:
         task_repeatable_by_subject=True,
         **kwargs,
     ):
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger('db')
 
         # Common markers
         self.marker_task_start = "Task_start"

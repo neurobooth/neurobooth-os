@@ -72,7 +72,7 @@ class VidRec_Intel:
 
         self.outlet = self.createOutlet()
 
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger('db')
         self.logger.debug(
             f'RealSense [{self.device_index}] ({self.serial_num}): fps={str(self.fps)}; frame_size={str(self.frameSize)}'
         )

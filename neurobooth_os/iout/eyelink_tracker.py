@@ -84,7 +84,7 @@ class EyeTracker:
         )
         self.outlet = StreamOutlet(self.stream_info)
 
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger('db')
         self.logger.debug(f'EyeLink: sample_rate={str(self.sample_rate)}')
 
         print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")

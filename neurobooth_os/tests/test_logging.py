@@ -5,7 +5,7 @@ import sys
 import unittest
 import neurobooth_os.config as cfg
 
-from neurobooth_os.log_manager import make_default_logger, make_db_logger, make_session_logger
+from neurobooth_os.log_manager import make_default_logger, make_db_logger
 
 log_path = r"C:\neurobooth\test_data\test_logs"
 logger = make_default_logger(log_path)
@@ -50,6 +50,17 @@ class TestLogging(unittest.TestCase):
     def test_db_logging(self):
         print(cfg.neurobooth_config)
         db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12")
+
+        db_log = logging.getLogger("db")
+        db_log.critical("Microphone: Entering LSL Loop",
+                        extra={"device": "playstation"})
+
+        db_log = make_db_logger("", "")
+        db_log.error("No subject or session for me")
+
+    def test_db_logging2(self):
+        print(cfg.neurobooth_config)
+        db_log = logging.getLogger("db")
         db_log.critical("Microphone: Entering LSL Loop",
                         extra={"device": "playstation"})
 

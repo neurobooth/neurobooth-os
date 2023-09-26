@@ -33,7 +33,7 @@ class MouseStream:
         print(f"-OUTLETID-:Mouse:{self.oulet_id}")
         self.streaming = False
 
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger('db')
         self.logger.debug('Mouse: Created Object')
 
     def start(self):

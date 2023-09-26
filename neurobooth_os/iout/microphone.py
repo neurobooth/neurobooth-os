@@ -81,7 +81,7 @@ class MicStream:
         )
         print(f"-OUTLETID-:Audio:{self.oulet_id}")
 
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger('db')
         self.logger.debug(
             f'Microphone: sample_rate={str(self.fps)}; save_on_disk={self.save_on_disk}; channels={self.CHANNELS}'
         )

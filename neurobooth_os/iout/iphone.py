@@ -196,7 +196,7 @@ class IPhone:
         self.streaming = False
         self.streamName = "IPhoneFrameIndex"
         self.outlet_id = str(uuid.uuid4())
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger('db')
 
         # --------------------------------------------------------------------------------
         # Lock-based threading objects and their associated protected data
@@ -820,7 +820,7 @@ class IPhoneListeningThread(threading.Thread):
     def __init__(self, iphone: IPhone):
         self._iphone = iphone
         self._running = True
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger('db')
         threading.Thread.__init__(self)
 
     def run(self):

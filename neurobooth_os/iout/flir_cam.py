@@ -76,7 +76,7 @@ class VidRec_Flir:
         self.image_queue = queue.Queue(0)
         self.outlet = self.createOutlet()
 
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger('db')
         self.logger.debug(f'FLIR: fps={str(self.fps)}; frame_size={str((self.sizex, self.sizey))}')
 
     def get_cam(self):
