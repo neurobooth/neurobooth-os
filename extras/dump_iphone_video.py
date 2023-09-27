@@ -6,7 +6,7 @@ import os.path as op
 import datetime
 import logging
 from typing import Optional
-from neurobooth_os.log_manager import make_default_logger
+from neurobooth_os.log_manager import make_db_logger
 import argparse
 import sys
 
@@ -165,7 +165,7 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def main():
-    logger = make_default_logger()
+    logger = make_db_logger()
     iphone.DISABLE_LSL = True
 
     args = parse_arguments()

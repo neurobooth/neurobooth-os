@@ -34,7 +34,7 @@ from neurobooth_os.netcomm import (
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
-from neurobooth_os.log_manager import make_default_logger, SystemResourceLogger, make_db_logger
+from neurobooth_os.log_manager import SystemResourceLogger, make_db_logger
 
 server_config = config.neurobooth_config["presentation"]
 
@@ -44,7 +44,7 @@ def Main():
     sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
 
     # Initialize logging to default
-    logger = make_default_logger()
+    logger = make_db_logger()
     logger.info("Starting STM")
 
     try:

@@ -12,7 +12,7 @@ import json
 
 import neurobooth_os
 from neurobooth_os import config
-from neurobooth_os.log_manager import make_default_logger, make_db_logger
+from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import (
@@ -39,7 +39,7 @@ def Main():
     sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
 
     # Initialize default logger
-    logger = make_default_logger()
+    logger = make_db_logger("", "")
     logger.info("Starting ACQ")
     try:
         run_acq(logger)

@@ -7,7 +7,7 @@ from time import time
 import multiprocessing as mp
 import logging
 from neurobooth_os.iout.mbient import scan_BLE, connect_device, reset_device, MbientFailedConnection
-from neurobooth_os.log_manager import make_default_logger
+from neurobooth_os.log_manager import make_db_logger
 
 
 DESCRIPTION = """Find and reset Mbient wearable devices.
@@ -204,7 +204,7 @@ class ResetDeviceProcess(mp.Process):
         return f'{self.device_info.name} <{self.device_info.address}>: {msg}'
 
     def run(self) -> None:
-        logger = make_default_logger()
+        logger = make_db_logger()
         t0 = time()
         try:
             device = connect_device(
@@ -267,7 +267,7 @@ def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> (ADDRESS_MA
 
 
 def main():
-    logger = make_default_logger()
+    logger = make_db_logger()
     try:
         args = parse_arguments()
         devices = device_discovery(args)

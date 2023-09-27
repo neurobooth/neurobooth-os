@@ -7,8 +7,6 @@ Created on Fri Jul 30 09:08:53 2021
 import os.path as op
 import json
 import logging
-import platform
-import traceback
 from collections import OrderedDict
 from datetime import datetime
 
@@ -16,8 +14,9 @@ from sshtunnel import SSHTunnelForwarder
 import psycopg2
 from neurobooth_terra import Table
 
+
 from neurobooth_os.config import neurobooth_config
-import neurobooth_os.log_manager as log_man
+import neurobooth_os
 
 
 def get_conn(database):
@@ -33,6 +32,8 @@ def get_conn(database):
     conn : object
         connector to psycopg database
     """
+    import neurobooth_os.log_manager as log_man
+
     logger = log_man.make_default_logger(log_level=logging.ERROR)
 
     if database is None:
@@ -353,82 +354,3 @@ def get_device_kwargs_by_task(collection_id, conn):
     return tasks_kwarg
 
 
-class PostgreSQLHandler(logging.Handler):
-    """
-    A :class:`logging.Handler` that logs to the `log` PostgreSQL table
-    Does not use :class:`PostgreSQL`, keeping its own connection, in autocommit
-    mode.
-    .. DANGER:
-        Beware explicit or automatic locks taken out in the main requests'
-        transaction could deadlock with this INSERT!
-        In general, avoid touching the log table entirely. SELECT queries
-        do not appear to block with INSERTs. If possible, touch the log table
-        in autocommit mode only.
-    `db_settings` is passed to :meth:`psycopg2.connect` as kwargs
-    (``connect(**db_settings)``).
-    """
-
-    _query = "INSERT INTO log_application " \
-             "(session_id, subject_id, server_type, server_id, server_time, log_level, device, " \
-             "filename, function, line_no, message, traceback)" \
-             " VALUES " \
-             " (%(session_id)s, %(subject_id)s, %(server_type)s, %(server_id)s, %(server_time)s, %(log_level)s, " \
-             " %(device)s, %(filename)s, %(function)s, %(line_no)s, %(message)s, %(traceback)s)"
-
-    # see TYPE log_level
-    _levels = ('debug', 'info', 'warning', 'error', 'critical')
-
-    def __init__(self):
-        super(PostgreSQLHandler, self).__init__()
-        self.connection = get_conn(neurobooth_config["database"]["dbname"])
-        self.connection.autocommit = True
-        self.cursor = self.connection.cursor()
-
-    def emit(self, record):
-        print("Emitting record")
-        print(record)
-        try:
-            level = record.levelname.lower()
-            if level not in self._levels:
-                level = "debug"
-
-            if record.exc_info:
-                lines = traceback.format_exception(*record.exc_info)
-                traceback_text = ''.join(lines)
-            else:
-                traceback_text = None
-
-            args = {
-                "log_level": level,
-                "message": record.getMessage(),
-                "function": record.funcName,
-                "filename": record.filename,
-                "line_no": record.lineno,
-                "traceback": traceback_text,
-                "server_type": neurobooth_config["server_name"],
-                "server_id": platform.uname().node,
-                "subject_id": log_man.SUBJECT_ID,
-                "session_id": log_man.SESSION_ID,
-                "server_time": datetime.fromtimestamp(record.created),
-                "device": getattr(record, "device", None),
-            }
-            print("Arguments for insert: " + str(args))
-
-            try:
-                if self.connection is None:
-                    raise psycopg2.OperationalError
-                self.cursor.execute(self._query, args)
-
-            except psycopg2.OperationalError:
-                self.connection = get_conn(neurobooth_config["database"])
-                self.connection.autocommit = True
-                self.cursor = self.connection.cursor()
-
-                self.cursor.execute(self._query, args)
-
-        except Exception:
-            self.handleError(record)
-
-
-def get_db_log_handler():
-    return PostgreSQLHandler()
