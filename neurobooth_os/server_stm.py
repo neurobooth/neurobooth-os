@@ -1,3 +1,4 @@
+import logging
 import socket
 import sys
 import os
@@ -333,6 +334,7 @@ def run_stm(logger):
                 win.close()
                 sys.stdout = sys.stdout.terminal
                 s1.close()
+                logging.shutdown()
 
             streams = close_streams(streams)
 

@@ -47,13 +47,13 @@ def make_session_logger_debug(
 
 def make_db_logger(subject: str = None,
                    session: str = None,
-                   fallback_log_path: str = None) -> logging.Logger:
+                   fallback_log_path: str = DEFAULT_LOG_PATH,
+                   log_level=logging.DEBUG) -> logging.Logger:
     """Returns a logger that logs to the database and sets the subject id and session to be used for subsequent
     logging calls.
 
     If the subject or session should be cleared, the argument should be an empty string. Passing None, will NOT reset
     """
-    import neurobooth_os.iout.metadator
 
     global SUBJECT_ID, SESSION_ID, DB_LOGGER
 
@@ -65,7 +65,8 @@ def make_db_logger(subject: str = None,
     # Don't reinitialize the logger
     if DB_LOGGER is None:
         logger = logging.getLogger('db')
-        logger.addHandler(get_db_log_handler(fallback_log_path))
+        handler = PostgreSQLHandler(fallback_log_path, log_level)
+        logger.addHandler(handler)
         extra = {"device": ""}
         logging.LoggerAdapter(logger, extra)
         DB_LOGGER = logger
@@ -238,6 +239,12 @@ class PostgreSQLHandler(logging.Handler):
             self.handle_logging_exception()
             logging.getLogger("db").exception(msg)
 
+    def close(self):
+        logging.getLogger("db").info("Closing log db connection")
+        logging.getLogger("db").removeHandler(self)
+        if self.connection is not None:
+            self.connection.close()
+
     def emit(self, record):
         try:
             level = record.levelname.lower()
@@ -284,8 +291,3 @@ class PostgreSQLHandler(logging.Handler):
         default_handler = get_default_log_handler(self.fallback_log_path)
         if default_handler not in logger.handlers:
             logger.addHandler(default_handler)
-
-def get_db_log_handler(
-        fallback_log_path: str = DEFAULT_LOG_PATH,
-        log_level=logging.DEBUG,):
-    return PostgreSQLHandler(fallback_log_path, log_level)

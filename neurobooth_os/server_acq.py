@@ -202,6 +202,7 @@ def run_acq(logger):
             if system_resource_logger is not None:
                 system_resource_logger.stop()
                 system_resource_logger = None
+            logging.shutdown()
 
             if "shutdown" in data:
                 sys.stdout = sys.stdout.terminal

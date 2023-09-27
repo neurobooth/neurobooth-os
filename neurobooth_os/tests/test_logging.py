@@ -51,6 +51,12 @@ class TestLogging(unittest.TestCase):
         self.assertTrue("Exiting" in data)
         self.assertTrue("Traceback" in data)
 
+    def test_db_logging_shutdown(self):
+        """Tests to ensure log handler is closed """
+        db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12")
+        db_log.critical("Microphone: Entering LSL Loop", extra={"device": "playstation"})
+        logging.shutdown()
+
     def test_db_logging0(self):
         """Tests logging to database using make_db_logger with session and subject set"""
         db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12")

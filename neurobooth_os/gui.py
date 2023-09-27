@@ -595,7 +595,7 @@ def gui():
         if inlet_keys != list(inlets):
             inlet_keys = list(inlets)
             window["inlet_State"].update("\n".join(inlet_keys))
-
+    logging.shutdown()
     window.close()
     window["-OUTPUT-"].__del__()
     print("Session terminated")
