@@ -22,8 +22,10 @@ class TaskIDException(Exception):
 
 def main() -> None:
     args = parse_arguments()
+    print(f'Splitting {args.xdf}')
     hdf5_files = split_xdf(args.xdf, args.config, args.task_id)
-    print(hdf5_files)
+    for f in hdf5_files:
+        print(f'   - Created: {f}')
 
 
 def split_xdf(xdf_path: str, config_file: Optional[str] = None, task_id: Optional[str] = None) -> List[str]:

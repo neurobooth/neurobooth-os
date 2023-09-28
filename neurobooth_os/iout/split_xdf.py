@@ -231,7 +231,7 @@ def _correct_hdf5(device_data: DeviceData) -> DeviceData:
     """
     device_id = device_data.device_id
     data = device_data.device_data
-    print(data.keys())
+    print(device_id, data['info'].keys())
 
     return device_data
 
