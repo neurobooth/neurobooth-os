@@ -232,10 +232,10 @@ def _correct_hdf5(device_data: DeviceData) -> DeviceData:
     """
     device_id = device_data.device_id
     data = device_data.device_data
-    data_desc = data['info']['desc']
+    data_desc = data['info']['desc'][0]
 
     if 'data_version' in data_desc.keys():
-        data_version = DataVersion.from_str(data_desc['data_version'])
+        data_version = DataVersion.from_str(data_desc['data_version'][0])
     else:
         data_version = DataVersion(0, 0)
 
