@@ -163,8 +163,7 @@ def _write_device_hdf5(device_data: List[DeviceData]) -> None:
     :param device_data: A list of objects containing the extracted device information.
     """
     for dev in device_data:
-        marker = dev.marker_data[0] if dev.marker_data else []
-        data_to_write = {"marker": marker, "device_data": dev.device_data}
+        data_to_write = {"marker": dev.marker_data, "device_data": dev.device_data}
         h5io.write_hdf5(dev.hdf5_path, data_to_write, overwrite=True)
 
 
