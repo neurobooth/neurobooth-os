@@ -13,6 +13,7 @@ import h5io
 from neurobooth_os.iout import metadator as meta
 from neurobooth_terra import Table
 import neurobooth_os.config as cfg
+from neurobooth_os.iout.stream_utils import DataVersion
 
 
 # This file keeps track of XDF files that have yet to be split
@@ -231,7 +232,14 @@ def _correct_hdf5(device_data: DeviceData) -> DeviceData:
     """
     device_id = device_data.device_id
     data = device_data.device_data
-    print(device_id, data['info'].keys())
+    data_desc = data['info']['desc']
+
+    if 'data_version' in data_desc.keys():
+        data_version = DataVersion.from_str(data_desc['data_version'])
+    else:
+        data_version = DataVersion(0, 0)
+
+    print(device_id, data_version)
 
     return device_data
 
