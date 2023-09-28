@@ -13,7 +13,6 @@ import h5io
 from neurobooth_os.iout import metadator as meta
 from neurobooth_terra import Table
 import neurobooth_os.config as cfg
-from neurobooth_os.iout.stream_utils import DataVersion
 
 
 # This file keeps track of XDF files that have yet to be split
@@ -230,16 +229,15 @@ def _correct_hdf5(device_data: DeviceData) -> DeviceData:
     :param device_data: The device data stream to correct.
     :returns: The corrected device data stream.
     """
-    device_id = device_data.device_id
-    data = device_data.device_data
-    data_desc = data['info']['desc'][0]
+    # Import here to prevent circular import
+    from neurobooth_os.iout.correct_hdf5 import HDF5_CORRECT_HOOKS, correct_marker
 
-    if 'data_version' in data_desc.keys():
-        data_version = DataVersion.from_str(data_desc['data_version'][0])
-    else:
-        data_version = DataVersion(0, 0)
+    # Correct the marker data stream
+    device_data = correct_marker(device_data)
 
-    print(device_id, data_version)
+    # Correct the device data stream if a hook is registered for the device ID
+    if device_data.device_id in HDF5_CORRECT_HOOKS:
+        device_data = HDF5_CORRECT_HOOKS[device_data.device_id](device_data)
 
     return device_data
 
