@@ -962,7 +962,7 @@ def script_results(recording_folder: str, subject_id: str, show_plots: bool) -> 
 
     df_pc = np.diff(ts_pc)
     df_ip = np.diff(ts_ip)
-    print(f"mean diff diff: {np.mean(np.abs(df_pc[1:] - df_ip[1:]))}")
+    print(f"mean diff diff: {np.mean(np.abs(df_pc[1:] - df_ip[1:])) * 1e3:.3f} ms")
     print(f"effective sample rate: {1/np.mean(df_ip):.1f} fps")
 
     if show_plots:
