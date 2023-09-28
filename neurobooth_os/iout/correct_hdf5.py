@@ -4,14 +4,20 @@ Most of this file should be refactored when devices are made more extensible.
 Device configs will need to be able to specify an optional hook to register these functions from the device code.
 """
 
+import json
 from typing import Dict, Callable
 from neurobooth_os.iout.stream_utils import DataVersion
 from neurobooth_os.iout.split_xdf import DeviceData
 
 
+def get_description(data):
+    """Helper function to retrieve the description element of the XDF structure."""
+    return data['info']['desc'][0]
+
+
 def get_data_version(data) -> DataVersion:
     """Extract the data version from the device or marker data. Assume v0.0 if the key is missing."""
-    desc = data['info']['desc'][0]
+    desc = get_description(data)
     if 'data_version' in desc.keys():
         return DataVersion.from_str(desc['data_version'][0])
     else:
@@ -21,7 +27,10 @@ def get_data_version(data) -> DataVersion:
 def correct_marker(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.marker_data)
     if data_version.major < 1:
-        pass
+        desc = get_description(data)
+        desc['data_version'] = str(data_version)
+        desc['column_names'] = json.dumps(['Marker'])
+        desc['column_descriptions'] = json.dumps({'Marker': 'Marker message string'})
     return data
 
 
