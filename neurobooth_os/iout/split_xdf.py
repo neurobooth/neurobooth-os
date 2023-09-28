@@ -98,7 +98,7 @@ def _parse_xdf(xdf_path: str, device_ids: Optional[List[str]] = None) -> List[De
     data, _ = pyxdf.load_xdf(xdf_path, dejitter_timestamps=False)
 
     # Find marker stream to associate with each device
-    marker = [d for d in data if d["info"]["name"] == ["Marker"]]
+    marker = [d for d in data if d["info"]["name"] == ["Marker"]][0]
 
     # Get video file names for each device "videofiles" marker is present
     video_files = {}
