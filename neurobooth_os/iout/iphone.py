@@ -1,5 +1,4 @@
 import argparse
-import os.path
 import os.path as op
 from multiprocessing import Condition, Event, RLock
 import functools
@@ -952,7 +951,7 @@ def script_results(recording_folder: str, subject_id: str, show_plots: bool) -> 
     import glob
     import numpy as np
 
-    path = os.path.join(recording_folder, subject_id, 'recording_R0*.xdf')
+    path = op.join(recording_folder, subject_id, 'recording_R0*.xdf')
     fname = glob.glob(path)[-1]
     data, header = pyxdf.load_xdf(fname)
 
