@@ -205,15 +205,11 @@ class SystemResourceLogger(Thread):
 
 class PostgreSQLHandler(logging.Handler):
     """
-    A :class:`logging.Handler` that logs to the `log` PostgreSQL table
-    Does not use :class:`PostgreSQL`, keeping its own connection, in autocommit
-    mode.
+    A :class:`logging.Handler` that logs to the `log_application` PostgreSQL table
+
+    This handler has its own connection in autocommit mode.
     .. DANGER:
-        Beware explicit or automatic locks taken out in the main requests'
-        transaction could deadlock with this INSERT!
-        In general, avoid touching the log table entirely. SELECT queries
-        do not appear to block with INSERTs. If possible, touch the log table
-        in autocommit mode only.
+        SELECT queries do not appear to block with INSERTs. Touch the log table in autocommit mode only.
     `db_settings` is passed to :meth:`psycopg2.connect` as kwargs
     (``connect(**db_settings)``).
     """
@@ -232,18 +228,21 @@ class PostgreSQLHandler(logging.Handler):
         super(PostgreSQLHandler, self).__init__()
         self.fallback_log_path = fallback_log_path
         self.setLevel(log_level)
+        self.name = "db_handler"
         try:
             self._get_logger_connection()
         except Exception as Argument:
             msg = "Unable to connect to database for logging. Falling back to default file logging."
-            self.handle_logging_exception()
+            self.fallback_to_local_handler()
             logging.getLogger("db").exception(msg)
 
     def close(self):
-        logging.getLogger("db").info("Closing log db connection")
+        logging.getLogger("db").debug("Closing log db connection")
         logging.getLogger("db").removeHandler(self)
         if self.connection is not None:
             self.connection.close()
+        global DB_LOGGER
+        DB_LOGGER = None
 
     def emit(self, record):
         try:
@@ -273,9 +272,10 @@ class PostgreSQLHandler(logging.Handler):
             }
 
             self.cursor.execute(self._query, args)
+
         except Exception as Argument:
             msg = "An exception occurred attempting to log to DB. Falling back to file-system log."
-            self.handle_logging_exception()
+            self.fallback_to_local_handler()
             self.handleError(record)
             logging.getLogger("db").exception(msg)
 
@@ -284,10 +284,19 @@ class PostgreSQLHandler(logging.Handler):
         self.connection.autocommit = True
         self.cursor = self.connection.cursor()
 
-    def handle_logging_exception(self):
+    def fallback_to_local_handler(self):
         logger = logging.getLogger("db")
         if self in logger.handlers:
             logger.removeHandler(self)
         default_handler = get_default_log_handler(self.fallback_log_path)
         if default_handler not in logger.handlers:
             logger.addHandler(default_handler)
+
+
+def test_log_handler_fallback():
+    """FOR TESTING PURPOSES ONLY
+    Causes logger to fallback to filesystem logging without an actual failure occurring"""
+    logger = logging.getLogger("db")
+    for hdlr in logger.handlers:
+        if hdlr.name == "db_handler":
+            hdlr.fallback_to_local_handler()

@@ -7,58 +7,72 @@ import unittest
 
 from neurobooth_terra import Table
 
-from neurobooth_os.log_manager import make_default_logger, make_db_logger
+from neurobooth_os.log_manager import make_default_logger, make_db_logger, test_log_handler_fallback
 from neurobooth_os.iout.metadator import get_conn
 
 log_path = r"C:\neurobooth\test_data\test_logs"
 database = "mock_neurobooth_1"
+connection = None
 
 subject = "1111111"
 session = "1111111_2023_12_25 12:12:12"
 
 
-def get_records(conn=get_conn(database), where=None):
+def get_connection():
+    c = get_conn(database)
+    c.autocommit = True
+    return c
+
+
+def get_records(where=None):
     """Test utility for querying log_application table. Returns results as a dataframe"""
-    table = Table("log_application", conn=conn)
+    table = Table("log_application", connection)
     if where is not None:
         task_df = table.query(where)
     else:
         task_df = table.query()
-    print(task_df)
     return task_df
 
 
-def delete_records(conn=get_conn(database), where=None) -> None:
+def delete_records(where=None) -> None:
     """Test utility for querying log_application table. Returns results as a dataframe"""
-    table = Table("log_application", conn=conn)
+    table = Table("log_application", connection)
     if where is not None:
         table.delete_row(where)
     else:
-        table.delete_row("1=1")
+        table.delete_row()
 
 
 class TestLogging(unittest.TestCase):
 
     def setUp(self):
+        global connection
+        if connection is not None:
+            connection.close()
+        connection = get_connection()
         if not os.path.exists(log_path):
             os.makedirs(log_path)
 
     def tearDown(self):
+        global connection
+        delete_records()
         logger = logging.getLogger("default")
         handlers = logger.handlers[:]
         for handler in handlers:
             logger.removeHandler(handler)
             handler.close()
         logging.shutdown()
-        delete_records()
 
         if os.path.exists(log_path):
             files = os.listdir(log_path)
             for file in files:
                 filename = os.path.join(log_path, file)
-                # TODO(larry): uncomment below
-                #os.remove(filename)
-            #shutil.rmtree(log_path)
+                os.remove(filename)
+            shutil.rmtree(log_path)
+
+        if connection is not None:
+            connection.close()
+            connection = None
 
     def test_default_logging(self):
 
@@ -84,7 +98,7 @@ class TestLogging(unittest.TestCase):
         """Tests to ensure log handler is closed (or at least, doesn't blow up when closing) """
         db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12")
         db_log.critical("Microphone: Entering LSL Loop", extra={"device": "playstation"})
-        logging.shutdown()
+        #logging.shutdown()
 
     def test_db_logging0(self):
         """Tests logging to database using make_db_logger with session and subject set"""
@@ -138,14 +152,26 @@ class TestLogging(unittest.TestCase):
         assert df.iloc[1]["subject_id"] == ""
         assert df.iloc[1]["session_id"] == ""
 
-    # @unittest.skip("Test requires that DB Connection not succeed (i.e. run outside VPN)")
+    def test_fallback(self):
+        db_log = make_db_logger("foo", "bar", log_path, logging.DEBUG)
+        test_log_handler_fallback()
+        db_log.critical("Test fallback logging. No DB Connection should be available")
+        file_list = os.listdir(log_path)[0]
+        filename = os.path.join(log_path, file_list)
+
+        with open(filename, 'r') as file:
+            data = file.read()
+        self.assertTrue("fallback" in data)
+
+    @unittest.skip("Test requires that DB Connection not succeed (i.e. run outside VPN)")
     def test_db_logging3(self):
         """Tests logging fallback to local file logging.
         """
         db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12", log_path)
         db_log.critical("Test fallback logging. No DB Connection should be available")
-
-        filename = os.path.join(log_path, os.listdir(log_path)[0])
+        print(log_path)
+        file_list = os.listdir(log_path)[0]
+        filename = os.path.join(log_path, file_list)
 
         with open(filename, 'r') as file:
             data = file.read()
@@ -156,8 +182,8 @@ class TestLogging(unittest.TestCase):
         """
         db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12", log_path)
         try:
-            raise Exception("This is a test")
-        except Exception as Argument:
+            raise RuntimeError("This is a test")
+        except RuntimeError as Argument:
             db_log.exception("Test db logging with traceback")
         df = get_records()
         assert df.iloc[0]["traceback"] is not None

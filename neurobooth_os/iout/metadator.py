@@ -38,7 +38,7 @@ def get_conn(database):
 
     if database is None:
         logger.critical("Database name is a required parameter.")
-        raise  # TODO: Need appropriate exception type for database connection errors
+        raise  RuntimeError("No database name was provided to get_conn().")
 
     port = neurobooth_config["database"]["port"]
     tunnel = SSHTunnelForwarder(
@@ -53,7 +53,6 @@ def get_conn(database):
     tunnel.start()
     host = tunnel.local_bind_host
     port = tunnel.local_bind_port
-    print(host, port, database)
 
     conn = psycopg2.connect(
         database=database,
