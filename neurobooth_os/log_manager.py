@@ -213,8 +213,6 @@ class PostgreSQLHandler(logging.Handler):
     This handler has its own connection in autocommit mode.
     .. DANGER:
         SELECT queries do not appear to block with INSERTs. Touch the log table in autocommit mode only.
-    `db_settings` is passed to :meth:`psycopg2.connect` as kwargs
-    (``connect(**db_settings)``).
     """
 
     _query = "INSERT INTO log_application " \
