@@ -7,7 +7,7 @@ import unittest
 
 from neurobooth_terra import Table
 
-from neurobooth_os.log_manager import make_default_logger, make_db_logger, test_log_handler_fallback
+from neurobooth_os.log_manager import make_default_logger, make_db_logger, _test_log_handler_fallback
 from neurobooth_os.iout.metadator import get_conn
 
 log_path = r"C:\neurobooth\test_data\test_logs"
@@ -154,7 +154,7 @@ class TestLogging(unittest.TestCase):
 
     def test_fallback(self):
         db_log = make_db_logger("foo", "bar", log_path, logging.DEBUG)
-        test_log_handler_fallback()
+        _test_log_handler_fallback()
         db_log.critical("Test fallback logging. No DB Connection should be available")
         file_list = os.listdir(log_path)[0]
         filename = os.path.join(log_path, file_list)

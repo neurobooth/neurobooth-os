@@ -16,9 +16,11 @@ LOG_FORMAT = logging.Formatter('|%(levelname)s| [%(asctime)s] %(filename)s, %(fu
 
 DEFAULT_LOG_PATH = neurobooth_config["default_log_path"]
 
+# Globals: Set using make_db_logger(). Must be set to log session and subject data
 SESSION_ID: str = ""
 SUBJECT_ID: str = ""
 
+# Create DB_LOGGER as a singleton. Otherwise, multiple calls to make_db_logger will add redundant handlers
 DB_LOGGER: Optional[logging.Logger] = None
 
 
@@ -48,11 +50,12 @@ def make_session_logger_debug(
 def make_db_logger(subject: str = None,
                    session: str = None,
                    fallback_log_path: str = DEFAULT_LOG_PATH,
-                   log_level=logging.DEBUG) -> logging.Logger:
+                   log_level: int = logging.DEBUG) -> logging.Logger:
     """Returns a logger that logs to the database and sets the subject id and session to be used for subsequent
     logging calls.
 
-    If the subject or session should be cleared, the argument should be an empty string. Passing None, will NOT reset
+    NOTE: If the subject or session should be cleared, the argument should be an empty string.
+    Passing None will NOT reset those values
     """
 
     global SUBJECT_ID, SESSION_ID, DB_LOGGER
@@ -62,7 +65,7 @@ def make_db_logger(subject: str = None,
     if session is not None:
         SESSION_ID = session
 
-    # Don't reinitialize the logger
+    # Don't reinitialize the logger if one exists
     if DB_LOGGER is None:
         logger = logging.getLogger('db')
         handler = PostgreSQLHandler(fallback_log_path, log_level)
@@ -77,7 +80,7 @@ def get_default_log_handler(
         log_path=DEFAULT_LOG_PATH,
         log_level=logging.DEBUG,
 ):
-    """Returns a log handler suitable for default logging
+    """Returns a log handler suitable for logging when the DB isn't available
     """
 
     if not os.path.exists(log_path):
@@ -231,12 +234,13 @@ class PostgreSQLHandler(logging.Handler):
         self.name = "db_handler"
         try:
             self._get_logger_connection()
-        except Exception as Argument:
+        except Exception:
             msg = "Unable to connect to database for logging. Falling back to default file logging."
             self.fallback_to_local_handler()
             logging.getLogger("db").exception(msg)
 
     def close(self):
+        """Close this log handler and its DB connection """
         logging.getLogger("db").debug("Closing log db connection")
         logging.getLogger("db").removeHandler(self)
         if self.connection is not None:
@@ -273,7 +277,7 @@ class PostgreSQLHandler(logging.Handler):
 
             self.cursor.execute(self._query, args)
 
-        except Exception as Argument:
+        except Exception:
             msg = "An exception occurred attempting to log to DB. Falling back to file-system log."
             self.fallback_to_local_handler()
             self.handleError(record)
@@ -293,10 +297,10 @@ class PostgreSQLHandler(logging.Handler):
             logger.addHandler(default_handler)
 
 
-def test_log_handler_fallback():
+def _test_log_handler_fallback():
     """FOR TESTING PURPOSES ONLY
-    Causes logger to fallback to filesystem logging without an actual failure occurring"""
+    Causes logger to fall back to filesystem logging without an actual failure occurring"""
     logger = logging.getLogger("db")
-    for hdlr in logger.handlers:
-        if hdlr.name == "db_handler":
-            hdlr.fallback_to_local_handler()
+    for handler in logger.handlers:
+        if handler.name == "db_handler":
+            handler.fallback_to_local_handler()
