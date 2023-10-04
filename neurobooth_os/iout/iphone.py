@@ -17,7 +17,7 @@ from hashlib import md5
 from base64 import b64decode
 
 from neurobooth_os.iout.usbmux import USBMux
-
+from neurobooth_os.log_manager import APP_LOG_NAME
 
 # --------------------------------------------------------------------------------
 # Module-level constants and debugging flags
@@ -196,7 +196,7 @@ class IPhone:
         self.streaming = False
         self.streamName = "IPhoneFrameIndex"
         self.outlet_id = str(uuid.uuid4())
-        self.logger = logging.getLogger('db')
+        self.logger = logging.getLogger(APP_LOG_NAME)
 
         # --------------------------------------------------------------------------------
         # Lock-based threading objects and their associated protected data
@@ -820,7 +820,7 @@ class IPhoneListeningThread(threading.Thread):
     def __init__(self, iphone: IPhone):
         self._iphone = iphone
         self._running = True
-        self.logger = logging.getLogger('db')
+        self.logger = logging.getLogger(APP_LOG_NAME)
         threading.Thread.__init__(self)
 
     def run(self):

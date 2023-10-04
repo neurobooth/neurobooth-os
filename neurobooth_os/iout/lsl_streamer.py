@@ -9,6 +9,7 @@ import logging
 from neurobooth_os import config
 from neurobooth_os.iout import metadator as meta
 from neurobooth_os.iout.mbient import Mbient
+from neurobooth_os.log_manager import APP_LOG_NAME
 
 
 def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
@@ -35,7 +36,7 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
         print("getting conn")
         conn = meta.get_conn(database)
 
-    logger = logging.getLogger('db')
+    logger = logging.getLogger(APP_LOG_NAME)
 
     # Get params from all tasks
     kwarg_devs = meta.get_device_kwargs_by_task(collection_id, conn)
@@ -134,7 +135,7 @@ def start_lsl_threads(node_name, collection_id="mvp_030", win=None, conn=None):
 
 
 def close_streams(streams):
-    logger = logging.getLogger('db')
+    logger = logging.getLogger(APP_LOG_NAME)
 
     for k in list(streams):
         print(f"Closing {k} stream")
@@ -148,7 +149,7 @@ def close_streams(streams):
 
 
 def reconnect_streams(streams):
-    logger = logging.getLogger('db')
+    logger = logging.getLogger(APP_LOG_NAME)
 
     for k in list(streams):
         if k.split("_")[0] in ["hiFeed", "Intel", "FLIR", "IPhone"]:

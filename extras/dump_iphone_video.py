@@ -6,7 +6,7 @@ import os.path as op
 import datetime
 import logging
 from typing import Optional
-from neurobooth_os.log_manager import make_db_logger
+from neurobooth_os.log_manager import make_db_logger, APP_LOG_NAME
 import argparse
 import sys
 
@@ -26,7 +26,7 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
         Command line arguments.
     """
     session_root = cfg.neurobooth_config[args.server]["local_data_dir"]
-    logger = logging.getLogger('db')
+    logger = logging.getLogger(APP_LOG_NAME)
     logger.debug(f'Session Root: {session_root}')
 
     # Connect to the iPhone
@@ -105,7 +105,7 @@ def dump_file(
     delete_zero_byte
         If true, delete files from the iPhone if no data is observed.
     """
-    logger = logging.getLogger('db')
+    logger = logging.getLogger(APP_LOG_NAME)
     if op.exists(file_name_out):  # Do not overwrite a file that already exists
         logger.error(f'Cannot write {file_name_out} as it already exists!')
         return
@@ -131,7 +131,7 @@ def dump_file(
 
 
 def parse_arguments() -> argparse.Namespace:
-    logger = logging.getLogger('db')
+    logger = logging.getLogger(APP_LOG_NAME)
     parser = argparse.ArgumentParser(description='Download and save all files on the iPhone (both .json and .MOV).')
     parser.add_argument(
         '--delete-zero-byte',
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        logger = logging.getLogger('db')
+        logger = logging.getLogger(APP_LOG_NAME)
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
         raise

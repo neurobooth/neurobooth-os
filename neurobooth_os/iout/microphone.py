@@ -10,7 +10,7 @@ import wave
 import logging
 
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
-
+from neurobooth_os.log_manager import APP_LOG_NAME
 
 class MicStream:
     def __init__(
@@ -81,7 +81,7 @@ class MicStream:
         )
         print(f"-OUTLETID-:Audio:{self.oulet_id}")
 
-        self.logger = logging.getLogger('db')
+        self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(
             f'Microphone: sample_rate={str(self.fps)}; save_on_disk={self.save_on_disk}; channels={self.CHANNELS}'
         )

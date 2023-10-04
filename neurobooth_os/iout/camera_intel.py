@@ -16,6 +16,7 @@ import pyrealsense2 as rs
 from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+from neurobooth_os.log_manager import APP_LOG_NAME
 
 warnings.filterwarnings("ignore")
 
@@ -72,7 +73,7 @@ class VidRec_Intel:
 
         self.outlet = self.createOutlet()
 
-        self.logger = logging.getLogger('db')
+        self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(
             f'RealSense [{self.device_index}] ({self.serial_num}): fps={str(self.fps)}; frame_size={str(self.frameSize)}'
         )

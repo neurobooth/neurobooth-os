@@ -21,7 +21,9 @@ SESSION_ID: str = ""
 SUBJECT_ID: str = ""
 
 # Create DB_LOGGER as a singleton. Otherwise, multiple calls to make_db_logger will add redundant handlers
-DB_LOGGER: Optional[logging.Logger] = None
+APP_LOGGER: Optional[logging.Logger] = None
+# Name of the Application Logger, for use in retrieving the appropriate logger from the logging module
+APP_LOG_NAME = "app"
 
 
 def make_session_logger_debug(
@@ -58,7 +60,7 @@ def make_db_logger(subject: str = None,
     Passing None will NOT reset those values
     """
 
-    global SUBJECT_ID, SESSION_ID, DB_LOGGER
+    global SUBJECT_ID, SESSION_ID, APP_LOGGER
 
     if subject is not None:
         SUBJECT_ID = subject
@@ -66,14 +68,14 @@ def make_db_logger(subject: str = None,
         SESSION_ID = session
 
     # Don't reinitialize the logger if one exists
-    if DB_LOGGER is None:
-        logger = logging.getLogger('db')
+    if APP_LOGGER is None:
+        logger = logging.getLogger(APP_LOG_NAME)
         handler = PostgreSQLHandler(fallback_log_path, log_level)
         logger.addHandler(handler)
         extra = {"device": ""}
         logging.LoggerAdapter(logger, extra)
-        DB_LOGGER = logger
-    return DB_LOGGER
+        APP_LOGGER = logger
+    return APP_LOGGER
 
 
 def get_default_log_handler(
@@ -235,16 +237,16 @@ class PostgreSQLHandler(logging.Handler):
         except Exception:
             msg = "Unable to connect to database for logging. Falling back to default file logging."
             self.fallback_to_local_handler()
-            logging.getLogger("db").exception(msg)
+            logging.getLogger(APP_LOG_NAME).exception(msg)
 
     def close(self):
         """Close this log handler and its DB connection """
-        logging.getLogger("db").debug("Closing log db connection")
-        logging.getLogger("db").removeHandler(self)
+        logging.getLogger(APP_LOG_NAME).debug("Closing log db connection")
+        logging.getLogger(APP_LOG_NAME).removeHandler(self)
         if self.connection is not None:
             self.connection.close()
-        global DB_LOGGER
-        DB_LOGGER = None
+        global APP_LOGGER
+        APP_LOGGER = None
 
     def emit(self, record):
         try:
@@ -279,7 +281,7 @@ class PostgreSQLHandler(logging.Handler):
             msg = "An exception occurred attempting to log to DB. Falling back to file-system log."
             self.fallback_to_local_handler()
             self.handleError(record)
-            logging.getLogger("db").exception(msg)
+            logging.getLogger(APP_LOG_NAME).exception(msg)
 
     def _get_logger_connection(self):
         self.connection = metadator.get_conn(neurobooth_config["database"]["dbname"])
@@ -287,7 +289,7 @@ class PostgreSQLHandler(logging.Handler):
         self.cursor = self.connection.cursor()
 
     def fallback_to_local_handler(self):
-        logger = logging.getLogger("db")
+        logger = logging.getLogger(APP_LOG_NAME)
         if self in logger.handlers:
             logger.removeHandler(self)
         default_handler = get_default_log_handler(self.fallback_log_path)
@@ -298,7 +300,7 @@ class PostgreSQLHandler(logging.Handler):
 def _test_log_handler_fallback():
     """FOR TESTING PURPOSES ONLY
     Causes logger to fall back to filesystem logging without an actual failure occurring"""
-    logger = logging.getLogger("db")
+    logger = logging.getLogger(APP_LOG_NAME)
     for handler in logger.handlers:
         if handler.name == "db_handler":
             handler.fallback_to_local_handler()

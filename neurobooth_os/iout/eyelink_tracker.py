@@ -15,7 +15,7 @@ from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
     EyeLinkCoreGraphicsPsychoPy,
 )
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
-
+from neurobooth_os.log_manager import APP_LOG_NAME
 
 class EyeTracker:
     def __init__(
@@ -84,7 +84,7 @@ class EyeTracker:
         )
         self.outlet = StreamOutlet(self.stream_info)
 
-        self.logger = logging.getLogger('db')
+        self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(f'EyeLink: sample_rate={str(self.sample_rate)}')
 
         print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")

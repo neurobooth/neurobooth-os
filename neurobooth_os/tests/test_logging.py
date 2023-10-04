@@ -98,7 +98,7 @@ class TestLogging(unittest.TestCase):
         """Tests to ensure log handler is closed (or at least, doesn't blow up when closing) """
         db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12")
         db_log.critical("Microphone: Entering LSL Loop", extra={"device": "playstation"})
-        #logging.shutdown()
+        logging.shutdown()
 
     def test_db_logging0(self):
         """Tests logging to database using make_db_logger with session and subject set"""
