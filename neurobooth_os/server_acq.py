@@ -5,7 +5,6 @@ from time import time, sleep
 from collections import OrderedDict
 import cv2
 import numpy as np
-from concurrent.futures import ThreadPoolExecutor, wait
 from pylsl import local_clock
 import logging
 import json
@@ -15,11 +14,7 @@ from neurobooth_os import config
 from neurobooth_os.log_manager import make_default_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
-from neurobooth_os.iout.lsl_streamer import (
-    start_lsl_threads,
-    close_streams,
-    reconnect_streams,
-)
+from neurobooth_os.iout.lsl_streamer import DeviceManager
 from neurobooth_os.iout.mbient import Mbient
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import make_session_logger, SystemResourceLogger
@@ -49,19 +44,14 @@ def main():
         raise
 
 
-def is_camera(stream_name: str) -> bool:
-    """Test to see if a stream is a camera stream based on its name."""
-    return stream_name.split("_")[0] in ["FLIR", "Intel", "IPhone"]
-
-
 def run_acq(logger):
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    streams = {}
     lowFeed_running = False
     recording = False
     port = config.neurobooth_config['acquisition']["port"]
     host = ''
+    device_manager = None
     system_resource_logger = None
 
     for data, connx in get_client_messages(s1, port, host):
@@ -100,54 +90,29 @@ def run_acq(logger):
                 system_resource_logger.start()
 
             task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
-            if len(streams):
-                # print("Checking prepared devices")
-                streams = reconnect_streams(streams)
-            else:
-                streams = start_lsl_threads("acquisition", collection_id, conn=conn)
 
-            devs = list(streams.keys())
-            logger.info(f'LOADED DEVICES: {str(devs)}')
+            device_manager = DeviceManager(node_name='acquisition')
+            if device_manager.streams:
+                device_manager.reconnect_streams()
+            else:
+                device_manager.create_streams(collection_id=collection_id, conn=conn)
             print("UPDATOR:-Connect-")
 
         elif "frame_preview" in data and not recording:
-            if not any("IPhone" in s for s in streams):
+            frame = device_manager.iphone_frame_preview()
+            if frame is None:
                 print("no iphone")
                 connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
                 logger.debug('Frame preview unavailable')
-                continue
-
-            frame = streams[[i for i in streams if "IPhone" in i][0]].frame_preview()
-            frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
-            frame = frame_prefix + frame
-            connx.send(frame)
-            logger.debug('Frame preview sent')
+            else:
+                frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
+                frame = frame_prefix + frame
+                connx.send(frame)
+                logger.debug('Frame preview sent')
 
         # TODO: Both reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
         elif "reset_mbients" in data:
-            mbient_streams = {
-                stream_name: stream
-                for stream_name, stream in streams.items()
-                if 'mbient' in stream_name.lower()
-            }
-
-            if len(mbient_streams) == 0:
-                logger.debug('No mbients to reset.')
-                connx.send(json.dumps({}).encode('utf-8'))
-                continue
-
-            with ThreadPoolExecutor(max_workers=len(mbient_streams)) as executor:
-                # Begin concurrent reset of devices
-                reset_results = {
-                    stream_name: executor.submit(stream.reset_and_reconnect)
-                    for stream_name, stream in mbient_streams.items()
-                }
-
-                # Wait for resets to complete, then resolve the futures
-                wait(reset_results.values())
-                reset_results = {stream_name: result.result() for stream_name, result in reset_results.items()}
-
-            # Reply with the results of the reset
+            reset_results = device_manager.mbient_reset()
             connx.send(json.dumps(reset_results).encode('utf-8'))
             logger.debug('Reset results sent')
 
@@ -158,19 +123,8 @@ def run_acq(logger):
             fname, task = data.split("::")[1:]
             fname = f"{config.neurobooth_config['acquisition']['local_data_dir']}{subject_id_date}/{fname}"
 
-            # Start cameras
-            for stream_name, stream in streams.items():
-                if is_camera(stream_name) and stream_name in task_devs_kw[task]:
-                    try:
-                        stream.start(fname)
-                    except Exception as e:
-                        logger.exception(e)
-
-            # Attempt to reconnect Mbients if disconnected
-            Mbient.task_start_reconnect([
-                stream for stream_name, stream in streams.items()
-                if 'Mbient' in stream_name
-            ])
+            device_manager.start_cameras(fname, task_devs_kw[task])
+            device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
 
             elapsed_time = time() - t0
             print(f"Device start took {elapsed_time:.2f}")
@@ -181,17 +135,7 @@ def run_acq(logger):
 
         elif "record_stop" in data:
             t0 = time()
-
-            # Stop cameras
-            for stream_name, stream in streams.items():
-                if is_camera(stream_name) and stream_name in task_devs_kw[task]:
-                    stream.stop()
-
-            # Wait for cameras to actually stop
-            for stream_name, stream in streams.items():
-                if is_camera(stream_name) and stream_name in task_devs_kw[task]:
-                    stream.ensure_stopped(10)
-
+            device_manager.stop_cameras(task_devs_kw[task])
             elapsed_time = time() - t0
             print(f"Device stop took {elapsed_time:.2f}")
             logger.info(f'Device stop took {elapsed_time:.2f}')
@@ -208,16 +152,8 @@ def run_acq(logger):
                 sys.stdout = sys.stdout.terminal
                 s1.close()
 
-            # TODO: It would be nice to generically register logging handlers at each stage of a stream's lifecycle.
-            for k in streams.keys():  # Log the list of files present on the iPhone
-                if k.split("_")[0] == "IPhone":
-                    iphone_files, _ = streams[k].dumpall_getfilelist()
-                    if iphone_files is not None:
-                        logger.info(f'iPhone has {len(iphone_files)} waiting for dump: {iphone_files}')
-                    else:
-                        logger.warning(f'iPhone did not return a list of files to dump.')
-
-            streams = close_streams(streams)
+            device_manager.iphone_log_file_list()    # Log the list of files present on the iPhone
+            device_manager.close_streams()
 
             if "shutdown" in data:
                 if lowFeed_running:
