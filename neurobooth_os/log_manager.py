@@ -20,10 +20,14 @@ DEFAULT_LOG_PATH = neurobooth_config["default_log_path"]
 SESSION_ID: str = ""
 SUBJECT_ID: str = ""
 
-# Create DB_LOGGER as a singleton. Otherwise, multiple calls to make_db_logger will add redundant handlers
+# Create APP_LOGGER as a singleton. Otherwise, multiple calls to make_db_logger will add redundant handlers
 APP_LOGGER: Optional[logging.Logger] = None
+TASK_PARAM_LOGGER: Optional[logging.Logger] = None
+
 # Name of the Application Logger, for use in retrieving the appropriate logger from the logging module
 APP_LOG_NAME = "app"
+TASK_PARAM_LOG_NAME = "task-param"
+
 
 
 def make_session_logger_debug(
@@ -241,7 +245,7 @@ class PostgreSQLHandler(logging.Handler):
 
     def close(self):
         """Close this log handler and its DB connection """
-        logging.getLogger(APP_LOG_NAME).debug("Closing log db connection")
+        logging.getLogger(APP_LOG_NAME).debug("Closing app log db connection")
         logging.getLogger(APP_LOG_NAME).removeHandler(self)
         if self.connection is not None:
             self.connection.close()
@@ -304,3 +308,61 @@ def _test_log_handler_fallback():
     for handler in logger.handlers:
         if handler.name == "db_handler":
             handler.fallback_to_local_handler()
+
+
+class TaskParamLogHandler(logging.Handler):
+    """
+    A :class:`logging.Handler` that logs to the `log_task_params` PostgreSQL table
+
+    This handler has its own connection in autocommit mode.
+    .. DANGER:
+        SELECT queries do not appear to block with INSERTs. Touch the log table in autocommit mode only.
+    """
+
+    _query = "INSERT INTO log_task_params " \
+             "(session_id, subject_id, name, value) " \
+             " VALUES " \
+             " (%(session_id)s, %(subject_id)s, %(name)s, %(value)s)"
+
+    def __init__(self):
+        super(TaskParamLogHandler, self).__init__()
+        self.setLevel("info")
+        self.name = "task_param_log_handler"
+        try:
+            self._get_logger_connection()
+        except Exception:
+            msg = "Unable to connect to database for task parameter logging."
+            logging.getLogger(APP_LOG_NAME).exception(msg)
+
+    def close(self):
+        """Close this log handler and its DB connection """
+        # TODO(larry): Should we try to get the loggers from their respective globals?
+        app_logger = logging.getLogger(APP_LOG_NAME)
+        app_logger.debug("Closing task param log db connection")
+        task_logger = logging.getLogger(TASK_PARAM_LOG_NAME)
+        task_logger.removeHandler(self)
+        if self.connection is not None:
+            self.connection.close()
+        global DB_LOGGER
+        DB_LOGGER = None
+
+    def emit(self, record):
+        try:
+            args = {
+                "value": getattr(record, "value", None),
+                "name": getattr(record, "name", None),
+                "subject_id": SUBJECT_ID,
+                "session_id": SESSION_ID,
+            }
+
+            self.cursor.execute(self._query, args)
+
+        except Exception:
+            msg = "An exception occurred attempting to log to DB. Falling back to file-system log."
+            # TODO(larry): ensure that log exists before logging
+            logging.getLogger(APP_LOG_NAME).exception(msg)
+
+    def _get_logger_connection(self):
+        self.connection = metadator.get_conn(neurobooth_config["database"]["dbname"])
+        self.connection.autocommit = False  # Log all params in a single transaction
+        self.cursor = self.connection.cursor()
