@@ -30,6 +30,7 @@ os.chdir(r"C:\neurobooth-eel\neurobooth_os\\")
 print(os.getcwd())
 
 server_name = "presentation"
+config.load_config()
 server_config = config.neurobooth_config[server_name]
 
 def fake_task(**kwarg):

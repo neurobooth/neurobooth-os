@@ -98,13 +98,18 @@ We can now reconfigure the NUC to break the internal bridge:
 11. Next we need to change the static IP of the Ethernet NIC - for this we need to edit the ``netconfig.ini`` file which is also in the exe folder.
 12. Since we are already in the exe folder (confirm by doing pwd) first create a backup of the original netconfig file ``cp netconfig.ini netconfig_orig``, do an ``ls`` and ensure you made the backup
 13. Open in VI ``vi netconfig.ini`` and edit the line ``HOST_IP = 10.1.1.1`` to ``HOST_IP = 192.168.100.15`` - side note, this could be done via the Configuration.html page in WebUI, however the WebUI blocks an IP change to 192.168.100.X range since under the existence of the bridge that would conflict with WiFi NIC, therefore we have to do this in the configuration text file.
-14. Type ``shutdown`` and hit enter, this will restart the NUC
-15. Check status of the network configuration by following commands in step 2 - you should see 192.168.100.255 for Ethernet subnet, a 192.168.5.255 for WiFi subnet and no output for ``brconfig`` as shown below:
+14. One thing to be certain of, is that the start_tk script has executable permissions when copying over the new file, otherwise the system may not fully boot or may not be reachable with networking. For example:
+  * upload start_tk_new to /elcl/data/ via the Web UI
+  * cp /elcl/exe/start_tk /elcl/exe/start_tk_backup
+  * cp /elcl/data/start_tk_new /elcl/exe/start_tk
+  * chmod +x /elcl/exe/start_tk
+15. Type ``shutdown`` and hit enter, this will restart the NUC
+16. Check status of the network configuration by following commands in step 2 - you should see 192.168.100.255 for Ethernet subnet, a 192.168.5.255 for WiFi subnet and no output for ``brconfig`` as shown below:
 
 .. image:: after.jpg
     :align: center
 
-16. When the NUC reboots, the WebUI will refresh on its own and you should be able to access NUC's file system at 192.168.100.15. If you goto settings -> network, you will see the Ethernet IP has updated to 192.168.100.15 (from 10.1.1.1)
+17. When the NUC reboots, the WebUI will refresh on its own and you should be able to access NUC's file system at 192.168.100.15. If you goto settings -> network, you will see the Ethernet IP has updated to 192.168.100.15 (from 10.1.1.1)
 
 Explanation
 ===========

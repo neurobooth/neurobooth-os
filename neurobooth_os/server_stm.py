@@ -33,18 +33,15 @@ from neurobooth_os.tasks.task_importer import get_task_funcs
 from neurobooth_os.log_manager import make_session_logger, make_default_logger, SystemResourceLogger
 
 
-server_config = config.neurobooth_config["presentation"]
-
-
-def Main():
-    os.chdir(neurobooth_os.__path__[0])
-    sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
-
-    # Initialize logging to default
-    logger = make_default_logger()
-    logger.info("Starting STM")
-
+def main():
+    config.load_config()  # Load Neurobooth-OS configuration
+    logger = make_default_logger()  # Initialize logging to default
     try:
+        logger.info("Starting STM")
+
+        os.chdir(neurobooth_os.__path__[0])
+        sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
+
         run_stm(logger)
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
@@ -61,7 +58,7 @@ def run_stm(logger):
         win = utl.make_win(full_screen=True)
 
     screen_running, presented = False, False
-    port = server_config["port"]
+    port = config.neurobooth_config['presentation']["port"]
     host = ''
     device_manager = None
     system_resource_logger = None
@@ -91,7 +88,7 @@ def run_stm(logger):
             subject_id_date = log_task["subject_id-date"]
             conn = meta.get_conn(database=database_name)
             logger.info(f"Database name is {database_name}.")
-            ses_folder = f"{server_config['local_data_dir']}{subject_id_date}"
+            ses_folder = f"{config.neurobooth_config['presentation']['local_data_dir']}{subject_id_date}"
 
             logger.info(f"Creating session folder: {ses_folder}")
             if not os.path.exists(ses_folder):
@@ -130,7 +127,7 @@ def run_stm(logger):
             # Shared task keyword arguments
             task_karg = {
                 "win": win,
-                "path": server_config["local_data_dir"] + f"{subject_id_date}/",
+                "path": config.neurobooth_config['presentation']["local_data_dir"] + f"{subject_id_date}/",
                 "subj_id": subject_id_date,
                 "marker_outlet": device_manager.streams["marker"],
                 "prompt": True,
@@ -342,4 +339,5 @@ def run_stm(logger):
     exit()
 
 
-Main()
+if __name__ == '__main__':
+    main()

@@ -19,7 +19,6 @@ from neurobooth_os.iout.mbient import Mbient
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import make_session_logger, SystemResourceLogger
 
-server_config = config.neurobooth_config["acquisition"]
 
 def countdown(period):
     t1 = local_clock()
@@ -29,14 +28,15 @@ def countdown(period):
         t2 = local_clock()
 
 
-def Main():
-    os.chdir(neurobooth_os.__path__[0])
-    sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
-
-    # Initialize default logger
-    logger = make_default_logger()
-    logger.info("Starting ACQ")
+def main():
+    config.load_config()  # Load Neurobooth-OS configuration
+    logger = make_default_logger()  # Initialize default logger
     try:
+        logger.info("Starting ACQ")
+
+        os.chdir(neurobooth_os.__path__[0])
+        sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
+
         run_acq(logger)
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
@@ -49,7 +49,7 @@ def run_acq(logger):
 
     lowFeed_running = False
     recording = False
-    port = server_config["port"]
+    port = config.neurobooth_config['acquisition']["port"]
     host = ''
     device_manager = None
     system_resource_logger = None
@@ -78,7 +78,7 @@ def run_acq(logger):
             subject_id_date = log_task["subject_id-date"]
 
             conn = meta.get_conn(database=database_name)
-            ses_folder = f"{server_config['local_data_dir']}{subject_id_date}"
+            ses_folder = f"{config.neurobooth_config['acquisition']['local_data_dir']}{subject_id_date}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
@@ -121,7 +121,7 @@ def run_acq(logger):
             print("Starting recording")
             t0 = time()
             fname, task = data.split("::")[1:]
-            fname = f"{server_config['local_data_dir']}{subject_id_date}/{fname}"
+            fname = f"{config.neurobooth_config['acquisition']['local_data_dir']}{subject_id_date}/{fname}"
 
             device_manager.start_cameras(fname, task_devs_kw[task])
             device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
@@ -170,4 +170,5 @@ def run_acq(logger):
             print(data)
 
 
-Main()
+if __name__ == '__main__':
+    main()
