@@ -8,7 +8,7 @@ import os
 import pandas as pd
 from io import StringIO
 
-from neurobooth_os.config import neurobooth_config
+import neurobooth_os.config as cfg
 
 
 def setup_log(name):
@@ -137,8 +137,8 @@ def node_info(node_name):
     port int
         port number
     """
-    host = neurobooth_config[node_name]["name"]
-    port = neurobooth_config[node_name]["port"]
+    host = cfg.neurobooth_config[node_name]["name"]
+    port = cfg.neurobooth_config[node_name]["port"]
     logger.debug(f"Host is {host}, and port is {port}.")
     return host, port
 
@@ -208,7 +208,7 @@ def start_server(node_name, save_pid_txt=True):
     """
 
     if node_name in ["acquisition", "presentation"]:
-        s = neurobooth_config[node_name]
+        s = cfg.neurobooth_config[node_name]
     else:
         print("Not a known node name")
         return None
@@ -283,7 +283,7 @@ def get_python_pids(output_tasklist):
 def kill_remote_pid(pids, node_name):
 
     if node_name in ["acquisition", "presentation"]:
-        s = neurobooth_config[node_name]
+        s = cfg.neurobooth_config[node_name]
     else:
         print("Not a known node name")
         return None

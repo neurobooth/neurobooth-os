@@ -165,6 +165,7 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def main():
+    cfg.load_config()
     logger = make_default_logger()
     iphone.DISABLE_LSL = True
 

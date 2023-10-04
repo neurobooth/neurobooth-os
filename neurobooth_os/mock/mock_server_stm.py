@@ -37,6 +37,7 @@ def mock_stm_routine(host, port, conn):
         connector to the database
     """
 
+    config.load_config()
     streams = {}
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     for data, connx in get_client_messages(s1, port=port, host=host):
