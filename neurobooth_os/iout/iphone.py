@@ -863,7 +863,7 @@ class IPhoneListeningThread(threading.Thread):
 def test_script():
     args = script_parse_args()
     script_capture_data(args.subject_id, args.recording_folder, args.duration)
-    script_results(args.subject_id, args.show_plots)
+    script_results(args.recording_folder, args.subject_id, args.show_plots)
 
 
 def script_parse_args() -> argparse.Namespace:
@@ -946,12 +946,13 @@ def script_capture_data(subject_id: str, recording_folder: str, capture_duration
     iphone.disconnect()
 
 
-def script_results(subject_id: str, show_plots: bool) -> None:
+def script_results(recording_folder: str, subject_id: str, show_plots: bool) -> None:
     import pyxdf
     import glob
     import numpy as np
 
-    fname = glob.glob(f"{subject_id}/recording_R0*.xdf")[-1]
+    path = op.join(recording_folder, subject_id, 'recording_R0*.xdf')
+    fname = glob.glob(path)[-1]
     data, header = pyxdf.load_xdf(fname)
 
     ts = data[0]["time_series"]
@@ -960,7 +961,8 @@ def script_results(subject_id: str, show_plots: bool) -> None:
 
     df_pc = np.diff(ts_pc)
     df_ip = np.diff(ts_ip)
-    print(f"mean diff diff: {np.mean(np.abs(df_pc[1:] - df_ip[1:]))}")
+    print(f"mean diff diff: {np.mean(np.abs(df_pc[1:] - df_ip[1:])) * 1e3:.3f} ms")
+    print(f"effective sample rate: {1/np.mean(df_ip):.1f} fps")
 
     if show_plots:
         import matplotlib.pyplot as plt
