@@ -14,18 +14,19 @@ from sshtunnel import SSHTunnelForwarder
 import psycopg2
 from neurobooth_terra import Table
 
-
-from neurobooth_os.config import neurobooth_config
 import neurobooth_os
+import neurobooth_os.config as cfg
 
 
-def get_conn(database):
+def get_conn(database, validate_config_paths:bool=True):
     """Gets connector to the database
 
     Parameters
     ----------
-    database : str
+    database : str, optional
         Name of the database
+    validate_config_paths : bool, optional
+        True if the config file path should be validated. This should generally be True outside test scenarios
 
     Returns
     -------
@@ -34,20 +35,20 @@ def get_conn(database):
     """
     import neurobooth_os.log_manager as log_man
 
-    logger = log_man.make_default_logger(log_level=logging.ERROR)
+    logger = log_man.make_default_logger(log_level=logging.ERROR, validate_paths=validate_config_paths)
 
     if database is None:
         logger.critical("Database name is a required parameter.")
         raise  RuntimeError("No database name was provided to get_conn().")
 
-    port = neurobooth_config["database"]["port"]
+    port = cfg.neurobooth_config["database"]["port"]
     tunnel = SSHTunnelForwarder(
-        neurobooth_config["database"]["remote_address"],
-        ssh_username=neurobooth_config["database"]["remote_username"],
+        cfg.neurobooth_config["database"]["remote_address"],
+        ssh_username=cfg.neurobooth_config["database"]["remote_username"],
         ssh_config_file="~/.ssh/config",
         ssh_pkey="~/.ssh/id_rsa",
-        remote_bind_address=(neurobooth_config["database"]["host"], port),
-        # TODO address in config
+        remote_bind_address=(cfg.neurobooth_config["database"]["host"], port),
+        #TODO address in config
         local_bind_address=("localhost", 6543),
     )
     tunnel.start()
@@ -56,8 +57,8 @@ def get_conn(database):
 
     conn = psycopg2.connect(
         database=database,
-        user=neurobooth_config["database"]["user"],
-        password=neurobooth_config["database"]["pass"],
+        user=cfg.neurobooth_config["database"]["user"],
+        password=cfg.neurobooth_config["database"]["pass"],
         host=host,
         port=port,
     )
@@ -319,6 +320,7 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
 
 
 def _get_device_kwargs(task_id, conn):
+
     stim_id, dev_ids, sens_ids, _ = _get_task_param(task_id, conn)
     dev_kwarg = {}
     for dev_id, dev_sens_ids in zip(dev_ids, sens_ids):

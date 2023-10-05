@@ -19,7 +19,7 @@ session = "1111111_2023_12_25 12:12:12"
 
 
 def get_connection():
-    c = get_conn(database)
+    c = get_conn(database, False)
     c.autocommit = True
     return c
 
@@ -82,7 +82,7 @@ class TestLogging(unittest.TestCase):
         try:
             do_something()
         except Exception as e:
-            logger = make_default_logger(log_path)
+            logger = make_default_logger(log_path, logging.DEBUG, False)
             logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
             logger.critical(e, exc_info=sys.exc_info())
 

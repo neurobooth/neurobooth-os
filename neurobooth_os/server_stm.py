@@ -17,11 +17,7 @@ import neurobooth_os
 from neurobooth_os import config
 
 # from neurobooth_os.iout.screen_capture import ScreenMirror
-from neurobooth_os.iout.lsl_streamer import (
-    start_lsl_threads,
-    close_streams,
-    reconnect_streams,
-)
+from neurobooth_os.iout.lsl_streamer import DeviceManager
 from neurobooth_os.iout import metadator as meta
 from neurobooth_os.iout.mbient import Mbient
 
@@ -37,18 +33,14 @@ import neurobooth_os.tasks.utils as utl
 from neurobooth_os.tasks.task_importer import get_task_funcs
 from neurobooth_os.log_manager import SystemResourceLogger, make_db_logger
 
-server_config = config.neurobooth_config["presentation"]
-
-
-def Main():
-    os.chdir(neurobooth_os.__path__[0])
-    sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
-
-    # Initialize logging to default
-    logger = make_db_logger()
-    logger.info("Starting STM")
-
+def main():
+    config.load_config()  # Load Neurobooth-OS configuration
+    logger = make_db_logger()  # Initialize logging to default
     try:
+        logger.info("Starting STM")
+        os.chdir(neurobooth_os.__path__[0])
+        sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
+
         run_stm(logger)
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
@@ -64,9 +56,10 @@ def run_stm(logger):
     else:
         win = utl.make_win(full_screen=True)
 
-    streams, screen_running, presented = {}, False, False
-    port = server_config["port"]
+    screen_running, presented = False, False
+    port = config.neurobooth_config['presentation']["port"]
     host = ''
+    device_manager = None
     system_resource_logger = None
 
     for data, connx in get_client_messages(s1, port, host):
@@ -95,7 +88,7 @@ def run_stm(logger):
             session_name = log_task["subject_id-date"]
             conn = meta.get_conn(database=database_name)
             logger.info(f"Database name is {database_name}.")
-            ses_folder = f"{server_config['local_data_dir']}{session_name}"
+            ses_folder = f"{config.neurobooth_config['presentation']['local_data_dir']}{session_name}"
 
             logger.info(f"Creating session folder: {ses_folder}")
             if not os.path.exists(ses_folder):
@@ -115,14 +108,13 @@ def run_stm(logger):
             task_func_dict = get_task_funcs(collection_id, conn)
             task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
 
-            if len(streams):
+            device_manager = DeviceManager(node_name='presentation')
+            if device_manager.streams:
                 print("Checking prepared devices")
-                streams = reconnect_streams(streams)
+                device_manager.reconnect_streams()
             else:
-                streams = start_lsl_threads(
-                    "presentation", collection_id, win=win, conn=conn
-                )
-
+                device_manager.create_streams(collection_id=collection_id, win=win, conn=conn)
+            eyelink_stream = device_manager.get_eyelink_stream()
             print("UPDATOR:-Connect-")
 
         elif "present" in data:  # -> "present:TASKNAME:subj_id:session_id"
@@ -135,19 +127,17 @@ def run_stm(logger):
             # Shared task keyword arguments
             task_karg = {
                 "win": win,
-                "path": server_config["local_data_dir"] + f"{session_name}/",
+                "path": config.neurobooth_config['presentation']["local_data_dir"] + f"{session_name}/",
                 "subj_id": session_name,
-                "marker_outlet": streams["marker"],
+                "marker_outlet": device_manager.streams["marker"],
                 "prompt": True,
             }
 
             # Pass device streams as keyword arguments if needed.
             # TODO: This needs to be cleaned up and not hard-coded
-            if streams.get("Eyelink"):  # For eye tracker tasks
-                task_karg["eye_tracker"] = streams["Eyelink"]
-            task_karg['mbients'] = {  # For the mbient reset task
-                stream_name: stream for stream_name, stream in streams.items() if 'mbient' in stream_name.lower()
-            }
+            if eyelink_stream is not None:  # For eye tracker tasks
+                task_karg["eye_tracker"] = eyelink_stream
+            task_karg['mbients'] = device_manager.get_mbient_streams()  # For the mbient reset task
 
             if presented:
                 task_func_dict = get_task_funcs(collection_id, conn)
@@ -229,13 +219,9 @@ def run_stm(logger):
                         if "calibration_task" in task:  # if not calibration record with start method
                             this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
                         else:
-                            streams["Eyelink"].start(fname)
+                            eyelink_stream.start(fname)
 
-                    # Attempt to reconnect Mbients if disconnected
-                    Mbient.task_start_reconnect([
-                        stream for stream_name, stream in streams.items()
-                        if 'Mbient' in stream_name
-                    ])
+                    device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
 
                     wait([acq_result])  # Wait for ACQ to finish
                     acq_result.result()  # Raise any exceptions swallowed by the executor
@@ -259,9 +245,9 @@ def run_stm(logger):
                     acq_result = executor.submit(socket_message, "record_stop", "acquisition", wait_data=15)
 
                     # Stop eyetracker
-                    if "Eyelink" in streams and any("Eyelink" in d for d in list(task_devs_kw[task])):
+                    if eyelink_stream is not None and any("Eyelink" in d for d in list(task_devs_kw[task])):
                         if "calibration_task" not in task:
-                            streams["Eyelink"].stop()
+                            eyelink_stream.stop()
 
                     wait([acq_result])  # Wait for ACQ to finish
                     acq_result.result()  # Raise any exceptions swallowed by the executor
@@ -336,7 +322,7 @@ def run_stm(logger):
                 s1.close()
                 logging.shutdown()
 
-            streams = close_streams(streams)
+            device_manager.close_streams()
 
             if "shutdown" in data:
                 # if screen_running:
@@ -354,4 +340,5 @@ def run_stm(logger):
     exit()
 
 
-Main()
+if __name__ == '__main__':
+    main()
