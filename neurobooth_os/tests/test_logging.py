@@ -14,8 +14,8 @@ log_path = r"C:\neurobooth\test_data\test_logs"
 database = "mock_neurobooth_1"
 connection = None
 
-subject = "1111111"
-session = "1111111_2023_12_25 12:12:12"
+subject = "000000"
+session = "000000_2023_12_25 12:12:12"
 
 
 def get_connection():
@@ -96,13 +96,13 @@ class TestLogging(unittest.TestCase):
 
     def test_db_logging_shutdown(self):
         """Tests to ensure log handler is closed (or at least, doesn't blow up when closing) """
-        db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12")
+        db_log = make_db_logger("000000", "000000_2023_12_25 12:12:12")
         db_log.critical("Microphone: Entering LSL Loop", extra={"device": "playstation"})
         logging.shutdown()
 
     def test_db_logging0(self):
         """Tests logging to database using make_db_logger with session and subject set"""
-        db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12")
+        db_log = make_db_logger("000000", "000000_2023_12_25 12:12:12")
         db_log.critical("Microphone: Entering LSL Loop", extra={"device": "playstation"})
         db_log.critical("Another one.", extra={"device": "playstation"})
 
@@ -167,7 +167,7 @@ class TestLogging(unittest.TestCase):
     def test_db_logging3(self):
         """Tests logging fallback to local file logging.
         """
-        db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12", log_path)
+        db_log = make_db_logger("000000", "000000_2023_12_25 12:12:12", log_path)
         db_log.critical("Test fallback logging. No DB Connection should be available")
         print(log_path)
         file_list = os.listdir(log_path)[0]
@@ -180,7 +180,7 @@ class TestLogging(unittest.TestCase):
     def test_db_logging_with_traceback(self):
         """Evaluate how tracebacks are handled in database.
         """
-        db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12", log_path)
+        db_log = make_db_logger("000000", "000000_2023_12_25 12:12:12", log_path)
         try:
             raise RuntimeError("This is a test")
         except RuntimeError as Argument:
