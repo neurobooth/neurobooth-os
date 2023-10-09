@@ -5,7 +5,7 @@ from pynput import mouse
 from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
-
+from neurobooth_os.log_manager import APP_LOG_NAME
 
 class MouseStream:
     def __init__(self, device_id="Mouse", sensor_ids=["Mouse"]):
@@ -33,7 +33,7 @@ class MouseStream:
         print(f"-OUTLETID-:Mouse:{self.oulet_id}")
         self.streaming = False
 
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug('Mouse: Created Object')
 
     def start(self):

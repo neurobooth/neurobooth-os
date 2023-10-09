@@ -15,28 +15,31 @@ import psycopg2
 from neurobooth_terra import Table
 
 import neurobooth_os
-from neurobooth_os.log_manager import make_default_logger
 import neurobooth_os.config as cfg
 
 
-def get_conn(database):
+def get_conn(database, validate_config_paths:bool=True):
     """Gets connector to the database
 
     Parameters
     ----------
     database : str, optional
         Name of the database
+    validate_config_paths : bool, optional
+        True if the config file path should be validated. This should generally be True outside test scenarios
 
     Returns
     -------
     conn : object
         connector to psycopg database
     """
-    logger = make_default_logger(log_level=logging.ERROR)
+    import neurobooth_os.log_manager as log_man
+
+    logger = log_man.make_default_logger(log_level=logging.ERROR, validate_paths=validate_config_paths)
 
     if database is None:
         logger.critical("Database name is a required parameter.")
-        raise  # TODO: Need appropriate exception type for database connection errors
+        raise  RuntimeError("No database name was provided to get_conn().")
 
     port = cfg.neurobooth_config["database"]["port"]
     tunnel = SSHTunnelForwarder(
@@ -51,7 +54,6 @@ def get_conn(database):
     tunnel.start()
     host = tunnel.local_bind_host
     port = tunnel.local_bind_port
-    print(host, port, database)
 
     conn = psycopg2.connect(
         database=database,
@@ -122,13 +124,19 @@ def _make_new_task_row(conn, subject_id):
     return table.insert_rows([(subject_id,)], cols=["subject_id"])
 
 
+def _make_new_appl_log_row(conn, log_entry):
+    """Create a new row in the log_application table"""
+    table = Table("log_application", conn=conn)
+    return table.insert_rows([log_entry.values], cols=[log_entry.keys])
+
+
 def _make_session_id(conn, session_log):
-    "Gets or creates session id"
+    """Gets or creates session id"""
 
     table = Table("log_session", conn=conn)
     task_df = table.query(
         where=f"subject_id = '{session_log['subject_id']}' AND date = '{session_log['date']}'"
-        + f" AND collection_id = '{session_log['collection_id']}'"
+              + f" AND collection_id = '{session_log['collection_id']}'"
     )
 
     # Check if session already exists
@@ -332,7 +340,7 @@ def _get_device_kwargs(task_id, conn):
     return dev_kwarg
 
 
-def _get_device_kwargs_by_task(collection_id, conn):
+def get_device_kwargs_by_task(collection_id, conn):
     # Get devices kwargs for all the tasks
     # outputs dict with keys = stimulus_id, vals = dict with dev parameters
 
@@ -347,31 +355,3 @@ def _get_device_kwargs_by_task(collection_id, conn):
     return tasks_kwarg
 
 
-# List of functions
-# -----------------
-#
-# get_conn
-#
-# Create functions
-# ~~~~~~~~~~~~~~~~
-# _new_tech_log_dict ?
-# _make_new_task_row
-#
-# Read functions
-# ~~~~~~~~~~~~~~
-# get_study_ids
-# get_subject_ids
-# get_collection_ids
-# get_tasks
-# get_dev_sn
-# _get_task_param(task_id)
-# _get_instruction_kwargs(instruction_id)
-# _get_stimulus_kwargs(stimulus_id)
-# _get_device_kwargs_by_task(collection_id)
-# _get_device_kwargs(task_id)
-# _get_sensor_kwargs(sensor_id)
-# map_database_to_deviceclass(device_id, sensor_kwargs)
-#
-# Update functions
-# ~~~~~~~~~~~~~~~~
-# _fill_task_row

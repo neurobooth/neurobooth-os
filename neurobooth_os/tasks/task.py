@@ -9,6 +9,7 @@ License: BSD-3-Clause
 
 from __future__ import absolute_import, division
 from psychopy import logging as psychopy_logging
+
 psychopy_logging.console.setLevel(psychopy_logging.CRITICAL)
 import logging
 import os.path as op
@@ -21,25 +22,26 @@ from psychopy import prefs
 import neurobooth_os
 from neurobooth_os.tasks import utils
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
+from neurobooth_os.log_manager import APP_LOG_NAME
 
 
 class Task:
     def __init__(
-        self,
-        instruction_file=None,
-        marker_outlet=None,
-        win=None,
-        full_screen=False,
-        text_continue_repeat=utils.text_continue_repeat,
-        text_continue=utils.text_continue,
-        text_practice_screen=utils.text_practice_screen,
-        text_task=utils.text_task,
-        text_end=utils.text_end,
-        countdown=None,
-        task_repeatable_by_subject=True,
-        **kwargs,
+            self,
+            instruction_file=None,
+            marker_outlet=None,
+            win=None,
+            full_screen=False,
+            text_continue_repeat=utils.text_continue_repeat,
+            text_continue=utils.text_continue,
+            text_practice_screen=utils.text_practice_screen,
+            text_task=utils.text_task,
+            text_end=utils.text_end,
+            countdown=None,
+            task_repeatable_by_subject=True,
+            **kwargs,
     ):
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger(APP_LOG_NAME)
 
         # Common markers
         self.marker_task_start = "Task_start"
@@ -158,16 +160,16 @@ class Task:
         self.events.append(f"{event_name}:{datetime.now().strftime('%H:%M:%S')}")
 
     def show_text(
-        self,
-        screen,
-        msg,
-        func=None,
-        func_kwargs={},
-        audio=None,
-        wait_time=0,
-        win_color=(0, 0, 0),
-        waitKeys=True,
-        first_screen=False,
+            self,
+            screen,
+            msg,
+            func=None,
+            func_kwargs={},
+            audio=None,
+            wait_time=0,
+            win_color=(0, 0, 0),
+            waitKeys=True,
+            first_screen=False,
     ):
 
         self.send_marker(f"{msg}_start", True)
@@ -319,7 +321,7 @@ class Task_Eyetracker(Task):
         return [x, y]
 
     def send_target_loc(
-        self, loc: list, target_name="target", to_marker=True, no_interpolation=0
+            self, loc: list, target_name="target", to_marker=True, no_interpolation=0
     ):
         """send target loc(ation) 0 centered to eyetracker after converting to top-left centered pixels.
         no_interpolation: 0 or 1
@@ -328,7 +330,7 @@ class Task_Eyetracker(Task):
         self.sendMessage(
             f"!V TARGET_POS {target_name} {loc[0]}, {loc[1]} 1 {no_interpolation}",
             to_marker,
-        )  #  1 0  eyetracker code x, y, draw (1 yes), interpolation (0 == yes)
+        )  # 1 0  eyetracker code x, y, draw (1 yes), interpolation (0 == yes)
 
     def deg_2_pix(self, deg):
         return deg2pix(deg, self.subj_screendist_cm, self.pixpercm)
@@ -373,7 +375,6 @@ class Introduction_Task(Task):
 
 
 if __name__ == "__main__":
-
     # task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
     # task.run()
 

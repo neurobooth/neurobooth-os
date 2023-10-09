@@ -28,7 +28,7 @@ from neurobooth_os.netcomm import (
     socket_message,
 )
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
-from neurobooth_os.log_manager import make_default_logger
+from neurobooth_os.log_manager import make_db_logger
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, get_xdf_name
 from neurobooth_os.iout import marker_stream
@@ -36,7 +36,7 @@ import neurobooth_os.config as cfg
 
 
 def setup_log(sg_handler=None):
-    logger = make_default_logger()
+    logger = make_db_logger("", "")
     logger.setLevel(logging.DEBUG)
     if sg_handler:
         logger.addHandler(sg_handler)
@@ -591,7 +591,7 @@ def gui():
         if inlet_keys != list(inlets):
             inlet_keys = list(inlets)
             window["inlet_State"].update("\n".join(inlet_keys))
-
+    logging.shutdown()
     window.close()
     window["-OUTPUT-"].__del__()
     print("Session terminated")
