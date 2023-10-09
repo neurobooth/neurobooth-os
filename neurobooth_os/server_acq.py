@@ -79,7 +79,7 @@ def run_acq(logger):
             session_name: str = log_task["subject_id-date"]
 
             conn = meta.get_conn(database=database_name)
-            ses_folder = f"{config.neurobooth_config['acquisition']['local_data_dir']}{subject_id_date}"
+            ses_folder = f"{config.neurobooth_config['acquisition']['local_data_dir']}{session_name}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
