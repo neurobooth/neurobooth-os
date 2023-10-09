@@ -12,7 +12,7 @@ from enum import IntEnum
 
 from mbientlab.warble import BleScanner
 from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings, Module, Model
-
+from neurobooth_os.log_manager import APP_LOG_NAME
 
 # --------------------------------------------------------------------------------
 # Module-level constants and debugging flags
@@ -494,7 +494,7 @@ class Mbient:
         self.streaming: bool = False
         self.n_samples_streamed = 0
 
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(self.format_message(f'acc={self.accel_params}; gyro={self.gyro_params}'))
 
     def format_message(self, msg: str) -> str:
@@ -838,7 +838,7 @@ def test_script() -> None:
     if args.decimate < 1:
         parser.error('Invalid decimate specified!')
 
-    logger = logging.getLogger('session')
+    logger = logging.getLogger(APP_LOG_NAME)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.DEBUG)
     console_handler.setFormatter(logging.Formatter('|%(levelname)s| [%(asctime)s] L%(lineno)d> %(message)s'))

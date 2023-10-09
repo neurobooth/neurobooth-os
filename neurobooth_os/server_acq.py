@@ -11,13 +11,13 @@ import json
 
 import neurobooth_os
 from neurobooth_os import config
-from neurobooth_os.log_manager import make_default_logger
+from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import DeviceManager
 from neurobooth_os.iout.mbient import Mbient
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.log_manager import make_session_logger, SystemResourceLogger
+from neurobooth_os.log_manager import SystemResourceLogger
 
 
 def countdown(period):
@@ -30,7 +30,7 @@ def countdown(period):
 
 def main():
     config.load_config()  # Load Neurobooth-OS configuration
-    logger = make_default_logger()  # Initialize default logger
+    logger = make_db_logger()  # Initialize default logger
     try:
         logger.info("Starting ACQ")
 
@@ -75,21 +75,22 @@ def run_acq(logger):
             log_task = eval(
                 data.replace(f"prepare:{collection_id}:{database_name}:", "")
             )
-            subject_id_date = log_task["subject_id-date"]
+            subject_id: str = log_task["subject_id"]
+            session_name: str = log_task["subject_id-date"]
 
             conn = meta.get_conn(database=database_name)
             ses_folder = f"{config.neurobooth_config['acquisition']['local_data_dir']}{subject_id_date}"
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
-            logger = make_session_logger(ses_folder, 'ACQ')
+            logger = make_db_logger(subject_id, session_name)
             logger.info('LOGGER CREATED')
 
             if system_resource_logger is None:
                 system_resource_logger = SystemResourceLogger(ses_folder, 'ACQ')
                 system_resource_logger.start()
 
-            task_devs_kw = meta._get_device_kwargs_by_task(collection_id, conn)
+            task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
 
             device_manager = DeviceManager(node_name='acquisition')
             if device_manager.streams:
@@ -121,7 +122,7 @@ def run_acq(logger):
             print("Starting recording")
             t0 = time()
             fname, task = data.split("::")[1:]
-            fname = f"{config.neurobooth_config['acquisition']['local_data_dir']}{subject_id_date}/{fname}"
+            fname = f"{config.neurobooth_config['acquisition']['local_data_dir']}{session_name}/{fname}"
 
             device_manager.start_cameras(fname, task_devs_kw[task])
             device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
@@ -147,6 +148,7 @@ def run_acq(logger):
             if system_resource_logger is not None:
                 system_resource_logger.stop()
                 system_resource_logger = None
+            logging.shutdown()
 
             if "shutdown" in data:
                 sys.stdout = sys.stdout.terminal

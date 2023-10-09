@@ -7,7 +7,7 @@ from time import time
 import multiprocessing as mp
 import logging
 from neurobooth_os.iout.mbient import scan_BLE, connect_device, reset_device, MbientFailedConnection
-from neurobooth_os.log_manager import make_default_logger
+from neurobooth_os.log_manager import make_db_logger, APP_LOG_NAME
 
 
 DESCRIPTION = """Find and reset Mbient wearable devices.
@@ -130,7 +130,7 @@ def device_discovery(args: argparse.Namespace) -> ADDRESS_MAP:
     elif args.mac:
         devices = discovery_mac(args.mac)
 
-    logger = logging.getLogger('default')
+    logger = logging.getLogger(APP_LOG_NAME)
     logger.debug(f'Devices:')
     print_device_info(devices, print_fn=logger.debug)
 
@@ -138,7 +138,7 @@ def device_discovery(args: argparse.Namespace) -> ADDRESS_MAP:
 
 
 def discovery_scan(timeout_sec: float, n_devices: int) -> ADDRESS_MAP:
-    logger = logging.getLogger('default')
+    logger = logging.getLogger(APP_LOG_NAME)
     logger.info('Scanning for devices...')
 
     t0 = time()
@@ -156,14 +156,14 @@ def discovery_scan(timeout_sec: float, n_devices: int) -> ADDRESS_MAP:
 
 
 def discovery_mac(addresses: List[str]) -> ADDRESS_MAP:
-    logger = logging.getLogger('default')
+    logger = logging.getLogger(APP_LOG_NAME)
     devices = [DeviceInfo(name=f'CL-{i}', address=address) for i, address in enumerate(addresses)]
     logger.info(f'Using {len(devices)} devices specified via command line.')
     return devices
 
 
 def discovery_json(file: str) -> ADDRESS_MAP:
-    logger = logging.getLogger('default')
+    logger = logging.getLogger(APP_LOG_NAME)
 
     with open(file, 'r') as f:
         devices = json.load(f)
@@ -204,7 +204,7 @@ class ResetDeviceProcess(mp.Process):
         return f'{self.device_info.name} <{self.device_info.address}>: {msg}'
 
     def run(self) -> None:
-        logger = make_default_logger()
+        logger = make_db_logger()
         t0 = time()
         try:
             device = connect_device(
@@ -227,7 +227,7 @@ class ResetDeviceProcess(mp.Process):
                 logger.debug(self.format_message(f'Reset timed out!'))
 
     def on_disconnect(self, status) -> None:
-        logging.getLogger('default').debug(self.format_message(f'Disconnected with status {status}.'))
+        logging.getLogger(APP_LOG_NAME).debug(self.format_message(f'Disconnected with status {status}.'))
         self.disconnect_event.set()
 
     @property
@@ -252,7 +252,7 @@ def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> (ADDRESS_MA
         ) for device in devices
     ]
 
-    logger = logging.getLogger('default')
+    logger = logging.getLogger(APP_LOG_NAME)
     logger.info(f'Reset in progress...')
     t0 = time()
     for t in reset_processes:
@@ -267,7 +267,7 @@ def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> (ADDRESS_MA
 
 
 def main():
-    logger = make_default_logger()
+    logger = make_db_logger()
     try:
         args = parse_arguments()
         devices = device_discovery(args)

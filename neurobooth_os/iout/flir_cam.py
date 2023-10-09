@@ -22,6 +22,7 @@ import skvideo.io
 import h5py
 
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+from neurobooth_os.log_manager import APP_LOG_NAME
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -76,7 +77,7 @@ class VidRec_Flir:
         self.image_queue = queue.Queue(0)
         self.outlet = self.createOutlet()
 
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(f'FLIR: fps={str(self.fps)}; frame_size={str((self.sizex, self.sizey))}')
 
     def get_cam(self):

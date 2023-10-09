@@ -7,7 +7,7 @@ import argparse
 
 from neurobooth_os import config
 from neurobooth_os.util.constants import NODE_NAMES
-from neurobooth_os.log_manager import make_default_logger
+from neurobooth_os.log_manager import make_db_logger
 
 
 def log_output(pipe):
@@ -55,7 +55,7 @@ def parse_arguments() -> argparse.Namespace:
 
 if __name__ == "__main__":
     config.load_config()
-    logger = make_default_logger()
+    logger = make_db_logger()
     try:
         main(parse_arguments())
     except Exception as e:
