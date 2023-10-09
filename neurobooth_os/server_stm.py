@@ -214,7 +214,7 @@ def run_stm(logger):
                     )
 
                     # Start eyetracker if device in task
-                    if "Eyelink" in streams and any("Eyelink" in d for d in list(task_devs_kw[task])):
+                    if eyelink_stream is not None and any("Eyelink" in d for d in list(task_devs_kw[task])):
                         fname = f"{task_karg['path']}/{session_name}_{tsk_strt_time}_{t_obs_id}.edf"
                         if "calibration_task" in task:  # if not calibration record with start method
                             this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
