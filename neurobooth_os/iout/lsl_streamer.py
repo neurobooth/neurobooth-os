@@ -183,7 +183,7 @@ class DeviceManager:
         :param conn: Connection to the database
         """
         # Get params from all tasks
-        kwarg_devs = meta._get_device_kwargs_by_task(collection_id, conn)
+        kwarg_devs = meta.get_device_kwargs_by_task(collection_id, conn)
 
         # Get all device params from session
         kwarg_alldevs = {}
