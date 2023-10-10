@@ -33,15 +33,17 @@ def main():
     logger = make_db_logger()  # Initialize default logger
     try:
         logger.info("Starting ACQ")
-
         os.chdir(neurobooth_os.__path__[0])
         sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
-
         run_acq(logger)
+        logger.info("Stopping ACQ")
+
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
         raise
+    finally:
+        logging.shutdown()
 
 
 def run_acq(logger):
@@ -140,36 +142,33 @@ def run_acq(logger):
             elapsed_time = time() - t0
             print(f"Device stop took {elapsed_time:.2f}")
             logger.info(f'Device stop took {elapsed_time:.2f}')
-            msg = "ACQ_devices_stoped"
+            msg = "ACQ_devices_stopped"
             connx.send(msg.encode("ascii"))
             recording = False
 
-        elif data in ["close", "shutdown"]:
+        elif "shutdown" in data:
             if system_resource_logger is not None:
                 system_resource_logger.stop()
                 system_resource_logger = None
-            logging.shutdown()
 
-            if "shutdown" in data:
-                sys.stdout = sys.stdout.terminal
-                s1.close()
+            sys.stdout = sys.stdout.terminal
+            s1.close()
 
             device_manager.iphone_log_file_list()    # Log the list of files present on the iPhone
             device_manager.close_streams()
 
-            if "shutdown" in data:
-                if lowFeed_running:
-                    lowFeed.close()
-                    lowFeed_running = False
-                    print("Closing RTD cam")
-                break
+            if lowFeed_running:
+                lowFeed.close()
+                lowFeed_running = False
+                print("Closing RTD cam")
+            break
 
         elif "time_test" in data:
             msg = f"ping_{time()}"
             connx.send(msg.encode("ascii"))
 
         else:
-            print(data)
+            logger.error(f'Unexpected message received: {data}')
 
 
 if __name__ == '__main__':

@@ -591,7 +591,6 @@ def gui():
         if inlet_keys != list(inlets):
             inlet_keys = list(inlets)
             window["inlet_State"].update("\n".join(inlet_keys))
-    logging.shutdown()
     window.close()
     window["-OUTPUT-"].__del__()
     print("Session terminated")
@@ -604,10 +603,14 @@ def main():
     try:
         logger.info("Starting GUI")
         gui()
+        logger.info("Stopping GUI")
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
         raise
+    finally:
+        logging.shutdown()
+
 
 
 if __name__ == "__main__":

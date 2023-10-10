@@ -40,13 +40,14 @@ def main():
         logger.info("Starting STM")
         os.chdir(neurobooth_os.__path__[0])
         sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
-
         run_stm(logger)
+        logger.info("Stopping STM")
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
         raise
-
+    finally:
+        logging.shutdown()
 
 def run_stm(logger):
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -310,32 +311,24 @@ def run_stm(logger):
             finish_screen(win)
             presented = True
 
-        elif data in ["close", "shutdown"]:
+        elif "shutdown" in data:
             if system_resource_logger is not None:
                 system_resource_logger.stop()
                 system_resource_logger = None
 
-            if "shutdown" in data:
-                logger.info("Shutting down")
-                win.close()
-                sys.stdout = sys.stdout.terminal
-                s1.close()
-                logging.shutdown()
-
+            logger.info("Shutting down")
+            win.close()
+            sys.stdout = sys.stdout.terminal
+            s1.close()
             device_manager.close_streams()
-
-            if "shutdown" in data:
-                # if screen_running:
-                #     screen_feed.stop()
-                #     screen_running = False
-                break
+            break
 
         elif "time_test" in data:
             msg = f"ping_{time()}"
             connx.send(msg.encode("ascii"))
 
         else:
-            print(data)
+            logger.error(f'Unexpected message received: {data}')
 
     exit()
 
