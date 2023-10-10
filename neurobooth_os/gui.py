@@ -601,12 +601,13 @@ def main():
     cfg.load_config()  # Load Neurobooth-OS configuration
     logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
     try:
-        logger.info("Starting GUI")
+        logger.debug("Starting GUI")
         gui()
-        logger.info("Stopping GUI")
+        logger.debug("Stopping GUI")
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
+        logger.critical("Stopping GUI (error-state)")
         raise
     finally:
         logging.shutdown()

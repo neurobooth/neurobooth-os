@@ -32,15 +32,16 @@ def main():
     config.load_config()  # Load Neurobooth-OS configuration
     logger = make_db_logger()  # Initialize default logger
     try:
-        logger.info("Starting ACQ")
+        logger.debug("Starting ACQ")
         os.chdir(neurobooth_os.__path__[0])
         sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
         run_acq(logger)
-        logger.info("Stopping ACQ")
+        logger.debug("Stopping ACQ")
 
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
+        logger.critical("Stopping ACQ (error-state)")
         raise
     finally:
         logging.shutdown()

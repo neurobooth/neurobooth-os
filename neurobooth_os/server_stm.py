@@ -37,14 +37,15 @@ def main():
     config.load_config()  # Load Neurobooth-OS configuration
     logger = make_db_logger()  # Initialize logging to default
     try:
-        logger.info("Starting STM")
+        logger.debug("Starting STM")
         os.chdir(neurobooth_os.__path__[0])
         sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
         run_stm(logger)
-        logger.info("Stopping STM")
+        logger.debug("Stopping STM")
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
+        logger.critical("Stopping STM (error-state)")
         raise
     finally:
         logging.shutdown()
