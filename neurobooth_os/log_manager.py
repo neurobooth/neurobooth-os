@@ -73,6 +73,7 @@ def make_db_logger(subject: str = None,
         logger = logging.getLogger(APP_LOG_NAME)
         handler = PostgreSQLHandler(fallback_log_path, log_level)
         logger.addHandler(handler)
+        logger.setLevel(log_level)
         extra = {"device": ""}
         logging.LoggerAdapter(logger, extra)
         APP_LOGGER = logger
