@@ -17,7 +17,7 @@ from h5io import write_hdf5
 
 from neurobooth_os.iout import metadator as meta
 from neurobooth_terra import Table
-from neurobooth_os.config import neurobooth_config, get_server_name_from_env
+import neurobooth_os.config as cfg
 
 
 def compute_clocks_diff():
@@ -201,7 +201,7 @@ def create_h5_from_csv(dont_split_xdf_fpath, conn, server_name=None):
     """
 
     if server_name is None:
-        server_name = get_server_name_from_env()
+        server_name = cfg.get_server_name_from_env()
         if server_name is None:
             raise Exception("A server name is required if the Windows user is not in (CTR, ACQ, or STM)")
 
@@ -220,7 +220,7 @@ def create_h5_from_csv(dont_split_xdf_fpath, conn, server_name=None):
             # change to NAS path if necessary
             if not os.path.exists(row[0]):
                 row[0] = row[0].replace('\\', '/')
-                row[0] = row[0].replace(neurobooth_config[server_name]["local_data_dir"][:-1], neurobooth_config["remote_data_dir"])
+                row[0] = row[0].replace(cfg.neurobooth_config[server_name]["local_data_dir"][:-1], cfg.neurobooth_config["remote_data_dir"])
             out = split_sens_files(row[0], task_id=row[1], conn=conn)
 
             if len(out) == 0:

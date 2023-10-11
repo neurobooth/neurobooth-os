@@ -15,6 +15,7 @@ from datetime import datetime
 import cv2
 import numpy as np
 import psutil
+from typing import Dict
 
 import PySimpleGUI as sg
 import liesl
@@ -26,7 +27,6 @@ from neurobooth_os.netcomm import (
     node_info,
     socket_message,
 )
-from neurobooth_os.config import neurobooth_config
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
 from neurobooth_os.log_manager import make_db_logger
 import neurobooth_os.iout.metadator as meta
@@ -34,9 +34,8 @@ from neurobooth_os.iout.split_xdf import split_sens_files, get_xdf_name
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
 
-server_config = cfg.neurobooth_config["control"]
 
-def setup_log(sg_handler = None):
+def setup_log(sg_handler=None):
     logger = make_db_logger("", "")
     logger.setLevel(logging.DEBUG)
     if sg_handler:
@@ -52,9 +51,6 @@ class Handler(logging.StreamHandler):
     def emit(self, record):
         buffer = str(record).strip()
         window['log'].update(value=buffer)
-
-
-logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
 
 
 def _process_received_data(serv_data, window):
@@ -215,7 +211,7 @@ def _start_lsl_session(window, inlets, folder=""):
     # Create LSL session
     streamargs = [{"name": n} for n in list(inlets)]
     session = liesl.Session(
-        prefix=folder, streamargs=streamargs, mainfolder=server_config["local_data_dir"]
+        prefix=folder, streamargs=streamargs, mainfolder=cfg.neurobooth_config['control']["local_data_dir"]
     )
     print("LSL session with: ", list(inlets))
     return session
@@ -392,7 +388,7 @@ def _get_ports(database):
 def gui():
     """Start the Graphical User Interface.
     """
-    database = neurobooth_config["database"]["dbname"]
+    database = cfg.neurobooth_config["database"]["dbname"]
     database, nodes, host_ctr, port_ctr = _get_ports(database=database)
 
     conn = meta.get_conn(database=database)
@@ -491,8 +487,8 @@ def gui():
                     "Pressed saving notes without task, select one in the dropdown list"
                 )
                 continue
-            if not op.exists(f"{server_config['local_data_dir']}/{sess_info['subject_id_date']}"):
-                os.mkdir(f"{server_config['local_data_dir']}/{sess_info['subject_id_date']}")
+            if not op.exists(f"{cfg.neurobooth_config['control']['local_data_dir']}/{sess_info['subject_id_date']}"):
+                os.mkdir(f"{cfg.neurobooth_config['control']['local_data_dir']}/{sess_info['subject_id_date']}")
 
             if values["_notes_taskname_"] == "All tasks":
                 for task in sess_info["tasks"].split(", "):
@@ -595,7 +591,6 @@ def gui():
         if inlet_keys != list(inlets):
             inlet_keys = list(inlets)
             window["inlet_State"].update("\n".join(inlet_keys))
-    logging.shutdown()
     window.close()
     window["-OUTPUT-"].__del__()
     print("Session terminated")
@@ -603,13 +598,20 @@ def gui():
 
 def main():
     """The starting point of Neurobooth"""
+    cfg.load_config()  # Load Neurobooth-OS configuration
+    logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
     try:
-        logger.info("Starting GUI")
+        logger.debug("Starting GUI")
         gui()
+        logger.debug("Stopping GUI")
     except Exception as e:
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
+        logger.critical("Stopping GUI (error-state)")
         raise
+    finally:
+        logging.shutdown()
+
 
 
 if __name__ == "__main__":

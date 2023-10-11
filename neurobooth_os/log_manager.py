@@ -9,12 +9,10 @@ import json
 import platform
 import traceback
 
-from neurobooth_os.config import neurobooth_config
+import neurobooth_os.config as config
 from neurobooth_os.iout import metadator
 
 LOG_FORMAT = logging.Formatter('|%(levelname)s| [%(asctime)s] %(filename)s, %(funcName)s, L%(lineno)d> %(message)s')
-
-DEFAULT_LOG_PATH = neurobooth_config["default_log_path"]
 
 # Globals: Set using make_db_logger(). Must be set to log session and subject data
 SESSION_ID: str = ""
@@ -27,7 +25,6 @@ TASK_PARAM_LOGGER: Optional[logging.Logger] = None
 # Name of the Application Logger, for use in retrieving the appropriate logger from the logging module
 APP_LOG_NAME = "app"
 TASK_PARAM_LOG_NAME = "task-param"
-
 
 
 def make_session_logger_debug(
@@ -55,7 +52,7 @@ def make_session_logger_debug(
 
 def make_db_logger(subject: str = None,
                    session: str = None,
-                   fallback_log_path: str = DEFAULT_LOG_PATH,
+                   fallback_log_path: str = None,
                    log_level: int = logging.DEBUG) -> logging.Logger:
     """Returns a logger that logs to the database and sets the subject id and session to be used for subsequent
     logging calls.
@@ -63,6 +60,9 @@ def make_db_logger(subject: str = None,
     NOTE: If the subject or session should be cleared, the argument should be an empty string.
     Passing None will NOT reset those values
     """
+
+    if fallback_log_path is None:
+        fallback_log_path = config.neurobooth_config["default_log_path"]
 
     global SUBJECT_ID, SESSION_ID, APP_LOGGER
 
@@ -76,6 +76,7 @@ def make_db_logger(subject: str = None,
         logger = logging.getLogger(APP_LOG_NAME)
         handler = PostgreSQLHandler(fallback_log_path, log_level)
         logger.addHandler(handler)
+        logger.setLevel(log_level)
         extra = {"device": ""}
         logging.LoggerAdapter(logger, extra)
         APP_LOGGER = logger
@@ -83,11 +84,13 @@ def make_db_logger(subject: str = None,
 
 
 def get_default_log_handler(
-        log_path=DEFAULT_LOG_PATH,
+        log_path: Optional[str] = None,
         log_level=logging.DEBUG,
 ):
     """Returns a log handler suitable for logging when the DB isn't available
     """
+    if log_path is None:
+        log_path = config.neurobooth_config["default_log_path"]
 
     if not os.path.exists(log_path):
         os.makedirs(log_path)
@@ -101,9 +104,15 @@ def get_default_log_handler(
 
 
 def make_default_logger(
-        log_path=DEFAULT_LOG_PATH,
+        log_path: Optional[str] = None,
         log_level=logging.DEBUG,
+        validate_paths: bool = True
 ) -> logging.Logger:
+    if config.neurobooth_config is None:
+        config.load_config(None, validate_paths)
+    if log_path is None:
+        log_path = config.neurobooth_config["default_log_path"]
+
     logger = logging.getLogger('default')
     logger.addHandler(get_default_log_handler(log_path, log_level))
 
@@ -271,7 +280,7 @@ class PostgreSQLHandler(logging.Handler):
                 "filename": record.filename,
                 "line_no": record.lineno,
                 "traceback": traceback_text,
-                "server_type": neurobooth_config["server_name"],
+                "server_type": config.neurobooth_config["server_name"],
                 "server_id": platform.uname().node,
                 "subject_id": SUBJECT_ID,
                 "session_id": SESSION_ID,
@@ -288,7 +297,7 @@ class PostgreSQLHandler(logging.Handler):
             logging.getLogger(APP_LOG_NAME).exception(msg)
 
     def _get_logger_connection(self):
-        self.connection = metadator.get_conn(neurobooth_config["database"]["dbname"])
+        self.connection = metadator.get_conn(config.neurobooth_config["database"]["dbname"])
         self.connection.autocommit = True
         self.cursor = self.connection.cursor()
 
@@ -296,7 +305,7 @@ class PostgreSQLHandler(logging.Handler):
         logger = logging.getLogger(APP_LOG_NAME)
         if self in logger.handlers:
             logger.removeHandler(self)
-        default_handler = get_default_log_handler(self.fallback_log_path)
+        default_handler = get_default_log_handler(self.fallback_log_path, logging.DEBUG)
         if default_handler not in logger.handlers:
             logger.addHandler(default_handler)
 
@@ -363,6 +372,6 @@ class TaskParamLogHandler(logging.Handler):
             logging.getLogger(APP_LOG_NAME).exception(msg)
 
     def _get_logger_connection(self):
-        self.connection = metadator.get_conn(neurobooth_config["database"]["dbname"])
+        self.connection = metadator.get_conn(config.neurobooth_config["database"]["dbname"])
         self.connection.autocommit = False  # Log all params in a single transaction
         self.cursor = self.connection.cursor()
