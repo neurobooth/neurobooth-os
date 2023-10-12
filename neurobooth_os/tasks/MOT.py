@@ -1,14 +1,9 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jan 21 10:23:08 2022
-
-@author: STM
-"""
-
 import os.path as op
 import random
 import math
 import time
+from abc import ABC, abstractmethod
+from typing import List, Optional
 
 from numpy import sqrt
 import pandas as pd
@@ -21,16 +16,140 @@ from neurobooth_os.tasks import utils
 from neurobooth_os.tasks import Task_Eyetracker
 
 
+class MOTFrame(ABC):
+    """
+    The MOT task is composed of a sequence of frames.
+    Each frame is a single trial or image/message that needs to be advanced through.
+    """
+    def __init__(self, window: visual.Window):
+        """
+        Create a new frame.
+        :param window: The PsychoPy window to draw to.
+        """
+        self.window = window
+
+    @abstractmethod
+    def run(self) -> None:
+        raise NotImplementedError()
+
+    def present_stimuli(
+            self,
+            stimuli: List[visual.BaseVisualStim],
+            wait_for_key: Optional[str] = None,
+    ) -> None:
+        """
+        Present a series of stimuli and (optionally) wait for a specified key press.
+        :param stimuli: The stimuli to draw to the window.
+        :param wait_for_key: If specified, block until the specified key is pressed.
+        """
+        for stim in stimuli:
+            stim.draw()
+        self.window.flip()
+        if wait_for_key is not None:
+            utils.get_keys(keyList=[wait_for_key])
+
+
+class ImageFrame(MOTFrame):
+    """Presents a single image to the window and waits for the space bar to be pressed."""
+    def __init__(self, window: visual.Window, image_path: str):
+        """
+        :param window: The PsychoPy window to draw to.
+        :param image_path: The path to the image to display.
+        """
+        super().__init__(window)
+        self.stimulus = visual.ImageStim(self.window, image=image_path, pos=(0, 0), units="deg")
+
+    def run(self) -> None:
+        self.present_stimuli([self.stimulus], wait_for_key='space')
+
+
+class Circle:
+    """Represents a single circle in an MOT trial"""
+    pass
+
+    # "x": [],  # circle x
+    # "y": [],  # circle y
+    # "d": [],  # circle motion direction in deg
+    # "r": 15,  # circle radius
+    # "z": 4,  # circle repulsion radius
+    # "noise": 15,  # motion direction noise in deg
+    # "speed": 2,
+
+
+
+class TrialFrame(MOTFrame):
+    """Runs a single MOT trial (circles are presented, some flash, circles move, and the subject clicks.)"""
+    def __init__(
+            self,
+            window: visual.Window,
+            task: 'MOT',
+            n_circles: int,
+            n_targets: int,
+            speed: float,
+            duration: float,
+            timeout: float,
+            random_seed: int,
+    ):
+        """
+        :param window: The PsychoPy window to draw to.
+        :param task: The MOT task object.
+        :param n_circles: The total number of circles in the trial.
+        :param n_targets: The number of circles that are designated as targets.
+        :param speed: The speed at which the circles move (px/s).
+        :param duration: The duration of circle movement (s).
+        :param timeout: How long to wait for all clicks before timing out (s).
+        :param random_seed: A seed for the RNG to ensure consistency across sessions.
+        """
+        super().__init__(window)
+        self.task = task
+
+        assert n_circles > 0
+        assert n_targets > 0
+        assert n_targets <= n_circles
+        assert speed > 0
+        assert duration > 0
+        assert timeout > 0
+
+        self.n_circles = n_circles
+        self.n_targets = n_targets
+        self.speed = speed
+        self.duration = duration
+        self.timeout = timeout
+        self.random_seed = random_seed
+
+    def run(self) -> None:
+        trial_info = f"Click {self.n_targets} dots"
+        self.task.sendMessage(self.task.marker_trial_start)
+        self.task.sendMessage(f"number targets:{self.n_targets}")
+
+        clock = core.Clock()
+        circle = self._show_moving_dots()
+        # if self.abort:
+        #     return
+        actual_duration = round(clock.getTime(), 2)
+
+        # msg_stim = self.trial_info_msg(frame["type"])
+        # self.present_stim(self.background + circle + msg_stim)
+        #
+        # clicks, ncorrect, rt = self.clickHandler(
+        #     circle, frame["n_targets"], frame["type"]
+        # )
+
+    def _show_moving_dots(self) -> None:
+        return
+
+
 class MOT(Task_Eyetracker):
     def __init__(
         self,
-        path="",
-        subj_id="test",
-        task_name="MOT",
-        numCircles=10,
-        time_presentation=3,
-        trial_duration=5,
-        clickTimeout=60,
+        path: str = "",
+        subj_id: str = "test",
+        task_name: str = "MOT",
+        numCircles: int = 10,
+        time_presentation: float = 3,
+        trial_duration: float = 5,
+        clickTimeout: float = 60,
+        seed: int = 2,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -53,9 +172,7 @@ class MOT(Task_Eyetracker):
         self.time_presentation = time_presentation  # duration green dots presentation
         self.clickTimeout = clickTimeout  # timeout for clicking on targets
 
-        self.seed = (
-            2  # URL parameter: if we want a particular random number generator seed
-        )
+        self.seed = seed  # For repeatable random numbers
         self.paperSize = 500  # size of stimulus graphics page
 
         self.trialCount = 0
