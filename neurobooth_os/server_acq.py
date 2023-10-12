@@ -155,7 +155,6 @@ def run_acq(logger):
             sys.stdout = sys.stdout.terminal
             s1.close()
 
-            device_manager.iphone_log_file_list()    # Log the list of files present on the iPhone
             device_manager.close_streams()
 
             if lowFeed_running:

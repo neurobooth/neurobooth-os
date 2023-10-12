@@ -260,15 +260,6 @@ class DeviceManager:
                 return stream.frame_preview()
         return None
 
-    def iphone_log_file_list(self):
-        for stream_name, stream in self.streams.items():
-            if "IPhone" in stream_name:
-                iphone_files, _ = stream.dumpall_getfilelist()
-                if iphone_files is not None:
-                    self.logger.info(f'iPhone has {len(iphone_files)} waiting for dump: {iphone_files}')
-                else:
-                    self.logger.warning(f'iPhone did not return a list of files to dump.')
-
     def close_streams(self) -> None:
         for stream_name, stream in self.streams.items():
             print(f"Closing stream {stream_name}")
