@@ -83,6 +83,33 @@ def make_db_logger(subject: str = None,
     return APP_LOGGER
 
 
+def make_task_param_logger(subject: str = None, session: str = None) -> logging.Logger:
+    """Returns a logger that logs task parameters to the database and sets the subject id and session to be used for
+    subsequent logging calls.
+
+    NOTE: If the subject or session should be cleared, the argument should be an empty string.
+    Passing None will NOT reset those values
+    """
+
+    global SUBJECT_ID, SESSION_ID, TASK_PARAM_LOGGER
+
+    if subject is not None:
+        SUBJECT_ID = subject
+    if session is not None:
+        SESSION_ID = session
+
+    # Don't reinitialize the logger if one exists
+    if TASK_PARAM_LOGGER is None:
+        logger = logging.getLogger(TASK_PARAM_LOG_NAME)
+        handler = TaskParamLogHandler()
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+        extra = {"key": "", "value": ""}
+        logging.LoggerAdapter(logger, extra)
+        TASK_PARAM_LOGGER = logger
+    return TASK_PARAM_LOGGER
+
+
 def get_default_log_handler(
         log_path: Optional[str] = None,
         log_level=logging.DEBUG,
@@ -240,7 +267,7 @@ class PostgreSQLHandler(logging.Handler):
     # see TYPE log_level
     _levels = ('debug', 'info', 'warning', 'error', 'critical')
 
-    def __init__(self, fallback_log_path:str = None, log_level=logging.DEBUG):
+    def __init__(self, fallback_log_path: str = None, log_level=logging.DEBUG):
         super(PostgreSQLHandler, self).__init__()
         self.fallback_log_path = fallback_log_path
         self.setLevel(log_level)
@@ -328,14 +355,14 @@ class TaskParamLogHandler(logging.Handler):
         SELECT queries do not appear to block with INSERTs. Touch the log table in autocommit mode only.
     """
 
-    _query = "INSERT INTO log_task_params " \
-             "(session_id, subject_id, name, value) " \
+    _query = "INSERT INTO log_task_param " \
+             "(session_id, subject_id, key, value) " \
              " VALUES " \
-             " (%(session_id)s, %(subject_id)s, %(name)s, %(value)s)"
+             " (%(session_id)s, %(subject_id)s, %(key)s, %(value)s)"
 
     def __init__(self):
         super(TaskParamLogHandler, self).__init__()
-        self.setLevel("info")
+        self.setLevel(logging.INFO)
         self.name = "task_param_log_handler"
         try:
             self._get_logger_connection()
@@ -352,14 +379,14 @@ class TaskParamLogHandler(logging.Handler):
         task_logger.removeHandler(self)
         if self.connection is not None:
             self.connection.close()
-        global DB_LOGGER
-        DB_LOGGER = None
+        global TASK_PARAM_LOGGER
+        TASK_PARAM_LOGGER = None
 
     def emit(self, record):
         try:
             args = {
                 "value": getattr(record, "value", None),
-                "name": getattr(record, "name", None),
+                "key": getattr(record, "key", None),
                 "subject_id": SUBJECT_ID,
                 "session_id": SESSION_ID,
             }
@@ -373,5 +400,5 @@ class TaskParamLogHandler(logging.Handler):
 
     def _get_logger_connection(self):
         self.connection = metadator.get_conn(config.neurobooth_config["database"]["dbname"])
-        self.connection.autocommit = False  # Log all params in a single transaction
+        self.connection.autocommit = True  # TODO(larry): Log all params in a single transaction?
         self.cursor = self.connection.cursor()

@@ -18,7 +18,7 @@ import neurobooth_os
 import neurobooth_os.config as cfg
 
 
-def get_conn(database, validate_config_paths:bool=True):
+def get_conn(database, validate_config_paths: bool = True):
     """Gets connector to the database
 
     Parameters
