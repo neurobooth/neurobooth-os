@@ -50,6 +50,7 @@ class TestLogging(unittest.TestCase):
         if connection is not None:
             connection.close()
         connection = get_connection()
+        delete_records()
         if not os.path.exists(log_path):
             os.makedirs(log_path)
 
@@ -146,6 +147,8 @@ class TestLogging(unittest.TestCase):
         db_log = make_db_logger("", "")
         db_log.error("No subject or session for new records")
         df = get_records()
+        print(df)
+        print("Subject: " + df.iloc[0]["subject_id"])
         assert df.iloc[0]["subject_id"] == subject
         assert df.iloc[0]["session_id"] == session
 
