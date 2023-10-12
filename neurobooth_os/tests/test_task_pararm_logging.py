@@ -1,7 +1,7 @@
 import logging
 import unittest
 
-from neurobooth_os.log_manager import make_task_param_logger
+from neurobooth_os.log_manager import make_task_param_logger, log_task_param
 import db_test_utils
 from db_test_utils import get_connection, get_records, delete_records
 
@@ -32,19 +32,34 @@ class TestLogging(unittest.TestCase):
     def test_task_logging0(self):
         """Tests logging to database using make_db_logger with session and subject set"""
         tp_log = make_task_param_logger(subject, session)
-        tp_log.warning("", extra={"key": "foo", "value": "bar"})
-        tp_log.warning("", extra={"key": "fizz", "value": "buzz"})
+        tp_log.warning("", extra={"task": "mot", "key": "foo", "value": "bar"})
+        tp_log.warning("", extra={"task": "dsc", "key": "fizz", "value": "buzz"})
 
         df = get_records(table_name)
         assert df.iloc[0]["subject_id"] == subject
         assert df.iloc[0]["session_id"] == session
         assert df.iloc[0]["key"] == "foo"
         assert df.iloc[0]["value"] == "bar"
+        assert df.iloc[0]["task_id"] == "mot"
 
         assert df.iloc[1]["subject_id"] == subject
         assert df.iloc[1]["session_id"] == session
+        assert df.iloc[1]["task_id"] == "dsc"
         assert df.iloc[1]["key"] == "fizz"
         assert df.iloc[1]["value"] == "buzz"
+
+    def test_task_logging1(self):
+        """Tests logging to database using make_db_logger with session and subject set"""
+        tp_log = make_task_param_logger(subject, session)
+        log_task_param("mot", key="foo", value="bar")
+        log_task_param("dsc", "fizz", "buzz")
+
+        df = get_records(table_name)
+        assert df.iloc[0]["subject_id"] == subject
+        assert df.iloc[0]["session_id"] == session
+        assert df.iloc[0]["key"] == "foo"
+        assert df.iloc[0]["value"] == "bar"
+        assert df.iloc[0]["task_id"] == "mot"
 
 
 if __name__ == '__main__':

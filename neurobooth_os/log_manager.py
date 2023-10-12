@@ -99,7 +99,7 @@ def make_task_param_logger(subject: str, session: str) -> logging.Logger:
         handler = TaskParamLogHandler()
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)
-        extra = {"key": "", "value": ""}
+        extra = {"task": "", "key": "", "value": ""}
         logging.LoggerAdapter(logger, extra)
         TASK_PARAM_LOGGER = logger
     return TASK_PARAM_LOGGER
@@ -351,9 +351,9 @@ class TaskParamLogHandler(logging.Handler):
     """
 
     _query = "INSERT INTO log_task_param " \
-             "(session_id, subject_id, key, value) " \
+             "(session_id, subject_id, task_id, key, value) " \
              " VALUES " \
-             " (%(session_id)s, %(subject_id)s, %(key)s, %(value)s)"
+             " (%(session_id)s, %(subject_id)s, %(task_id)s, %(key)s, %(value)s)"
 
     def __init__(self):
         super(TaskParamLogHandler, self).__init__()
@@ -380,6 +380,7 @@ class TaskParamLogHandler(logging.Handler):
     def emit(self, record):
         try:
             args = {
+                "task_id": getattr(record, "task", None),
                 "value": getattr(record, "value", None),
                 "key": getattr(record, "key", None),
                 "subject_id": SUBJECT_ID,
@@ -397,3 +398,18 @@ class TaskParamLogHandler(logging.Handler):
         self.connection = metadator.get_conn(config.neurobooth_config["database"]["dbname"])
         self.connection.autocommit = True  # TODO(larry): Log all params in a single transaction?
         self.cursor = self.connection.cursor()
+
+
+def log_task_param(task: str, key: str, value:str):
+    """
+    Helper method for logging task params
+    @param task: The task for which the params are being logged
+    @param key: The name of the parameter
+    @param value: The value of the parameter
+    @return: None
+    """
+    if not task or not key or not value:
+        raise ValueError("Task, key, and value are all required to be non-empty strings when logging task params")
+    if TASK_PARAM_LOGGER is None:
+        raise ValueError("The task parameter log has not been initialized using 'make_task_param_logger()'")
+    TASK_PARAM_LOGGER.info("", extra={"task": task, "key": key, "value": value})
