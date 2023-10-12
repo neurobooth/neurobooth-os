@@ -202,14 +202,16 @@ def _get_stimulus_kwargs(stimulus_id, conn):
     stimulus_df = table_stimulus.query(where=f"stimulus_id = '{stimulus_id}'")
     (stim_file,) = stimulus_df["stimulus_file"]
 
-    taks_kwargs = {
+    task_kwargs = {
         "duration": stimulus_df["duration"][0],
         "num_iterations": stimulus_df["num_iterations"][0],
     }
 
     if not stimulus_df["parameters"].isnull().all():
+        import neurobooth_os.log_manager as log_man
         params = stimulus_df["parameters"].values[0]
-        taks_kwargs.update(params)
+        task_kwargs.update(params)
+        log_man.log_task_params(stimulus_id, params)
 
     # Load args from jason if any
     (stim_fparam,) = stimulus_df["parameters_file"]
@@ -217,9 +219,9 @@ def _get_stimulus_kwargs(stimulus_id, conn):
         dirpath = op.split(neurobooth_os.__file__)[0]
         with open(op.join(dirpath, stim_fparam.replace("./", "")), "rb") as f:
             parms = json.load(f)
-        taks_kwargs.update(parms)
+        task_kwargs.update(parms)
 
-    return stim_file, taks_kwargs
+    return stim_file, task_kwargs
 
 
 def _get_sensor_kwargs(sens_id, conn):

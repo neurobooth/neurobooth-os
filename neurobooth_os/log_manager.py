@@ -413,3 +413,14 @@ def log_task_param(task: str, key: str, value:str):
     if TASK_PARAM_LOGGER is None:
         raise ValueError("The task parameter log has not been initialized using 'make_task_param_logger()'")
     TASK_PARAM_LOGGER.info("", extra={"task": task, "key": key, "value": value})
+
+
+def log_task_params(task: str, params: Dict):
+    """
+    Logs all params in the given dictionary to the log_task_param table
+    @param task: The task for which the params are being logged
+    @param params: A dictionary of parameter names and values
+    @return: None
+    """
+    for key, value in params.items():
+        log_task_param(task, key, value)
