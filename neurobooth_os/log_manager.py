@@ -83,20 +83,15 @@ def make_db_logger(subject: str = None,
     return APP_LOGGER
 
 
-def make_task_param_logger(subject: str = None, session: str = None) -> logging.Logger:
+def make_task_param_logger(subject: str, session: str) -> logging.Logger:
     """Returns a logger that logs task parameters to the database and sets the subject id and session to be used for
     subsequent logging calls.
-
-    NOTE: If the subject or session should be cleared, the argument should be an empty string.
-    Passing None will NOT reset those values
     """
 
     global SUBJECT_ID, SESSION_ID, TASK_PARAM_LOGGER
 
-    if subject is not None:
-        SUBJECT_ID = subject
-    if session is not None:
-        SESSION_ID = session
+    SUBJECT_ID = subject
+    SESSION_ID = session
 
     # Don't reinitialize the logger if one exists
     if TASK_PARAM_LOGGER is None:
