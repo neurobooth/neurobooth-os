@@ -7,8 +7,8 @@ from neurobooth_os.log_manager import make_db_logger
 import db_test_utils
 from db_test_utils import get_connection, get_records, delete_records, TEST_CONNECTION, TEST_DATABASE
 
-subject = "1111111"
-session = "1111111_2023_12_25 12:12:12"
+subject = "0000000"
+session = "0000000_2023_12_25 12:12:12"
 
 
 class TestLogging(unittest.TestCase):
@@ -31,15 +31,9 @@ class TestLogging(unittest.TestCase):
             db_test_utils.TEST_CONNECTION.close()
             db_test_utils.TEST_CONNECTION = None
 
-    def test_db_logging_shutdown(self):
-        """Tests to ensure log handler is closed (or at least, doesn't blow up when closing) """
-        db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12")
-        db_log.critical("Microphone: Entering LSL Loop", extra={"device": "playstation"})
-        #logging.shutdown()
-
     def test_db_logging0(self):
         """Tests logging to database using make_db_logger with session and subject set"""
-        db_log = make_db_logger("1111111", "1111111_2023_12_25 12:12:12")
+        db_log = make_db_logger(subject, session)
         db_log.critical("Microphone: Entering LSL Loop", extra={"device": "playstation"})
         db_log.critical("Another one.", extra={"device": "playstation"})
 
