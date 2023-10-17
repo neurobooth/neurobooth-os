@@ -20,11 +20,9 @@ SUBJECT_ID: str = ""
 
 # Create APP_LOGGER as a singleton. Otherwise, multiple calls to make_db_logger will add redundant handlers
 APP_LOGGER: Optional[logging.Logger] = None
-TASK_PARAM_LOGGER: Optional[logging.Logger] = None
 
 # Name of the Application Logger, for use in retrieving the appropriate logger from the logging module
 APP_LOG_NAME = "app"
-TASK_PARAM_LOG_NAME = "task-param"
 
 
 def make_session_logger_debug(
@@ -81,28 +79,6 @@ def make_db_logger(subject: str = None,
         logging.LoggerAdapter(logger, extra)
         APP_LOGGER = logger
     return APP_LOGGER
-
-
-def make_task_param_logger(subject: str, session: str) -> logging.Logger:
-    """Returns a logger that logs task parameters to the database and sets the subject id and session to be used for
-    subsequent logging calls.
-    """
-
-    global SUBJECT_ID, SESSION_ID, TASK_PARAM_LOGGER
-
-    SUBJECT_ID = subject
-    SESSION_ID = session
-
-    # Don't reinitialize the logger if one exists
-    if TASK_PARAM_LOGGER is None:
-        logger = logging.getLogger(TASK_PARAM_LOG_NAME)
-        handler = TaskParamLogHandler()
-        logger.addHandler(handler)
-        logger.setLevel(logging.INFO)
-        extra = {"task": "", "key": "", "value": ""}
-        logging.LoggerAdapter(logger, extra)
-        TASK_PARAM_LOGGER = logger
-    return TASK_PARAM_LOGGER
 
 
 def get_default_log_handler(
@@ -340,87 +316,3 @@ def _test_log_handler_fallback():
         if handler.name == "db_handler":
             handler.fallback_to_local_handler()
 
-
-class TaskParamLogHandler(logging.Handler):
-    """
-    A :class:`logging.Handler` that logs to the `log_task_params` PostgreSQL table
-
-    This handler has its own connection in autocommit mode.
-    .. DANGER:
-        SELECT queries do not appear to block with INSERTs. Touch the log table in autocommit mode only.
-    """
-
-    _query = "INSERT INTO log_task_param " \
-             "(session_id, subject_id, task_id, key, value) " \
-             " VALUES " \
-             " (%(session_id)s, %(subject_id)s, %(task_id)s, %(key)s, %(value)s)"
-
-    def __init__(self):
-        super(TaskParamLogHandler, self).__init__()
-        self.setLevel(logging.INFO)
-        self.name = "task_param_log_handler"
-        try:
-            self._get_logger_connection()
-        except Exception:
-            msg = "Unable to connect to database for task parameter logging."
-            logging.getLogger(APP_LOG_NAME).exception(msg)
-
-    def close(self):
-        """Close this log handler and its DB connection """
-        # TODO(larry): Should we try to get the loggers from their respective globals?
-        app_logger = logging.getLogger(APP_LOG_NAME)
-        app_logger.debug("Closing task param log db connection")
-        task_logger = logging.getLogger(TASK_PARAM_LOG_NAME)
-        task_logger.removeHandler(self)
-        if self.connection is not None:
-            self.connection.close()
-        global TASK_PARAM_LOGGER
-        TASK_PARAM_LOGGER = None
-
-    def emit(self, record):
-        try:
-            args = {
-                "task_id": getattr(record, "task", None),
-                "value": getattr(record, "value", None),
-                "key": getattr(record, "key", None),
-                "subject_id": SUBJECT_ID,
-                "session_id": SESSION_ID,
-            }
-
-            self.cursor.execute(self._query, args)
-
-        except Exception:
-            msg = "An exception occurred attempting to log to DB. Falling back to file-system log."
-            # TODO(larry): ensure that log exists before logging
-            logging.getLogger(APP_LOG_NAME).exception(msg)
-
-    def _get_logger_connection(self):
-        self.connection = metadator.get_conn(config.neurobooth_config["database"]["dbname"])
-        self.connection.autocommit = True  # TODO(larry): Log all params in a single transaction?
-        self.cursor = self.connection.cursor()
-
-
-def log_task_param(task: str, key: str, value:str):
-    """
-    Helper method for logging task params
-    @param task: The task for which the params are being logged
-    @param key: The name of the parameter
-    @param value: The value of the parameter
-    @return: None
-    """
-    if not task or not key or not value:
-        raise ValueError("Task, key, and value are all required to be non-empty strings when logging task params")
-    if TASK_PARAM_LOGGER is None:
-        raise ValueError("The task parameter log has not been initialized using 'make_task_param_logger()'")
-    TASK_PARAM_LOGGER.info("", extra={"task": task, "key": key, "value": value})
-
-
-def log_task_params(task: str, params: Dict):
-    """
-    Logs all params in the given dictionary to the log_task_param table
-    @param task: The task for which the params are being logged
-    @param params: A dictionary of parameter names and values
-    @return: None
-    """
-    for key, value in params.items():
-        log_task_param(task, key, value)

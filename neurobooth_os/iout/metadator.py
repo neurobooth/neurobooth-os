@@ -160,7 +160,7 @@ def _fill_task_row(task_id, dict_vals, conn):  # XXX: dict_vals -> log_task_dict
 def _get_task_param(task_id, conn):
     """Get .
 
-    obs_id : str
+    task_id : str
         The task_id
     """
     # task_data, stimulus, instruction
@@ -196,6 +196,16 @@ def _get_instruction_kwargs(instruction_id, conn):
     return dict_instr
 
 
+def log_task_params(conn, log_task_id, task_param_dictionary):
+    # TODO(larry): Did you add the foreign key constraints to the database table?
+    table = Table("log_task_param", conn=conn)
+    stimulus_id = task_param_dictionary.keys[0]
+    params = task_param_dictionary[stimulus_id]["kwargs"]
+    for key, value in params.items():
+        table.insert_rows([(log_task_id, stimulus_id, key, value)], cols=["log_task_id", "stimulus_id", "key", "value"])
+    pass
+
+
 def _get_stimulus_kwargs(stimulus_id, conn):
     """Get task parameters from database."""
     table_stimulus = Table("nb_stimulus", conn)
@@ -211,7 +221,6 @@ def _get_stimulus_kwargs(stimulus_id, conn):
         import neurobooth_os.log_manager as log_man
         params = stimulus_df["parameters"].values[0]
         task_kwargs.update(params)
-        log_man.log_task_params(stimulus_id, params)
 
     # Load args from jason if any
     (stim_fparam,) = stimulus_df["parameters_file"]
