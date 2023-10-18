@@ -199,11 +199,13 @@ def _get_instruction_kwargs(instruction_id, conn):
 def log_task_params(conn, log_task_id, task_param_dictionary):
     # TODO(larry): Did you add the foreign key constraints to the database table?
     table = Table("log_task_param", conn=conn)
-    stimulus_id = task_param_dictionary.keys[0]
+    stimulus_id = next(iter(task_param_dictionary.keys()))
     params = task_param_dictionary[stimulus_id]["kwargs"]
+
     for key, value in params.items():
-        table.insert_rows([(log_task_id, stimulus_id, key, value)], cols=["log_task_id", "stimulus_id", "key", "value"])
-    pass
+        value_type = type(value)
+        table.insert_rows([(log_task_id, stimulus_id, key, value, value_type)],
+                          cols=["log_task_id", "stimulus_id", "key", "value", "value_type"])
 
 
 def _get_stimulus_kwargs(stimulus_id, conn):
