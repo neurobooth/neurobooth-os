@@ -18,12 +18,12 @@ import neurobooth_os
 import neurobooth_os.config as cfg
 
 
-def get_conn(database, validate_config_paths:bool=True):
+def get_conn(database, validate_config_paths: bool = True):
     """Gets connector to the database
 
     Parameters
     ----------
-    database : str, optional
+    database : str
         Name of the database
     validate_config_paths : bool, optional
         True if the config file path should be validated. This should generally be True outside test scenarios
@@ -48,7 +48,7 @@ def get_conn(database, validate_config_paths:bool=True):
         ssh_config_file="~/.ssh/config",
         ssh_pkey="~/.ssh/id_rsa",
         remote_bind_address=(cfg.neurobooth_config["database"]["host"], port),
-        #TODO address in config
+        # TODO address in config
         local_bind_address=("localhost", 6543),
     )
     tunnel.start()
@@ -160,7 +160,7 @@ def _fill_task_row(task_id, dict_vals, conn):  # XXX: dict_vals -> log_task_dict
 def _get_task_param(task_id, conn):
     """Get .
 
-    obs_id : str
+    task_id : str
         The task_id
     """
     # task_data, stimulus, instruction
@@ -196,20 +196,31 @@ def _get_instruction_kwargs(instruction_id, conn):
     return dict_instr
 
 
+def log_task_params(conn, log_task_id, task_param_dictionary):
+    # TODO(larry): Did you add the foreign key constraints to the database table?
+    table = Table("log_task_param", conn=conn)
+    stimulus_id = task_param_dictionary.keys[0]
+    params = task_param_dictionary[stimulus_id]["kwargs"]
+    for key, value in params.items():
+        table.insert_rows([(log_task_id, stimulus_id, key, value)], cols=["log_task_id", "stimulus_id", "key", "value"])
+    pass
+
+
 def _get_stimulus_kwargs(stimulus_id, conn):
     """Get task parameters from database."""
     table_stimulus = Table("nb_stimulus", conn)
     stimulus_df = table_stimulus.query(where=f"stimulus_id = '{stimulus_id}'")
     (stim_file,) = stimulus_df["stimulus_file"]
 
-    taks_kwargs = {
+    task_kwargs = {
         "duration": stimulus_df["duration"][0],
         "num_iterations": stimulus_df["num_iterations"][0],
     }
 
     if not stimulus_df["parameters"].isnull().all():
+        import neurobooth_os.log_manager as log_man
         params = stimulus_df["parameters"].values[0]
-        taks_kwargs.update(params)
+        task_kwargs.update(params)
 
     # Load args from jason if any
     (stim_fparam,) = stimulus_df["parameters_file"]
@@ -217,9 +228,9 @@ def _get_stimulus_kwargs(stimulus_id, conn):
         dirpath = op.split(neurobooth_os.__file__)[0]
         with open(op.join(dirpath, stim_fparam.replace("./", "")), "rb") as f:
             parms = json.load(f)
-        taks_kwargs.update(parms)
+        task_kwargs.update(parms)
 
-    return stim_file, taks_kwargs
+    return stim_file, task_kwargs
 
 
 def _get_sensor_kwargs(sens_id, conn):
@@ -320,7 +331,6 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
 
 
 def _get_device_kwargs(task_id, conn):
-
     stim_id, dev_ids, sens_ids, _ = _get_task_param(task_id, conn)
     dev_kwarg = {}
     for dev_id, dev_sens_ids in zip(dev_ids, sens_ids):

@@ -184,3 +184,5 @@ if __name__ == "__main__":
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
         raise
+    finally:
+        logging.shutdown()

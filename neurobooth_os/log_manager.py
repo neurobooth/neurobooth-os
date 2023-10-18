@@ -18,8 +18,9 @@ LOG_FORMAT = logging.Formatter('|%(levelname)s| [%(asctime)s] %(filename)s, %(fu
 SESSION_ID: str = ""
 SUBJECT_ID: str = ""
 
-# Create DB_LOGGER as a singleton. Otherwise, multiple calls to make_db_logger will add redundant handlers
+# Create APP_LOGGER as a singleton. Otherwise, multiple calls to make_db_logger will add redundant handlers
 APP_LOGGER: Optional[logging.Logger] = None
+
 # Name of the Application Logger, for use in retrieving the appropriate logger from the logging module
 APP_LOG_NAME = "app"
 
@@ -237,7 +238,7 @@ class PostgreSQLHandler(logging.Handler):
     # see TYPE log_level
     _levels = ('debug', 'info', 'warning', 'error', 'critical')
 
-    def __init__(self, fallback_log_path:str = None, log_level=logging.DEBUG):
+    def __init__(self, fallback_log_path: str = None, log_level=logging.DEBUG):
         super(PostgreSQLHandler, self).__init__()
         self.fallback_log_path = fallback_log_path
         self.setLevel(log_level)
@@ -251,7 +252,7 @@ class PostgreSQLHandler(logging.Handler):
 
     def close(self):
         """Close this log handler and its DB connection """
-        logging.getLogger(APP_LOG_NAME).debug("Closing log db connection")
+        logging.getLogger(APP_LOG_NAME).debug("Closing app log db connection")
         logging.getLogger(APP_LOG_NAME).removeHandler(self)
         if self.connection is not None:
             self.connection.close()
@@ -314,3 +315,4 @@ def _test_log_handler_fallback():
     for handler in logger.handlers:
         if handler.name == "db_handler":
             handler.fallback_to_local_handler()
+

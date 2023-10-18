@@ -1,6 +1,7 @@
 """
     Moves data from local storage to network storage
 """
+import logging
 import os
 from subprocess import PIPE, Popen, STDOUT, CalledProcessError
 import argparse
@@ -60,3 +61,5 @@ if __name__ == "__main__":
         main(parse_arguments())
     except Exception as e:
         logger.critical(e)
+    finally:
+        logging.shutdown()
