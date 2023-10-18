@@ -9,7 +9,9 @@ import json
 import logging
 from collections import OrderedDict
 from datetime import datetime
+from typing import Dict, Any
 
+from psycopg2 import connection
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
 from neurobooth_terra import Table
@@ -196,8 +198,14 @@ def _get_instruction_kwargs(instruction_id, conn):
     return dict_instr
 
 
-def log_task_params(conn, log_task_id, task_param_dictionary):
-    # TODO(larry): Did you add the foreign key constraints to the database table?
+def log_task_params(conn: connection, log_task_id: str, task_param_dictionary: Dict[str, Any]):
+    """
+    Logs task parameters (specifically, the stimulus params and instruction params) to the database.
+    @param conn: postgres database connection
+    @param log_task_id: primary key from the log_task table for the current task and session
+    @param task_param_dictionary: dictionary of string keys and values containing the data to be logged
+    @return: None
+    """
     table = Table("log_task_param", conn=conn)
     stimulus_id = next(iter(task_param_dictionary.keys()))
     params = task_param_dictionary[stimulus_id]["kwargs"]
