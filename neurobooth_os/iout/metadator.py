@@ -197,10 +197,11 @@ def _get_instruction_kwargs(instruction_id, conn):
     return dict_instr
 
 
-def log_task_params(conn, log_task_id: str, task_param_dictionary: Dict[str, Any]):
+def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_dictionary: Dict[str, Any]):
     """
     Logs task parameters (specifically, the stimulus params and instruction params) to the database.
     @param conn: postgres database connection
+    @param stimulus_id: primary key from the nb_stimulus table. Identifies the current stimulus
     @param log_task_id: primary key from the log_task table for the current task and session
     @param task_param_dictionary: dictionary of string keys and values containing the data to be logged
     @return: None
@@ -210,10 +211,7 @@ def log_task_params(conn, log_task_id: str, task_param_dictionary: Dict[str, Any
     logging.getLogger(log_man.APP_LOG_NAME).debug(task_param_dictionary)
     print(task_param_dictionary)
 
-    stimulus_id = next(iter(task_param_dictionary.keys()))
-    params = task_param_dictionary[stimulus_id]["kwargs"]
-
-    for key, value in params.items():
+    for key, value in task_param_dictionary.items():
         value_type = type(value)
         table.insert_rows([(log_task_id, stimulus_id, key, value, value_type)],
                           cols=["log_task_id", "stimulus_id", "key", "value", "value_type"])
