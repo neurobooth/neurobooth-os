@@ -188,6 +188,7 @@ def run_stm(logger):
                     continue
 
                 log_task_id = meta._make_new_task_row(conn, subj_id)
+                meta.log_task_params(conn, log_task_id, this_task_kwargs)
                 log_task["date_times"] = (
                     "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","
                 )

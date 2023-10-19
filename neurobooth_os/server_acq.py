@@ -151,6 +151,7 @@ def run_acq(logger):
             if system_resource_logger is not None:
                 system_resource_logger.stop()
                 system_resource_logger = None
+            logging.shutdown()
 
             sys.stdout = sys.stdout.terminal
             s1.close()

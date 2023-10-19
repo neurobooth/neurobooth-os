@@ -1,6 +1,7 @@
 import logging
 import threading
 from neurobooth_os.iout import metadator as meta
+from neurobooth_os.log_manager import APP_LOG_NAME
 from typing import Any, Dict, List, Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
@@ -20,7 +21,6 @@ def start_mouse_stream(_, **device_args):
     device.start()
     return device
 
-
 def start_mbient_stream(_, **device_args):
     from neurobooth_os.iout.mbient import Mbient
     device = Mbient(**device_args)
@@ -28,7 +28,6 @@ def start_mbient_stream(_, **device_args):
         return None
     device.start()
     return device
-
 
 def start_mbient_mock_stream(_, **device_args):
     from neurobooth_os.mock.mock_device_streamer import MockMbient
@@ -124,7 +123,7 @@ ASYNC_STARTUP: List[str] = [
 # --------------------------------------------------------------------------------
 class DeviceManager:
     def __init__(self, node_name: str):
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger(APP_LOG_NAME)
         self.streams: Dict[str, Any] = {}
 
         if node_name not in SERVER_ASSIGNMENTS:
