@@ -316,13 +316,13 @@ def run_stm(logger):
         elif "shutdown" in data:
             if system_resource_logger is not None:
                 system_resource_logger.stop()
-                system_resource_logger = None
 
             logger.info("Shutting down")
             win.close()
             sys.stdout = sys.stdout.terminal
             s1.close()
-            device_manager.close_streams()
+            if device_manager is not None:
+                device_manager.close_streams()
             break
 
         elif "time_test" in data:
