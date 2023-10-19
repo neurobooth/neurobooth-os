@@ -11,7 +11,6 @@ from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, Any
 
-from psycopg2 import connection
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
 from neurobooth_terra import Table
@@ -198,7 +197,7 @@ def _get_instruction_kwargs(instruction_id, conn):
     return dict_instr
 
 
-def log_task_params(conn: connection, log_task_id: str, task_param_dictionary: Dict[str, Any]):
+def log_task_params(conn, log_task_id: str, task_param_dictionary: Dict[str, Any]):
     """
     Logs task parameters (specifically, the stimulus params and instruction params) to the database.
     @param conn: postgres database connection
