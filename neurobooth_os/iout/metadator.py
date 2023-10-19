@@ -206,6 +206,10 @@ def log_task_params(conn, log_task_id: str, task_param_dictionary: Dict[str, Any
     @return: None
     """
     table = Table("log_task_param", conn=conn)
+    import neurobooth_os.log_manager as log_man
+    logging.getLogger(log_man.APP_LOG_NAME).debug(task_param_dictionary)
+    print(task_param_dictionary)
+
     stimulus_id = next(iter(task_param_dictionary.keys()))
     params = task_param_dictionary[stimulus_id]["kwargs"]
 
