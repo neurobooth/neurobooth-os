@@ -150,13 +150,13 @@ def run_acq(logger):
         elif "shutdown" in data:
             if system_resource_logger is not None:
                 system_resource_logger.stop()
-                system_resource_logger = None
             logging.shutdown()
 
             sys.stdout = sys.stdout.terminal
             s1.close()
 
-            device_manager.close_streams()
+            if device_manager is not None:
+                device_manager.close_streams()
 
             if lowFeed_running:
                 lowFeed.close()
