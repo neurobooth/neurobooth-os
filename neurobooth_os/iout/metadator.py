@@ -206,7 +206,6 @@ def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_diction
     @param task_param_dictionary: dictionary of string keys and values containing the data to be logged
     @return: None
     """
-
     for key, value in task_param_dictionary.items():
         value_type = str(type(value))
         args = {
@@ -227,7 +226,6 @@ def _log_task_parameter(conn, value_dict: Dict[str, Any]):
 
     cursor = conn.cursor()
     cursor.execute(query, value_dict)
-
 
 def _get_stimulus_kwargs(stimulus_id, conn):
     """Get task parameters from database."""
