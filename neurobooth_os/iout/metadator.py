@@ -206,15 +206,25 @@ def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_diction
     @param task_param_dictionary: dictionary of string keys and values containing the data to be logged
     @return: None
     """
-    table = Table("log_task_param", conn=conn)
+
+    _query = "INSERT INTO log_task_param " \
+             "(log_task_id, stimulus_id, key, value, value_type)  " \
+             " VALUES " \
+             " (%(log_task_id)s, %(stimulus_id)s, %(key)s, %(value)s, %(value_type)s)"
+
     import neurobooth_os.log_manager as log_man
     logging.getLogger(log_man.APP_LOG_NAME).debug(task_param_dictionary)
-    print(task_param_dictionary)
-
+    cursor = conn.cursor()
     for key, value in task_param_dictionary.items():
         value_type = type(value)
-        table.insert_rows([(log_task_id, stimulus_id, key, value, value_type)],
-                          cols=["log_task_id", "stimulus_id", "key", "value", "value_type"])
+        args = {
+            "log_task_id": log_task_id,
+            "stimulus_id": stimulus_id,
+            "key": key,
+            "value": value,
+            "value_type": value_type,
+        }
+        cursor.execute(_query, args)
 
 
 def _get_stimulus_kwargs(stimulus_id, conn):
