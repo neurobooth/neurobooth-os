@@ -207,10 +207,8 @@ def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_diction
     @return: None
     """
 
-    import neurobooth_os.log_manager as log_man
-    logging.getLogger(log_man.APP_LOG_NAME).debug(task_param_dictionary)
     for key, value in task_param_dictionary.items():
-        value_type = type(value)
+        value_type = str(type(value))
         args = {
             "log_task_id": log_task_id,
             "stimulus_id": stimulus_id,
