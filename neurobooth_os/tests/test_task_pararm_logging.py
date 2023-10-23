@@ -1,15 +1,14 @@
 import logging
 import unittest
 
-from neurobooth_os.log_manager import make_task_param_logger, log_task_param
 import db_test_utils
 from db_test_utils import get_connection, get_records, delete_records
-
 import neurobooth_os.iout.metadator as meta
 
-subject = "0000000"
-session = "0000000_2023_12_25 12:12:12"
 table_name = "log_task_param"
+stimulus_id = "calibration_task_1"
+log_task_id = "tech_log_885"
+
 
 class TestLogging(unittest.TestCase):
 
@@ -33,43 +32,46 @@ class TestLogging(unittest.TestCase):
 
     def test_task_logging0(self):
         """Tests logging to database using make_db_logger with session and subject set"""
-        tp_log = make_task_param_logger(subject, session)
-        tp_log.warning("", extra={"task": "mot", "key": "foo", "value": "bar"})
-        tp_log.warning("", extra={"task": "dsc", "key": "fizz", "value": "buzz"})
+        key = 'key'
+        value = 'value'
+        value_type = 'str'
+        args = {
+            "log_task_id": log_task_id,
+            "stimulus_id": stimulus_id,
+            "key": key,
+            "value": value,
+            "value_type": value_type,
+        }
+        meta._log_task_parameter(db_test_utils.TEST_CONNECTION, args)
 
         df = get_records(table_name)
-        assert df.iloc[0]["subject_id"] == subject
-        assert df.iloc[0]["session_id"] == session
-        assert df.iloc[0]["key"] == "foo"
-        assert df.iloc[0]["value"] == "bar"
-        assert df.iloc[0]["task_id"] == "mot"
-
-        assert df.iloc[1]["subject_id"] == subject
-        assert df.iloc[1]["session_id"] == session
-        assert df.iloc[1]["task_id"] == "dsc"
-        assert df.iloc[1]["key"] == "fizz"
-        assert df.iloc[1]["value"] == "buzz"
-
-    def test_task_logging1(self):
-        """Tests logging to database using make_db_logger with session and subject set"""
-        make_task_param_logger(subject, session)
-        log_task_param("mot", key="foo", value="bar")
-        log_task_param("dsc", "fizz", "buzz")
-
-        df = get_records(table_name)
-        assert df.iloc[0]["subject_id"] == subject
-        assert df.iloc[0]["session_id"] == session
-        assert df.iloc[0]["key"] == "foo"
-        assert df.iloc[0]["value"] == "bar"
-        assert df.iloc[0]["task_id"] == "mot"
+        assert df.iloc[0]["stimulus_id"] == stimulus_id
+        assert df.iloc[0]["log_task_id"] == log_task_id
+        assert df.iloc[0]["key"] == key
+        assert df.iloc[0]["value"] == value
+        assert df.iloc[0]["value_type"] == value_type
 
     def test_task_logging2(self):
         """Tests logging to database using make_db_logger with session and subject set"""
-        make_task_param_logger(subject, session)
+        param_dict = {"foo": "bar", "fizz": "buzz"}
+
+        meta.log_task_params(db_test_utils.TEST_CONNECTION,
+                             stimulus_id=stimulus_id,
+                             log_task_id=log_task_id,
+                             task_param_dictionary=param_dict)
         meta._get_stimulus_kwargs("finger_nose_demo_task_1", get_connection())
         df = get_records(table_name)
-        assert df.iloc[0]["subject_id"] == subject
+        assert df.iloc[0]["stimulus_id"] == stimulus_id
+        assert df.iloc[0]["log_task_id"] == log_task_id
+        assert df.iloc[0]["key"] == "foo"
+        assert df.iloc[0]["value"] == "bar"
+        assert df.iloc[0]["value_type"] == str(type(param_dict["foo"]))
 
+        assert df.iloc[1]["stimulus_id"] == stimulus_id
+        assert df.iloc[1]["log_task_id"] == log_task_id
+        assert df.iloc[1]["key"] == "fizz"
+        assert df.iloc[1]["value"] == param_dict["fizz"]
+        assert df.iloc[1]["value_type"] == str(type(param_dict["fizz"]))
 
 
 if __name__ == '__main__':
