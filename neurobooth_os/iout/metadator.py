@@ -216,7 +216,8 @@ def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_diction
             "value_type": value_type,
         }
         _log_task_parameter(conn, args)
-
+    conn.commit()
+        
 
 def _log_task_parameter(conn, value_dict: Dict[str, Any]):
     query = "INSERT INTO log_task_param " \
