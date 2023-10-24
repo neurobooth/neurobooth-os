@@ -206,7 +206,6 @@ def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_diction
     @param task_param_dictionary: dictionary of string keys and values containing the data to be logged
     @return: None
     """
-    c = get_conn(cfg.neurobooth_config["database"]["dbname"], True)
     for key, value in task_param_dictionary.items():
         value_type = str(type(value))
         args = {
@@ -216,8 +215,8 @@ def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_diction
             "value": value,
             "value_type": value_type,
         }
-        _log_task_parameter(c, args)
-    c.commit()
+        _log_task_parameter(conn, args)
+    conn.commit()
         
 
 def _log_task_parameter(conn, value_dict: Dict[str, Any]):
