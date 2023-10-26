@@ -3,7 +3,7 @@ import random
 import math
 import time
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Union, NamedTuple
 
 from numpy import sqrt
 import pandas as pd
@@ -44,6 +44,7 @@ class MOTFrame(ABC):
         :param window: The PsychoPy window to draw to.
         """
         self.window = window
+        self.wait_key = 'space'
 
     @abstractmethod
     def run(self) -> None:
@@ -83,7 +84,7 @@ class ImageFrame(MOTFrame):
         self.stimulus = visual.ImageStim(self.window, image=image_path, pos=(0, 0), units="deg")
 
     def run(self) -> None:
-        self.present_stimuli([self.stimulus], wait_for_key='space')
+        self.present_stimuli([self.stimulus], wait_for_key=self.wait_key)
 
 
 class Circle:
@@ -147,12 +148,27 @@ class Circle:
         return self.stimulus
 
 
+class TrialTimeout(Exception):
+    """Exception to be raised when a participant takes too long to complete the click portion of the task."""
+    pass
+
+
+class ClickInfo(NamedTuple):
+    """Contains information about a registered mouse click"""
+    circle_idx: int
+    x: float
+    y: float
+    time: float
+    correct: bool
+
+
 class TrialFrame(MOTFrame):
     """Runs a single MOT trial (circles are presented, some flash, circles move, and the subject clicks.)"""
     def __init__(
             self,
             window: visual.Window,
             task: 'MOT',
+            *,  # Remaining arguments must be by keyword
             flash_duration: float,
             movement_duration: float,
             click_timeout: float,
@@ -163,7 +179,7 @@ class TrialFrame(MOTFrame):
             circle_radius: float,
             circle_speed: float,
             velocity_noise: float,
-            random_seed: int,
+            random_seed: Union[int, str],
     ):
         """
         :param window: The PsychoPy window to draw to.
@@ -211,102 +227,92 @@ class TrialFrame(MOTFrame):
         self.velocity_noise = velocity_noise * math.pi / 180  # deg -> rad
         self.random_seed = random_seed
 
-        # Keep track of the score
-        self.score: int = 0
-
         # Set appropriate marker entries for this trial
         self.start_marker = task.marker_trial_start
         self.end_marker = task.marker_trial_end
 
+        # Keep track of trial performance
+        self.click_info: List[ClickInfo] = []
+        self.actual_animation_duration: float = -1
+
     def run(self) -> None:
-        self.task.sendMessage(self.start_marker)
-        self.task.sendMessage(f"number targets:{self.n_targets}")
+        self.send_marker(self.start_marker)
+        self.send_marker(f"number targets:{self.n_targets}")
 
-        random.seed(self.random_seed)  # Set the random seed for this trial
+        # Set the random seed for this trial
+        random.seed(self.random_seed)
 
+        # Present moving circles
         clock = core.Clock()
+        self.circle_repulsion = self.circle_radius * 5  # Reflecting inconsistency in this value in prior code
         self.setup_circles()
         self.circle_repulsion = self.circle_radius * 4  # Reflecting inconsistency in this value in prior code
         self.move_circles()  # Initial movement is holdover from prior code to preserve RNG sequence
         self.present_circles()
         self.flash_targets()
         self.show_moving_circles()
-        actual_duration = round(clock.getTime(), 2)
+        self.actual_animation_duration = round(clock.getTime(), 2)
 
-        # clicks, ncorrect, rt = self.clickHandler(
-        #     circle, frame["n_targets"], frame["type"]
-        # )
-        #
-        self.task.sendMessage(self.end_marker)
+        # Allow participants to click on the circles
+        try:
+            self.handle_clicks()
+        except TrialTimeout:
+            self.send_marker(self.end_marker)
+            self.present_alert(
+                "You took too long to respond!\n"
+                "Remember: once the movement stops,\n"
+                "click the dots that flashed."
+            )
+            self.update_score(-sum([c.correct for c in self.click_info]))
+            self.click_info = []
+            self.run()  # Repeat the trial
+            return
+
+        self.send_marker(self.end_marker)
         utils.countdown(0.5)
-        #
-        # state = "click"
-        # if rt == "timeout":
-        #     # rewind frame sequence by one frame, so same frame is displayed again
-        #     self.frameSequence.insert(0, frame)
-        #
-        #     msg_alert = (
-        #             "You took too long to respond!\nRemember: once the movement stops,\n"
-        #             + "click the dots that flashed."
-        #     )
-        #     msg_stim = self.my_textbox2(msg_alert)
-        #     self.present_stim([self.continue_msg, msg_stim], "space")
-        #
-        #     # set timout variable values
-        #     state = "timeout"
-        #     rt = 0
-        #     ncorrect = 0
-        #     if frame["type"] == "test" and self.trialCount > 0:
-        #         self.trialCount -= 1
-        #
-        # elif frame["type"] == "practice" and rt != "aborted":
-        #     msg = f"You got {ncorrect} of {frame['n_targets']} dots correct."
-        #     if ncorrect < frame["n_targets"]:
-        #
-        #         if practiceErr < 2:  # up to 2 practice errors
-        #             # rewind frame sequence by one frame, so same frame is displayed again
-        #             self.frameSequence.insert(0, frame)
-        #             msg = (
-        #                     "Let's try again. \nWhen the movement stops,"
-        #                     + f"click the {frame['n_targets']} dots that flashed."
-        #             )
-        #
-        #             practiceErr += 1
-        #     else:
-        #         practiceErr = 0
-        #     msg_stim = self.my_textbox2(msg)
-        #     self.present_stim([self.continue_msg, msg_stim], "space")
-        #
-        # elif rt == "aborted":
-        #     state = "aborted"
-        #     rt = 0
-        #     ncorrect = 0
-        #
-        # frame["rt"] = rt
-        # frame["ncorrect"] = ncorrect
-        # frame["clicks"] = clicks
-        # frame["trueDuration"] = actual_duration
-        #
-        # if frame["type"] == "test":
-        #     total += frame["n_targets"]
-        #
-        # results.append(
-        #     {
-        #         "type": frame["type"],  # one of practice or test
-        #         "hits": ncorrect,
-        #         "rt": rt,
-        #         "numTargets": frame["n_targets"],
-        #         "numdots": frame["n_circles"],
-        #         "speed": self.mycircle["speed"],
-        #         "noise": self.mycircle["noise"],
-        #         "duration": trueDuration,
-        #         "state": state,
-        #         "seed": frame["message"],
-        #     }
-        # )
-        #
-        # if frame["type"] == "test":
-        #     self.trialCount += 1
+
+    def send_marker(self, marker: str) -> None:
+        """
+        Send a message to the marker time-series.
+        :param marker: The marker message to send
+        """
+        # This is a very simple method, but is provided so that it can be disabled via override
+        self.task.sendMessage(marker)
+
+    def update_score(self, delta: int) -> None:
+        """
+        Update the task's score.
+        :param delta: The amount to change the score by.
+        """
+        # This is a very simple method, but is provided so that it can be disabled via override
+        self.task.score += delta
+
+    def trial_info_message(self) -> Optional[visual.TextStim]:
+        message = f" {self.trial_count} of 6. {self.trial_info_str}   Score {self.task.score}"
+        return visual.TextStim(self.window, text=message, pos=(0, -8), units="deg", color="blue")
+
+    def present_alert(self, message: str) -> None:
+        """
+        Present an alert to the screen.
+        :param message: The text of the alert
+        """
+        self.present_stimuli([
+            self.task.continue_message,
+            TextBox2(
+                self.window,
+                pos=(0, 0),
+                color="black",
+                units="deg",
+                lineSpacing=0.9,
+                letterHeight=1,
+                text=message,
+                font="Arial",
+                borderColor=None,
+                fillColor=None,
+                editable=False,
+                alignment="center",
+            )
+        ], wait_for_key=self.wait_key)
 
     def setup_circles(self) -> None:
         """Randomly initialize circle start positions and movement directions."""
@@ -414,68 +420,222 @@ class TrialFrame(MOTFrame):
             # Compute final direction and update
             circle.direction = math.atan2(vel_y, vel_x)  # Use atan2 (not atan)!
 
-    def trial_info_message(self) -> Optional[visual.TextStim]:
-        message = f" {self.trial_count} of 6. {self.trial_info_str}   Score {self.score}"
-        return visual.TextStim(self.window, text=message, pos=(0, -8), units="deg", color="blue")
-
     def handle_clicks(self) -> None:
         """
         Handle participant clicks on the targets. Reveals correct and incorrect clicks, up to the number of targets.
         """
-        mouse = event.Mouse(win=self.window)
-        self.task.Mouse.setVisible(1)
-        mouse.mouseClock = core.Clock()
-        mouse.clickReset()
-        trial_clock = core.Clock()
+        self.task.Mouse.setVisible(1)  # Show mouse
 
-        n_clicks, prev_button_state = 0, None
-        clicks, n_correct = [], 0
+        mouse = event.Mouse(win=self.window)
+        mouse.mouseClock = core.Clock()
+        timeout_clock = core.Clock()
+
+        n_clicks = 0
+        prev_button_state = None
         while n_clicks < self.n_targets:
             mouse.clickReset()
-            buttons, time_click = mouse.getPressed(getTime=True)
-            rt = trial_clock.getTime()
+            buttons, click_time = mouse.getPressed(getTime=True)
 
             if sum(buttons) > 0 and buttons != prev_button_state:
-                for i, c in enumerate(circle):
-                    if mouse.isPressedIn(c):
-                        # Check not clicked on previous circle
-                        if i in [clk[0] for clk in clicks]:
-                            continue
-                        x, y = mouse.getPos()
-                        self.sendMessage(self.marker_response_start)
-                        clicks.append([i, x, y, time_click])
-                        n_clicks += 1
-                        mouse.mouseClock = core.Clock()
-                        if i < n_targets:
-                            n_correct += 1
-                            c.color = "green"
-                            if frame_type == "test":
-                                self.score += 1
-                        else:
-                            c.color = "red"
-                        if frame_type in ["test", "practice"]:
-                            stim = circle + self.trial_info_msg(frame_type)
-                        else:
-                            stim = circle
-                        self.present_stim(self.background + stim)
+                for i, circle in enumerate(self.circles):
+                    if not mouse.isPressedIn(circle.stimulus):
+                        continue
+                    elif i in [c.circle_idx for c in self.click_info]:  # Ignore if circle was previously clicked
+                        continue
 
-                        break
+                    n_clicks += 1
+                    is_correct = i < self.n_targets
+                    if is_correct:
+                        self.update_score(1)
+                        circle.color = "green"
+                    else:
+                        circle.color = "red"
+
+                    x, y = mouse.getPos()
+                    self.task.sendMessage(self.task.marker_response_start)
+                    self.click_info.append(ClickInfo(circle_idx=i, x=x, y=y, time=click_time, correct=is_correct))
+
+                    mouse.mouseClock = core.Clock()
+                    self.present_circles(send_location=False)
+                    break
+
             prev_button_state = buttons
             utils.countdown(0.001)
 
-            aborted = self.abort_task()
-            if aborted:
-                rt = "aborted"
-                break
+            check_if_aborted()
+            if timeout_clock.getTime() > self.click_timeout:
+                raise TrialTimeout()
 
-            if rt > self.clickTimeout:
-                rt = "timeout"
+        self.task.Mouse.setVisible(0)  # Hide mouse
+
+
+class ExampleFrame(TrialFrame):
+    """Show an example of the moving dots"""
+
+    def send_marker(self, marker: str) -> None:
+        pass  # Disable sending messages to the marker stream
+
+    def trial_info_message(self) -> Optional[visual.TextStim]:
+        return None  # The example has no info message
+
+    def update_score(self, delta: int) -> None:
+        pass  # Disable score updates
+
+
+class PracticeFrame(TrialFrame):
+    """Run a practice trial"""
+    def __init__(self, *args, max_attempts: int = 2, **kwargs):
+        """
+        :param max_attempts: The maximum number of practice attempts.
+        """
+        super().__init__(*args, **kwargs)
+
+        # Set appropriate marker entries for this trial
+        self.start_marker = self.task.marker_practice_trial_start
+        self.end_marker = self.task.marker_practice_trial_end
+
+        self.max_attempts = max_attempts
+
+    def trial_info_message(self) -> Optional[visual.TextStim]:
+        message = f"Click the {self.n_targets} dots that were green"
+        return visual.TextStim(self.window, text=message, pos=(0, -8), units="deg", color="blue")
+
+    def update_score(self, delta: int) -> None:
+        pass  # Disable score updates
+
+    def run(self) -> None:
+        for _ in range(self.max_attempts):
+            self.click_info = []
+            super().run()
+
+            n_correct = sum([c.correct for c in self.click_info])
+            if n_correct < self.n_targets:
+                self.present_alert(
+                    "Let's try again.\n"
+                    f"When the movement stops, click the {self.n_targets} dots that flashed."
+                )
+            else:
+                self.present_alert(f"You got {n_correct} of {self.n_targets} dots correct.")
                 break
-        self.Mouse.setVisible(0)
-        return clicks, n_correct, rt
 
 
 class MOT(Task_Eyetracker):
+    def __init__(
+        self,
+        path: str = "",
+        subj_id: str = "test",
+        task_name: str = "MOT",
+        numCircles: int = 10,
+        time_presentation: float = 3,
+        trial_duration: float = 5,
+        clickTimeout: float = 60,
+        seed: int = 2,
+        **kwargs,
+    ):
+        """
+        :param path: Output path for the task reslults.
+        :param subj_id: The subject ID.
+        :param task_name: The name of this task.
+        :param numCircles: The total number of circles to draw.
+        :param time_presentation: How long the targets flash black and green.
+        :param trial_duration: How long the circles move fot.
+        :param clickTimeout: How long to wait for all clicks to be completed before timing out.
+        :param seed: Seed used to initialize the random number sequence controlling all test trials.
+        """
+        super().__init__(**kwargs)
+
+        self.root_dir = op.join(neurobooth_os.__path__[0], "tasks", "MOT")
+        self.output_path = path
+        self.task_name = task_name
+        self.subject_id = subj_id
+        self.n_circles = numCircles
+        self.move_duration = trial_duration
+        self.flash_duration = time_presentation
+        self.click_timeout = clickTimeout
+        self.seed = seed
+        self.paper_size = 500  # size of stimulus graphics page
+
+        self.win.color = "white"
+        self.win.flip()
+
+        self.score: int = 0
+        self._init_frame_sequence()
+
+    def _init_frame_sequence(self) -> None:
+        """Create the sequences of frames that compose this task"""
+        self.continue_message = visual.ImageStim(
+            self.win,
+            image=op.join(self.root_dir, "continue.png"),
+            pos=(0, 0),
+            units="deg",
+        )
+
+        common_trial_kwargs = {
+            'flash_duration': self.flash_duration,
+            'movement_duration': self.move_duration,
+            'click_timeout': self.click_timeout,
+            'n_circles': self.n_circles,
+            'paper_size': self.paper_size,
+            'circle_radius': 15,
+            'velocity_noise': 15,
+        }
+
+        self.intro_chunk: List[MOTFrame] = [
+            ImageFrame(self.win, 'intro.png'),
+            ImageFrame(self.win, 'inst1.png'),
+            ExampleFrame(
+                self.win, self,
+                n_targets=2, circle_speed=0.5, trial_count=0, random_seed='example1',
+                **common_trial_kwargs
+            ),
+            ImageFrame(self.win, 'inst2.png'),
+            PracticeFrame(
+                self.win, self,
+                n_targets=2, circle_speed=0.5, trial_count=0, random_seed='practice1',
+                **common_trial_kwargs
+            ),
+            ImageFrame(self.win, 'inst3.png'),
+            PracticeFrame(
+                self.win, self,
+                n_targets=2, circle_speed=0.5, trial_count=0, random_seed='practice2',
+                **common_trial_kwargs
+            ),
+        ]
+
+        self.chunk_3tgt: List[MOTFrame] = [ImageFrame(self.win, 'targ3.png')]
+        self.chunk_4tgt: List[MOTFrame] = [ImageFrame(self.win, 'targ4.png')]
+        self.chunk_5tgt: List[MOTFrame] = [ImageFrame(self.win, 'targ5.png')]
+
+        for i in range(6):
+            speed = i + 1
+            trial_count = i + 1
+
+            seed = self.seed + i
+            self.chunk_3tgt.append(TrialFrame(
+                self.win, self,
+                n_targets=3, circle_speed=speed, trial_count=trial_count, random_seed=seed,
+                **common_trial_kwargs
+            ))
+
+            seed = self.seed + i + 10
+            self.chunk_4tgt.append(TrialFrame(
+                self.win, self,
+                n_targets=4, circle_speed=speed, trial_count=trial_count, random_seed=seed,
+                **common_trial_kwargs
+            ))
+
+            seed = self.seed + i + 20
+            self.chunk_5tgt.append(TrialFrame(
+                self.win, self,
+                n_targets=5, circle_speed=speed, trial_count=trial_count, random_seed=seed,
+                **common_trial_kwargs
+            ))
+
+
+### OLD Code below for reference
+
+
+class MOT_old(Task_Eyetracker):
     def __init__(
         self,
         path: str = "",
