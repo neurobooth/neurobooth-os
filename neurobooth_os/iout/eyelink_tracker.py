@@ -98,8 +98,9 @@ class EyeTracker:
         try:
             self.tk = pylink.EyeLink(self.IP)
         except RuntimeError:
-            print("RuntimeError: Could not connect to tracker at", self.IP)
-            return
+            msg_text = f"RuntimeError: Could not connect to tracker at %s" % self.IP
+            print(msg_text)
+            self.logger.error(msg_text)
 
         if self.IP is not None:
             self.tk.setAddress(self.IP)
