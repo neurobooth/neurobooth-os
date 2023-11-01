@@ -391,6 +391,12 @@ def gui():
     database = cfg.neurobooth_config["database"]["dbname"]
     database, nodes, host_ctr, port_ctr = _get_ports(database=database)
 
+    # declare and intialize vars
+    subject_id = None
+    first_name = None
+    last_name = None
+    tasks = None
+
     conn = meta.get_conn(database=database)
     window = _win_gen(_init_layout, conn)
 
