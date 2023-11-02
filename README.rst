@@ -22,9 +22,9 @@ and it should not give any error messages.
 
 Install Pylink running on the STM:
 
-``
+```
   $ pip install --index-url=https://pypi.sr-support.com sr-research-pylink
-``
+```
 
 If pip install from sr-research doesn't work, please follow the following steps:
 
