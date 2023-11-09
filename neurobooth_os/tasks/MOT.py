@@ -179,10 +179,6 @@ class TrialFrame(MOTFrame):
     # Define trial type for generation of results CSV
     trial_type = 'test'
 
-    # If enabled, write every updated circle position to a file.
-    # Mostly useful for debugging, but can be used to re-create the animation.
-    SAVE_CIRCLE_POSITIONS: bool = False
-
     def __init__(
             self,
             window: visual.Window,
@@ -255,11 +251,6 @@ class TrialFrame(MOTFrame):
         self.actual_animation_duration: float = -1
         self.completed: bool = False
         self.result_status: str = 'click'
-
-        # If enabled, save a log of circle positions recreate the animation
-        self.circle_history: Dict[str, List[float]] = {
-            'id': [], 'x': [], 'y': []
-        }
 
     def run(self) -> None:
         self.send_marker(self.start_marker)
@@ -375,10 +366,6 @@ class TrialFrame(MOTFrame):
             stimuli.append(stim)
             if send_location:
                 self.task.send_target_loc(stim.pos, target_name=f"target_{i}")
-            if self.SAVE_CIRCLE_POSITIONS:
-                self.circle_history['id'].append(i)
-                self.circle_history['x'].append(stim.pos[0])
-                self.circle_history['y'].append(stim.pos[1])
         stimuli.append(self.trial_info_message())
         self.present_stimuli(stimuli)
 
@@ -705,7 +692,6 @@ class MOT(Task_Eyetracker):
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
 
         self.save_results()
-        self.save_circle_history()
 
         if prompt:  # Check if task should be repeated
             func_kwargs_func = {"prompt": prompt}
@@ -760,23 +746,6 @@ class MOT(Task_Eyetracker):
 
         self.save_csv(results_df, 'results')
         self.save_csv(outcome_df, 'outcomes')
-
-    def save_circle_history(self):
-        circle_history = []
-        for i, frame in enumerate(chain(self.intro_chunk, self.chunk_3tgt, self.chunk_4tgt, self.chunk_5tgt)):
-            if not (isinstance(frame, TrialFrame) and frame.SAVE_CIRCLE_POSITIONS):
-                continue
-            df = pd.DataFrame.from_dict(frame.circle_history)
-            df['id'] = df['id'].astype(int)
-            df['frame'] = i
-            df['trial_type'] = frame.trial_type
-            df['trial_count'] = frame.trial_count
-            df['random_seed'] = str(frame.random_seed)
-            circle_history.append(df)
-
-        if circle_history:
-            circle_history = pd.concat(circle_history, axis=0)
-            self.save_csv(circle_history, 'circle_history')
 
 
 if __name__ == "__main__":
