@@ -338,7 +338,8 @@ class TrialFrame(MOTFrame):
 
         # Enforce proximity limits
         # TODO: Original code incorrectly excluded last circle from loop. See if we want to keep fix wrt RNG sequence.
-        for i, circle in enumerate(self.circles[1:]):
+        # for i, circle in enumerate(self.circles[1:]):
+        for i, circle in enumerate(self.circles[1:-1]):
             # The below loop will always run at least once. It was originally coded this way, and keeping this
             # behavior maintains the same RNG sequence.
             too_close = True
@@ -496,7 +497,7 @@ class TrialFrame(MOTFrame):
             n_correct=sum([c.correct for c in self.click_info]),
             circle_speed=self.circle_speed,
             velocity_noise=self.velocity_noise,
-            trial_seed=self.random_seed,
+            random_seed=self.random_seed,
             animation_duration=self.actual_animation_duration,
             click_duration=max(0, *[c.time for c in self.click_info]),
             state='aborted' if not self.completed else self.result_status,
