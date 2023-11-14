@@ -9,6 +9,7 @@ from typing import Optional
 from neurobooth_os.log_manager import make_db_logger, APP_LOG_NAME
 import argparse
 import sys
+from tqdm import tqdm
 
 
 class TimeoutException(Exception):
@@ -47,6 +48,7 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
     logger.debug(f'{len(file_names)} files to transfer: {str(file_names)}')
 
     # Try to extract and save each file
+    file_names = tqdm(file_names, unit='file', desc='iPhone File Transfer')  # This wrapper creates a progress bar
     for file_name, file_hash in zip(file_names, file_hashes):
         # Parse the session folder out of the file name
         sess_name = re.findall("[0-9]*_[0-9]{4}-[0-9]{2}-[0-9]{2}", file_name)
