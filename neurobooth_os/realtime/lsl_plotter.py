@@ -174,12 +174,11 @@ class stream_plotter:
         plt.close(fig)
 
 
-# This is a workaround for Windows-specific bug in python 3.8 loop management
-# TODO: Check for fix in newer Python version when we upgrade
-asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-
 def mypause(interval):
+    # This is a workaround for Windows-specific bug in python 3.8 loop management
+    # TODO: Check for fix in newer Python version when we upgrade
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     backend = plt.rcParams["backend"]
     if backend in matplotlib.rcsetup.interactive_bk:
         figManager = matplotlib._pylab_helpers.Gcf.get_active()
