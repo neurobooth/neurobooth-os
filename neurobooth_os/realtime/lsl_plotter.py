@@ -4,6 +4,7 @@ Created on Fri Mar 19 17:43:09 2021
 
 @author: Adonay
 """
+import asyncio
 
 import numpy as np
 import pylsl
@@ -70,11 +71,11 @@ class stream_plotter:
         self.inlets = inlets
 
         if any(
-            [
-                True
-                for k in ["Mouse", "mbient", "Audio", "EyeLink"]
-                if any(k in v for v in list(inlets))
-            ]
+                [
+                    True
+                    for k in ["Mouse", "mbient", "Audio", "EyeLink"]
+                    if any(k in v for v in list(inlets))
+                ]
         ):
             print("starting thread update_ts")
             self.thread_ts = threading.Thread(target=self.update_ts, daemon=True)
@@ -147,9 +148,9 @@ class stream_plotter:
                     inlet.line = axs[ax_ith].plot(inlet.xdata, inlet.ydata)
 
                 inlet.ydata = np.vstack(
-                    (inlet.ydata[ts.shape[0] - buff_size : -1, :], tv)
+                    (inlet.ydata[ts.shape[0] - buff_size: -1, :], tv)
                 )
-                inlet.xdata = np.hstack((inlet.xdata[ts.shape[0] - buff_size : -1], ts))
+                inlet.xdata = np.hstack((inlet.xdata[ts.shape[0] - buff_size: -1], ts))
 
                 for i, chn in enumerate(inlet.ydata.T):
                     inlet.line[i].set_data(inlet.xdata, chn)
@@ -171,6 +172,11 @@ class stream_plotter:
 
         self.pltotting_ts = False
         plt.close(fig)
+
+
+# This is a workaround for Windows-specific bug in python 3.8 loop management
+# TODO: Check for fix in newer Python version when we upgrade
+asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 def mypause(interval):
