@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 import psutil
 from typing import Dict
+import asyncio
 
 import PySimpleGUI as sg
 import liesl
@@ -609,6 +610,11 @@ def gui():
 
 def main():
     """The starting point of Neurobooth"""
+
+    # This is a workaround for Windows-specific bug in python 3.8 loop management
+    # TODO: Check for fix in newer Python version when we upgrade
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     cfg.load_config()  # Load Neurobooth-OS configuration
     logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
     try:
