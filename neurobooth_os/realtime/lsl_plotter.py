@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Mar 19 17:43:09 2021
-
-@author: Adonay
+Plots device output in realtime
 """
-import asyncio
 
 import numpy as np
 import pylsl
@@ -12,7 +9,6 @@ import matplotlib.pyplot as plt
 import matplotlib
 import cv2
 import threading
-import time
 
 
 def create_lsl_inlets(stream_ids):
