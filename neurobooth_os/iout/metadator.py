@@ -11,7 +11,6 @@ from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, Any
 
-from psycopg2 import connection
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
 from neurobooth_terra import Table
@@ -198,23 +197,36 @@ def _get_instruction_kwargs(instruction_id, conn):
     return dict_instr
 
 
-def log_task_params(conn: connection, log_task_id: str, task_param_dictionary: Dict[str, Any]):
+def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_dictionary: Dict[str, Any]):
     """
     Logs task parameters (specifically, the stimulus params and instruction params) to the database.
     @param conn: postgres database connection
+    @param stimulus_id: primary key from the nb_stimulus table. Identifies the current stimulus
     @param log_task_id: primary key from the log_task table for the current task and session
     @param task_param_dictionary: dictionary of string keys and values containing the data to be logged
     @return: None
     """
-    table = Table("log_task_param", conn=conn)
-    stimulus_id = next(iter(task_param_dictionary.keys()))
-    params = task_param_dictionary[stimulus_id]["kwargs"]
+    for key, value in task_param_dictionary.items():
+        value_type = str(type(value))
+        args = {
+            "log_task_id": log_task_id,
+            "stimulus_id": stimulus_id,
+            "key": key,
+            "value": value,
+            "value_type": value_type,
+        }
+        _log_task_parameter(conn, args)
+    conn.commit()
+        
 
-    for key, value in params.items():
-        value_type = type(value)
-        table.insert_rows([(log_task_id, stimulus_id, key, value, value_type)],
-                          cols=["log_task_id", "stimulus_id", "key", "value", "value_type"])
+def _log_task_parameter(conn, value_dict: Dict[str, Any]):
+    query = "INSERT INTO log_task_param " \
+             "(log_task_id, stimulus_id, key, value, value_type)  " \
+             " VALUES " \
+             " (%(log_task_id)s, %(stimulus_id)s, %(key)s, %(value)s, %(value_type)s)"
 
+    cursor = conn.cursor()
+    cursor.execute(query, value_dict)
 
 def _get_stimulus_kwargs(stimulus_id, conn):
     """Get task parameters from database."""

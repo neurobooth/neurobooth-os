@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Apr  2 08:01:51 2021
-
-@author: neurobooth
+Runs RC user interface for controlling a neurobooth session
 """
 
 import os
@@ -184,21 +182,28 @@ def _start_task_presentation(window, tasks, subject_id, session_id, steps, node)
 
 
 def _pause_tasks(steps, presentation_node):
+    cont_or_stop_msg = "Continue or Stop tasks"
+    calibrate_msg = "Calibrate"
+    continue_msg = "Continue tasks"
+    stop_msg = "Stop tasks"
+
     if "task_started" not in steps:
         sg.PopupError("Tasks not started")
     else:
         socket_message("pause tasks", presentation_node)
         resp = sg.Popup(
             "The next task will be paused. \n\nDon't respond until end current task",
-            custom_text=("Continue or Stop tasks", "Calibrate"),
+            custom_text=(cont_or_stop_msg, calibrate_msg),
         )
-        if resp == "Continue or Stop tasks":
+        if resp == cont_or_stop_msg:
             resp = sg.Popup(
                 custom_text=(
-                    "Continue tasks",
-                    "Stop tasks",
+                    continue_msg,
+                    stop_msg,
                 )
             )
+        if resp is None:  # handle user closing either popup using 'x' instead of making a choice
+            resp = continue_msg
         socket_message(resp.lower(), presentation_node)
 
 
@@ -390,6 +395,12 @@ def gui():
     """
     database = cfg.neurobooth_config["database"]["dbname"]
     database, nodes, host_ctr, port_ctr = _get_ports(database=database)
+
+    # declare and intialize vars
+    subject_id = None
+    first_name = None
+    last_name = None
+    tasks = None
 
     conn = meta.get_conn(database=database)
     window = _win_gen(_init_layout, conn)
@@ -598,6 +609,7 @@ def gui():
 
 def main():
     """The starting point of Neurobooth"""
+
     cfg.load_config()  # Load Neurobooth-OS configuration
     logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
     try:
@@ -608,11 +620,11 @@ def main():
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
         logger.critical("Stopping GUI (error-state)")
-        raise
+        raise e
     finally:
+        print("logging shutdown starting")
         logging.shutdown()
-
-
+        print("logging shutdown complete")
 
 if __name__ == "__main__":
     main()

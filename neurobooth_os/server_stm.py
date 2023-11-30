@@ -188,7 +188,7 @@ def run_stm(logger):
                     continue
 
                 log_task_id = meta._make_new_task_row(conn, subj_id)
-                meta.log_task_params(conn, log_task_id, this_task_kwargs)
+                meta.log_task_params(conn, task, log_task_id, task_func_dict[task]["kwargs"])
                 log_task["date_times"] = (
                     "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","
                 )
@@ -316,13 +316,13 @@ def run_stm(logger):
         elif "shutdown" in data:
             if system_resource_logger is not None:
                 system_resource_logger.stop()
-                system_resource_logger = None
 
             logger.info("Shutting down")
             win.close()
             sys.stdout = sys.stdout.terminal
             s1.close()
-            device_manager.close_streams()
+            if device_manager is not None:
+                device_manager.close_streams()
             break
 
         elif "time_test" in data:
