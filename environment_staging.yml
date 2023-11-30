@@ -163,4 +163,5 @@ dependencies:
       - zipp==3.17.0
       - zope-event==5.0
       - zope-interface==6.1
+      - git+https://github.com/neurobooth/neurobooth-terra.git#egg=neurobooth_terra
 prefix: C:\Users\lw412\anaconda3\envs\neurobooth-staging
