@@ -10,8 +10,10 @@ dependencies:
   - blosc=1.21.3=h6c2663c_0
   - bzip2=1.0.8=he774522_0
   - c-blosc2=2.10.5=h2f4ed9d_0
-  - ca-certificates=2023.7.22=h56e8100_0
+  - ca-certificates=2023.11.17=h56e8100_0
+  - cffi=1.16.0=py38h2bbff1b_0
   - colorama=0.4.6=py38haa95532_0
+  - dataclasses=0.8=pyhc8e2a94_3
   - executing=0.8.3=pyhd3eb1b0_0
   - hdf5=1.12.1=h51c971a_3
   - icc_rt=2022.1.0=h6049295_2
@@ -41,6 +43,7 @@ dependencies:
   - py-cpuinfo=9.0.0=py38haa95532_0
   - pyaudio=0.2.11=py38he774522_2
   - pycparser=2.21=pyhd3eb1b0_0
+  - pydantic=0.18.2=py_0
   - pygments=2.15.1=py38haa95532_1
   - pynacl=1.5.0=py38h8cc25b3_0
   - pytables=3.8.0=py38h4671533_3
