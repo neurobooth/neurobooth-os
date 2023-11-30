@@ -244,8 +244,6 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
                 _lay_butt("Initiate servers", "-init_servs-"),
                 _space(5),
                 _lay_butt("Connect Devices", "-Connect-"),
-                _space(5),
-                _lay_butt("Plot Devices", "plot"),
             ],
             [_space()],
             [

@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Mar 19 17:43:09 2021
-
-@author: Adonay
+Plots device output in realtime
 """
 
 import numpy as np
@@ -11,7 +9,6 @@ import matplotlib.pyplot as plt
 import matplotlib
 import cv2
 import threading
-import time
 
 
 def create_lsl_inlets(stream_ids):
@@ -70,11 +67,11 @@ class stream_plotter:
         self.inlets = inlets
 
         if any(
-            [
-                True
-                for k in ["Mouse", "mbient", "Audio", "EyeLink"]
-                if any(k in v for v in list(inlets))
-            ]
+                [
+                    True
+                    for k in ["Mouse", "mbient", "Audio", "EyeLink"]
+                    if any(k in v for v in list(inlets))
+                ]
         ):
             print("starting thread update_ts")
             self.thread_ts = threading.Thread(target=self.update_ts, daemon=True)
@@ -147,9 +144,9 @@ class stream_plotter:
                     inlet.line = axs[ax_ith].plot(inlet.xdata, inlet.ydata)
 
                 inlet.ydata = np.vstack(
-                    (inlet.ydata[ts.shape[0] - buff_size : -1, :], tv)
+                    (inlet.ydata[ts.shape[0] - buff_size: -1, :], tv)
                 )
-                inlet.xdata = np.hstack((inlet.xdata[ts.shape[0] - buff_size : -1], ts))
+                inlet.xdata = np.hstack((inlet.xdata[ts.shape[0] - buff_size: -1], ts))
 
                 for i, chn in enumerate(inlet.ydata.T):
                     inlet.line[i].set_data(inlet.xdata, chn)
