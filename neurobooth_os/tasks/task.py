@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Oct 14 11:03:01 2021
-
-Author: Sheraz Khan <sheraz@khansheraz.com>
-
-License: BSD-3-Clause
+ A task is an operation or sequence of steps performed presented to a subject via Psychopy.
 """
 
 from __future__ import absolute_import, division
@@ -16,8 +12,8 @@ import os.path as op
 from datetime import datetime
 import time
 
-from psychopy import visual, monitors, sound, core, event
-from psychopy import prefs
+from psychopy import visual, monitors, sound, event
+from pydantic import BaseModel
 
 import neurobooth_os
 from neurobooth_os.tasks import utils
@@ -25,22 +21,23 @@ from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 from neurobooth_os.log_manager import APP_LOG_NAME
 
 
-class Task:
+class Task(BaseModel):
     def __init__(
             self,
             instruction_file=None,
             marker_outlet=None,
             win=None,
-            full_screen=False,
+            full_screen: bool = False,
             text_continue_repeat=utils.text_continue_repeat,
             text_continue=utils.text_continue,
             text_practice_screen=utils.text_practice_screen,
             text_task=utils.text_task,
             text_end=utils.text_end,
             countdown=None,
-            task_repeatable_by_subject=True,
+            task_repeatable_by_subject: bool = True,
             **kwargs,
     ):
+        super().__init__()
         self.logger = logging.getLogger(APP_LOG_NAME)
 
         # Common markers
@@ -52,10 +49,7 @@ class Task:
         self.marker_practice_trial_end = "PracticeTrial_end"
         self.marker_response_start = "Response_start"
         self.marker_response_end = "Response_end"
-        #         self.marker_trial_start_Nth = 'Trial_start_{}'
-        #         self.marker_trial_end_Nth = 'Trial_end_{}'
 
-        # self.path_instruction_video = op.join(cfg.neurobooth_config['video_tasks'], instruction_file)
         self.task_files = None
         self.path_instruction_video = instruction_file
         self.full_screen = full_screen
@@ -210,7 +204,7 @@ class Task:
                 waitKeys=False,
             )
 
-    def present_task(self, prompt=True, duration=0, **kwargs):
+    def present_task(self, prompt=True, duration=0):
         self.countdown_task()
         self.show_text(screen=self.task_screen, msg="Task", audio=None, wait_time=3)
         if prompt:
@@ -240,9 +234,9 @@ class Task:
         if self.win_temp:
             self.win.close()
 
-    def run(self, prompt=True, duration=0, last_task=False, **kwargs):
+    def run(self, prompt=True, duration=0, last_task=False):
         self.present_instructions(prompt)
-        self.present_task(prompt, duration, **kwargs)
+        self.present_task(prompt, duration)
         self.present_complete(last_task)
         return self.events
 
@@ -251,7 +245,7 @@ class Task_countdown(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_task(self, prompt, duration, **kwargs):
+    def present_task(self, prompt: bool, duration: int, **kwargs):
         self.countdown_task()
 
         self.send_marker(self.marker_task_start, True)
@@ -276,8 +270,8 @@ class Task_pause(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def run(self, slide_image="end_slide_3_7_22.jpg", wait_key="return", **kwargs):
-        # slide_image : filename image in tasks/assets
+    # TODO (larry): parameterize the file name?
+    def run(self, slide_image="end_slide_3_7_22.jpg", wait_key="return"):
 
         self.screen = visual.ImageStim(
             self.win,
@@ -361,7 +355,7 @@ class Task_Eyetracker(Task):
         if self.eye_tracker is not None:
             self.eye_tracker.tk.doDriftCorrect(*vals)
 
-    def gaze_contingency():
+    def gaze_contingency(self):
         # move task
         pass
 
@@ -370,13 +364,11 @@ class Introduction_Task(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def run(self, **kwargs):
+    def run(self):
         self.present_instructions(prompt=False)
 
 
 if __name__ == "__main__":
-    # task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
-    # task.run()
 
     task = Task_countdown(
         instruction_file=op.join(
