@@ -60,7 +60,7 @@ class Saccade(Task_Eyetracker):
         else:
             raise ValueError("Only horizontal and vertical saccade is supported")
 
-    def run(self, prompt=True, last_task=False, **kwargs):
+    def run(self, prompt=True, last_task=False):
         self.present_instructions(prompt)
         self.run_trials(prompt)
         self.present_complete(last_task)
@@ -157,7 +157,5 @@ class Saccade(Task_Eyetracker):
 
 if __name__ == "__main__":
 
-    # task = Saccade()
-    # task.run(prompt=False)
     task = Saccade(direction="vertical", amplitude_deg=30)
     task.run(prompt=False)
