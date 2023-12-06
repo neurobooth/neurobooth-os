@@ -16,7 +16,6 @@ prefs.hardware["audioLatencyMode"] = 3
 import neurobooth_os
 from neurobooth_os import config
 
-# from neurobooth_os.iout.screen_capture import ScreenMirror
 from neurobooth_os.iout.lsl_streamer import DeviceManager
 from neurobooth_os.iout import metadator as meta
 from neurobooth_os.iout.mbient import Mbient

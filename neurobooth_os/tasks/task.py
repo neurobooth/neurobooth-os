@@ -13,7 +13,6 @@ from datetime import datetime
 import time
 
 from psychopy import visual, monitors, sound, event
-from pydantic import BaseModel
 
 import neurobooth_os
 from neurobooth_os.tasks import utils
@@ -21,7 +20,8 @@ from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 from neurobooth_os.log_manager import APP_LOG_NAME
 
 
-class Task(BaseModel):
+class Task():
+
     def __init__(
             self,
             instruction_file=None,
@@ -75,6 +75,7 @@ class Task(BaseModel):
 
         if win is None:
             # Setup the Window
+            raise RuntimeError("Shouldn't create a window in the task initializer.")
             self.win = utils.make_win(self.full_screen)
             self.win_temp = True
         else:
