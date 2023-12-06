@@ -35,7 +35,7 @@ class Saccade(Task_Eyetracker):
             self.pointer_size_deg, self.subj_screendist_cm, self.pixpercm
         )
 
-    def run(self, prompt=True, last_task=False):
+    def run(self, prompt=True, last_task=False, **kwarg):
         self.present_instructions(prompt)
         self.run_trials(prompt)
         self.present_complete(last_task)

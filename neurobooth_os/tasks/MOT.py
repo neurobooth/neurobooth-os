@@ -117,7 +117,7 @@ class MOT(Task_Eyetracker):
         if key_resp is not None:
             utils.get_keys(keyList=[key_resp])
 
-    def run(self, prompt=True, last_task=False, subj_id="test"):
+    def run(self, prompt=True, last_task=False, subj_id="test", **kwarg):
 
         self.score = 0
         self.abort = False

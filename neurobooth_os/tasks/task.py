@@ -235,7 +235,7 @@ class Task():
         if self.win_temp:
             self.win.close()
 
-    def run(self, prompt=True, duration=0, last_task=False):
+    def run(self, prompt=True, duration=0, last_task=False, **kwarg):
         self.present_instructions(prompt)
         self.present_task(prompt, duration)
         self.present_complete(last_task)
@@ -272,7 +272,7 @@ class Task_pause(Task):
         super().__init__(**kwargs)
 
     # TODO (larry): parameterize the file name?
-    def run(self, slide_image="end_slide_3_7_22.jpg", wait_key="return"):
+    def run(self, slide_image="end_slide_3_7_22.jpg", wait_key="return", **kwarg):
 
         self.screen = visual.ImageStim(
             self.win,
@@ -365,7 +365,7 @@ class Introduction_Task(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def run(self):
+    def run(self, **kwarg):
         self.present_instructions(prompt=False)
 
 

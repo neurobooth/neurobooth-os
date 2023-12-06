@@ -40,7 +40,7 @@ class Pursuit(Task_Eyetracker):
             self.angular_freq,
         ]
 
-    def run(self, prompt=True, last_task=False):
+    def run(self, prompt=True, last_task=False, **kwarg):
         self.present_instructions(prompt)
         self.run_trial(prompt, self.mov_pars)
         self.present_complete(last_task)

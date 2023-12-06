@@ -82,7 +82,7 @@ class MbientResetPause(Task):
                 units="deg",
             )
 
-    def run(self):
+    def run(self, **kwarg):
         self.task_state: TaskState = TaskState.RESET_NO_SUCCESS
         self.update_message()  # Present Intro Screen
 

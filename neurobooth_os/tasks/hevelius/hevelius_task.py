@@ -44,7 +44,7 @@ class hevelius_task(Task_Eyetracker):
         newloc[1] = int(offset["y"] - loc[1])
         return newloc
 
-    def run(self, prompt=False, last_Task=False):
+    def run(self, prompt=False, last_Task=False, **kwarg):
 
         practice_blocks = sorted(
             list(

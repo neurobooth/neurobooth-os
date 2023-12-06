@@ -244,14 +244,6 @@ def _get_stimulus_kwargs(stimulus_id, conn):
         params = stimulus_df["parameters"].values[0]
         task_kwargs.update(params)
 
-    # Load args from jason if any
-    (stim_fparam,) = stimulus_df["parameters_file"]
-    if stim_fparam is not None:
-        dirpath = op.split(neurobooth_os.__file__)[0]
-        with open(op.join(dirpath, stim_fparam.replace("./", "")), "rb") as f:
-            parms = json.load(f)
-        task_kwargs.update(parms)
-
     return stim_file, task_kwargs
 
 
