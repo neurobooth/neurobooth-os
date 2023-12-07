@@ -6,6 +6,7 @@ from typing import List, Dict, Optional, Union, NamedTuple
 
 import pandas as pd
 from psychopy import visual
+from psychopy.core import Clock, CountdownTimer
 from psychopy.visual.textbox2 import TextBox2
 from itertools import chain
 
@@ -261,7 +262,7 @@ class TrialFrame(MOTFrame):
         random.seed(self.random_seed)
 
         # Present moving circles
-        clock = core.Clock()
+        clock = Clock()
         self.circle_repulsion = self.circle_radius * 5  # Reflecting inconsistency in this value in prior code
         self.setup_circles()
         self.circle_repulsion = self.circle_radius * 4  # Reflecting inconsistency in this value in prior code
@@ -371,7 +372,7 @@ class TrialFrame(MOTFrame):
         self.present_stimuli(stimuli)
 
     def flash_targets(self) -> None:
-        countdown = core.CountdownTimer()
+        countdown = CountdownTimer()
         countdown.add(self.flash_duration)
         target_circles = self.circles[:self.n_targets]
         while countdown.getTime() > 0:
@@ -389,7 +390,7 @@ class TrialFrame(MOTFrame):
             check_if_aborted()
 
     def show_moving_circles(self) -> None:
-        clock = core.Clock()
+        clock = Clock()
         while clock.getTime() < self.movement_duration:
             self.move_circles()
             self.present_circles()
@@ -448,8 +449,8 @@ class TrialFrame(MOTFrame):
         self.task.Mouse.setVisible(1)  # Show mouse
 
         mouse = event.Mouse(win=self.window)
-        mouse.mouseClock = core.Clock()
-        timeout_clock = core.Clock()
+        mouse.mouseClock = Clock()
+        timeout_clock = Clock()
 
         n_clicks = 0
         prev_button_state = None
@@ -476,7 +477,7 @@ class TrialFrame(MOTFrame):
                     self.task.sendMessage(self.task.marker_response_start)
                     self.click_info.append(ClickInfo(circle_idx=i, x=x, y=y, time=click_time, correct=is_correct))
 
-                    mouse.mouseClock = core.Clock()
+                    mouse.mouseClock = Clock()
                     self.present_circles(send_location=False)
                     break
 
@@ -751,7 +752,7 @@ class MOT(Task_Eyetracker):
 
 
 if __name__ == "__main__":
-    from psychopy import sound, core, event, monitors, visual, monitors
+    from psychopy import sound, event, monitors, visual, monitors
 
     monitor_width = 55
     monitor_distance = 60
