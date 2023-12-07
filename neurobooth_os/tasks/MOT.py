@@ -79,6 +79,7 @@ class ImageFrame(MOTFrame):
         :param image_path: The path to the image to display.
         """
         super().__init__(window)
+        image_path = op.join(MOT.root_dir, image_path)
         self.stimulus = visual.ImageStim(self.window, image=image_path, pos=(0, 0), units="deg")
 
     def run(self) -> None:
@@ -560,6 +561,8 @@ class PracticeFrame(TrialFrame):
 
 
 class MOT(Task_Eyetracker):
+    root_dir = op.join(neurobooth_os.__path__[0], "tasks", "MOT")
+
     def __init__(
         self,
         path: str = "",
@@ -584,7 +587,6 @@ class MOT(Task_Eyetracker):
         """
         super().__init__(**kwargs)
 
-        self.root_dir = op.join(neurobooth_os.__path__[0], "tasks", "MOT")
         self.output_path = path
         self.task_name = task_name
         self.subject_id = subj_id
