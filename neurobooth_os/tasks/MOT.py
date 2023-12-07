@@ -216,6 +216,7 @@ class TrialFrame(MOTFrame):
         """
         super().__init__(window)
         self.task = task
+        self._allow_clicks = True
 
         # Time-related properties of the stimulus
         self.flash_duration = flash_duration
@@ -224,7 +225,6 @@ class TrialFrame(MOTFrame):
 
         # Visual properties of the stimulus
         self.trial_count = trial_count
-        self.trial_info_str = ''
         self.n_circles = n_circles
         self.n_targets = n_targets
         self.paper_size = paper_size
@@ -237,6 +237,11 @@ class TrialFrame(MOTFrame):
             fillColor="white",
             units="pix",
         )
+
+        # Settings for the trial information message at the bottom of the stimulus
+        self.click_message = f' {self.trial_count} of 6. Click {self.n_targets} dots  Score {{score}}'
+        self.animation_message = f' {self.trial_count} of 6.               Score {{score}}'
+        self.__current_message = ''
 
         # Properties regarding circle positioning and movement
         self.circle_radius = circle_radius
@@ -256,6 +261,7 @@ class TrialFrame(MOTFrame):
         self.result_status: str = 'click'
 
     def run(self) -> None:
+        self.__current_message = self.animation_message
         self.send_marker(self.start_marker)
         self.send_marker(f"number targets:{self.n_targets}")
 
@@ -273,8 +279,14 @@ class TrialFrame(MOTFrame):
         self.show_moving_circles()
         self.actual_animation_duration = round(clock.getTime(), 2)
 
+        if not self._allow_clicks:  # Skip click handler for example frame
+            self.completed = True
+            self.send_marker(self.end_marker)
+            return
+
         # Allow participants to click on the circles
         try:
+            self.__current_message = self.click_message
             self.handle_clicks()
         except TrialTimeout:
             self.send_marker(self.end_marker)
@@ -310,7 +322,7 @@ class TrialFrame(MOTFrame):
         self.task.score += delta
 
     def trial_info_message(self) -> Optional[visual.TextStim]:
-        message = f" {self.trial_count} of 6. {self.trial_info_str}   Score {self.task.score}"
+        message = self.__current_message.format(score=self.task.score)
         return visual.TextStim(self.window, text=message, pos=(0, -8), units="deg", color="blue")
 
     def present_alert(self, message: str) -> None:
@@ -380,14 +392,13 @@ class TrialFrame(MOTFrame):
             for circle in target_circles:
                 circle.color = 'green'
             self.present_circles(send_location=False)
-
-            utils.countdown(0.1)
+            utils.countdown(0.25)
 
             for circle in target_circles:
                 circle.color = 'black'
             self.present_circles(send_location=False)
+            utils.countdown(0.25)
 
-            utils.countdown(0.1)
             check_if_aborted()
 
     def show_moving_circles(self) -> None:
@@ -513,11 +524,16 @@ class ExampleFrame(TrialFrame):
     """Show an example of the moving dots"""
     trial_type = 'example'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._allow_clicks = False
+
+        # Disable the message at the bottom of the stimulus area
+        self.click_message = ''
+        self.animation_message = ''
+
     def send_marker(self, marker: str) -> None:
         pass  # Disable sending messages to the marker stream
-
-    def trial_info_message(self) -> Optional[visual.TextStim]:
-        return None  # The example has no info message
 
     def update_score(self, delta: int) -> None:
         pass  # Disable score updates
@@ -533,15 +549,15 @@ class PracticeFrame(TrialFrame):
         """
         super().__init__(*args, **kwargs)
 
+        # Set a different message to display at the bottom of the stimulus area
+        self.click_message = f'Click the {self.n_targets} dots that were green'
+        self.animation_message = ''
+
         # Set appropriate marker entries for this trial
         self.start_marker = self.task.marker_practice_trial_start
         self.end_marker = self.task.marker_practice_trial_end
 
         self.max_attempts = max_attempts
-
-    def trial_info_message(self) -> Optional[visual.TextStim]:
-        message = f"Click the {self.n_targets} dots that were green"
-        return visual.TextStim(self.window, text=message, pos=(0, -8), units="deg", color="blue")
 
     def update_score(self, delta: int) -> None:
         pass  # Disable score updates
