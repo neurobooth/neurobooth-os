@@ -5,8 +5,9 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Union, NamedTuple
 
 import pandas as pd
-from psychopy import visual
 from psychopy.core import Clock, CountdownTimer
+from psychopy.event import getKeys, Mouse
+from psychopy import visual
 from psychopy.visual.textbox2 import TextBox2
 from itertools import chain
 
@@ -27,7 +28,7 @@ def check_if_aborted(keys=("q",)) -> None:
     Check to see if a task has been aborted. If so, raise an exception.
     :param keys: The keys that will abort a task.
     """
-    if event.getKeys(keyList=keys):
+    if getKeys(keyList=keys):
         print("MOT Task aborted")  # Send message to CTR
         raise TaskAborted()
 
@@ -448,7 +449,7 @@ class TrialFrame(MOTFrame):
         """
         self.task.Mouse.setVisible(1)  # Show mouse
 
-        mouse = event.Mouse(win=self.window)
+        mouse = Mouse(win=self.window)
         mouse.mouseClock = Clock()
         timeout_clock = Clock()
 
@@ -752,7 +753,7 @@ class MOT(Task_Eyetracker):
 
 
 if __name__ == "__main__":
-    from psychopy import sound, event, monitors, visual, monitors
+    from psychopy import monitors
 
     monitor_width = 55
     monitor_distance = 60
