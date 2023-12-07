@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Union, NamedTuple
 
 import pandas as pd
-from psychopy.core import Clock, CountdownTimer
+from psychopy.core import Clock, CountdownTimer, wait
 from psychopy.event import getKeys, Mouse
 from psychopy import visual
 from psychopy.visual.textbox2 import TextBox2
@@ -220,6 +220,7 @@ class TrialFrame(MOTFrame):
 
         # Time-related properties of the stimulus
         self.flash_duration = flash_duration
+        self.flash_frequency = 0.2
         self.movement_duration = movement_duration
         self.click_timeout = click_timeout
 
@@ -239,8 +240,8 @@ class TrialFrame(MOTFrame):
         )
 
         # Settings for the trial information message at the bottom of the stimulus
-        self.click_message = f' {self.trial_count} of 6. Click {self.n_targets} dots  Score {{score}}'
-        self.animation_message = f' {self.trial_count} of 6.               Score {{score}}'
+        self.click_message = f' {self.trial_count} of 6.    Click {self.n_targets} dots     Score {{score}}'
+        self.animation_message = f' {self.trial_count} of 6.                     Score {{score}}'
         self.__current_message = ''
 
         # Properties regarding circle positioning and movement
@@ -285,8 +286,9 @@ class TrialFrame(MOTFrame):
             return
 
         # Allow participants to click on the circles
+        self.__current_message = self.click_message
+        self.present_circles(send_location=False)  # Show updated message to screen
         try:
-            self.__current_message = self.click_message
             self.handle_clicks()
         except TrialTimeout:
             self.send_marker(self.end_marker)
@@ -303,7 +305,7 @@ class TrialFrame(MOTFrame):
 
         self.send_marker(self.end_marker)
         self.completed = True
-        utils.countdown(0.5)
+        wait(0.5)
 
     def send_marker(self, marker: str) -> None:
         """
@@ -392,16 +394,16 @@ class TrialFrame(MOTFrame):
             for circle in target_circles:
                 circle.color = 'green'
             self.present_circles(send_location=False)
-            utils.countdown(0.25)
+            wait(self.flash_frequency)
 
             for circle in target_circles:
                 circle.color = 'black'
             self.present_circles(send_location=False)
-            utils.countdown(0.25)
+            wait(self.flash_frequency)
 
             check_if_aborted()
 
-    def show_moving_circles(self) -> None:
+    def  show_moving_circles(self) -> None:
         clock = Clock()
         while clock.getTime() < self.movement_duration:
             self.move_circles()
@@ -432,14 +434,17 @@ class TrialFrame(MOTFrame):
 
                 # Look ahead one step: if it collides, then update the direction until no collision or timeout
                 for _ in range(1000):
-                    if circle.distance_to(other_circle) < self.circle_repulsion:
-                        # Could use uniform(-1, 1), but this way preserves old RNG sequence
-                        new_dir += random.choice([-1, 1]) * random.uniform(0, 1) * math.pi
+                    if circle.distance_to(other_circle) >= self.circle_repulsion:
+                        break  # No collision detected, continue to next circle
 
-                        # Compute Cartesian velocity vector and apply it
-                        vel_x = math.cos(new_dir) * self.circle_speed
-                        vel_y = math.sin(new_dir) * self.circle_speed
-                        circle.x, circle.y = old_x + vel_x, old_y + vel_y
+                    # Alter direction to avoid collision
+                    # Could use uniform(-1, 1), but this way preserves old RNG sequence
+                    new_dir += random.choice([-1, 1]) * random.uniform(0, 1) * math.pi
+
+                    # Compute Cartesian velocity vector and apply it
+                    vel_x = math.cos(new_dir) * self.circle_speed
+                    vel_y = math.sin(new_dir) * self.circle_speed
+                    circle.x, circle.y = old_x + vel_x, old_y + vel_y
 
             # Enforce elastic boundaries
             if circle.x >= (self.paper_size - circle.radius) or circle.x <= circle.radius:
@@ -494,7 +499,7 @@ class TrialFrame(MOTFrame):
                     break
 
             prev_button_state = buttons
-            utils.countdown(0.001)
+            wait(0.001)
 
             check_if_aborted()
             if timeout_clock.getTime() > self.click_timeout:
