@@ -608,7 +608,7 @@ class MOT(Task_Eyetracker):
         """Create the sequences of frames that compose this task"""
         self.continue_message = visual.ImageStim(
             self.win,
-            image="continue.png",
+            image=op.join(MOT.root_dir, "continue.png"),
             pos=(0, 0),
             units="deg",
         )
