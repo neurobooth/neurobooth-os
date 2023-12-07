@@ -663,7 +663,7 @@ class MOT(Task_Eyetracker):
             ImageFrame(self.win, 'inst3.png'),
             PracticeFrame(
                 self.win, self,
-                n_targets=2, circle_speed=0.5, trial_count=0, random_seed='practice2',
+                n_targets=3, circle_speed=0.5, trial_count=0, random_seed='practice2',
                 **common_trial_kwargs
             ),
         ]
