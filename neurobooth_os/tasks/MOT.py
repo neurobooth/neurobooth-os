@@ -240,7 +240,7 @@ class TrialFrame(MOTFrame):
         )
 
         # Settings for the trial information message at the bottom of the stimulus
-        self.click_message = f' {self.trial_count} of 6.    Click {self.n_targets} dots     Score {{score}}'
+        self.click_message = f' {self.trial_count} of 6.  Click {self.n_targets} dots  Score {{score}}'
         self.animation_message = f' {self.trial_count} of 6.                     Score {{score}}'
         self.__current_message = ''
 
@@ -492,7 +492,7 @@ class TrialFrame(MOTFrame):
 
                     x, y = mouse.getPos()
                     self.task.sendMessage(self.task.marker_response_start)
-                    self.click_info.append(ClickInfo(circle_idx=i, x=x, y=y, time=click_time, correct=is_correct))
+                    self.click_info.append(ClickInfo(circle_idx=i, x=x, y=y, time=min(click_time), correct=is_correct))
 
                     mouse.mouseClock = Clock()
                     self.present_circles(send_location=False)
