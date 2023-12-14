@@ -326,23 +326,23 @@ class TrialFrame(MOTFrame):
         self.task.score += delta
 
     def trial_info_message(self) -> List[visual.TextStim]:
-        offset = self.paper_size // 2 + 10
+        offset = self.paper_size // 2
         stimuli = []
         if self.__current_message:
             stimuli.append(visual.TextStim(
-                self.window, text=self.__current_message, color="blue",
-                alignText='center', alignHoriz='center', pos=(0, -offset), units="pix",
+                self.window, text=self.__current_message, color="blue", height=40,
+                alignText='center', alignHoriz='center', anchorVert='top', pos=(0, -offset-10), units="pix",
             ))
         if self.trial_count_message:
             stimuli.append(visual.TextStim(
-                self.window, text=self.trial_count_message, color="blue",
-                alignText='left', alignHoriz='left', pos=(-offset, offset), units="pix",
+                self.window, text=self.trial_count_message, color="blue", height=40,
+                alignText='left', alignHoriz='left', anchorVert='bottom', pos=(-offset, offset+10), units="pix",
             ))
         if self.score_message:
             score_message = self.score_message.format(score=self.task.score)
             stimuli.append(visual.TextStim(
-                self.window, text=score_message, color="blue",
-                alignText='right', alignHoriz='right', pos=(offset, offset), units="pix",
+                self.window, text=score_message, color="blue", height=40,
+                alignText='right', alignHoriz='right', anchorVert='bottom', pos=(offset, offset+10), units="pix",
             ))
         return stimuli
 
