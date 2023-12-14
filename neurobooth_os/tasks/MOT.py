@@ -614,7 +614,7 @@ class MOT(Task_Eyetracker):
         self.task_files = ''
         self.task_name = task_name
         self.subject_id = subj_id
-        
+
         self.n_circles = numCircles
         self.move_duration = trial_duration
         self.flash_duration = time_presentation
@@ -749,7 +749,7 @@ class MOT(Task_Eyetracker):
         fname = f"{self.subject_id}_{self.task_name}_{name}_v2{repetition_str}.csv"
         data.to_csv(self.output_path + fname)
         if len(self.task_files):
-            self.task_files = self.task_files[-1] + f', {fname}' + '}'
+            self.task_files = self.task_files[:-1] + f', {fname}' + '}'
         else:
             self.task_files += '{' + fname + '}'
 
