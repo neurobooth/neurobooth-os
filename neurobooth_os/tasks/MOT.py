@@ -4,6 +4,7 @@ import math
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Union, NamedTuple, Tuple
 
+import numpy as np
 import pandas as pd
 from psychopy.core import Clock, CountdownTimer, wait
 from psychopy.event import getKeys, Mouse
@@ -164,8 +165,30 @@ class CircleStimulus:
         return self.stimulus
 
 
-class CircleAnimator:
+class CircleAnimator(ABC):
     """This class is responsible for computing circle trajectories for a trial."""
+    def __init__(self, n_circles: int, paper_size: float, circle_radius: float):
+        """
+        :param n_circles: The total number of circles in the trial.
+        :param paper_size: The width or height of the square stimulus area (px).
+        :param circle_radius: The radius of each circle (px).
+        """
+        self.paper_size = paper_size
+        self.circles = [CircleModel(circle_radius, paper_size) for _ in range(n_circles)]
+
+    @abstractmethod
+    def initial_placement(self) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def step(self, elapsed_time: float) -> None:
+        raise NotImplementedError()
+
+
+class StepwiseAnimator(CircleAnimator):
+    """Step-by-step circle animation.
+    Can be used for "live" animation, but the actual velocity / number of steps will vary based on system load.
+    """
     def __init__(
             self,
             n_circles: int,
@@ -173,23 +196,25 @@ class CircleAnimator:
             circle_radius: float,
             circle_speed: float,
             velocity_noise: float,
+            random_seed: Union[int, str],
     ):
         """
         :param n_circles: The total number of circles in the trial.
         :param paper_size: The width or height of the square stimulus area (px).
         :param circle_radius: The radius of each circle (px).
-        :param circle_speed: The speed at which the circles move (px/s).
+        :param circle_speed: The speed at which the circles move (px/step).
         :param velocity_noise: Noise applied to the velocity vectors during circle motion (rad).
+        :param random_seed: A seed for the RNG to ensure consistency across sessions.
         """
-        self.paper_size = paper_size
+        super().__init__(n_circles, paper_size, circle_radius)
         self.circle_speed = circle_speed
         self.velocity_noise = velocity_noise
         self.circle_repulsion = circle_radius * 5
-
-        self.circles = [CircleModel(circle_radius, paper_size) for _ in range(n_circles)]
+        self.random_seed = random_seed
 
     def initial_placement(self) -> None:
         """Initialize circles to have random positions and directions."""
+        random.seed(self.random_seed)
         for circle in self.circles:
             circle.random_reposition()
             circle.random_direction()
@@ -202,12 +227,14 @@ class CircleAnimator:
             ]):
                 circle.random_reposition()
 
-    def step(self) -> None:
+    def step(self, elapsed_time: float = 0) -> None:
         """
         Move the circles one step in the animation.
         - Add noise to the velocity vector
         - Bounce circles off elastic boundaries
         - Avoid collisions between circles
+
+        :param elapsed_time: Ignored in this animation implementation.
         """
         for i, circle in enumerate(self.circles):
             old_x, old_y = circle.x, circle.y  # Save old coordinates
@@ -248,6 +275,41 @@ class CircleAnimator:
 
             # Compute final direction and update
             circle.direction = math.atan2(vel_y, vel_x)  # Use atan2 (not atan)!
+
+
+class ReplayAnimator(CircleAnimator):
+    """Replays a precomputed animation to allow for consistent/known speeds and trajectories"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def initial_placement(self) -> None:
+        """Place circles in the first step of the replayed animation"""
+        return  # TODO
+
+    def step(self, elapsed_time: float) -> None:
+        """
+        Place circles in their respective locations depending on the elapsed time.
+        :param elapsed_time: Seconds elapsed since animation start.
+        """
+        return  # TODO
+
+
+class SavedAnimationHander:
+    """Create and load precomputed animations."""
+    def run_animation(
+            self,
+            animator: StepwiseAnimator,
+    ):
+        raise NotImplementedError()
+
+    def save(self) -> None:
+        raise NotImplementedError()
+
+    def load(self) -> None:
+        raise NotImplementedError()
+
+    def get_replay(self) -> ReplayAnimator:
+        raise NotImplementedError()
 
 
 class TrialTimeout(Exception):
@@ -326,14 +388,14 @@ class TrialFrame(MOTFrame):
         self.click_timeout = click_timeout
 
         # Properties regarding circle positioning and movement
-        self.animation = CircleAnimator(
+        self.animation = StepwiseAnimator(
             n_circles=n_circles,
             paper_size=paper_size,
             circle_radius=circle_radius,
             circle_speed=circle_speed,
-            velocity_noise=velocity_noise * (math.pi / 180)  # deg -> rad
+            velocity_noise=velocity_noise * (math.pi / 180), # deg -> rad
+            random_seed=random_seed,
         )
-        self.random_seed = random_seed
 
         # Visual properties of the stimulus
         self.trial_count = trial_count
@@ -370,9 +432,6 @@ class TrialFrame(MOTFrame):
         self.__current_message = self.animation_message
         self.send_marker(self.start_marker)
         self.send_marker(f"number targets:{self.n_targets}")
-
-        # Set the random seed for this trial
-        random.seed(self.random_seed)
 
         # Present moving circles
         clock = Clock()
@@ -507,6 +566,7 @@ class TrialFrame(MOTFrame):
             self.animation.step()
             self.present_circles()
             check_if_aborted()
+        # TODO: One last step at last time if using precomputed trajectory
 
     def handle_clicks(self) -> None:
         """
@@ -566,7 +626,7 @@ class TrialFrame(MOTFrame):
             n_correct=sum([c.correct for c in self.click_info]),
             circle_speed=self.animation.circle_speed,
             velocity_noise=self.animation.velocity_noise,
-            random_seed=self.random_seed,
+            random_seed=self.animation.random_seed,
             animation_duration=self.actual_animation_duration,
             click_duration=max([0, *[c.time for c in self.click_info]]),
             state='aborted' if not self.completed else self.result_status,
