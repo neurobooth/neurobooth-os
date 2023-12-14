@@ -164,8 +164,8 @@ class CircleStimulus:
         return self.stimulus
 
 
-class CircleTrajectoryPlanner:
-    """This class is responsible for pre-computing circle trajectories for a trial."""
+class CircleAnimator:
+    """This class is responsible for computing circle trajectories for a trial."""
     def __init__(
             self,
             n_circles: int,
@@ -204,7 +204,7 @@ class CircleTrajectoryPlanner:
 
     def step(self) -> None:
         """
-        Move the circles one step in the simulation.
+        Move the circles one step in the animation.
         - Add noise to the velocity vector
         - Bounce circles off elastic boundaries
         - Avoid collisions between circles
@@ -326,7 +326,7 @@ class TrialFrame(MOTFrame):
         self.click_timeout = click_timeout
 
         # Properties regarding circle positioning and movement
-        self.circle_trajectory = CircleTrajectoryPlanner(
+        self.animation = CircleAnimator(
             n_circles=n_circles,
             paper_size=paper_size,
             circle_radius=circle_radius,
@@ -339,7 +339,7 @@ class TrialFrame(MOTFrame):
         self.trial_count = trial_count
         self.n_targets = n_targets
         self.paper_size = paper_size
-        self.circles = [CircleStimulus(c, self.window) for c in self.circle_trajectory.circles]
+        self.circles = [CircleStimulus(c, self.window) for c in self.animation.circles]
         self.background = visual.Rect(
             self.window,
             width=paper_size,
@@ -376,7 +376,7 @@ class TrialFrame(MOTFrame):
 
         # Present moving circles
         clock = Clock()
-        self.circle_trajectory.initial_placement()
+        self.animation.initial_placement()
         self.present_circles()
         self.flash_targets()
         self.show_moving_circles()
@@ -504,7 +504,7 @@ class TrialFrame(MOTFrame):
     def show_moving_circles(self) -> None:
         clock = Clock()
         while clock.getTime() < self.movement_duration:
-            self.circle_trajectory.step()
+            self.animation.step()
             self.present_circles()
             check_if_aborted()
 
@@ -564,8 +564,8 @@ class TrialFrame(MOTFrame):
             n_circles=len(self.circles),
             n_targets=self.n_targets,
             n_correct=sum([c.correct for c in self.click_info]),
-            circle_speed=self.circle_trajectory.circle_speed,
-            velocity_noise=self.circle_trajectory.velocity_noise,
+            circle_speed=self.animation.circle_speed,
+            velocity_noise=self.animation.velocity_noise,
             random_seed=self.random_seed,
             animation_duration=self.actual_animation_duration,
             click_duration=max([0, *[c.time for c in self.click_info]]),
