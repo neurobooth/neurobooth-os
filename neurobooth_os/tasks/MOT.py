@@ -519,7 +519,7 @@ class TrialFrame(MOTFrame):
             velocity_noise=self.velocity_noise,
             random_seed=self.random_seed,
             animation_duration=self.actual_animation_duration,
-            click_duration=max(0, *[c.time for c in self.click_info]),
+            click_duration=max([0, *[c.time for c in self.click_info]]),
             state='aborted' if not self.completed else self.result_status,
             trial_type=self.trial_type,
         )
