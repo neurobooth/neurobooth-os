@@ -248,7 +248,7 @@ class TrialFrame(MOTFrame):
 
         # Properties regarding circle positioning and movement
         self.circle_radius = circle_radius
-        self.circle_repulsion = circle_radius * 5  # Repulsion during setup is 5 times radius
+        self.circle_repulsion = circle_radius * 4
         self.circle_speed = circle_speed
         self.velocity_noise = velocity_noise * math.pi / 180  # deg -> rad
         self.random_seed = random_seed
@@ -273,10 +273,7 @@ class TrialFrame(MOTFrame):
 
         # Present moving circles
         clock = Clock()
-        self.circle_repulsion = self.circle_radius * 5  # Reflecting inconsistency in this value in prior code
         self.setup_circles()
-        self.circle_repulsion = self.circle_radius * 4  # Reflecting inconsistency in this value in prior code
-        self.move_circles()  # Initial movement is holdover from prior code to preserve RNG sequence
         self.present_circles()
         self.flash_targets()
         self.show_moving_circles()
@@ -374,18 +371,12 @@ class TrialFrame(MOTFrame):
         self.circles = [Circle(self.circle_radius, self.paper_size) for _ in range(self.n_circles)]
 
         # Enforce proximity limits
-        # TODO: Original code incorrectly excluded last circle from loop. See if we want to keep fix wrt RNG sequence.
-        # for i, circle in enumerate(self.circles[1:]):
-        for i, circle in enumerate(self.circles[1:-1]):
-            # The below loop will always run at least once. It was originally coded this way, and keeping this
-            # behavior maintains the same RNG sequence.
-            too_close = True
-            while too_close:
+        for i, circle in enumerate(self.circles[1:]):
+            while any([  # Check if too close to circles earlier in the array
+                circle.distance_to(other_circle) < self.circle_repulsion
+                for other_circle in self.circles[:(i+1)]
+            ]):
                 circle.random_reposition()
-                too_close = any([  # Check to see if the circle is still to close to another circle
-                    circle.distance_to(other_circle) < self.circle_repulsion
-                    for other_circle in self.circles[:i+1]
-                ])
 
         # Make stimulus objects
         for circle in self.circles:
@@ -423,7 +414,7 @@ class TrialFrame(MOTFrame):
 
             check_if_aborted()
 
-    def  show_moving_circles(self) -> None:
+    def show_moving_circles(self) -> None:
         clock = Clock()
         while clock.getTime() < self.movement_duration:
             self.move_circles()
@@ -458,8 +449,7 @@ class TrialFrame(MOTFrame):
                         break  # No collision detected, continue to next circle
 
                     # Alter direction to avoid collision
-                    # Could use uniform(-1, 1), but this way preserves old RNG sequence
-                    new_dir += random.choice([-1, 1]) * random.uniform(0, 1) * math.pi
+                    new_dir += random.uniform(-1, 1) * math.pi
 
                     # Compute Cartesian velocity vector and apply it
                     vel_x = math.cos(new_dir) * self.circle_speed
