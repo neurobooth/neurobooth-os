@@ -271,11 +271,10 @@ def run_stm(logger):
                 )
                 log_task["task_notes_file"] = f"{session_name}-{task}-notes.txt"
 
-                if tsk_fun.task_files is not None:
-                    log_task["task_output_files"] = tsk_fun.task_files
-                else:
-                    if log_task.get("task_output_files", "empty") != "empty":
-                        del log_task["task_output_files"]
+                if len(tsk_fun.task_files):
+                    log_task["task_output_files"] = f"{{{', '.join(tsk_fun.task_files)}}}"
+                elif log_task.get("task_output_files", "empty") != "empty":
+                    del log_task["task_output_files"]
 
                 meta._fill_task_row(log_task_id, log_task, conn)
 

@@ -611,7 +611,6 @@ class MOT(Task_Eyetracker):
         super().__init__(**kwargs)
 
         self.output_path = path
-        self.task_files = ''
         self.task_name = task_name
         self.subject_id = subj_id
 
@@ -748,10 +747,7 @@ class MOT(Task_Eyetracker):
         repetition_str = f'_rep-{self.n_repetitions}' if self.n_repetitions > 0 else ''
         fname = f"{self.subject_id}_{self.task_name}_{name}_v2{repetition_str}.csv"
         data.to_csv(self.output_path + fname)
-        if len(self.task_files):
-            self.task_files = self.task_files[:-1] + f', {fname}' + '}'
-        else:
-            self.task_files += '{' + fname + '}'
+        self.task_files.append(fname)
 
     def save_results(self):
         results: List[TrialResult] = [

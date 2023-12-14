@@ -15,6 +15,7 @@ import logging
 import os.path as op
 from datetime import datetime
 import time
+from typing import List
 
 from psychopy import visual, monitors, sound, core, event
 from psychopy import prefs
@@ -56,7 +57,7 @@ class Task:
         #         self.marker_trial_end_Nth = 'Trial_end_{}'
 
         # self.path_instruction_video = op.join(cfg.neurobooth_config['video_tasks'], instruction_file)
-        self.task_files = None
+        self.task_files: List[str] = []
         self.path_instruction_video = instruction_file
         self.full_screen = full_screen
         self.events = []
