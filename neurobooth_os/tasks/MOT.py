@@ -2,7 +2,7 @@ import os.path as op
 import random
 import math
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional, Union, NamedTuple
+from typing import List, Dict, Optional, Union, NamedTuple, Tuple
 
 import pandas as pd
 from psychopy.core import Clock, CountdownTimer, wait
@@ -88,34 +88,30 @@ class ImageFrame(MOTFrame):
         self.present_stimuli([self.stimulus], wait_for_key=self.wait_key)
 
 
-class Circle:
-    """Represents a single circle in an MOT trial."""
-    def __init__(self, radius: float, paper_size: float, color: str = 'black'):
+class CircleModel:
+    """Represents the position of a single circle in an MOT trial."""
+    def __init__(self, radius: float, paper_size: float):
         """
         Create a new circle with random position and direction.
 
         :param radius: The radius of the circle (px).
         :param paper_size: The edge length of the square drawing area (px).
-        :param color: The color of the circle
         """
         self.radius = radius
         self.paper_size = paper_size
-        self.color = color
-        self.x = 0
-        self.y = 0
-
-        # Random placement and direction; order is important to keep same RNG sequence
-        self.random_reposition()
-        self.direction = random.random() * 2 * math.pi
-
-        self.stimulus = None
+        self.x, self.y = 0, 0
+        self.direction = 0
 
     def random_reposition(self) -> None:
         """Randomly reposition the circle."""
         self.x = random.random() * (self.paper_size - 2.0 * self.radius) + self.radius
         self.y = random.random() * (self.paper_size - 2.0 * self.radius) + self.radius
 
-    def distance_to(self, other: 'Circle') -> float:
+    def random_direction(self) -> None:
+        """Randomly pick a new direction of motion for the circle."""
+        self.direction = random.random() * 2 * math.pi
+
+    def distance_to(self, other: 'CircleModel') -> float:
         """
         Compute the distance to another circle.
         :param other: The other circle.
@@ -123,30 +119,135 @@ class Circle:
         """
         return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
 
-    def make_simulus(self, window: visual.Window) -> visual.BaseVisualStim:
+
+class CircleStimulus:
+    """The stimulus object (that is drawn to the screen) that wraps a CircleModel."""
+    def __init__(
+            self,
+            model: CircleModel,
+            window: visual.Window,
+            color: str = 'black'
+    ):
         """
-        Make the PsychoPy stimulus representing this circle.
+        Create a new stimulus wrapping the logical model.
+
+        :param model: The logical model of the circle's position.
         :param window: The window object the stimulus will be presented on.
-        :return: The PsychoPy stimulus object.
+        :param color: The color of the circle
         """
+        self.model = model
+        self.color = color
+
         self.stimulus = visual.Circle(
             window,
-            self.radius,
-            pos=(self.x - self.paper_size // 2, self.y - self.paper_size // 2),
+            self.model.radius,
+            pos=self.screen_position(),
             lineColor="black",
             fillColor=self.color,
             units="pix",
         )
-        return self.stimulus
+
+    def screen_position(self) -> Tuple[float, float]:
+        """
+        Translate logical circle coordinates to the appropriate screen coordinates.
+        :returns: The screen coordinates of the circle.
+        """
+        return self.model.x - self.model.paper_size // 2, self.model.y - self.model.paper_size // 2
 
     def update_stimulus(self) -> visual.BaseVisualStim:
         """
         Update the PsychoPy stimulus representing this circle.
         :return: The PsychoPy stimulus object.
         """
-        self.stimulus.pos = (self.x - self.paper_size // 2, self.y - self.paper_size // 2)
+        self.stimulus.pos = self.screen_position()
         self.stimulus.color = self.color
         return self.stimulus
+
+
+class CircleTrajectoryPlanner:
+    """This class is responsible for pre-computing circle trajectories for a trial."""
+    def __init__(
+            self,
+            n_circles: int,
+            paper_size: float,
+            circle_radius: float,
+            circle_speed: float,
+            velocity_noise: float,
+    ):
+        """
+        :param n_circles: The total number of circles in the trial.
+        :param paper_size: The width or height of the square stimulus area (px).
+        :param circle_radius: The radius of each circle (px).
+        :param circle_speed: The speed at which the circles move (px/s).
+        :param velocity_noise: Noise applied to the velocity vectors during circle motion (rad).
+        """
+        self.paper_size = paper_size
+        self.circle_speed = circle_speed
+        self.velocity_noise = velocity_noise
+        self.circle_repulsion = circle_radius * 5
+
+        self.circles = [CircleModel(circle_radius, paper_size) for _ in range(n_circles)]
+
+    def initial_placement(self) -> None:
+        """Initialize circles to have random positions and directions."""
+        for circle in self.circles:
+            circle.random_reposition()
+            circle.random_direction()
+
+        # Enforce proximity limits
+        for i, circle in enumerate(self.circles[1:]):
+            while any([  # Check if too close to circles earlier in the array
+                circle.distance_to(other_circle) < self.circle_repulsion
+                for other_circle in self.circles[:(i+1)]
+            ]):
+                circle.random_reposition()
+
+    def step(self) -> None:
+        """
+        Move the circles one step in the simulation.
+        - Add noise to the velocity vector
+        - Bounce circles off elastic boundaries
+        - Avoid collisions between circles
+        """
+        for i, circle in enumerate(self.circles):
+            old_x, old_y = circle.x, circle.y  # Save old coordinates
+            new_dir = circle.direction + random.uniform(-1, 1) * self.velocity_noise  # Apply noise to direction
+
+            # Compute Cartesian velocity vector and apply it
+            vel_x = math.cos(new_dir) * self.circle_speed
+            vel_y = math.sin(new_dir) * self.circle_speed
+            circle.x, circle.y = old_x + vel_x, old_y + vel_y
+
+            # Avoid collisions
+            for j, other_circle in enumerate(self.circles):
+                if i == j:  # Skip self
+                    continue
+
+                # Look ahead one step: if it collides, then update the direction until no collision or timeout
+                for _ in range(1000):
+                    if circle.distance_to(other_circle) >= self.circle_repulsion:
+                        break  # No collision detected, continue to next circle
+
+                    # Alter direction to avoid collision
+                    new_dir += random.uniform(-1, 1) * math.pi
+
+                    # Compute Cartesian velocity vector and apply it
+                    vel_x = math.cos(new_dir) * self.circle_speed
+                    vel_y = math.sin(new_dir) * self.circle_speed
+                    circle.x, circle.y = old_x + vel_x, old_y + vel_y
+
+            # Enforce elastic boundaries
+            if circle.x >= (self.paper_size - circle.radius) or circle.x <= circle.radius:
+                # Bounce off left/right boundaries
+                vel_x *= -1
+                circle.x = old_x + vel_x
+            if circle.y >= (self.paper_size - circle.radius) or circle.y <= circle.radius:
+                # Bounce off top/bottm boundaries
+                vel_y *= -1
+                circle.y = old_y + vel_y
+
+            # Compute final direction and update
+            circle.direction = math.atan2(vel_y, vel_x)  # Use atan2 (not atan)!
 
 
 class TrialTimeout(Exception):
@@ -224,16 +325,25 @@ class TrialFrame(MOTFrame):
         self.movement_duration = movement_duration
         self.click_timeout = click_timeout
 
+        # Properties regarding circle positioning and movement
+        self.circle_trajectory = CircleTrajectoryPlanner(
+            n_circles=n_circles,
+            paper_size=paper_size,
+            circle_radius=circle_radius,
+            circle_speed=circle_speed,
+            velocity_noise=velocity_noise * (math.pi / 180)  # deg -> rad
+        )
+        self.random_seed = random_seed
+
         # Visual properties of the stimulus
         self.trial_count = trial_count
-        self.n_circles = n_circles
         self.n_targets = n_targets
         self.paper_size = paper_size
-        self.circles: List[Circle] = []
+        self.circles = [CircleStimulus(c, self.window) for c in self.circle_trajectory.circles]
         self.background = visual.Rect(
             self.window,
-            width=self.paper_size,
-            height=self.paper_size,
+            width=paper_size,
+            height=paper_size,
             lineColor="black",
             fillColor="white",
             units="pix",
@@ -245,13 +355,6 @@ class TrialFrame(MOTFrame):
         self.click_message = f'Click {self.n_targets} dots'
         self.animation_message = ''
         self.__current_message = ''
-
-        # Properties regarding circle positioning and movement
-        self.circle_radius = circle_radius
-        self.circle_repulsion = circle_radius * 4
-        self.circle_speed = circle_speed
-        self.velocity_noise = velocity_noise * math.pi / 180  # deg -> rad
-        self.random_seed = random_seed
 
         # Set appropriate marker entries for this trial
         self.start_marker = task.marker_trial_start
@@ -273,7 +376,7 @@ class TrialFrame(MOTFrame):
 
         # Present moving circles
         clock = Clock()
-        self.setup_circles()
+        self.circle_trajectory.initial_placement()
         self.present_circles()
         self.flash_targets()
         self.show_moving_circles()
@@ -366,22 +469,6 @@ class TrialFrame(MOTFrame):
             )
         ], wait_for_key=self.wait_key)
 
-    def setup_circles(self) -> None:
-        """Randomly initialize circle start positions and movement directions."""
-        self.circles = [Circle(self.circle_radius, self.paper_size) for _ in range(self.n_circles)]
-
-        # Enforce proximity limits
-        for i, circle in enumerate(self.circles[1:]):
-            while any([  # Check if too close to circles earlier in the array
-                circle.distance_to(other_circle) < self.circle_repulsion
-                for other_circle in self.circles[:(i+1)]
-            ]):
-                circle.random_reposition()
-
-        # Make stimulus objects
-        for circle in self.circles:
-            circle.make_simulus(self.window)
-
     def present_circles(self, send_location: bool = True) -> None:
         """
         Present the background, circles, and info message to the screen.
@@ -417,57 +504,9 @@ class TrialFrame(MOTFrame):
     def show_moving_circles(self) -> None:
         clock = Clock()
         while clock.getTime() < self.movement_duration:
-            self.move_circles()
+            self.circle_trajectory.step()
             self.present_circles()
             check_if_aborted()
-
-    def move_circles(self) -> None:
-        """
-        Move the circles in preparation for the next PsychoPy frame.
-        - Add noise to the velocity vector
-        - Bounce circles off elastic boundaries
-        - Avoid collisions between circles
-        All computations are done outside the DOM.
-        """
-        for i, circle in enumerate(self.circles):
-            old_x, old_y = circle.x, circle.y  # Save old coordinates
-            new_dir = circle.direction + random.uniform(-1, 1) * self.velocity_noise  # Apply noise to direction
-
-            # Compute Cartesian velocity vector and apply it
-            vel_x = math.cos(new_dir) * self.circle_speed
-            vel_y = math.sin(new_dir) * self.circle_speed
-            circle.x, circle.y = old_x + vel_x, old_y + vel_y
-
-            # Avoid collisions
-            for j, other_circle in enumerate(self.circles):
-                if i == j:  # Skip self
-                    continue
-
-                # Look ahead one step: if it collides, then update the direction until no collision or timeout
-                for _ in range(1000):
-                    if circle.distance_to(other_circle) >= self.circle_repulsion:
-                        break  # No collision detected, continue to next circle
-
-                    # Alter direction to avoid collision
-                    new_dir += random.uniform(-1, 1) * math.pi
-
-                    # Compute Cartesian velocity vector and apply it
-                    vel_x = math.cos(new_dir) * self.circle_speed
-                    vel_y = math.sin(new_dir) * self.circle_speed
-                    circle.x, circle.y = old_x + vel_x, old_y + vel_y
-
-            # Enforce elastic boundaries
-            if circle.x >= (self.paper_size - circle.radius) or circle.x <= circle.radius:
-                # Bounce off left/right boundaries
-                vel_x *= -1
-                circle.x = old_x + vel_x
-            if circle.y >= (self.paper_size - circle.radius) or circle.y <= circle.radius:
-                # Bounce off top/bottm boundaries
-                vel_y *= -1
-                circle.y = old_y + vel_y
-
-            # Compute final direction and update
-            circle.direction = math.atan2(vel_y, vel_x)  # Use atan2 (not atan)!
 
     def handle_clicks(self) -> None:
         """
@@ -522,11 +561,11 @@ class TrialFrame(MOTFrame):
         :return: Results of the trial to be saved in the results CSV
         """
         return TrialResult(
-            n_circles=self.n_circles,
+            n_circles=len(self.circles),
             n_targets=self.n_targets,
             n_correct=sum([c.correct for c in self.click_info]),
-            circle_speed=self.circle_speed,
-            velocity_noise=self.velocity_noise,
+            circle_speed=self.circle_trajectory.circle_speed,
+            velocity_noise=self.circle_trajectory.velocity_noise,
             random_seed=self.random_seed,
             animation_duration=self.actual_animation_duration,
             click_duration=max([0, *[c.time for c in self.click_info]]),
