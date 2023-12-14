@@ -240,8 +240,10 @@ class TrialFrame(MOTFrame):
         )
 
         # Settings for the trial information message at the bottom of the stimulus
-        self.click_message = f' {self.trial_count} of 6.  Click {self.n_targets} dots  Score {{score}}'
-        self.animation_message = f' {self.trial_count} of 6.                     Score {{score}}'
+        self.trial_count_message = f'Trial {self.trial_count} of 6'
+        self.score_message = f'Score {{score}}'
+        self.click_message = f'Click {self.n_targets} dots'
+        self.animation_message = ''
         self.__current_message = ''
 
         # Properties regarding circle positioning and movement
@@ -323,9 +325,26 @@ class TrialFrame(MOTFrame):
         # This is a very simple method, but is provided so that it can be disabled via override
         self.task.score += delta
 
-    def trial_info_message(self) -> Optional[visual.TextStim]:
-        message = self.__current_message.format(score=self.task.score)
-        return visual.TextStim(self.window, text=message, pos=(0, -8), units="deg", color="blue")
+    def trial_info_message(self) -> List[visual.TextStim]:
+        offset = self.paper_size // 2 + 10
+        stimuli = []
+        if self.__current_message:
+            stimuli.append(visual.TextStim(
+                self.window, text=self.__current_message, color="blue",
+                alignText='center', alignHoriz='center', pos=(0, -offset), units="pix",
+            ))
+        if self.trial_count_message:
+            stimuli.append(visual.TextStim(
+                self.window, text=self.trial_count_message, color="blue",
+                alignText='left', alignHoriz='left', pos=(-offset, offset), units="pix",
+            ))
+        if self.score_message:
+            score_message = self.score_message.format(score=self.task.score)
+            stimuli.append(visual.TextStim(
+                self.window, text=score_message, color="blue",
+                alignText='right', alignHoriz='right', pos=(offset, offset), units="pix",
+            ))
+        return stimuli
 
     def present_alert(self, message: str) -> None:
         """
@@ -340,7 +359,7 @@ class TrialFrame(MOTFrame):
                 color="black",
                 units="deg",
                 lineSpacing=0.9,
-                letterHeight=1,
+                letterHeight=1.5,
                 text=message,
                 font="Arial",
                 borderColor=None,
@@ -383,7 +402,8 @@ class TrialFrame(MOTFrame):
             stimuli.append(stim)
             if send_location:
                 self.task.send_target_loc(stim.pos, target_name=f"target_{i}")
-        stimuli.append(self.trial_info_message())
+        for message in self.trial_info_message():
+            stimuli.append(message)
         self.present_stimuli(stimuli)
 
     def flash_targets(self) -> None:
@@ -536,6 +556,8 @@ class ExampleFrame(TrialFrame):
         # Disable the message at the bottom of the stimulus area
         self.click_message = ''
         self.animation_message = ''
+        self.score_message = ''
+        self.trial_count_message = ''
 
     def send_marker(self, marker: str) -> None:
         pass  # Disable sending messages to the marker stream
@@ -557,6 +579,8 @@ class PracticeFrame(TrialFrame):
         # Set a different message to display at the bottom of the stimulus area
         self.click_message = f'Click the {self.n_targets} dots that were green'
         self.animation_message = ''
+        self.score_message = ''
+        self.trial_count_message = ''
 
         # Set appropriate marker entries for this trial
         self.start_marker = self.task.marker_practice_trial_start
@@ -568,12 +592,12 @@ class PracticeFrame(TrialFrame):
         pass  # Disable score updates
 
     def run(self) -> None:
-        for _ in range(self.max_attempts):
+        for i in range(self.max_attempts):
             self.click_info = []
             super().run()
 
             n_correct = sum([c.correct for c in self.click_info])
-            if n_correct < self.n_targets:
+            if (n_correct < self.n_targets) and (i < self.max_attempts-1):
                 self.present_alert(
                     "Let's try again.\n"
                     f"When the movement stops, click the {self.n_targets} dots that flashed."
