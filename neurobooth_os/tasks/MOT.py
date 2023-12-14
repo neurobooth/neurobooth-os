@@ -611,8 +611,10 @@ class MOT(Task_Eyetracker):
         super().__init__(**kwargs)
 
         self.output_path = path
+        self.task_files = ''
         self.task_name = task_name
         self.subject_id = subj_id
+        
         self.n_circles = numCircles
         self.move_duration = trial_duration
         self.flash_duration = time_presentation
