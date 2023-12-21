@@ -1,6 +1,7 @@
 import os.path as op
 import random
 import math
+import time
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Union, NamedTuple, Tuple
 
@@ -174,6 +175,7 @@ class CircleAnimator(ABC):
         :param circle_radius: The radius of each circle (px).
         """
         self.paper_size = paper_size
+        self.circle_radius = circle_radius
         self.circles = [CircleModel(circle_radius, paper_size) for _ in range(n_circles)]
 
     @abstractmethod
@@ -279,37 +281,126 @@ class StepwiseAnimator(CircleAnimator):
 
 class ReplayAnimator(CircleAnimator):
     """Replays a precomputed animation to allow for consistent/known speeds and trajectories"""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, trajectories: np.ndarray, update_freq: int, paper_size: float, circle_radius: float):
+        """
+        Create an animator that replays a precomputed/saved trajectory.
+        :param trajectories: An SxCx2 array, for S animation steps and C circles.
+        :param update_freq: How many animation steps should occur per second.
+        :param paper_size: The width or height of the square stimulus area (px).
+        :param circle_radius: The radius of each circle (px).
+        """
+        self.trajectories = trajectories
+        self.update_freq = update_freq
+        super().__init__(n_circles=trajectories.shape[1], paper_size=paper_size, circle_radius=circle_radius)
+
+    def _update_to_step(self, step: int) -> None:
+        """
+        Update all circle positions to the given animation step.
+        :param step: The step (i.e., index into the trajectory array)
+        """
+        for i, circle in enumerate(self.circles):
+            circle.x = self.trajectories[step, i, 0]
+            circle.y = self.trajectories[step, i, 1]
 
     def initial_placement(self) -> None:
         """Place circles in the first step of the replayed animation"""
-        return  # TODO
+        self._update_to_step(0)
 
     def step(self, elapsed_time: float) -> None:
         """
         Place circles in their respective locations depending on the elapsed time.
         :param elapsed_time: Seconds elapsed since animation start.
         """
-        return  # TODO
+        step = int(np.rint(elapsed_time * self.update_freq))
+        step = min(step, self.trajectories.shape[0]-1)  # Don't go past the end of the array
+        self._update_to_step(step)
 
 
-class SavedAnimationHander:
+class UninitializedAnimationException(Exception):
+    def __init__(self):
+        super().__init__('Must call run_animation() or load() before save() or get_replay()')
+
+
+class SavedAnimationHandler:
     """Create and load precomputed animations."""
+    def __init__(self):
+        # Parameters used to store a replay
+        self.update_freq: Optional[int] = None
+        self.trajectories: Optional[np.ndarray] = None
+
+        # Additional parameters needed to initialize a CircleAnimator
+        self.paper_size: Optional[float] = None
+        self.circle_radius: Optional[float] = None
+
     def run_animation(
             self,
             animator: StepwiseAnimator,
-    ):
-        raise NotImplementedError()
+            animation_duration: float,
+            update_freq: int,
+    ) -> None:
+        """
+        Run the given stepwise animation. The update frequency coupled with the speed parameter of the animation will
+        determine the speed (in px/s) of the circles in the playback.
+        :param animator: The animation to run.
+        :param animation_duration: How many seconds to animate.
+        :param update_freq: The intended update rate (Hz) of the playback.
+        """
+        # Save animator properties
+        self.paper_size = animator.paper_size
+        self.circle_radius = animator.circle_radius
 
-    def save(self) -> None:
-        raise NotImplementedError()
+        # Initialize replay variables
+        self.update_freq = update_freq
+        n_steps = int(np.ceil(update_freq * animation_duration))
+        n_circles = len(animator.circles)
+        self.trajectories = np.zeros((n_steps, n_circles, 2), dtype='float64')
 
-    def load(self) -> None:
-        raise NotImplementedError()
+        # Run animation and save circle trajectories
+        animator.initial_placement()
+        for s in range(n_steps):
+            animator.step()
+            for c, circle in enumerate(animator.circles):
+                self.trajectories[s, c, 0] = circle.x
+                self.trajectories[s, c, 1] = circle.y
+
+    def _check_if_initialized(self) -> None:
+        if self.update_freq is None or self.trajectories is None:
+            raise UninitializedAnimationException()
+
+    def save(self, path: str) -> None:
+        """
+        Save the computed trajectories to a .npz file.
+        :param path: The path to the intended file. The file should end in .npz.
+        """
+        self._check_if_initialized()
+        np.savez_compressed(
+            path,
+            update_freq=self.update_freq,
+            trajectories=self.trajectories,
+            circle_radius=self.circle_radius,
+            paper_size=self.paper_size,
+            created_at=time.time(),
+        )
+
+    def load(self, path: str) -> None:
+        """
+        Load computed trajectories from a .npz file.
+        :param path: The path to the file.
+        """
+        data = np.load(path)
+        self.update_freq = data['update_freq']
+        self.trajectories = data['trajectories']
+        self.circle_radius = data['circle_radius']
+        self.paper_size = data['paper_size']
 
     def get_replay(self) -> ReplayAnimator:
-        raise NotImplementedError()
+        self._check_if_initialized()
+        return ReplayAnimator(
+            trajectories=self.trajectories,
+            update_freq=self.update_freq,
+            paper_size=self.paper_size,
+            circle_radius=self.circle_radius,
+        )
 
 
 class TrialTimeout(Exception):
@@ -393,7 +484,7 @@ class TrialFrame(MOTFrame):
             paper_size=paper_size,
             circle_radius=circle_radius,
             circle_speed=circle_speed,
-            velocity_noise=velocity_noise * (math.pi / 180), # deg -> rad
+            velocity_noise=velocity_noise * (math.pi / 180),  # deg -> rad
             random_seed=random_seed,
         )
 
