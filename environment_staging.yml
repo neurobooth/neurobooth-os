@@ -43,7 +43,6 @@ dependencies:
   - py-cpuinfo=9.0.0=py38haa95532_0
   - pyaudio=0.2.11=py38he774522_2
   - pycparser=2.21=pyhd3eb1b0_0
-  - pydantic=0.18.2=py_0
   - pygments=2.15.1=py38haa95532_1
   - pynacl=1.5.0=py38h8cc25b3_0
   - pytables=3.8.0=py38h4671533_3
@@ -117,6 +116,8 @@ dependencies:
       - psychtoolbox==3.0.19.0
       - psycopg2==2.9.9
       - pycap==2.6.0
+      - pydantic==2.5.2
+      - pydantic-core==2.14.5
       - pyglet==1.4.11
       - pylsl==1.16.2
       - pynput==1.7.6
