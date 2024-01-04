@@ -1,0 +1,63 @@
+continue_message: continue.png
+
+practice_chunks:
+  - practice:
+    - image_path: intro.png
+    - image_path: inst1.png
+    - trial_type: example
+      n_targets: 2
+      animation_path: placeholder.npz
+    - image_path: inst2.png
+    - trial_type: practice
+      n_targets: 2
+      animation_path: placeholder.npz
+    - image_path: inst3.png
+    - trial_type: practice
+      n_targets: 3
+      animation_path: placeholder.npz
+
+test_chunks:
+  - 3-target:
+    - image_path: targ3.png
+    - n_targets: 3
+      animation_path: placeholder.npz
+    - n_targets: 3
+      animation_path: placeholder.npz
+    - n_targets: 3
+      animation_path: placeholder.npz
+    - n_targets: 3
+      animation_path: placeholder.npz
+    - n_targets: 3
+      animation_path: placeholder.npz
+    - n_targets: 3
+      animation_path: placeholder.npz
+
+  - 4-target:
+    - image_path: targ4.png
+    - n_targets: 4
+      animation_path: placeholder.npz
+    - n_targets: 4
+      animation_path: placeholder.npz
+    - n_targets: 4
+      animation_path: placeholder.npz
+    - n_targets: 4
+      animation_path: placeholder.npz
+    - n_targets: 4
+      animation_path: placeholder.npz
+    - n_targets: 4
+      animation_path: placeholder.npz
+
+  - 5-target:
+    - image_path: targ5.png
+    - n_targets: 5
+      animation_path: placeholder.npz
+    - n_targets: 5
+      animation_path: placeholder.npz
+    - n_targets: 5
+      animation_path: placeholder.npz
+    - n_targets: 5
+      animation_path: placeholder.npz
+    - n_targets: 5
+      animation_path: placeholder.npz
+    - n_targets: 5
+      animation_path: placeholder.npz

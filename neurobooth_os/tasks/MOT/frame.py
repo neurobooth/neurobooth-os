@@ -7,10 +7,13 @@ Frames are responsible for visual presentation to the screen.
 For example, MOT.frame should handle flashing circles and actually drawing them to the screen.
 However, MOT.animate handles the logical model of each circle and manages _HOW_ their positions update.
 """
+from __future__ import annotations
 
 import math
 from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple, NamedTuple, Union
+from typing import TYPE_CHECKING, List, Dict, Optional, Tuple, NamedTuple, Union, Literal
+from typing_extensions import Annotated
+from pydantic import BaseModel, Field, TypeAdapter
 
 from psychopy import visual
 from psychopy.clock import Clock, wait, CountdownTimer
@@ -19,10 +22,15 @@ from psychopy.visual import TextBox2
 from psychopy.event import getKeys
 
 from neurobooth_os.tasks import utils
-from neurobooth_os.tasks.MOT.task import MOT
 from neurobooth_os.tasks.MOT.animate import StepwiseAnimator, CircleModel
 
+if TYPE_CHECKING:  # Prevent circular import during runtime
+    from neurobooth_os.tasks.MOT.task import MOT
 
+
+# ========================================================================
+# Task Abort Handling
+# ========================================================================
 class TaskAborted(Exception):
     """
     Exception raised when the task is aborted
@@ -40,6 +48,30 @@ def check_if_aborted(keys=("q",)) -> None:
         raise TaskAborted()
 
 
+# ========================================================================
+# Parameter Definitions
+# ========================================================================
+class ImageFrameParameters(BaseModel):
+    image_path: str
+
+
+TRIAL_TYPE = Literal['example', 'practice', 'test']
+
+
+class TrialFrameParameters(BaseModel):
+    trial_type: TRIAL_TYPE = 'test'
+    animation_path: str
+    n_targets: Annotated[int, Field(ge=1)]
+    flash_duration: Annotated[float, Field(gt=0)] = 3
+    click_timeout: Annotated[float, Field(gt=0)] = 60
+
+
+FrameChunk = Dict[str, List[Union[ImageFrameParameters, TrialFrameParameters]]]
+
+
+# ========================================================================
+# Frame Implementations
+# ========================================================================
 class MOTFrame(ABC):
     """
     The MOT task is composed of a sequence of frames.
@@ -82,13 +114,14 @@ class MOTFrame(ABC):
 
 class ImageFrame(MOTFrame):
     """Presents a single image to the window and waits for the space bar to be pressed."""
-    def __init__(self, window: visual.Window, image_name: str):
+    def __init__(self, window: visual.Window, task: MOT, image_name: str):
         """
         :param window: The PsychoPy window to draw to.
+        :param task: The MOT task object
         :param image_name: The name of the image to display. (The image should be in MOT/assets.)
         """
         super().__init__(window)
-        image_path = MOT.asset_path(image_name)
+        image_path = task.asset_path(image_name)
         self.stimulus = visual.ImageStim(self.window, image=image_path, pos=(0, 0), units="deg")
 
     def run(self) -> None:
@@ -170,7 +203,7 @@ class TrialResult(NamedTuple):
 class TrialFrame(MOTFrame):
     """Runs a single MOT trial (circles are presented, some flash, circles move, and the subject clicks.)"""
     # Define trial type for generation of results CSV
-    trial_type = 'test'
+    trial_type: TRIAL_TYPE = 'test'
 
     def __init__(
             self,
@@ -435,7 +468,7 @@ class TrialFrame(MOTFrame):
                     break
 
             prev_button_state = buttons
-            wait(0.001)
+            wait(0.001, hogCPUperiod=1)
 
             check_if_aborted()
             if timeout_clock.getTime() > self.click_timeout:

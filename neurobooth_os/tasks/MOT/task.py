@@ -10,7 +10,7 @@ This module handles task-level aspects and organization, such as:
 
 import os.path as op
 from typing import List
-
+from pydantic import BaseModel
 import pandas as pd
 from psychopy import visual
 from itertools import chain
@@ -25,11 +25,18 @@ from neurobooth_os.tasks.MOT.frame import (
     TrialFrame,
     ExampleFrame,
     PracticeFrame,
+    FrameChunk,
 )
 
 
+class MOTParameters(BaseModel):
+    continue_message: str
+    practice_chunks: List[FrameChunk]
+    test_chunks: List[FrameChunk]
+
+
 class MOT(Task_Eyetracker):
-    root_dir = op.join(neurobooth_os.__path__[0], 'tasks', '')
+    root_dir = op.join(neurobooth_os.__path__[0], 'tasks', 'MOT')
 
     def __init__(
         self,
@@ -80,7 +87,7 @@ class MOT(Task_Eyetracker):
         :param asset: The name of the asset/file.
         :return: The file system path to the asset.
         """
-        return op.join(cls.root_dir, '../assets', asset)
+        return op.join(cls.root_dir, 'assets', asset)
 
     def _init_frame_sequence(self) -> None:
         """Create the sequences of frames that compose this task"""
@@ -102,8 +109,8 @@ class MOT(Task_Eyetracker):
         }
 
         self.intro_chunk: List[MOTFrame] = [
-            ImageFrame(self.win, 'intro.png'),
-            ImageFrame(self.win, 'inst1.png'),
+            ImageFrame(self.win, self, 'intro.png'),
+            ImageFrame(self.win, self, 'inst1.png'),
             ExampleFrame(
                 self.win, self,
                 n_targets=2, circle_speed=0.5, trial_count=0, random_seed='example1',
@@ -115,7 +122,7 @@ class MOT(Task_Eyetracker):
                 n_targets=2, circle_speed=0.5, trial_count=0, random_seed='practice1',
                 **common_trial_kwargs
             ),
-            ImageFrame(self.win, 'inst3.png'),
+            ImageFrame(self.win, self, 'inst3.png'),
             PracticeFrame(
                 self.win, self,
                 n_targets=3, circle_speed=0.5, trial_count=0, random_seed='practice2',
@@ -123,9 +130,9 @@ class MOT(Task_Eyetracker):
             ),
         ]
 
-        self.chunk_3tgt: List[MOTFrame] = [ImageFrame(self.win, 'targ3.png')]
-        self.chunk_4tgt: List[MOTFrame] = [ImageFrame(self.win, 'targ4.png')]
-        self.chunk_5tgt: List[MOTFrame] = [ImageFrame(self.win, 'targ5.png')]
+        self.chunk_3tgt: List[MOTFrame] = [ImageFrame(self.win, self, 'targ3.png')]
+        self.chunk_4tgt: List[MOTFrame] = [ImageFrame(self.win, self, 'targ4.png')]
+        self.chunk_5tgt: List[MOTFrame] = [ImageFrame(self.win, self, 'targ5.png')]
 
         for i in range(6):
             speed = i + 1
