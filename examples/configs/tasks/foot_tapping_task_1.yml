@@ -1,0 +1,11 @@
+stimulus_id: foot_tapping_task_1
+stimulus_description: foot tap
+num_iterations: 1
+duration: 10.0
+arg_parser: iout.task_param_reader.py::FootTappingStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.fixations.py::Fixation_Target_sidetrials()
+target_size: 0
+trial_intruct:
+- Perform the task with your DOMINANT foot
+- Repeat the task with your NON-DOMINANT foot

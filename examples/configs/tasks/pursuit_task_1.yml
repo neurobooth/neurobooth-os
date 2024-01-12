@@ -1,0 +1,12 @@
+stimulus_id: pursuit_task_1
+stimulus_description: pursuit circle
+num_iterations: 2
+duration: null
+arg_parser: iout.task_param_reader.py::PursuitStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.smooth_pursuit.pursuit_task.py::Pursuit()
+target_size: 0.7
+peak_velocity_deg: 33.3
+amplitude_deg: 15
+starting_offset_deg: 270
+ntrials: 5

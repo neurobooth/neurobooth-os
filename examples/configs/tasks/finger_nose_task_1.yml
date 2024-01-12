@@ -1,0 +1,11 @@
+stimulus_id: finger_nose_task_1
+stimulus_description: finger to nose
+num_iterations: 1
+duration: 30.0
+arg_parser: iout.task_param_reader.py::FingerNoseStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.fixations.py::Fixation_Target_sidetrials()
+target_pos:
+- 0
+- 7.5
+target_size: 2.2

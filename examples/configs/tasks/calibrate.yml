@@ -1,9 +1,0 @@
----
- stimulus_id: "calibration_task_1"
- stimulus_description: "calibrate eyetracker"
- num_iterations: 1
- duration: 0
- stimulus_filetype: "psychopy"
- stimulus_file: "tasks.eye_tracker_calibrate.py::Calibrate()"
- prompt: True
-

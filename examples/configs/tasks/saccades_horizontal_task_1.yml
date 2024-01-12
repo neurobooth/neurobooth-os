@@ -1,0 +1,10 @@
+stimulus_id: saccades_horizontal_task_1
+stimulus_description: horizontal saccade
+num_iterations: 1
+duration: null
+arg_parser: iout.task_param_reader.py::SaccadesStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.saccade.saccade_task.py::Saccade()
+direction: horizontal
+amplitude_deg: 15
+target_size: 0.7

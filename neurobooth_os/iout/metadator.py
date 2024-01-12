@@ -1,11 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Jul 30 09:08:53 2021
-
-@author: CTR
-"""
-import os.path as op
-import json
 import logging
 from collections import OrderedDict
 from datetime import datetime
@@ -15,8 +8,9 @@ from sshtunnel import SSHTunnelForwarder
 import psycopg2
 from neurobooth_terra import Table
 
-import neurobooth_os
 import neurobooth_os.config as cfg
+from neurobooth_os.iout import task_param_reader
+from neurobooth_os.util.task_log_entry import TaskLogEntry
 
 
 def get_conn(database, validate_config_paths: bool = True):
@@ -88,7 +82,20 @@ def get_collection_ids(study_id, conn):
     return collection_ids
 
 
-def get_tasks(collection_id, conn):
+def get_task_ids_for_collection(collection_id, conn):
+    """
+
+    Parameters
+    ----------
+    collection_id: str
+        Unique identifier for collection: (The primary key of nb_collection table)
+    conn : object
+        Database connection
+
+    Returns
+    -------
+        List[str] of task_ids for all tasks in the collection
+    """
     table_collection = Table("nb_collection", conn=conn)
     collection_df = table_collection.query(where=f"collection_id = '{collection_id}'")
     (tasks_ids,) = collection_df["task_array"]
@@ -96,7 +103,10 @@ def get_tasks(collection_id, conn):
 
 
 def _new_tech_log_dict():
-    """Create a new log_task dict."""
+    """Create a new log_task dict.
+    TODO(larry): Consider removing.
+        Note the name should be ...task_log... not tech_log
+    """
     log_task = OrderedDict()
     log_task["subject_id"] = ""
     log_task["task_id"] = ""
@@ -120,7 +130,7 @@ def _new_session_log_dict(application_id="neurobooth_os"):
     return session_log
 
 
-def _make_new_task_row(conn, subject_id):
+def make_new_task_row(conn, subject_id):
     table = Table("log_task", conn=conn)
     return table.insert_rows([(subject_id,)], cols=["subject_id"])
 
@@ -150,34 +160,57 @@ def _make_session_id(conn, session_log):
     return session_id
 
 
-def _fill_task_row(task_id, dict_vals, conn):  # XXX: dict_vals -> log_task_dict
-    # task_id = str
-    # dict_vals = dict with key-vals to fill row
+def fill_task_row(log_task_id: str, task_log_entry:TaskLogEntry, conn) -> None:
+    """
+    Updates a row in log_task.
+
+    TODO: If the row isn't found, this fails silently. Needs revision in table.update_row
+
+    Parameters
+    ----------
+    log_task_id
+    task_log_entry
+    conn
+
+    Returns
+    -------
+        None
+    """
     table = Table("log_task", conn=conn)
+    dict_vals = task_log_entry.model_dump()
+
+    # delete subj_date as not present in DB
+    del dict_vals["subject_id_date"]
     vals = list(dict_vals.values())
-    table.update_row(task_id, tuple(vals), cols=list(dict_vals))
+    table.update_row(log_task_id, tuple(vals), cols=list(dict_vals))
 
 
-def _get_task_param(task_id, conn):
-    """Get .
+def get_task_param(task_id, conn):
+    """
 
+    Parameters
+    ----------
     task_id : str
-        The task_id
+        The unique identifier for a task
+    conn : object
+        database connection
+
+    Returns
+    -------
+        tuple of task parameters
     """
     # task_data, stimulus, instruction
     table_task = Table("nb_task", conn=conn)
     task_df = table_task.query(where=f"task_id = '{task_id}'")
-    (devices_ids,) = task_df["device_id_array"]
-    (sens_ids,) = task_df["sensor_id_array"]
+    (device_ids,) = task_df["device_id_array"]
+    (sensor_ids,) = task_df["sensor_id_array"]
     (stimulus_id,) = task_df["stimulus_id"]
     (instr_id,) = task_df["instruction_id"]
     instr_kwargs = _get_instruction_kwargs(instr_id, conn)
-    #  stim_file, stim_kwargs = meta._get_task_stim(task_stim_id, conn)
-    # task = {'instruction_kwargs': dict(), 'stimulus_kwargs': dict(), 'device_ids': ..., } ?
     return (
         stimulus_id,
-        devices_ids,
-        sens_ids,
+        device_ids,
+        sensor_ids,
         instr_kwargs,
     )  # XXX: name similarly in calling function
 
@@ -228,6 +261,7 @@ def _log_task_parameter(conn, value_dict: Dict[str, Any]):
     cursor = conn.cursor()
     cursor.execute(query, value_dict)
 
+
 def _get_stimulus_kwargs(stimulus_id, conn):
     """Get task parameters from database."""
     table_stimulus = Table("nb_stimulus", conn)
@@ -245,6 +279,15 @@ def _get_stimulus_kwargs(stimulus_id, conn):
         task_kwargs.update(params)
 
     return stim_file, task_kwargs
+
+
+def get_stimulus_kwargs_from_file(stimulus_id):
+    """Get task (stimulus) parameters from a yaml file."""
+
+    stimulus_file_name = stimulus_id + ".yml"
+    task_param_dict = task_param_reader.get_param_dictionary(stimulus_file_name)
+    stim_file = task_param_dict["stimulus_file"]
+    return stim_file, task_param_dict
 
 
 def _get_sensor_kwargs(sens_id, conn):
@@ -345,7 +388,7 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
 
 
 def _get_device_kwargs(task_id, conn):
-    stim_id, dev_ids, sens_ids, _ = _get_task_param(task_id, conn)
+    stim_id, dev_ids, sens_ids, _ = get_task_param(task_id, conn)
     dev_kwarg = {}
     for dev_id, dev_sens_ids in zip(dev_ids, sens_ids):
         # TODO test that dev_sens_ids are from correct dev_id, eg. dev_sens_ids =
@@ -364,15 +407,15 @@ def _get_device_kwargs(task_id, conn):
     return dev_kwarg
 
 
-def get_device_kwargs_by_task(collection_id, conn):
+def get_device_kwargs_by_task(collection_id, conn) -> OrderedDict:
     # Get devices kwargs for all the tasks
     # outputs dict with keys = stimulus_id, vals = dict with dev parameters
 
-    tasks = get_tasks(collection_id, conn)
+    tasks = get_task_ids_for_collection(collection_id, conn)
 
     tasks_kwarg = OrderedDict()
     for task in tasks:
-        stim_id, *_ = _get_task_param(task, conn)
+        stim_id, *_ = get_task_param(task, conn)
         task_kwarg = _get_device_kwargs(task, conn)
         tasks_kwarg[stim_id] = task_kwarg
 

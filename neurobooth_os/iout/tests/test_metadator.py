@@ -5,7 +5,7 @@ def test_task_addition(database):
 
     conn = meta.get_conn(database)
     subj_id = "Test"
-    task_id = meta._make_new_task_row(conn, subj_id)
+    task_id = meta.make_new_task_row(conn, subj_id)
 
     vals_dict = meta._new_tech_log_dict()
     vals_dict["subject_id"] = subj_id
@@ -16,4 +16,4 @@ def test_task_addition(database):
     vals_dict["collection_id"] = "mock_collection"
     vals_dict["site_id"] = "mock_site"
 
-    meta._fill_task_row(task_id, vals_dict, conn)
+    meta.fill_task_row(task_id, vals_dict, conn)

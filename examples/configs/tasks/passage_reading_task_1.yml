@@ -1,0 +1,8 @@
+stimulus_id: passage_reading_task_1
+stimulus_description: read passage
+num_iterations: 1
+duration: null
+arg_parser: iout.task_param_reader.py::PassageReadingStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.task_passage_reading.py::Passage_Reading()
+countdown: tasks/assets/countdown_speech_passage_reading_2022_04_20.mp4

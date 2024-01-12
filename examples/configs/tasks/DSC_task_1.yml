@@ -1,0 +1,8 @@
+stimulus_id: DSC_task_1
+stimulus_description: digit symbol coding
+num_iterations: 1
+duration: 60
+arg_parser: iout.task_param_reader.py::StimulusArgs
+stimulus_file_type: psychopy
+stimulus_file: tasks.DSC.py::DSC()
+task_repeatable_by_subject: false

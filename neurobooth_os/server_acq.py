@@ -38,11 +38,11 @@ def main():
         run_acq(logger)
         logger.debug("Stopping ACQ")
 
-    except Exception as e:
-        logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
-        logger.critical(e, exc_info=sys.exc_info())
-        logger.critical("Stopping ACQ (error-state)")
-        raise
+    except Exception as Argument:
+        logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(Argument)}",
+                        exc_info=sys.exc_info())
+        raise Argument
+
     finally:
         logging.shutdown()
 

@@ -1,0 +1,12 @@
+stimulus_id: MOT_task_1
+stimulus_description: multiple object tracking
+num_iterations: 1
+duration: null
+arg_parser: iout.task_param_reader.py::MotStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.MOT.py::MOT()
+time_presentation: 3
+trial_duration: 5
+clickTimeout: 60
+numCircles: 10
+task_repeatable_by_subject: false

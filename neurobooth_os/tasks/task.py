@@ -74,8 +74,7 @@ class Task():
             self.with_lsl = False
 
         if win is None:
-            # Setup the Window
-            raise RuntimeError("Shouldn't create a window in the task initializer.")
+            # Set up the Window
             self.win = utils.make_win(self.full_screen)
             self.win_temp = True
         else:
@@ -205,7 +204,7 @@ class Task():
                 waitKeys=False,
             )
 
-    def present_task(self, prompt=True, duration=0):
+    def present_task(self, prompt=True, duration=0, **kwargs):
         self.countdown_task()
         self.show_text(screen=self.task_screen, msg="Task", audio=None, wait_time=3)
         if prompt:
@@ -235,9 +234,9 @@ class Task():
         if self.win_temp:
             self.win.close()
 
-    def run(self, prompt=True, duration=0, last_task=False, **kwarg):
+    def run(self, prompt=True, duration=0, last_task=False, **kwargs):
         self.present_instructions(prompt)
-        self.present_task(prompt, duration)
+        self.present_task(prompt, duration, **kwargs)
         self.present_complete(last_task)
         return self.events
 
@@ -246,7 +245,7 @@ class Task_countdown(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_task(self, prompt: bool, duration: int, **kwargs):
+    def present_task(self, prompt, duration, **kwargs):
         self.countdown_task()
 
         self.send_marker(self.marker_task_start, True)
@@ -343,7 +342,6 @@ class Task_Eyetracker(Task):
 
     def startRecording(self):
         if self.eye_tracker is not None:
-            # params: file_sample, file_event, link_sampe, link_event (1-yes, 0-no)
             self.eye_tracker.tk.startRecording(1, 1, 1, 1)
             self.eye_tracker.paused = False
 
@@ -365,7 +363,7 @@ class Introduction_Task(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def run(self, **kwarg):
+    def run(self, **kwargs):
         self.present_instructions(prompt=False)
 
 
