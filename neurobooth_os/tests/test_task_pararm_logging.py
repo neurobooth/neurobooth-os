@@ -4,6 +4,7 @@ import unittest
 import db_test_utils
 from db_test_utils import get_connection, get_records, delete_records
 import neurobooth_os.iout.metadator as meta
+from neurobooth_os.tasks.task_importer import get_task_arguments
 
 table_name = "log_task_param"
 stimulus_id = "calibration_task_1"
@@ -53,7 +54,12 @@ class TestLogging(unittest.TestCase):
 
     def test_task_logging2(self):
         """Tests logging to database using make_db_logger with session and subject set"""
+
         param_dict = {"foo": "bar", "fizz": "buzz"}
+        task_func_dict = get_task_arguments('testing', db_test_utils.TEST_CONNECTION)
+
+        meta.log_task_params(db_test_utils.TEST_CONNECTION, stimulus_id, log_task_id,
+                             dict(task_func_dict[stimulus_id].stim_args))
 
         meta.log_task_params(db_test_utils.TEST_CONNECTION,
                              stimulus_id=stimulus_id,
