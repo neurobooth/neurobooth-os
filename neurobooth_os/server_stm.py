@@ -133,7 +133,7 @@ def run_stm(logger):
                         session.logger.info(f'Initiating task:{stimulus_id}:{task_id}:{log_task_id}:{tsk_start_time}')
                         ctr_msg: Optional[str] = None
                         while ctr_msg != "lsl_recording":
-                            ctr_msg = get_data_with_timeout(socket_1, 4)
+                            ctr_msg = get_data_with_timeout(session.socket, 4)
                         elapsed_time = time() - t0
                         session.logger.info(f'Waiting for CTR took: {elapsed_time:.2f}')
 
@@ -165,9 +165,9 @@ def run_stm(logger):
                         session.logger.info(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
 
                         # Check if pause requested, unpause or stop
-                        data = get_data_with_timeout(socket_1, 0.1)
+                        data = get_data_with_timeout(session.socket, 0.1)
                         if data == "pause tasks":
-                            data = pause(session, socket_1)
+                            data = pause(session)
 
                             # Next message tells what to do now that we paused
                             if data == "continue tasks":
@@ -189,7 +189,8 @@ def run_stm(logger):
             presented = True
 
         elif "shutdown" in data:
-            shutdown(session, socket_1)
+            session.shutdown()
+            sys.stdout = sys.stdout.terminal
             break
 
         elif "time_test" in data:
@@ -254,11 +255,11 @@ def start_acq(calib_instructions, executor, session:StmSession, stimulus_id: str
     acq_result.result()  # Raise any exceptions swallowed by the executor
 
 
-def pause(session, socket_1):
+def pause(session):
     """ Handle session pause """
     pause_screen = utl.create_text_screen(session.win, text="Session Paused")
     utl.present(session.win, pause_screen, waitKeys=False)
-    connx2, _ = socket_1.accept()
+    connx2, _ = session.socket.accept()
     data = connx2.recv(1024)
     data = data.decode("utf-8")
     session.logger.info(f'PAUSE MESSAGE RECEIVED: {data}')
@@ -372,14 +373,6 @@ def extract_task_log_entry(collection_id: str, data: str, database_name: str):
         del log_entry["subject_id-date"]
 
     return TaskLogEntry(**log_entry)
-
-
-def shutdown(stm_session: StmSession, socket_1:socket):
-    """Close resources at the end of the session"""
-    stm_session.shutdown()
-    sys.stdout = sys.__stdout__
-    if socket_1 is not None:
-        socket_1.close()
 
 
 if __name__ == '__main__':

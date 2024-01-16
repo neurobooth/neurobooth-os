@@ -107,6 +107,8 @@ class StmSession(BaseModel):
         self.win.close()
         if self.device_manager is not None:
             self.device_manager.close_streams()
+        if self.socket is not None:
+            self.socket.close()
 
     def as_dict(self):
 
