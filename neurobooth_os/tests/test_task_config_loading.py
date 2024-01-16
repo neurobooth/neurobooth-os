@@ -68,6 +68,11 @@ class TestTask(unittest.TestCase):
         self.assertEquals('mp4', args.instruction_filetype)
         self.assertEquals('oculomotor_horizontal_saccades_2022_06_03_v0.6.mp4', args.instruction_file)
 
+    def test_instruction_args_when_no_instructions(self):
+        conn = meta.get_conn("mock_neurobooth_1", False)
+        task_args = task_importer._get_task_arg('clapping_test', conn)
+        print(task_args)
+
     # Integration test (uses database)
     def test_all_validated_task_args_in_folder(self):
         connection = meta.get_conn("neurobooth", False)

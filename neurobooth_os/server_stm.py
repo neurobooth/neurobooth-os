@@ -345,11 +345,14 @@ def create_task_kwargs(session: StmSession, task_args: TaskArgs) -> Dict:
     """ Returns a dictionary of arguments """
     result: Dict
     if task_args.instr_args is not None:
+        print(f"Instructions for task: {task_args.task_id}")
         result = {**session.as_dict(), **dict(task_args.stim_args), **dict(task_args.instr_args)}
     else:
+        print(f"No instructions for task: {task_args.task_id}")
         result = {**session.as_dict(), **dict(task_args.stim_args)}
     print(result)
     return result
+
 
 def extract_task_log_entry(collection_id: str, data: str, database_name: str):
     """
