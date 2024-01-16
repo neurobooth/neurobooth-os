@@ -97,11 +97,6 @@ class StmSession(BaseModel):
         """Returns a list of tasks in the collection referenced by collection_id"""
         return self.task_func_dict.keys()
 
-    def get_task_arguments(self, stimulus_id: str):
-        if self.task_func_dict is None:
-            raise RuntimeError("task_func_dict is not set in StmSession")
-        return self.task_func_dict[stimulus_id]
-
     def shutdown(self):
         if self.system_resource_logger is not None:
             self.system_resource_logger.stop()
