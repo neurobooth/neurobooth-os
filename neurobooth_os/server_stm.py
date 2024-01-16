@@ -109,7 +109,7 @@ def run_stm(logger):
                 else:
                     t00 = time()
                     # get task and params
-                    task_args: TaskArgs = get_task_args(stimulus_id)
+                    task_args: TaskArgs = get_task_args(session, stimulus_id)
                     task: Task = task_args.task_instance
                     this_task_kwargs = create_task_kwargs(session, task_args)
                     task_id = task_args.task_id
@@ -343,8 +343,13 @@ def prepare_session(data: str, socket_1: socket, logger):
 
 def create_task_kwargs(session: StmSession, task_args: TaskArgs) -> Dict:
     """ Returns a dictionary of arguments """
-    return {**session.as_dict(), **dict(task_args.stim_args), **dict(task_args.instr_args)}
-
+    result: Dict
+    if task_args.instr_args is not None:
+        result = {**session.as_dict(), **dict(task_args.stim_args), **dict(task_args.instr_args)}
+    else:
+        result = {**session.as_dict(), **dict(task_args.stim_args)}
+    print(result)
+    return result
 
 def extract_task_log_entry(collection_id: str, data: str, database_name: str):
     """
