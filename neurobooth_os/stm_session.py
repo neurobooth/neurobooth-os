@@ -59,9 +59,9 @@ class StmSession(BaseModel):
         # TODO(larry): This was set to true in 'present' phase, but get from stimulus obj?
         self.prompt = True
 
-        # TODO(larry) Uncomment for stage/prod environment usage:
-        #  self.device_manager = self.init_device_manager()
-        #  self.eye_tracker = self.device_manager.get_eyelink_stream()
+        # TODO(larry) Comment/Uncomment for stage/prod environment usage:
+        self.device_manager = self.init_device_manager()
+        self.eye_tracker = self.device_manager.get_eyelink_stream()
 
     @staticmethod
     def init_window():
@@ -97,7 +97,9 @@ class StmSession(BaseModel):
         """Returns a list of tasks in the collection referenced by collection_id"""
         return self.task_func_dict.keys()
 
-    def get_task_arguments(self, stimulus_id):
+    def get_task_arguments(self, stimulus_id: str):
+        if self.task_func_dict is None:
+            raise RuntimeError("task_func_dict is not set in StmSession")
         return self.task_func_dict[stimulus_id]
 
     def shutdown(self):
