@@ -1,3 +1,4 @@
+import copy
 import logging
 import unittest
 from os import environ, path
@@ -69,9 +70,26 @@ class TestTask(unittest.TestCase):
         self.assertEquals('oculomotor_horizontal_saccades_2022_06_03_v0.6.mp4', args.instruction_file)
 
     def test_instruction_args_when_no_instructions(self):
-        conn = meta.get_conn("mock_neurobooth_1", False)
-        task_args = task_importer._get_task_arg('clapping_test', conn)
+        log_path = r"C:\neurobooth\test_data\test_logs"
+
+        collection_id = 'testing'
+        database_name = 'mock_neurobooth_1'
+        log_task = meta._new_tech_log_dict()
+        log_task["subject_id-date"] = "foobar"
+        from neurobooth_os.log_manager import make_default_logger
+        logger = make_default_logger(log_path, logging.DEBUG, False)
+        msg = f"prepare:{collection_id}:{database_name}:{str(log_task)}"
+        socket_1: socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        stm_session, task_log_entry = prepare_session(msg, socket_1, logger)
+        print(stm_session)
+
+        task_args = stm_session.task_func_dict['clapping_task']
         print(task_args)
+        tsk_fun_obj = copy.copy(task_args.task_constructor_callable)  # callable for Task constructor
+        this_task_kwargs = create_task_kwargs(stm_session, task_args)
+        print(this_task_kwargs)
+        task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
 
     # Integration test (uses database)
     def test_all_validated_task_args_in_folder(self):

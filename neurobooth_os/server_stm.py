@@ -86,10 +86,10 @@ def run_stm(logger):
             tasks = tasks.split("-")
             for stimulus_id in tasks:
                 if stimulus_id in session.tasks():
-                    task_args: TaskArgs = get_task_args(session, stimulus_id)
+                    task_args: TaskArgs = _get_task_args(session, stimulus_id)
                     tsk_fun_obj: Callable = copy.copy(task_args.task_constructor_callable)  # callable for Task constructor
                     this_task_kwargs = create_task_kwargs(session, task_args)
-                    task_args.task_instance = tsk_fun_obj(this_task_kwargs)
+                    task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
             session.logger.debug(f'Task media took {time() - t0:.2f}')
             session.win = welcome_screen(win=session.win)
             reset_stdout()
@@ -109,7 +109,7 @@ def run_stm(logger):
                 else:
                     t00 = time()
                     # get task and params
-                    task_args: TaskArgs = get_task_args(session, stimulus_id)
+                    task_args: TaskArgs = _get_task_args(session, stimulus_id)
                     task: Task = task_args.task_instance
                     this_task_kwargs = create_task_kwargs(session, task_args)
                     task_id = task_args.task_id
@@ -203,7 +203,7 @@ def run_stm(logger):
     exit()
 
 
-def get_task_args(session: StmSession, stimulus_id: str):
+def _get_task_args(session: StmSession, stimulus_id: str):
         if session.task_func_dict is None:
             raise RuntimeError("task_func_dict is not set in StmSession")
         return session.task_func_dict[stimulus_id]

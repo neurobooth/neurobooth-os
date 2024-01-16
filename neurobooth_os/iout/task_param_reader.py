@@ -5,8 +5,6 @@ from typing import Optional, List, Callable
 import os
 import yaml
 
-from neurobooth_os.tasks import Task
-
 """
 Loads a yaml file containing task/stimulus parameters and validates it
 """
@@ -47,7 +45,7 @@ class TaskArgs(BaseModel):
     task_constructor_callable: Callable  # callable of constructor for a Task
     stim_args: StimulusArgs
     instr_args: Optional[InstructionArgs] = None
-    task_instance: Optional[Task] = None  # created by client code from above callable
+    task_instance: Optional[object] = None  # created by client code from above callable
 
     class Config:
         arbitrary_types_allowed = True
