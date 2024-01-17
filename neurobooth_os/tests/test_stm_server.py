@@ -5,7 +5,8 @@ from neurobooth_os.iout.task_param_reader import TaskArgs
 from neurobooth_os.server_stm import extract_task_log_entry
 from neurobooth_os.util.task_log_entry import TaskLogEntry
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.server_stm import prepare_session, shutdown
+import socket
+from neurobooth_os.server_stm import prepare_session
 
 
 class TestTaskParamReader(unittest.TestCase):
@@ -51,10 +52,11 @@ class TestTaskParamReader(unittest.TestCase):
         from neurobooth_os.log_manager import make_default_logger
         logger = make_default_logger(log_path, logging.DEBUG, False)
         msg = f"prepare:{collection_id}:{database_name}:{str(log_task)}"
-        stm_session, task_log_entry = prepare_session(msg, logger)
+        sock: socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        stm_session, task_log_entry = prepare_session(msg, sock, logger)
         print(stm_session)
         print(task_log_entry)
-        shutdown(stm_session, None)
+        stm_session.shutdown()
 
     def test_create_task_kwargs(self):
         log_path = r"C:\neurobooth\test_data\test_logs"
@@ -71,4 +73,4 @@ class TestTaskParamReader(unittest.TestCase):
         print(stm_session.as_dict())
 
         task_args: TaskArgs = TaskArgs()
-        shutdown(stm_session, None)
+        stm_session.shutdown()
