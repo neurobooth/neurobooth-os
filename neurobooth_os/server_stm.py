@@ -190,7 +190,11 @@ def run_stm(logger):
             presented = True
 
         elif "shutdown" in data:
-            session.shutdown()
+            if session is not None:
+                session.shutdown()
+            else:
+                if socket_1 is not None:
+                    socket_1.close()
             sys.stdout = sys.stdout.terminal
             break
 
