@@ -6,6 +6,9 @@ Created on Tue Jul 20 10:00:23 2021
 """
 
 from __future__ import absolute_import, division
+
+from typing import List
+
 from psychopy import core, event, monitors
 
 import time

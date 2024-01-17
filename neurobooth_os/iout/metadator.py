@@ -2,7 +2,7 @@
 import logging
 from collections import OrderedDict
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
@@ -10,7 +10,7 @@ from neurobooth_terra import Table
 
 import neurobooth_os.config as cfg
 from neurobooth_os.iout import task_param_reader
-from neurobooth_os.util.task_log_entry import TaskLogEntry
+from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
 
 def get_conn(database, validate_config_paths: bool = True):
@@ -112,7 +112,7 @@ def _new_tech_log_dict():
     log_task["task_id"] = ""
     log_task["log_session_id"] = ""
     log_task["task_notes_file"] = ""
-    log_task["task_output_files"] = None
+    log_task["task_output_files"] = []
     log_task["date_times"] = "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "}"
     log_task["event_array"] = []  # marker_name:timestamp
     return log_task
@@ -160,7 +160,7 @@ def _make_session_id(conn, session_log):
     return session_id
 
 
-def fill_task_row(log_task_id: str, task_log_entry:TaskLogEntry, conn) -> None:
+def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn) -> None:
     """
     Updates a row in log_task.
 
@@ -181,6 +181,10 @@ def fill_task_row(log_task_id: str, task_log_entry:TaskLogEntry, conn) -> None:
 
     # delete subj_date as not present in DB
     del dict_vals["subject_id_date"]
+
+    # convert list of strings to postgres array literal format
+    dict_vals['task_output_files'] = convert_to_array_literal(dict_vals['task_output_files'])
+    print(dict_vals)
     vals = list(dict_vals.values())
     table.update_row(log_task_id, tuple(vals), cols=list(dict_vals))
 

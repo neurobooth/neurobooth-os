@@ -4,6 +4,9 @@
 """
 
 from __future__ import absolute_import, division
+
+from typing import List
+
 from psychopy import logging as psychopy_logging
 
 psychopy_logging.console.setLevel(psychopy_logging.CRITICAL)
@@ -50,7 +53,7 @@ class Task():
         self.marker_response_start = "Response_start"
         self.marker_response_end = "Response_end"
 
-        self.task_files = None
+        self.task_files: List[str] = []
         self.path_instruction_video = instruction_file
         self.full_screen = full_screen
         self.events = []
