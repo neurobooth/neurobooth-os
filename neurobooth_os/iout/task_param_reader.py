@@ -52,7 +52,7 @@ class TaskArgs(BaseModel):
 
 
 class EyeTrackerStimArgs(StimulusArgs):
-    target_size: Optional[NonNegativeFloat] = None
+    target_size: NonNegativeFloat = 7
 
 
 class ClappingStimArgs(EyeTrackerStimArgs):
