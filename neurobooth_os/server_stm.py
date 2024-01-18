@@ -88,11 +88,16 @@ def run_stm(logger):
             tasks = tasks.split("-")
             for stimulus_id in tasks:
                 if stimulus_id in session.tasks():
+                    print(stimulus_id)
                     task_args: TaskArgs = _get_task_args(session, stimulus_id)
+                    logger.info(task_args)
                     tsk_fun_obj: Callable = copy.copy(task_args.task_constructor_callable)  # callable for Task constructor
+                    logger.info(tsk_fun_obj)
                     this_task_kwargs = create_task_kwargs(session, task_args)
+                    logger.info(this_task_kwargs)
                     task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
-            session.logger.debug(f'Task media took {time() - t0:.2f}')
+                    logger.info(task_args.task_instance)
+            session.logger.info(f'Task media took {time() - t0:.2f}')
             session.win = welcome_screen(win=session.win)
             reset_stdout()
 
