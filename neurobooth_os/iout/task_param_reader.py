@@ -103,6 +103,7 @@ class PursuitStimArgs(EyeTrackerStimArgs):
     amplitude_deg: float
     starting_offset_deg: float
     ntrials: NonNegativeInt
+    start_phase_deg: NonNegativeInt
 
 
 class CoordPauseStimArgs(EyeTrackerStimArgs):
