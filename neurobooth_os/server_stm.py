@@ -2,6 +2,7 @@ import logging
 import socket
 import sys
 import os
+import traceback
 from collections import OrderedDict  # This import is required for eval
 from time import time
 from datetime import datetime
@@ -48,6 +49,8 @@ def main():
         run_stm(logger)
         logger.debug("Stopping STM")
     except Exception as Argument:
+        print(Argument)
+        traceback.print_exc()
         logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(Argument)}",
                         exc_info=sys.exc_info())
         raise Argument
@@ -56,14 +59,13 @@ def main():
 
 
 def run_stm(logger):
-    # TODO(larry): Add socket to stm_session?
     socket_1: socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     presented: bool = False
     port: int = config.neurobooth_config['presentation']["port"]
     host: str = ''
     session: Optional[StmSession] = None
     task_log_entry: Optional[TaskLogEntry] = None
-    task_func_dict: Dict = {}
+    task_func_dict: Dict[str, TaskArgs] = {}
     for data, socket_conn in get_client_messages(socket_1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 
@@ -77,7 +79,7 @@ def run_stm(logger):
             task_log_entry.log_session_id = session_id
 
             if presented:
-                task_func_dict: Dict[str, TaskArgs] = get_task_arguments(session.collection_id, session.db_conn)
+                task_func_dict = get_task_arguments(session.collection_id, session.db_conn)
 
             # Preload tasks media
             t0 = time()
@@ -110,6 +112,7 @@ def run_stm(logger):
                     t00 = time()
                     # get task and params
                     task_args: TaskArgs = _get_task_args(session, stimulus_id)
+                    print(task_args)
                     task: Task = task_args.task_instance
                     this_task_kwargs = create_task_kwargs(session, task_args)
                     task_id = task_args.task_id
