@@ -91,6 +91,19 @@ class Saccade(Task_Eyetracker):
         self.target.size = self.pointer_size_pixel
         self.target.draw()
         self.win.flip()
+
+        self.sendCommand('clear_screen 0')
+        self.sendCommand('draw_cross %d %d 10' % tuple(self.pos_psych2pix([0, 0])))
+        self.sendCommand('draw_cross %d %d 10' % tuple(self.pos_psych2pix([tar_x, tar_y])))
+        box_len_pix = 50
+        box_coords_top = self.pos_psych2pix([tar_x-box_len_pix, tar_y-box_len_pix])
+        box_coords_bot = self.pos_psych2pix([tar_x+box_len_pix, tar_y+box_len_pix])
+        self.sendCommand('draw_box %d %d %d %d 12' % tuple(box_coords_top + box_coords_bot))
+        self.sendCommand('draw_cross %d %d 10' % tuple(self.pos_psych2pix([-1*tar_x, -1*tar_y])))
+        box_coords_top = self.pos_psych2pix([-1*tar_x-box_len_pix, -1*tar_y-box_len_pix])
+        box_coords_bot = self.pos_psych2pix([-1*tar_x+box_len_pix, -1*tar_y+box_len_pix])
+        self.sendCommand('draw_box %d %d %d %d 12' % tuple(box_coords_top + box_coords_bot))
+
         # self.doDriftCorrect([int(0 + self.mon_size[0] / 2.0),
         #                        int(self.mon_size[1] / 2.0 - 0), 0, 1])
         self.win.color = (0, 0, 0)
@@ -136,6 +149,7 @@ class Saccade(Task_Eyetracker):
         self.setOfflineMode()
 
         self.sendMessage(self.marker_task_end)
+        self.sendCommand('clear_screen 0')
 
         # Send trial variables to record in the EDF data file
         self.sendMessage(f"!V TRIAL_VAR amp_x {amp_x:.2f}")
@@ -156,8 +170,17 @@ class Saccade(Task_Eyetracker):
 
 
 if __name__ == "__main__":
-
+    from neurobooth_os.iout.eyelink_tracker import EyeTracker
+    from neurobooth_os.tasks import utils
+    from neurobooth_os.tasks.eye_tracker_calibrate import Calibrate
+    
     # task = Saccade()
     # task.run(prompt=False)
-    task = Saccade(direction="vertical", amplitude_deg=30)
+
+    win = utils.make_win(False, 200)
+    eye_tracker = EyeTracker(win=win, ip="192.168.100.15")
+    cal = Calibrate(eye_tracker=eye_tracker, win=win)
+    cal.run()
+    
+    task = Saccade(eye_tracker=eye_tracker, win=win, direction="vertical", amplitude_deg=30)
     task.run(prompt=False)
