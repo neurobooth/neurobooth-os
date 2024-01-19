@@ -9,4 +9,4 @@ target_size: 0
 trial_intruct:
 - Perform the task with your DOMINANT arm
 - Repeat the task with your NON-DOMINANT arm
-countdown: tasks/assets/countdown_motor_rapid_hand_2022_04_20.mp4
+countdown: countdown_motor_rapid_hand_2022_04_20.mp4
