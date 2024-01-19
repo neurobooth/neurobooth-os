@@ -66,11 +66,11 @@ class HeveliusStimArgs(EyeTrackerStimArgs):
 class HandMovementStimArgs(EyeTrackerStimArgs):
     target_size: NonNegativeFloat
     trial_intruct: List[str]
-    countdown: FilePath  # An mp4 filename
+    countdown: str  # An mp4 filename
 
 
 class SpeechStimArgs(EyeTrackerStimArgs):
-    countdown: FilePath  # An mp4 filename
+    countdown: str  # An mp4 filename
     text_task: str
 
 
@@ -80,7 +80,7 @@ class FixationTargetStimArgs(EyeTrackerStimArgs):
 
 
 class PassageReadingStimArgs(EyeTrackerStimArgs):
-    countdown: FilePath  # An mp4 filename
+    countdown: str  # An mp4 filename
 
 
 class SaccadesStimArgs(EyeTrackerStimArgs):
