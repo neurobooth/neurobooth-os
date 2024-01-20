@@ -88,7 +88,6 @@ def run_stm(logger):
             tasks = tasks.split("-")
             for stimulus_id in tasks:
                 if stimulus_id in session.tasks():
-                    print(stimulus_id)
                     task_args: TaskArgs = _get_task_args(session, stimulus_id)
                     logger.info(task_args)
                     tsk_fun_obj: Callable = copy.copy(task_args.task_constructor_callable)  # callable for Task constructor
@@ -117,7 +116,6 @@ def run_stm(logger):
                     t00 = time()
                     # get task and params
                     task_args: TaskArgs = _get_task_args(session, stimulus_id)
-                    print(task_args)
                     task: Task = task_args.task_instance
                     this_task_kwargs = create_task_kwargs(session, task_args)
                     task_id = task_args.task_id
@@ -320,6 +318,7 @@ def log_task(events: List,
     )
     task_log_entry.task_notes_file = f"{stm_session.session_name}-{stimulus_id}-notes.txt"
     if task.task_files is not None:
+        print(f"Task output files: {task.task_files}")
         task_log_entry.task_output_files = task.task_files
     meta.fill_task_row(task_log_entry.log_task_id, task_log_entry, stm_session.db_conn)
 
@@ -358,12 +357,9 @@ def create_task_kwargs(session: StmSession, task_args: TaskArgs) -> Dict:
     """ Returns a dictionary of arguments """
     result: Dict
     if task_args.instr_args is not None:
-        print(f"Instructions for task: {task_args.task_id}")
         result = {**session.as_dict(), **dict(task_args.stim_args), **dict(task_args.instr_args)}
     else:
-        print(f"No instructions for task: {task_args.task_id}")
         result = {**session.as_dict(), **dict(task_args.stim_args)}
-    print(result)
     return result
 
 
