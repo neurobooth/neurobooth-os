@@ -107,13 +107,13 @@ class PursuitStimArgs(EyeTrackerStimArgs):
 
 
 class CoordPauseStimArgs(EyeTrackerStimArgs):
-    end_screen: FilePath
+    end_screen: str
     continue_key: str
     reset_key: str
 
 
 class CoordPause2StimArgs(EyeTrackerStimArgs):
-    slide_image: FilePath
+    slide_image: str
     wait_key: str
 
 
