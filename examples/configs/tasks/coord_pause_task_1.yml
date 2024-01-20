@@ -5,6 +5,6 @@ duration: null
 arg_parser: iout.task_param_reader.py::CoordPauseStimArgs
 stimulus_file_type: psychopy
 stimulus_file: tasks.mbient_reset.py::MbientResetPause()
-end_screen: tasks/assets/please_wait_slide.jpg
+end_screen: please_wait_slide.jpg
 continue_key: return
 reset_key: r
