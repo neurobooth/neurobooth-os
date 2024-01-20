@@ -5,5 +5,5 @@ duration: null
 arg_parser: iout.task_param_reader.py::CoordPause2StimArgs
 stimulus_file_type: psychopy
 stimulus_file: tasks.task.py::Task_pause()
-slide_image: tasks/assets/please_wait_slide.jpg
+slide_image: please_wait_slide.jpg
 wait_key: return
