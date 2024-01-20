@@ -1,6 +1,6 @@
 from os import environ, path
 
-from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, FilePath
+from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field
 from typing import Optional, List, Callable
 import os
 import yaml
@@ -60,7 +60,7 @@ class ClappingStimArgs(EyeTrackerStimArgs):
 
 
 class HeveliusStimArgs(EyeTrackerStimArgs):
-    trial_data_fname: FilePath
+    trial_data_fname: str
 
 
 class HandMovementStimArgs(EyeTrackerStimArgs):

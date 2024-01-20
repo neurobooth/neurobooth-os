@@ -257,6 +257,7 @@ def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_diction
         
 
 def _log_task_parameter(conn, value_dict: Dict[str, Any]):
+    print(f"log_task_param for {value_dict['stimulus_id']}: {value_dict}")
     query = "INSERT INTO log_task_param " \
              "(log_task_id, stimulus_id, key, value, value_type)  " \
              " VALUES " \
