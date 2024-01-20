@@ -5,5 +5,5 @@ duration: 10.0
 arg_parser: iout.task_param_reader.py::SpeechStimArgs()
 stimulus_file_type: psychopy
 stimulus_file: tasks.task.py::Task_countdown()
-countdown: tasks/assets/countdown_speech_2022_04_11.mp4
+countdown: countdown_speech_2022_04_11.mp4
 text_task: PA-TA-KA-PA-TA-KA...
