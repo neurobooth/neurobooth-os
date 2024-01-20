@@ -116,7 +116,6 @@ class Task():
         )
         if countdown is None:
             countdown = "countdown_2021_11_22.mp4"
-        print("joining countdown")
         self.countdown_video = visual.MovieStim3(
             win=self.win,
             filename=op.join(neurobooth_os.__path__[0], "tasks", "assets", countdown),

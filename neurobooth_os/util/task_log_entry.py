@@ -17,10 +17,11 @@ class TaskLogEntry(BaseModel):
     subject_id_date: str
 
 
-def convert_to_array_literal(string_list: Optional[List[str]]):
+def convert_to_array_literal(string_list):
+    # TODO(larry): Cleanup
     """Converts the provided list of strings to a postgres array literal"""
-    result: str = "{"
-    if string_list:
+    if string_list and isinstance(string_list, List):
+        result: str = "{"
         size = len(string_list)
         i = 1
 
@@ -30,6 +31,8 @@ def convert_to_array_literal(string_list: Optional[List[str]]):
                 result += ', '
                 i += 1
         result += '}'
+    elif string_list and isinstance(string_list, str):
+        result = string_list
     else:
         result = '{}'
     return result
