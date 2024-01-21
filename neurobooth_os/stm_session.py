@@ -42,7 +42,6 @@ class StmSession(BaseModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        print(kwargs)
         if kwargs["session_name"] is not None:
             self.session_name: str = kwargs["session_name"]
         self.collection_id = kwargs["collection_id"]

@@ -99,7 +99,7 @@ class Task:
 
         self.root_pckg = neurobooth_os.__path__[0]
 
-        inst_end_task_img = op.join(self.root_pckg, "tasks/assets/inst_end_task.png")
+        inst_end_task_img = op.join(self.root_pckg, "tasks", "assets", "inst_end_task.png")
         if not op.isfile(inst_end_task_img):
             raise IOError(f'Required image file {inst_end_task_img} does not exist')
         self.press_inst_screen = visual.ImageStim(
@@ -133,7 +133,7 @@ class Task:
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
-        task_complete_img = op.join(self.root_pckg, "tasks/assets/task_complete.png")
+        task_complete_img = op.join(self.root_pckg, "tasks", "assets", "task_complete.png")
         if not op.isfile(task_complete_img):
             raise IOError(f'Required image file {task_complete_img} does not exist')
 
@@ -143,7 +143,7 @@ class Task:
             pos=(0, 0),
             units="deg",
         )
-        end_slide = op.join(self.root_pckg, "tasks/assets/end_slide_3_7_22.png")
+        end_slide = op.join(self.root_pckg, "tasks", "assets", "end_slide_3_7_22.jpg")
         if not op.isfile(end_slide):
             raise IOError(f'Required image file {end_slide} does not exist')
 
