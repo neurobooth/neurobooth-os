@@ -68,9 +68,6 @@ class Task:
             task_end_image = "tasks/assets/task_end_disabled.png"
             self.repeat_keys = ['r']
 
-        if self.path_instruction_video:
-            print(f"Loading {self.path_instruction_video}")
-
         if marker_outlet is not None:
             self.with_lsl = True
             self.marker = marker_outlet
