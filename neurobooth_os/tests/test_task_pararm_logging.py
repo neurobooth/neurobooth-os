@@ -65,7 +65,6 @@ class TestLogging(unittest.TestCase):
                              stimulus_id=stimulus_id,
                              log_task_id=log_task_id,
                              task_param_dictionary=param_dict)
-        meta._get_stimulus_kwargs("finger_nose_demo_task_1", get_connection())
         df = get_records(table_name)
         assert df.iloc[0]["stimulus_id"] == stimulus_id
         assert df.iloc[0]["log_task_id"] == log_task_id

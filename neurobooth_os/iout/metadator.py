@@ -2,7 +2,7 @@
 import logging
 from collections import OrderedDict
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
@@ -262,25 +262,6 @@ def _log_task_parameter(conn, value_dict: Dict[str, Any]):
 
     cursor = conn.cursor()
     cursor.execute(query, value_dict)
-
-
-def _get_stimulus_kwargs(stimulus_id, conn):
-    """Get task parameters from database."""
-    table_stimulus = Table("nb_stimulus", conn)
-    stimulus_df = table_stimulus.query(where=f"stimulus_id = '{stimulus_id}'")
-    (stim_file,) = stimulus_df["stimulus_file"]
-
-    task_kwargs = {
-        "duration": stimulus_df["duration"][0],
-        "num_iterations": stimulus_df["num_iterations"][0],
-    }
-
-    if not stimulus_df["parameters"].isnull().all():
-        import neurobooth_os.log_manager as log_man
-        params = stimulus_df["parameters"].values[0]
-        task_kwargs.update(params)
-
-    return stim_file, task_kwargs
 
 
 def get_stimulus_kwargs_from_file(stimulus_id):
