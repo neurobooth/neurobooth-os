@@ -23,12 +23,11 @@ from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 from neurobooth_os.log_manager import APP_LOG_NAME
 
 
-class Task():
-    # TODO: incorrect file paths passed to Psychopy cause the python interpreter to crash.
-    #  These file paths must be checked before passing and an appropriate error raised
-    #  See how pydantic FilePath validation works.
-    #  Note: We cannot check paths with pydantic when loading the params because the path strings there are relative and
-    #  are only completed later. (Or we could join them in the yml to the appropriate folders)
+class Task:
+    # Note: incorrect file paths passed to Psychopy may cause the python interpreter to crash without raising an error.
+    # These file paths must be checked before passing and an appropriate error raised, and so they
+    # are checked inline below.
+    # We cannot check paths with pydantic when loading the params because the path strings there are partial.
     def __init__(
             self,
             instruction_file=None,
@@ -100,39 +99,57 @@ class Task():
 
         self.root_pckg = neurobooth_os.__path__[0]
 
+        inst_end_task_img = op.join(self.root_pckg, "tasks/assets/inst_end_task.png")
+        if not op.isfile(inst_end_task_img):
+            raise IOError(f'Required image file {inst_end_task_img} does not exist')
         self.press_inst_screen = visual.ImageStim(
             self.win,
-            image=op.join(self.root_pckg, "tasks/assets/inst_end_task.png"),
+            image=inst_end_task_img,
             pos=(0, 0),
             units="deg",
         )
 
+        task_end_img = op.join(self.root_pckg, task_end_image)
+        if not op.isfile(task_end_img):
+            raise IOError(f'Required image file {task_end_image} does not exist')
+
         self.press_task_screen = visual.ImageStim(
             self.win,
-            image=op.join(self.root_pckg, task_end_image),
+            image=task_end_image,
             pos=(0, 0),
             units="deg",
         )
         if countdown is None:
             countdown = "countdown_2021_11_22.mp4"
+        countdown_path = op.join(neurobooth_os.__path__[0], "tasks", "assets", countdown)
+        if not op.isfile(countdown_path):
+            raise IOError(f'Required image file {countdown_path} does not exist')
         self.countdown_video = visual.MovieStim3(
             win=self.win,
-            filename=op.join(neurobooth_os.__path__[0], "tasks", "assets", countdown),
+            filename=countdown_path,
             noAudio=False,
         )
 
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
+        task_complete_img = op.join(self.root_pckg, "tasks/assets/task_complete.png")
+        if not op.isfile(task_complete_img):
+            raise IOError(f'Required image file {task_complete_img} does not exist')
+
         self.end_screen = visual.ImageStim(
             self.win,
-            image=op.join(self.root_pckg, "tasks/assets/task_complete.png"),
+            image=task_complete_img,
             pos=(0, 0),
             units="deg",
         )
+        end_slide = op.join(self.root_pckg, "tasks/assets/end_slide_3_7_22.png")
+        if not op.isfile(end_slide):
+            raise IOError(f'Required image file {end_slide} does not exist')
+
         self.end_tasks = visual.ImageStim(
             self.win,
-            image=op.join(self.root_pckg, "tasks/assets/end_slide_3_7_22.png"),
+            image=end_slide,
             pos=(0, 0),
             units="deg",
         )
@@ -164,7 +181,7 @@ class Task():
             screen,
             msg,
             func=None,
-            func_kwargs={},
+            func_kwargs=None,
             audio=None,
             wait_time=0,
             win_color=(0, 0, 0),
@@ -172,6 +189,8 @@ class Task():
             first_screen=False,
     ):
 
+        if func_kwargs is None:
+            func_kwargs = {}
         self.send_marker(f"{msg}_start", True)
         utils.present(
             self.win,
@@ -275,13 +294,16 @@ class Task_countdown(Task):
 class Task_pause(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.screen = None
 
-    # TODO (larry): parameterize the file name?
     def run(self, slide_image="end_slide_3_7_22.jpg", wait_key="return", **kwarg):
+        image_path = op.join(self.root_pckg, "tasks", "assets", slide_image)
+        if not op.isfile(image_path):
+            raise IOError(f'Required slide image file {image_path} does not exist.')
 
         self.screen = visual.ImageStim(
             self.win,
-            image=op.join(self.root_pckg, "tasks", "assets", slide_image),
+            image=image_path,
             pos=(0, 0),
             units="deg",
         )
@@ -375,9 +397,12 @@ class Introduction_Task(Task):
 
 if __name__ == "__main__":
 
+    instruction_file = op.join(neurobooth_os.__path__[0], "tasks", "assets", "test.mp4")
+    if not op.isfile(instruction_file):
+        raise IOError(f'Required instruction file {instruction_file} does not exist.')
+
     task = Task_countdown(
-        instruction_file=op.join(
-            neurobooth_os.__path__[0], "tasks", "assets", "test.mp4"
-        )
+        instruction_file=instruction_file
     )
+
     task.run(prompt=True, duration=3)
