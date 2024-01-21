@@ -49,8 +49,6 @@ def main():
         run_stm(logger)
         logger.debug("Stopping STM")
     except Exception as Argument:
-        print(Argument)
-        traceback.print_exc()
         logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(Argument)}",
                         exc_info=sys.exc_info())
         raise Argument
@@ -183,13 +181,12 @@ def run_stm(logger):
                                 break
                             elif data == "calibrate":
                                 if not len(task_calib):
-                                    print("No calibration task")
                                     continue
                                 tasks.insert(0, task_calib[0])
                                 calib_instructions = False
-                                print("Calibration task added")
                             else:
                                 print("Received an unexpected message while paused ")
+                                logger.warn("Received an unexpected message while paused ")
 
             session.logger.debug('FINISH SCREEN')
             finish_screen(session.win)
@@ -318,7 +315,6 @@ def log_task(events: List,
     )
     task_log_entry.task_notes_file = f"{stm_session.session_name}-{stimulus_id}-notes.txt"
     if task.task_files is not None:
-        print(f"Task output files: {task.task_files}")
         task_log_entry.task_output_files = task.task_files
     meta.fill_task_row(task_log_entry.log_task_id, task_log_entry, stm_session.db_conn)
 

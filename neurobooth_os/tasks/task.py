@@ -24,7 +24,11 @@ from neurobooth_os.log_manager import APP_LOG_NAME
 
 
 class Task():
-
+    # TODO: incorrect file paths passed to Psychopy cause the python interpreter to crash.
+    #  These file paths must be checked before passing and an appropriate error raised
+    #  See how pydantic FilePath validation works.
+    #  Note: We cannot check paths with pydantic when loading the params because the path strings there are relative and
+    #  are only completed later. (Or we could join them in the yml to the appropriate folders)
     def __init__(
             self,
             instruction_file=None,
@@ -57,10 +61,6 @@ class Task():
         self.path_instruction_video = instruction_file
         self.full_screen = full_screen
         self.events = []
-
-        print(f"instruction_file:{instruction_file}")
-        print(f"path_instruction_video:{self.path_instruction_video}")
-
         self.advance_keys = ['space']
         if task_repeatable_by_subject:
             task_end_image = "tasks/assets/task_end.png"
@@ -88,7 +88,6 @@ class Task():
             self.win_temp = False
 
         if self.path_instruction_video is not None:
-            print(f"path_instruction_file = '{self.path_instruction_video}'")
             self.instruction_video = visual.MovieStim3(
                 win=self.win, filename=self.path_instruction_video, noAudio=False
             )

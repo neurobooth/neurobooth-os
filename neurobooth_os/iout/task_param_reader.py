@@ -6,7 +6,7 @@ import os
 import yaml
 
 """
-Loads a yaml file containing task/stimulus parameters and validates it
+Loads yaml files containing task/stimulus/instruction parameters and validates them
 """
 
 
