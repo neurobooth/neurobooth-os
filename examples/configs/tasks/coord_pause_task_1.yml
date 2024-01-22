@@ -2,7 +2,7 @@ stimulus_id: coord_pause_task_1
 stimulus_description: 'pause'
 num_iterations: 1
 duration: null
-arg_parser: iout.task_param_reader.py::CoordPauseStimArgs
+arg_parser: iout.stim_param_reader.py::CoordPauseStimArgs
 stimulus_file_type: psychopy
 stimulus_file: tasks.mbient_reset.py::MbientResetPause()
 end_screen: please_wait_slide.jpg

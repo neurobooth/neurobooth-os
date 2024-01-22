@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, wait
 from typing import Dict, Optional, Callable, List
 from psychopy import prefs
 
-from neurobooth_os.iout.task_param_reader import TaskArgs
+from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry

@@ -2,7 +2,7 @@ stimulus_id: altern_hand_mov_task1
 stimulus_description: hand mov
 num_iterations: 1
 duration: 15.0
-arg_parser: iout.task_param_reader.py::HandMovementStimArgs()
+arg_parser: iout.stim_param_reader.py::HandMovementStimArgs()
 stimulus_file_type: psychopy
 stimulus_file: tasks.fixations.py::Fixation_Target_sidetrials()
 target_size: 0
