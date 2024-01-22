@@ -9,7 +9,7 @@ import psycopg2
 from neurobooth_terra import Table
 
 import neurobooth_os.config as cfg
-from neurobooth_os.iout import task_param_reader
+from neurobooth_os.iout import stim_param_reader
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
 

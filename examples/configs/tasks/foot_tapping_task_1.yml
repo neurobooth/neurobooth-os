@@ -2,7 +2,7 @@ stimulus_id: foot_tapping_task_1
 stimulus_description: foot tap
 num_iterations: 1
 duration: 10.0
-arg_parser: iout.task_param_reader.py::FootTappingStimArgs()
+arg_parser: iout.stim_param_reader.py::FootTappingStimArgs()
 stimulus_file_type: psychopy
 stimulus_file: tasks.fixations.py::Fixation_Target_sidetrials()
 target_size: 0

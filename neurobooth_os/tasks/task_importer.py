@@ -8,7 +8,7 @@ from typing import List
 
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
-from neurobooth_os.iout.task_param_reader import TaskArgs, InstructionArgs
+from neurobooth_os.iout.stim_param_reader import TaskArgs, InstructionArgs
 
 
 def _str_fileid_to_eval(stim_file_str):

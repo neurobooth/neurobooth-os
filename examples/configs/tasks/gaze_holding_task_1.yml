@@ -2,7 +2,7 @@ stimulus_id: gaze_holding_task_1
 stimulus_description: target fixation
 num_iterations: 1
 duration: 10.0
-arg_parser: iout.task_param_reader.py::GazeHoldingStimArgs()
+arg_parser: iout.stim_param_reader.py::GazeHoldingStimArgs()
 stimulus_file_type: psychopy
 stimulus_file: tasks.fixations.py::Fixation_Target_Multiple()
 trial_pos:

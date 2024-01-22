@@ -2,7 +2,7 @@ stimulus_id: clapping_task_2
 stimulus_description: test mbient
 num_iterations: 1
 duration: null
-arg_parser: iout.task_param_reader.py::ClappingStimArgs()
+arg_parser: iout.stim_param_reader.py::ClappingStimArgs()
 stimulus_file_type: psychopy
 stimulus_file: tasks.task.py::Task()
 prompt: false

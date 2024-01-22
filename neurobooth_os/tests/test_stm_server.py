@@ -1,7 +1,7 @@
 import logging
 import unittest
 
-from neurobooth_os.iout.task_param_reader import TaskArgs
+from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.server_stm import extract_task_log_entry
 from neurobooth_os.util.task_log_entry import TaskLogEntry
 import neurobooth_os.iout.metadator as meta

@@ -5,8 +5,8 @@ from os import environ, path
 import socket
 
 import neurobooth_os.iout.metadator as meta
-import neurobooth_os.iout.task_param_reader as reader
-from neurobooth_os.iout.task_param_reader import StimulusArgs, InstructionArgs, _get_cfg_path, _get_param_dictionary
+import neurobooth_os.iout.stim_param_reader as reader
+from neurobooth_os.iout.stim_param_reader import StimulusArgs, InstructionArgs, _get_cfg_path, _get_param_dictionary
 from neurobooth_os.server_stm import prepare_session, create_task_kwargs
 from neurobooth_os.tasks import task_importer
 from neurobooth_os.tasks.eye_tracker_calibrate import Calibrate

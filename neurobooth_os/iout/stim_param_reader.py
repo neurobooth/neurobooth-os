@@ -6,7 +6,16 @@ import os
 import yaml
 
 """
-Loads yaml files containing task/stimulus/instruction parameters and validates them
+Loads yaml files containing task/stimulus/instruction parameters and validates them.
+
+To allow variety in the representation of the task parameters, the yaml reading process proceeds in 
+two phases. The first phase reads enough to reach the top-level element arg_parser, e.g.:
+arg_parser: iout.stim_param_reader.py::EyeTrackerStimArgs()
+
+The arg_parser points to a class that inherits from StimulusArgs (which itself inherits from 
+the pydantic BaseModel class). This class handles the parsing of the yaml file in its entirety.
+
+Parsers for all the standard stimulus yaml files are found in this module.   
 """
 
 

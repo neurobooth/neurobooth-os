@@ -2,7 +2,7 @@ stimulus_id: fixation_no_targ_task_1
 stimulus_description: no target fixation
 num_iterations: 1
 duration: 10.0
-arg_parser: iout.task_param_reader.py::EyeTrackerStimArgs()
+arg_parser: iout.stim_param_reader.py::EyeTrackerStimArgs()
 stimulus_file_type: psychopy
 stimulus_file: tasks.fixations.py::Fixation_Target()
 target_size: 0
