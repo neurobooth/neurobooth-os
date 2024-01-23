@@ -268,7 +268,7 @@ def get_stimulus_kwargs_from_file(stimulus_id):
     """Get task (stimulus) parameters from a yaml file."""
 
     stimulus_file_name = stimulus_id + ".yml"
-    task_param_dict = task_param_reader.get_param_dictionary(stimulus_file_name)
+    task_param_dict = stim_param_reader.get_param_dictionary(stimulus_file_name)
     stim_file = task_param_dict["stimulus_file"]
     return stim_file, task_param_dict
 
