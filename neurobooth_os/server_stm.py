@@ -2,7 +2,6 @@ import logging
 import socket
 import sys
 import os
-import traceback
 from collections import OrderedDict  # This import is required for eval
 from time import time
 from datetime import datetime
