@@ -165,14 +165,5 @@ class Fixation_Target_sidetrials(Task_Eyetracker):
 
 if __name__ == "__main__":
 
-    # task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
-    # task.run()
-
-    # task = Fixation_Target(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
-    # task.run(prompt=True, duration=3,  target_pos=(0,0))
-
     t = Fixation_Target_Multiple()
     t.run(duration=3, trial_pos=[(0, 7.5), (15, 7.5), (-15, 0)], target_size=0.7)
-
-    # t= Fixation_Target_sidetrials()
-    # t.run(duration=3, target_pos=(0,7.5), target_size=.7, trial_intruct=["Do the task with your DOMINANT arm", "Do the task with your NON-DOMINANT arm"])

@@ -1,0 +1,8 @@
+stimulus_id: timing_test_task_1
+stimulus_description: test audio-video synch
+num_iterations: 10
+duration: null
+arg_parser: iout.stim_param_reader.py::EyeTrackerStimArgs
+stimulus_file_type: psychopy
+stimulus_file: tasks.test_timing.saccades_sounds.py::Saccade_synch()
+target_size: 0.7

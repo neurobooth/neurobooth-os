@@ -17,7 +17,7 @@ class Calibrate(Task_Eyetracker):
 
         super().__init__(**kwargs)
 
-    def run(self, prompt=True, fname="test", instructions=True, **kwargs):
+    def run(self, prompt=True, fname="test", instructions=True, **kwarg):
         if instructions:
             self.present_instructions(prompt)
 

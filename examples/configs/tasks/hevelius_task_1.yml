@@ -1,0 +1,8 @@
+stimulus_id: hevelius_task_1
+stimulus_description: mouse task
+num_iterations: 15
+duration: null
+arg_parser: iout.stim_param_reader.py::HeveliusStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.hevelius.hevelius_task.py::hevelius_task()
+trial_data_fname: tasks/assets/hevelius_centered_config.json

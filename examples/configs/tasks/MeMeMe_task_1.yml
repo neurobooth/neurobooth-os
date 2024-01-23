@@ -1,0 +1,9 @@
+stimulus_id: MeMeMe_task_1
+stimulus_description: speech meme
+num_iterations: 1
+duration: 10.0
+arg_parser: iout.stim_param_reader.py::SpeechStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.task.py::Task_countdown()
+countdown: countdown_speech_2022_04_11.mp4
+text_task: ME-ME-ME-ME-ME

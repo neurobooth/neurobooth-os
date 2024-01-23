@@ -6,6 +6,9 @@ Created on Tue Jul 20 10:00:23 2021
 """
 
 from __future__ import absolute_import, division
+
+from typing import List
+
 from psychopy import core, event, monitors
 
 import time
@@ -14,8 +17,6 @@ import os.path as op
 from pylsl import local_clock
 from psychopy import visual
 
-# from psychopy import prefs
-# prefs.hardware['audioLib'] = ['pyo']
 
 
 text_continue_repeat = (

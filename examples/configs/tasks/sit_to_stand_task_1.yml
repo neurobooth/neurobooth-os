@@ -1,0 +1,7 @@
+stimulus_id: sit_to_stand_task_1
+stimulus_description: Sit to Stand
+num_iterations: 5
+duration: null
+arg_parser: iout.stim_param_reader.py::EyeTrackerStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.task.py::Task()

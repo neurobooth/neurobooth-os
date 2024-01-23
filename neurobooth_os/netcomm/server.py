@@ -91,7 +91,7 @@ class NewStdout:
         pass
 
 
-def get_client_messages(s1, port, host):
+def get_client_messages(s1: socket, port: int, host: str):
     """Create socket server and get messages from clients.
 
     Parameters
@@ -182,13 +182,12 @@ def get_messages_to_ctr(
     s.close()
 
 
-def get_data_timeout(s1, timeout=0.1):
+def get_data_with_timeout(s1: socket, timeout: float = 0.1):
     """Change socket timeout, get data, and remove timeout.
 
     Parameters
     ----------
-    s1 : callable
-        socket.socket instance
+    s1 : socket.socket instance
     timeout: float
         Time to wait for message
     """
