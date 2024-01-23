@@ -616,10 +616,10 @@ def main():
         logger.debug("Starting GUI")
         gui()
         logger.debug("Stopping GUI")
-    except Exception as Argument:
-        logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(Argument)}",
+    except Exception as argument:
+        logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                         exc_info=sys.exc_info())
-        raise Argument
+        raise argument
 
     finally:
         logging.shutdown()

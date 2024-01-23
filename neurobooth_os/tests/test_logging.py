@@ -82,9 +82,9 @@ class TestLogging(unittest.TestCase):
 
         try:
             do_something()
-        except Exception as Argument:
+        except Exception as argument:
             logger = make_default_logger(log_path, logging.DEBUG, False)
-            logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(Argument)}",
+            logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                             exc_info=sys.exc_info())
 
         filename = os.path.join(log_path, os.listdir(log_path)[0])
@@ -156,8 +156,8 @@ class TestLogging(unittest.TestCase):
         db_log = make_db_logger("", "")
         try:
             raise ValueError("something happened")
-        except Exception as Argument:
-            db_log.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(Argument)}",
+        except Exception as argument:
+            db_log.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                             exc_info=sys.exc_info())
         df = get_records()
         assert (df is not None)
@@ -192,7 +192,7 @@ class TestLogging(unittest.TestCase):
         db_log = make_db_logger("000000", "000000_2023_12_25 12:12:12", log_path)
         try:
             raise RuntimeError("This is a test")
-        except RuntimeError as Argument:
+        except RuntimeError:
             db_log.exception("Test db logging with traceback")
         df = get_records()
         assert df.iloc[0]["traceback"] is not None

@@ -99,7 +99,7 @@ class EyeTracker:
             self.tk = pylink.EyeLink(self.IP)
         except RuntimeError:
             msg_text = f"RuntimeError: Could not connect to tracker at %s. " \
-                       f"Please be sure to start Eyetracker before starting Neurobooth." % self.IP
+                       "Please be sure to start Eyetracker before starting Neurobooth." % self.IP
             print(msg_text)
             self.logger.error(msg_text)
 
