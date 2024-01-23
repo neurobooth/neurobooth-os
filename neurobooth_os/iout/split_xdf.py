@@ -72,7 +72,7 @@ def split_sens_files(
 
     if conn is not None:
         table_sens_log = Table("log_sensor_file", conn=conn)
-        _, devices_ids, _, _ = meta._get_task_param(task_id, conn)
+        _, devices_ids, _, _ = meta.get_task_param(task_id, conn)
 
     # get video filenames if videofiles marker present
     videofiles = {}

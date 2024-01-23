@@ -132,10 +132,10 @@ def _select_subject(window, subject_df):
 
 
 def _get_tasks(window, conn, collection_id):
-    tasks_obs = meta.get_tasks(collection_id, conn)
+    tasks_obs = meta.get_task_ids_for_collection(collection_id, conn)
     tasks = list()
     for task in tasks_obs:
-        task_id, *_ = meta._get_task_param(task, conn)
+        task_id, *_ = meta.get_task_param(task, conn)
         tasks.append(task_id)
     tasks = ", ".join(tasks)
     window["tasks"].update(value=tasks)
@@ -616,15 +616,13 @@ def main():
         logger.debug("Starting GUI")
         gui()
         logger.debug("Stopping GUI")
-    except Exception as e:
-        logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
-        logger.critical(e, exc_info=sys.exc_info())
-        logger.critical("Stopping GUI (error-state)")
-        raise e
+    except Exception as argument:
+        logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
+                        exc_info=sys.exc_info())
+        raise argument
+
     finally:
-        print("logging shutdown starting")
         logging.shutdown()
-        print("logging shutdown complete")
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,7 @@
+stimulus_id: calibration_task_1
+stimulus_description: calibrate eyetracker
+num_iterations: 1
+duration: null
+arg_parser: iout.stim_param_reader.py::EyeTrackerStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.eye_tracker_calibrate.py::Calibrate()
