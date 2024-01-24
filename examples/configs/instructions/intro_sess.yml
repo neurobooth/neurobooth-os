@@ -1,0 +1,5 @@
+instruction_id: intro_sess
+instruction_text: null
+instruction_filetype: null
+instruction_file: session_intro_2022_04_11.mp4
+arg_parser: iout.stim_param_reader.py::InstructionArgs()
