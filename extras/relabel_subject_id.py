@@ -191,6 +191,10 @@ def relabel_database(args: RelabelParams, database_info: nb_config.DatabaseSpec)
     relabel_log_sensor_file(log_task_ids, args, conn)
     relabel_log_application(args, conn)
 
+    LOGGER.info('COMMIT DATABASE CHANGES')
+    conn.commit()
+    conn.close()
+
 
 def check_subject_table(subject_id: str, conn: connection) -> None:
     """
@@ -262,6 +266,9 @@ def relabel_log_task(log_session_ids: List[int], args: RelabelParams, conn: conn
     # Update impacted rows. We could speed this up, but there isn't a pressing need.
     with conn.cursor() as cursor:
         for log_task_id, task_notes_file, task_output_file in zip(log_task_ids, task_notes_files, task_output_files):
+            if task_notes_file is None or None in task_output_file:
+                raise RelabelException(f'Error renaming files for log_task_id={log_task_id}.')
+
             LOGGER.info(f'UPDATE log_task {log_task_id}: {task_notes_file}, {task_output_file}')
             cursor.execute(
                 """
@@ -307,6 +314,9 @@ def relabel_log_sensor_file(log_task_ids: List[str], args: RelabelParams, conn: 
     # Update impacted rows. We could speed this up, but there isn't a pressing need.
     with conn.cursor() as cursor:
         for log_sensor_file_id, sensor_file_path in zip(log_sensor_file_ids, sensor_file_paths):
+            if None in sensor_file_path:
+                raise RelabelException(f'Error renaming files for log_sensor_file_id={log_sensor_file_id}.')
+
             LOGGER.info(f'UPDATE log_sensor_file {log_sensor_file_id}: {sensor_file_path}')
             cursor.execute(
                 "UPDATE log_sensor_file SET sensor_file_path = %s WHERE log_sensor_file_id = %s",
