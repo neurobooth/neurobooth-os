@@ -44,7 +44,7 @@ class hevelius_task(Task_Eyetracker):
         newloc[1] = int(offset["y"] - loc[1])
         return newloc
 
-    def run(self, prompt=False, last_Task=False, **kwargs):
+    def run(self, prompt=False, last_Task=False, **kwarg):
 
         practice_blocks = sorted(
             list(
@@ -58,8 +58,6 @@ class hevelius_task(Task_Eyetracker):
         )
 
         utils.change_win_color(self.win, "grey")
-
-        # self.setOfflineMode()
 
         self.present_instructions(prompt)
         self.screen_text = visual.TextStim(
@@ -81,10 +79,6 @@ class hevelius_task(Task_Eyetracker):
             anchorHoriz="left",
             anchorVert="top",
         )
-
-        # # Recording database
-        # self.startRecording()
-        # pylink.msecDelay(100)
 
         self.run_blocks(practice_blocks, "Practice ")
         text_practice_done = 'Thank you for completing Practice Session \n\tPlease press:\n\t"Continue" to the task'
@@ -125,7 +119,6 @@ class hevelius_task(Task_Eyetracker):
             utils.change_win_color(self.win, "grey")
 
     def run_trials(self, block, block_type):
-        # self.screen_text.setAutoDraw(False)
         utils.change_win_color(self.win, "white")
         # create a default keyboard (e.g. to check for escape)
         defaultKeyboard = keyboard.Keyboard()

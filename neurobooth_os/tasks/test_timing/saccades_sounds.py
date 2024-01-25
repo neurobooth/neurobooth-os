@@ -47,7 +47,7 @@ class Saccade_synch(Task_Eyetracker):
 
         self.target_positions = [(0, 0), (-480, 0), (0, 0), (480, 0)]
 
-    def run(self, prompt=True, last_task=False, **kwargs):
+    def run(self, prompt=True, last_task=False, **kwarg):
         self.present_instructions(prompt)
         self.run_trials(prompt)
         self.present_complete(last_task)
@@ -118,7 +118,5 @@ class Saccade_synch(Task_Eyetracker):
 
 if __name__ == "__main__":
 
-    # task = Saccade()
-    # task.run(prompt=False)
     task = Saccade_synch()
     task.run(prompt=False)
