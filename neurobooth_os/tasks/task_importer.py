@@ -4,14 +4,14 @@
 """
 import importlib
 import os.path as op
-from typing import List
+from typing import List, Dict, Any
 
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
 from neurobooth_os.iout.stim_param_reader import TaskArgs, InstructionArgs
 
 
-def _str_fileid_to_eval(stim_file_str):
+def str_fileid_to_eval(stim_file_str):
     """ Converts string path.to.module.py::function() to callable
 
     Parameters
@@ -63,10 +63,10 @@ def get_task_funcs(collection_id, conn):
                 cfg.neurobooth_config["video_tasks"], instr_kwargs["instruction_file"]
             )
         stim_file, stim_kwargs = meta.get_stimulus_kwargs_from_file(task_stim_id)
-        task_kwargs = {**stim_kwargs, **instr_kwargs}
+        task_kwargs: Dict[str:Any] = {**stim_kwargs, **instr_kwargs}
 
         # Convert path to class to class inst.
-        stim_func = _str_fileid_to_eval(stim_file)
+        stim_func = str_fileid_to_eval(stim_file)
 
         task_func_dict[task_stim_id] = {}
         task_func_dict[task_stim_id]["obj"] = stim_func
@@ -126,9 +126,10 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
     arg_parser = stim_kwargs["arg_parser"]
 
     # Convert path class path to class inst.
-    stim_func = _str_fileid_to_eval(stim_file)
-    parser_func = _str_fileid_to_eval(arg_parser)
+    stim_func = str_fileid_to_eval(stim_file)
+    parser_func = str_fileid_to_eval(arg_parser)
     parser = parser_func(**stim_kwargs)
+
     if instr_kwargs.get("instruction_file") is not None:
         instr_kwargs["instruction_file"] = op.join(
             cfg.neurobooth_config["video_tasks"], instr_kwargs["instruction_file"]
