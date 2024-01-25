@@ -1,10 +1,14 @@
 """
 This script can be used to relabel an incorrectly chosen subject ID in the database and on the file system.
 REDCap-derived database tables are not affected by this script.
+
+This script currently operates at the day level, without consideration of session time.
 """
 
 import os
 import re
+import sys
+import logging
 import argparse
 import datetime
 from typing import NamedTuple, Optional, List
@@ -14,7 +18,10 @@ from psycopg2.extensions import connection
 import neurobooth_os.config as nb_config
 
 
-class Arguments(NamedTuple):
+LOGGER: Optional[logging.Logger] = None
+
+
+class RelabelParams(NamedTuple):
     """Defines the affected session and the correct ID"""
     old_id: str
     new_id: str
@@ -37,14 +44,30 @@ class RelabelException(Exception):
 def main() -> None:
     args = parse_arguments()
 
-    nb_config.load_config()
-    configs = nb_config.neurobooth_config_pydantic
+    try:
+        nb_config.load_config()
+        configs = nb_config.neurobooth_config_pydantic
 
-    relabel_database(args, database_info=configs.database)
-    relabel_filesystem(args, data_dir=configs.remote_data_dir)
+        LOGGER.info('Applying Database Updates')
+        relabel_database(args, database_info=configs.database)
+
+        LOGGER.info('Renaming files in NAS')
+        relabel_filesystem(args, data_dir=configs.remote_data_dir)
+    except RelabelException as e:
+        LOGGER.error(e, exc_info=sys.exc_info())
+        raise e
+    except Exception as e:
+        LOGGER.critical(f'Uncaught exception: {e}', exc_info=sys.exc_info())
+        raise e
+    finally:
+        logging.shutdown()
 
 
-def parse_arguments() -> Arguments:
+def parse_arguments() -> RelabelParams:
+    """
+    Parse command line arguments and set up logging as a side effect.
+    :return: Structure describing the affected session and correct subject ID.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--id',
@@ -64,19 +87,39 @@ def parse_arguments() -> Arguments:
         required=True,
         help='The correct subject ID.'
     )
+    parser.add_argument(
+        '--no-log',
+        action='store_true',
+        help='Disable database logging.'
+    )
 
     args = parser.parse_args()
-    return Arguments(
+    setup_logging(not args.no_log)
+    return RelabelParams(
         old_id=args.id,
         new_id=args.new_id,
         date=args.date,
     )
 
 
+def setup_logging(enabled: bool) -> None:
+    """
+    Set up database logging if enabled. If disabled, just sent messages to the console.
+    :param enabled: Whether database logging is enabled.
+    """
+    global LOGGER
+    if enabled:
+        from neurobooth_os.log_manager import make_db_logger
+        LOGGER = make_db_logger()
+    else:
+        LOGGER = logging.getLogger('Console')
+        LOGGER.addHandler(logging.StreamHandler(sys.stdout))
+
+
 DATA_FILE_PATTERN = re.compile(r'.*?(\d+)_(\d+-\d+-\d+)[_-].*')
 
 
-def fix_filename(args: Arguments, filename: str) -> Optional[str]:
+def fix_filename(args: RelabelParams, filename: str) -> Optional[str]:
     """
     Check to see if a file corresponds to the affected session, and, if so, return the corrected file name.
 
@@ -99,7 +142,7 @@ def fix_filename(args: Arguments, filename: str) -> Optional[str]:
     return filename.replace(args.old_session, args.new_session)
 
 
-def relabel_filesystem(args: Arguments, data_dir: str) -> None:
+def relabel_filesystem(args: RelabelParams, data_dir: str) -> None:
     """
     Iterate through the given data directory, identify the impacted session, and update both the session directory
     and contained files. Note that this function can be imported and called from outside neurobooth OS (e.g., if data
@@ -108,7 +151,6 @@ def relabel_filesystem(args: Arguments, data_dir: str) -> None:
     :param args: Structure describing the affected session and correct subject ID.
     :param data_dir: The directory to iterate over. Should contain session-level directories.
     """
-    # TODO: Keep track of how many files we rename. Maybe add logging overall
     for session_dir in os.listdir(data_dir):
         session_path = os.path.join(data_dir, session_dir)
         if not os.path.isdir(session_path) or (session_dir != args.old_session):
@@ -119,18 +161,24 @@ def relabel_filesystem(args: Arguments, data_dir: str) -> None:
             if new_file is None:
                 continue
 
+            # Rename file
             old_path = os.path.join(session_path, file)
             new_path = os.path.join(session_path, new_file)
-            os.rename(old_path, new_path)  # Rename file
+            LOGGER.info(f'RENAME FILE {old_path} -> {new_path}')
+            os.rename(old_path, new_path)
 
-        os.rename(session_path, os.path.join(data_dir, args.new_session))  # Rename session directory
+        # Rename session directory
+        new_session_path = os.path.join(data_dir, args.new_session)
+        LOGGER.info(f'RENAME DIRECTORY {session_path} -> {new_session_path}')
+        os.rename(session_path, new_session_path)
 
 
-def relabel_database(args: Arguments, database_info: nb_config.DatabaseSpec) -> None:
+def relabel_database(args: RelabelParams, database_info: nb_config.DatabaseSpec) -> None:
     """
     Correct subject IDs and file names in the database log_ tables.
     We do not currently handle the log_file table. (Could purge log_file rows and data from drwho/neo, relabel on NAS,
     and then do normal data flow.)
+
     :param args: Structure describing the affected session and correct subject ID.
     :param database_info: Database connection details from neurobooth OS config.
     """
@@ -147,6 +195,7 @@ def relabel_database(args: Arguments, database_info: nb_config.DatabaseSpec) -> 
 def check_subject_table(subject_id: str, conn: connection) -> None:
     """
     Check whether the specified subject is present in the subject table. Raise an error if not.
+
     :param subject_id: The subject ID to check.
     :param conn: The database connection object.
     """
@@ -158,9 +207,10 @@ def check_subject_table(subject_id: str, conn: connection) -> None:
             )
 
 
-def relabel_log_session(args: Arguments, conn: connection) -> List[int]:
+def relabel_log_session(args: RelabelParams, conn: connection) -> List[int]:
     """
     Relabel the subject ID in the log_session table.
+
     :param args: Structure describing the affected session and correct subject ID.
     :param conn: The database connection object.
     :return: A list of updated log_session_id.
@@ -175,12 +225,15 @@ def relabel_log_session(args: Arguments, conn: connection) -> List[int]:
             (args.new_id, args.old_id, args.date),
         )
         affected_ids = cursor.fetchall()
-    return list(chain(*affected_ids))  # Flatten singleton tuples in result
+    affected_ids = list(chain(*affected_ids))  # Flatten singleton tuples in result
+    LOGGER.info(f'UPDATE log_session: {affected_ids}')
+    return affected_ids
 
 
-def relabel_log_task(log_session_ids: List[int], args: Arguments, conn: connection) -> List[str]:
+def relabel_log_task(log_session_ids: List[int], args: RelabelParams, conn: connection) -> List[str]:
     """
     Relabel the subject ID and file names in the log_task table.
+
     :param log_session_ids: All tasks corresponding the provided session IDs will be relabeled.
     :param args: Structure describing the affected session and correct subject ID.
     :param conn: The database connection object.
@@ -209,6 +262,7 @@ def relabel_log_task(log_session_ids: List[int], args: Arguments, conn: connecti
     # Update impacted rows. We could speed this up, but there isn't a pressing need.
     with conn.cursor() as cursor:
         for log_task_id, task_notes_file, task_output_file in zip(log_task_ids, task_notes_files, task_output_files):
+            LOGGER.info(f'UPDATE log_task {log_task_id}: {task_notes_file}, {task_output_file}')
             cursor.execute(
                 """
                 UPDATE log_task SET
@@ -223,7 +277,15 @@ def relabel_log_task(log_session_ids: List[int], args: Arguments, conn: connecti
     return log_task_ids
 
 
-def relabel_log_sensor_file(log_task_ids: List[str], args: Arguments, conn: connection) -> List[str]:
+def relabel_log_sensor_file(log_task_ids: List[str], args: RelabelParams, conn: connection) -> List[str]:
+    """
+    Relabel the file names in the log_sensor_file table.
+
+    :param log_task_ids: All rows corresponding the provided task IDs will be relabeled.
+    :param args: Structure describing the affected session and correct subject ID.
+    :param conn: The database connection object.
+    :return: A list of updated log_sensor_file_id.
+    """
     # Identify which rows are affected by the provided task IDs
     log_sensor_file_ids, sensor_file_paths = [], []
     for log_task_id in log_task_ids:
@@ -245,6 +307,7 @@ def relabel_log_sensor_file(log_task_ids: List[str], args: Arguments, conn: conn
     # Update impacted rows. We could speed this up, but there isn't a pressing need.
     with conn.cursor() as cursor:
         for log_sensor_file_id, sensor_file_path in zip(log_sensor_file_ids, sensor_file_paths):
+            LOGGER.info(f'UPDATE log_sensor_file {log_sensor_file_id}: {sensor_file_path}')
             cursor.execute(
                 "UPDATE log_sensor_file SET sensor_file_path = %s WHERE log_sensor_file_id = %s",
                 (sensor_file_path, log_sensor_file_id)
@@ -253,8 +316,15 @@ def relabel_log_sensor_file(log_task_ids: List[str], args: Arguments, conn: conn
     return log_sensor_file_ids
 
 
-def relabel_log_application(args: Arguments, conn: connection) -> None:
-    # Note: We will not try to alter any log messages, just associate them with the corrected ID/session
+def relabel_log_application(args: RelabelParams, conn: connection) -> List[int]:
+    """
+    Relabel the subject ID and session ID in the log_application table.
+    Note: We do not try to alter any log messages, just associate them with the corrected ID/session
+
+    :param args: Structure describing the affected session and correct subject ID.
+    :param conn: The database connection object.
+    :return: A list of updated row ids.
+    """
     with conn.cursor() as cursor:
         cursor.execute(
             """
@@ -262,9 +332,15 @@ def relabel_log_application(args: Arguments, conn: connection) -> None:
                 subject_id = %s,
                 session_id = %s
             WHERE subject_id = %s AND session_id = %s
+            RETURNING id
             """,
             (args.new_id, args.new_session, args.old_id, args.old_session),
         )
+        affected_ids = cursor.fetchall()
+
+    affected_ids = list(chain(*affected_ids))  # Flatten singleton tuples in result
+    LOGGER.info(f'UPDATE log_application: {affected_ids}')
+    return affected_ids
 
 
 if __name__ == '__main__':
