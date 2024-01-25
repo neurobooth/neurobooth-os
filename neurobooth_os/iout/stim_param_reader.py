@@ -23,9 +23,9 @@ class InstructionArgs(BaseModel):
     """
         Arguments controlling psychopy instructions
     """
-    instruction_text: Optional[str]
-    instruction_filetype: Optional[str]
-    instruction_file: Optional[str]
+    instruction_text: Optional[str] = None
+    instruction_filetype: Optional[str] = None
+    instruction_file: Optional[str] = None
 
 
 class StimulusArgs(BaseModel):
@@ -141,8 +141,8 @@ class FootTappingStimArgs(EyeTrackerStimArgs):
     trial_intruct: List[str]
 
 
-def get_cfg_path() -> str:
-    folder = path.join(environ.get("NB_CONFIG"), "tasks")
+def get_cfg_path(folder_name: str) -> str:
+    folder = path.join(environ.get("NB_CONFIG"), folder_name)
     return _get_cfg_path(folder)
 
 
@@ -153,11 +153,12 @@ def _get_cfg_path(folder: str) -> str:
     return folder
 
 
-def get_param_dictionary(task_param_file_name: str) -> dict:
-    return _get_param_dictionary(task_param_file_name, get_cfg_path())
+def get_param_dictionary(task_param_file_name: str, folder_name: str) -> dict:
+    return _get_param_dictionary(task_param_file_name, get_cfg_path(folder_name))
 
 
 def _get_param_dictionary(task_param_file_name: str, conf_folder_name: str) -> dict:
+    """Returns an unvalidated dictionary containing the attributes from the provided file."""
     filename = os.path.join(conf_folder_name, task_param_file_name)
     if not os.path.exists(filename):
         raise RuntimeError(f"Missing required task configuration file: {filename}.")

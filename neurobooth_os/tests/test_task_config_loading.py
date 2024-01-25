@@ -55,16 +55,14 @@ class TestTask(unittest.TestCase):
         )
         self.assertIsNotNone(task_args)
 
-        entries = reader.get_param_dictionary("calibration_task_1.yml")
+        entries = reader.get_param_dictionary("calibration_task_1.yml", 'tasks')
         task_args2 = StimulusArgs(**entries)
         self.assertIsNotNone(task_args2)
 
     # Integration Test (uses database)
     def test_instruction_args(self):
         instruction_id = "sacc_horiz_1"
-        conn = meta.get_conn("mock_neurobooth_1", False)
-        instr_dict = meta._get_instruction_kwargs(instruction_id, conn)
-        args = InstructionArgs(**instr_dict)
+        args = meta._get_instruction_kwargs_from_file(instruction_id)
         self.assertIsNone(args.instruction_text)
         self.assertEquals('mp4', args.instruction_filetype)
         self.assertEquals('oculomotor_horizontal_saccades_2022_06_03_v0.6.mp4', args.instruction_file)

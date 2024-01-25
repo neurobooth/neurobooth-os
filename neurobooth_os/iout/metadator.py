@@ -10,6 +10,8 @@ from neurobooth_terra import Table
 
 import neurobooth_os.config as cfg
 from neurobooth_os.iout import stim_param_reader
+from neurobooth_os.iout.stim_param_reader import InstructionArgs
+from neurobooth_os.tasks.task_importer import str_fileid_to_eval
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
 
@@ -208,7 +210,7 @@ def get_task_param(task_id, conn):
     (sensor_ids,) = task_df["sensor_id_array"]
     (stimulus_id,) = task_df["stimulus_id"]
     (instr_id,) = task_df["instruction_id"]
-    instr_kwargs = _get_instruction_kwargs(instr_id, conn)
+    instr_kwargs = _get_instruction_kwargs_from_file(instr_id)
     return (
         stimulus_id,
         device_ids,
@@ -217,19 +219,16 @@ def get_task_param(task_id, conn):
     )  # XXX: name similarly in calling function
 
 
-def _get_instruction_kwargs(instruction_id, conn):
+def _get_instruction_kwargs_from_file(instruction_id: str) -> InstructionArgs:
     """Get dictionary from instruction table."""
     if instruction_id is None:
         return {}
-    table = Table("nb_instruction", conn=conn)
-    instr = table.query(where=f"instruction_id = '{instruction_id}'")
-    dict_instr = instr.iloc[0].to_dict()
-    # remove unnecessary fields
-    _ = [
-        dict_instr.pop(l)
-        for l in ["is_active", "date_created", "version", "assigned_task"]
-    ]
-    return dict_instr
+    file_name = instruction_id + ".yml"
+    instr_param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file_name, 'instructions')
+    param_parser: str = instr_param_dict['arg_parser']
+    parser_func = str_fileid_to_eval(param_parser)
+    args: InstructionArgs = parser_func(**instr_param_dict)
+    return args
 
 
 def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_dictionary: Dict[str, Any]):
@@ -268,7 +267,7 @@ def get_stimulus_kwargs_from_file(stimulus_id):
     """Get task (stimulus) parameters from a yaml file."""
 
     stimulus_file_name = stimulus_id + ".yml"
-    task_param_dict = stim_param_reader.get_param_dictionary(stimulus_file_name)
+    task_param_dict = stim_param_reader.get_param_dictionary(stimulus_file_name, 'tasks')
     stim_file = task_param_dict["stimulus_file"]
     return stim_file, task_param_dict
 

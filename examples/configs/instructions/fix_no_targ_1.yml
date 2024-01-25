@@ -1,0 +1,5 @@
+instruction_id: fix_no_targ_1
+instruction_text: null
+instruction_filetype: mp4
+instruction_file: oculomotor_fixation_no_target_2022_08_04_v0.8.mp4
+arg_parser: iout.stim_param_reader.py::InstructionArgs()

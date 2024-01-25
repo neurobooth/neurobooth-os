@@ -1,0 +1,5 @@
+instruction_id: mouse_1
+instruction_text: null
+instruction_filetype: null
+instruction_file: motor_mousetask_2022_04_26_v0.3.mp4
+arg_parser: iout.stim_param_reader.py::InstructionArgs()
