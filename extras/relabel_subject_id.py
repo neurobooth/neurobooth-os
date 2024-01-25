@@ -7,13 +7,11 @@ import os
 import re
 import argparse
 import datetime
-from typing import TYPE_CHECKING, NamedTuple, Optional, List
+from typing import NamedTuple, Optional, List
 from itertools import chain
+from psycopg2.extensions import connection
 
 import neurobooth_os.config as nb_config
-
-if TYPE_CHECKING:
-    from psycopg2.extensions import connection
 
 
 class Arguments(NamedTuple):
