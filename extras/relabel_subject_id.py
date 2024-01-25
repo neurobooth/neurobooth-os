@@ -48,7 +48,7 @@ def parse_arguments() -> Arguments:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--id',
-        type=int,
+        type=str,
         required=True,
         help='The (incorrect/existing) subject ID of the affected session.',
     )
@@ -60,15 +60,15 @@ def parse_arguments() -> Arguments:
     )
     parser.add_argument(
         '--new-id',
-        type=int,
+        type=str,
         required=True,
         help='The correct subject ID.'
     )
 
     args = parser.parse_args()
     return Arguments(
-        old_id=str(args.id),
-        new_id=str(args.new_id),
+        old_id=args.id,
+        new_id=args.new_id,
         date=args.date,
     )
 
