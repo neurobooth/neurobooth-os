@@ -42,10 +42,10 @@ class RelabelException(Exception):
 
 
 def main() -> None:
+    nb_config.load_config()
     args = parse_arguments()
 
     try:
-        nb_config.load_config()
         configs = nb_config.neurobooth_config_pydantic
 
         LOGGER.info('Applying Database Updates')
