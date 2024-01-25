@@ -7,7 +7,8 @@ import os
 import re
 import argparse
 import datetime
-from typing import TYPE_CHECKING, NamedTuple, Optional
+from typing import TYPE_CHECKING, NamedTuple, Optional, List
+from itertools import chain
 
 import neurobooth_os.config as nb_config
 
@@ -115,7 +116,7 @@ def relabel_filesystem(args: Arguments, data_dir: str) -> None:
             continue
 
         for file in os.listdir(session_path):
-            new_file = fix_filename(file)
+            new_file = fix_filename(args, file)
             if new_file is None:
                 continue
 
@@ -127,40 +128,130 @@ def relabel_filesystem(args: Arguments, data_dir: str) -> None:
 
 
 def relabel_database(args: Arguments, database_info: nb_config.DatabaseSpec) -> None:
+    """
+    Correct subject IDs and file names in the database log_ tables.
+    We do not currently handle the log_file table. (Could purge log_file rows and data from drwho/neo, relabel on NAS,
+    and then do normal data flow.)
+    :param args: Structure describing the affected session and correct subject ID.
+    :param database_info: Database connection details from neurobooth OS config.
+    """
     from neurobooth_os.iout import metadator
     conn: connection = metadator.get_conn(database_info.dbname)
 
     check_subject_table(args.new_id, conn)
-    relabel_log_session(args, conn)
-    relabel_log_task(args, conn)
-    # TODO: log_file?
-    # TODO: log_sensor_file
-
+    log_session_ids = relabel_log_session(args, conn)
+    log_task_ids = relabel_log_task(log_session_ids, args, conn)
+    relabel_log_sensor_file(log_task_ids, args, conn)
     relabel_log_application(args, conn)
 
 
 def check_subject_table(subject_id: str, conn: connection) -> None:
+    """
+    Check whether the specified subject is present in the subject table. Raise an error if not.
+    :param subject_id: The subject ID to check.
+    :param conn: The database connection object.
+    """
     with conn.cursor() as cursor:
-        cursor.execute("SELECT COUNT(*) FROM subject WHERE subject_id = %s", subject_id)
-        if cursor.fetchone() == 0:
+        cursor.execute("SELECT COUNT(*) FROM subject WHERE subject_id = %s", (subject_id,))
+        if cursor.fetchone()[0] == 0:
             raise RelabelException(
                 f'ID {subject_id} cannot be found in the database. Make sure the new subject has been added in REDCap.'
             )
 
 
-def relabel_log_session(args: Arguments, conn: connection) -> None:
-    # TODO: Look into returning log_session_id to support other updates
+def relabel_log_session(args: Arguments, conn: connection) -> List[int]:
+    """
+    Relabel the subject ID in the log_session table.
+    :param args: Structure describing the affected session and correct subject ID.
+    :param conn: The database connection object.
+    :return: A list of updated log_session_id.
+    """
     with conn.cursor() as cursor:
         cursor.execute(
-            "UPDATE log_session SET subject_id = %s WHERE subject_id = %s AND date = %s",
+            """
+            UPDATE log_session SET subject_id = %s
+            WHERE subject_id = %s AND date = %s
+            RETURNING log_session_id
+            """,
             (args.new_id, args.old_id, args.date),
         )
+        affected_ids = cursor.fetchall()
+    return list(chain(*affected_ids))  # Flatten singleton tuples in result
 
 
-def relabel_log_task(args: Arguments, conn: connection) -> None:
-    # TODO: Look into returning log_task_id to support other updates
-    # TODO: Need to handle subject_id, task_notes_file and task_output_files
-    pass
+def relabel_log_task(log_session_ids: List[int], args: Arguments, conn: connection) -> List[str]:
+    """
+    Relabel the subject ID and file names in the log_task table.
+    :param log_session_ids: All tasks corresponding the provided session IDs will be relabeled.
+    :param args: Structure describing the affected session and correct subject ID.
+    :param conn: The database connection object.
+    :return: A list of updated log_task_id.
+    """
+    # Identify which tasks are affected by the provided session IDs
+    log_task_ids, task_notes_files, task_output_files = [], [], []
+    for log_session_id in log_session_ids:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT log_task_id, task_notes_file, task_output_files
+                FROM log_task WHERE log_session_id = %s
+                """,
+                (log_session_id,)
+            )
+            for log_task_id, task_notes_file, task_output_file in cursor.fetchall():
+                log_task_ids.append(log_task_id)
+                task_notes_files.append(task_notes_file)
+                task_output_files.append(task_output_file)
+
+    # Correct file names; there can be multiple task output files per row
+    task_notes_files = [fix_filename(args, f) for f in task_notes_files]
+    task_output_files = [[fix_filename(args, f) for f in files] for files in task_output_files]
+
+    # Update impacted rows. We could speed this up, but there isn't a pressing need.
+    with conn.cursor() as cursor:
+        for log_task_id, task_notes_file, task_output_file in zip(log_task_ids, task_notes_files, task_output_files):
+            cursor.execute(
+                """
+                UPDATE log_task SET
+                    subject_id = %s,
+                    task_notes_file = %s,
+                    task_output_files = %s
+                WHERE log_task_id = %s
+                """,
+                (args.new_id, task_notes_file, task_output_file, log_task_id)
+            )
+
+    return log_task_ids
+
+
+def relabel_log_sensor_file(log_task_ids: List[str], args: Arguments, conn: connection) -> List[str]:
+    # Identify which rows are affected by the provided task IDs
+    log_sensor_file_ids, sensor_file_paths = [], []
+    for log_task_id in log_task_ids:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT log_sensor_file_id, sensor_file_path
+                FROM log_sensor_file WHERE log_task_id = %s
+                """,
+                (log_task_id,)
+            )
+            for log_sensor_file_id, sensor_file_path in cursor.fetchall():
+                log_sensor_file_ids.append(log_sensor_file_id)
+                sensor_file_paths.append(sensor_file_path)
+
+    # Correct file names; there can be multiple sensor files per row
+    sensor_file_paths = [[fix_filename(args, f) for f in files] for files in sensor_file_paths]
+
+    # Update impacted rows. We could speed this up, but there isn't a pressing need.
+    with conn.cursor() as cursor:
+        for log_sensor_file_id, sensor_file_path in zip(log_sensor_file_ids, sensor_file_paths):
+            cursor.execute(
+                "UPDATE log_task SET sensor_file_path = %s WHERE log_sensor_file_id = %s",
+                (sensor_file_path, log_sensor_file_id)
+            )
+
+    return log_sensor_file_ids
 
 
 def relabel_log_application(args: Arguments, conn: connection) -> None:
