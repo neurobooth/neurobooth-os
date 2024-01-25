@@ -73,7 +73,7 @@ def parse_arguments() -> Arguments:
     )
 
 
-DATA_FILE_PATTERN = re.compile(r'.*(\d+)_([\d-]*)_.*')
+DATA_FILE_PATTERN = re.compile(r'.*?(\d+)_(\d+-\d+-\d+)[_-].*')
 
 
 def fix_filename(args: Arguments, filename: str) -> Optional[str]:
@@ -108,6 +108,7 @@ def relabel_filesystem(args: Arguments, data_dir: str) -> None:
     :param args: Structure describing the affected session and correct subject ID.
     :param data_dir: The directory to iterate over. Should contain session-level directories.
     """
+    # TODO: Keep track of how many files we rename. Maybe add logging overall
     for session_dir in os.listdir(data_dir):
         session_path = os.path.join(data_dir, session_dir)
         if not os.path.isdir(session_path) or (session_dir != args.old_session):
@@ -245,7 +246,7 @@ def relabel_log_sensor_file(log_task_ids: List[str], args: Arguments, conn: conn
     with conn.cursor() as cursor:
         for log_sensor_file_id, sensor_file_path in zip(log_sensor_file_ids, sensor_file_paths):
             cursor.execute(
-                "UPDATE log_task SET sensor_file_path = %s WHERE log_sensor_file_id = %s",
+                "UPDATE log_sensor_file SET sensor_file_path = %s WHERE log_sensor_file_id = %s",
                 (sensor_file_path, log_sensor_file_id)
             )
 
