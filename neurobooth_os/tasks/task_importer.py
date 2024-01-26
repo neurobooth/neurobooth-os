@@ -117,7 +117,7 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
     TaskArgs object
     """
 
-    task_stim_id, task_dev, task_sens, instr_kwargs= meta.get_task_param(
+    task_stim_id, task_dev, task_sens, instr_kwargs = meta.get_task_param(
         task_id, conn
     )  # xtask_sens -> sens_id, always end with id
     stim_file, stim_kwargs = meta.get_stimulus_kwargs_from_file(task_stim_id)

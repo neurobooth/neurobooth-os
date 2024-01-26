@@ -210,7 +210,7 @@ def get_task_param(task_id, conn):
     (sensor_ids,) = task_df["sensor_id_array"]
     (stimulus_id,) = task_df["stimulus_id"]
     (instr_id,) = task_df["instruction_id"]
-    instr_kwargs = _get_instruction_kwargs_from_file(instr_id)
+    instr_kwargs: InstructionArgs = _get_instruction_kwargs_from_file(instr_id)
     return (
         stimulus_id,
         device_ids,
@@ -228,6 +228,7 @@ def _get_instruction_kwargs_from_file(instruction_id: str) -> InstructionArgs:
     param_parser: str = instr_param_dict['arg_parser']
     parser_func = str_fileid_to_eval(param_parser)
     args: InstructionArgs = parser_func(**instr_param_dict)
+    assert isinstance(args, InstructionArgs)
     return args
 
 
