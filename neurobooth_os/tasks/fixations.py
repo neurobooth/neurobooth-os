@@ -81,6 +81,7 @@ class Fixation_Target_Multiple(Task_Eyetracker):
 
             # Send event to eyetracker and to LSL separately
             self.sendMessage(self.marker_trial_start, False)
+            self.update_tablet_background(self.target.pos[0], self.target.pos[1])
             self.show_text(
                 screen=self.target,
                 msg="Trial",
@@ -91,6 +92,7 @@ class Fixation_Target_Multiple(Task_Eyetracker):
             self.sendMessage(self.marker_trial_end, False)
 
         self.sendMessage(self.marker_task_end)
+        self.sendCommand('clear_screen 0')
 
         if prompt:
             func_kwargs = locals()
