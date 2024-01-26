@@ -1,0 +1,11 @@
+device_id: Eyelink_1
+device_sn: 192.168.100.15
+wearable_bool: false
+device_location: '25_19_36'
+arg_parser: null
+device_name: EYELINK Portable Duo
+device_make: SR
+device_model: 'EYELINK CL 6.50  '
+device_firmware: None
+sensor_id_array:
+- sens_Eyelink_sens_1

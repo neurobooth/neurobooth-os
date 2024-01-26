@@ -1,0 +1,11 @@
+device_id: Mouse
+device_sn: None
+wearable_bool: false
+device_location: null
+arg_parser: null
+device_name: Mouse
+device_make: null
+device_model: null
+device_firmware: null
+sensor_id_array:
+- Mouse
