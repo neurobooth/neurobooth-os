@@ -11,7 +11,6 @@ from neurobooth_terra import Table
 import neurobooth_os.config as cfg
 from neurobooth_os.iout import stim_param_reader
 from neurobooth_os.iout.stim_param_reader import InstructionArgs
-from neurobooth_os.tasks.task_importer import str_fileid_to_eval
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
 
@@ -223,6 +222,7 @@ def _get_instruction_kwargs_from_file(instruction_id: str) -> InstructionArgs:
     """Get dictionary from instruction table."""
     if instruction_id is None:
         return {}
+    from neurobooth_os.tasks.task_importer import str_fileid_to_eval
     file_name = instruction_id + ".yml"
     instr_param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file_name, 'instructions')
     param_parser: str = instr_param_dict['arg_parser']
