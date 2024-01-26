@@ -52,7 +52,7 @@ def run_acq(logger):
 
     lowFeed_running = False
     recording = False
-    port = config.neurobooth_config['acquisition']["port"]
+    port = config.neurobooth_config.acquisition.port
     host = ''
     device_manager = None
     system_resource_logger = None
@@ -63,7 +63,7 @@ def run_acq(logger):
         if "vis_stream" in data:
             if not lowFeed_running:
                 lowFeed = VidRec_Brio(
-                    camindex=config.neurobooth_config["cam_inx_lowfeed"], doPreview=True
+                    camindex=config.neurobooth_config.cam_inx_lowfeed, doPreview=True
                 )
                 print("LowFeed running")
                 lowFeed_running = True
@@ -81,8 +81,8 @@ def run_acq(logger):
             subject_id: str = log_task["subject_id"]
             session_name: str = log_task["subject_id-date"]
 
-            conn = meta.get_conn(database=database_name)
-            ses_folder = f"{config.neurobooth_config['acquisition']['local_data_dir']}{session_name}"
+            conn = meta.get_database_connection(database=database_name)
+            ses_folder = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name)
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
@@ -125,7 +125,7 @@ def run_acq(logger):
             print("Starting recording")
             t0 = time()
             fname, task = data.split("::")[1:]
-            fname = f"{config.neurobooth_config['acquisition']['local_data_dir']}{session_name}/{fname}"
+            fname = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name, fname)
 
             device_manager.start_cameras(fname, task_devs_kw[task])
             device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected

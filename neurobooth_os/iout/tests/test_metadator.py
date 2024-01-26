@@ -1,9 +1,9 @@
 from neurobooth_os.iout import metadator as meta
 
 
-def test_task_addition(database):
+def test_task_addition():
 
-    conn = meta.get_conn(database)
+    conn = meta.get_database_connection()
     subj_id = "Test"
     task_id = meta.make_new_task_row(conn, subj_id)
 

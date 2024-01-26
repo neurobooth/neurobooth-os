@@ -26,7 +26,7 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
     args
         Command line arguments.
     """
-    session_root = cfg.neurobooth_config[args.server]["local_data_dir"]
+    session_root = cfg.neurobooth_config.server_by_name(args.server).local_data_dir
     logger = logging.getLogger(APP_LOG_NAME)
     logger.debug(f'Session Root: {session_root}')
 

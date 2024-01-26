@@ -27,15 +27,14 @@ use_instruction_videos = True  # False if instruction videos not available
 
 # %%
 # Prepare for task presentation
-database = cfg.neurobooth_config['database']['name']
-conn = meta.get_conn(database)
+conn = meta.get_database_connection()
 win = utl.make_win(full_screen=False)
 
 task_func_dict = get_task_funcs(collection_id, conn)
 task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
 
 task_karg ={"win": win,
-            "path": cfg.neurobooth_config['acquisition']['local_data_dir'],
+            "path": cfg.neurobooth_config.acquisition.local_data_dir,
             "subj_id": subj_id,            
             }
 

@@ -2,10 +2,11 @@
 import logging
 from collections import OrderedDict
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
+from psycopg2.extensions import connection
 from neurobooth_terra import Table
 
 import neurobooth_os.config as cfg
@@ -15,61 +16,49 @@ from neurobooth_os.tasks.task_importer import str_fileid_to_eval
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
 
-def get_conn(database, validate_config_paths: bool = True):
-    """Gets connector to the database
+def get_database_connection(database: Optional[str] = None, validate_config_paths: bool = True) -> connection:
+    """Get a connection to the database
 
-    Parameters
-    ----------
-    database : str
-        Name of the database
-    validate_config_paths : bool, optional
-        True if the config file path should be validated. This should generally be True outside test scenarios
-
-    Returns
-    -------
-    conn : object
-        connector to psycopg database
+    :param database: If provided, override the database name in the configration.
+    :param validate_config_paths: True if the config file path should be validated.
+        This should generally be True outside test scenarios
+    :returns: Connector to psycopg database
     """
     import neurobooth_os.log_manager as log_man
+    log_man.make_default_logger(log_level=logging.ERROR, validate_paths=validate_config_paths)
 
-    logger = log_man.make_default_logger(log_level=logging.ERROR, validate_paths=validate_config_paths)
+    database_info = cfg.neurobooth_config.database
 
-    if database is None:
-        logger.critical("Database name is a required parameter.")
-        raise  RuntimeError("No database name was provided to get_conn().")
-
-    port = cfg.neurobooth_config["database"]["port"]
     tunnel = SSHTunnelForwarder(
-        cfg.neurobooth_config["database"]["remote_address"],
-        ssh_username=cfg.neurobooth_config["database"]["remote_username"],
+        database_info.remote_host,
+        ssh_username=database_info.remote_user,
         ssh_config_file="~/.ssh/config",
         ssh_pkey="~/.ssh/id_rsa",
-        remote_bind_address=(cfg.neurobooth_config["database"]["host"], port),
-        # TODO address in config
-        local_bind_address=("localhost", 6543),
+        remote_bind_address=(database_info.host, database_info.port),
+        local_bind_address=("localhost", 6543),  # TODO: address in config
     )
     tunnel.start()
     host = tunnel.local_bind_host
     port = tunnel.local_bind_port
 
     conn = psycopg2.connect(
-        database=database,
-        user=cfg.neurobooth_config["database"]["user"],
-        password=cfg.neurobooth_config["database"]["pass"],
+        database=database_info.dbname if database is None else database,
+        user=database_info.user,
+        password=database_info.password,
         host=host,
         port=port,
     )
     return conn
 
 
-def get_study_ids(conn):
+def get_study_ids(conn: connection):
     table_study = Table("nb_study", conn=conn)
     studies_df = table_study.query()
     study_ids = studies_df.index.values.tolist()
     return study_ids
 
 
-def get_subject_ids(conn, first_name, last_name):
+def get_subject_ids(conn: connection, first_name, last_name):
     table_subject = Table("subject", conn=conn)
     subject_df = table_subject.query(
         where=f"LOWER(first_name_birth)=LOWER('{first_name}') AND LOWER(last_name_birth)=LOWER('{last_name}')"
@@ -77,14 +66,14 @@ def get_subject_ids(conn, first_name, last_name):
     return subject_df
 
 
-def get_collection_ids(study_id, conn):
+def get_collection_ids(study_id, conn: connection):
     table_study = Table("nb_study", conn=conn)
     studies_df = table_study.query()
     collection_ids = studies_df.loc[study_id, "collection_ids"]
     return collection_ids
 
 
-def get_task_ids_for_collection(collection_id, conn):
+def get_task_ids_for_collection(collection_id, conn: connection):
     """
 
     Parameters
@@ -132,18 +121,18 @@ def _new_session_log_dict(application_id="neurobooth_os"):
     return session_log
 
 
-def make_new_task_row(conn, subject_id):
+def make_new_task_row(conn: connection, subject_id):
     table = Table("log_task", conn=conn)
     return table.insert_rows([(subject_id,)], cols=["subject_id"])
 
 
-def _make_new_appl_log_row(conn, log_entry):
+def _make_new_appl_log_row(conn: connection, log_entry):
     """Create a new row in the log_application table"""
     table = Table("log_application", conn=conn)
     return table.insert_rows([log_entry.values], cols=[log_entry.keys])
 
 
-def _make_session_id(conn, session_log):
+def _make_session_id(conn: connection, session_log):
     """Gets or creates session id"""
 
     table = Table("log_session", conn=conn)
@@ -162,7 +151,7 @@ def _make_session_id(conn, session_log):
     return session_id
 
 
-def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn) -> None:
+def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn: connection) -> None:
     """
     Updates a row in log_task.
 
@@ -189,7 +178,7 @@ def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn) -> None:
     table.update_row(log_task_id, tuple(vals), cols=list(dict_vals))
 
 
-def get_task_param(task_id, conn):
+def get_task_param(task_id, conn: connection):
     """
 
     Parameters
@@ -231,7 +220,7 @@ def _get_instruction_kwargs_from_file(instruction_id: str) -> InstructionArgs:
     return args
 
 
-def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_dictionary: Dict[str, Any]):
+def log_task_params(conn: connection, stimulus_id: str, log_task_id: str, task_param_dictionary: Dict[str, Any]):
     """
     Logs task parameters (specifically, the stimulus params and instruction params) to the database.
     @param conn: postgres database connection
@@ -253,7 +242,7 @@ def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_diction
     conn.commit()
         
 
-def _log_task_parameter(conn, value_dict: Dict[str, Any]):
+def _log_task_parameter(conn: connection, value_dict: Dict[str, Any]):
     query = "INSERT INTO log_task_param " \
              "(log_task_id, stimulus_id, key, value, value_type)  " \
              " VALUES " \
@@ -272,14 +261,14 @@ def get_stimulus_kwargs_from_file(stimulus_id):
     return stim_file, task_param_dict
 
 
-def _get_sensor_kwargs(sens_id, conn):
+def _get_sensor_kwargs(sens_id, conn: connection):
     table_sens = Table("nb_sensor", conn=conn)
     task_df = table_sens.query(where=f"sensor_id = '{sens_id}'")
     param = task_df.iloc[0].to_dict()
     return param
 
 
-def get_dev_sn(dev_id, conn):
+def get_dev_sn(dev_id, conn: connection):
     table_sens = Table("nb_device", conn=conn)
     device_df = table_sens.query(where=f"device_id = '{dev_id}'")
     sn = device_df["device_sn"]
@@ -369,7 +358,7 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
     return kwarg
 
 
-def _get_device_kwargs(task_id, conn):
+def _get_device_kwargs(task_id, conn: connection):
     stim_id, dev_ids, sens_ids, _ = get_task_param(task_id, conn)
     dev_kwarg = {}
     for dev_id, dev_sens_ids in zip(dev_ids, sens_ids):
@@ -389,7 +378,7 @@ def _get_device_kwargs(task_id, conn):
     return dev_kwarg
 
 
-def get_device_kwargs_by_task(collection_id, conn) -> OrderedDict:
+def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
     # Get devices kwargs for all the tasks
     # outputs dict with keys = stimulus_id, vals = dict with dev parameters
 
@@ -402,5 +391,3 @@ def get_device_kwargs_by_task(collection_id, conn) -> OrderedDict:
         tasks_kwarg[stim_id] = task_kwarg
 
     return tasks_kwarg
-
-

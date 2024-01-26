@@ -60,7 +60,7 @@ def get_task_funcs(collection_id, conn):
         )  # xtask_sens -> sens_id, always end with id
         if instr_kwargs.get("instruction_file") is not None:
             instr_kwargs["instruction_file"] = op.join(
-                cfg.neurobooth_config["video_tasks"], instr_kwargs["instruction_file"]
+                cfg.neurobooth_config.video_task_dir, instr_kwargs["instruction_file"]
             )
         stim_file, stim_kwargs = meta.get_stimulus_kwargs_from_file(task_stim_id)
         task_kwargs: Dict[str:Any] = {**stim_kwargs, **instr_kwargs}
@@ -132,7 +132,7 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
 
     if instr_kwargs.get("instruction_file") is not None:
         instr_kwargs["instruction_file"] = op.join(
-            cfg.neurobooth_config["video_tasks"], instr_kwargs["instruction_file"]
+            cfg.neurobooth_config.video_task_dir, instr_kwargs["instruction_file"]
         )
         instr_args = InstructionArgs(**instr_kwargs)
         task_args = TaskArgs(task_id=task_id,
