@@ -269,8 +269,10 @@ def relabel_log_task(log_session_ids: List[int], args: RelabelParams, conn: conn
     # Update impacted rows. We could speed this up, but there isn't a pressing need.
     with conn.cursor() as cursor:
         for log_task_id, task_notes_file, task_output_file in zip(log_task_ids, task_notes_files, task_output_files):
-            if (task_notes_file is not None) and (None in task_output_file):
-                raise RelabelException(f'Error renaming files for log_task_id={log_task_id}.')
+            if task_notes_file is None:
+                raise RelabelException(f'Error renaming task notes for log_task_id={log_task_id}.')
+            if (task_output_file is not None) and (None in task_output_file):
+                raise RelabelException(f'Error renaming output file for log_task_id={log_task_id}.')
 
             LOGGER.info(f'UPDATE log_task {log_task_id}: {task_notes_file}, {task_output_file}')
             cursor.execute(
@@ -320,7 +322,7 @@ def relabel_log_sensor_file(log_task_ids: List[str], args: RelabelParams, conn: 
     # Update impacted rows. We could speed this up, but there isn't a pressing need.
     with conn.cursor() as cursor:
         for log_sensor_file_id, sensor_file_path in zip(log_sensor_file_ids, sensor_file_paths):
-            if (sensor_file_path is not None) and (None in sensor_file_path):
+            if None in sensor_file_path:
                 raise RelabelException(f'Error renaming files for log_sensor_file_id={log_sensor_file_id}.')
 
             LOGGER.info(f'UPDATE log_sensor_file {log_sensor_file_id}: {sensor_file_path}')
