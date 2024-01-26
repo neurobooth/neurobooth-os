@@ -1,0 +1,5 @@
+instruction_id: meme_1
+instruction_text: null
+instruction_filetype: null
+instruction_file: speech_MeMeMe_2022_03_22_v0.5.mp4
+arg_parser: iout.stim_param_reader.py::InstructionArgs()
