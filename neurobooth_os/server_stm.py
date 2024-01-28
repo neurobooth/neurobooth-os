@@ -34,7 +34,6 @@ from neurobooth_os.netcomm import (
 
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
-from neurobooth_os.tasks.task_importer import get_task_arguments
 from neurobooth_os.log_manager import make_db_logger
 
 
@@ -62,7 +61,6 @@ def run_stm(logger):
     host: str = ''
     session: Optional[StmSession] = None
     task_log_entry: Optional[TaskLogEntry] = None
-    task_func_dict: Dict[str, TaskArgs] = {}
     for data, socket_conn in get_client_messages(socket_1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 
@@ -75,9 +73,6 @@ def run_stm(logger):
             tasks, subj_id, session_id = data.split(":")[1:]
             task_log_entry.log_session_id = session_id
 
-            if presented:
-                task_func_dict = get_task_arguments(session.collection_id, session.db_conn)
-
             # Preload tasks media
             t0 = time()
 
@@ -87,7 +82,8 @@ def run_stm(logger):
                 if stimulus_id in session.tasks():
                     task_args: TaskArgs = _get_task_args(session, stimulus_id)
                     logger.info(task_args)
-                    tsk_fun_obj: Callable = copy.copy(task_args.task_constructor_callable)  # callable for Task constructor
+                    tsk_fun_obj: Callable = copy.copy(
+                        task_args.task_constructor_callable)  # callable for Task constructor
                     logger.info(tsk_fun_obj)
                     this_task_kwargs = create_task_kwargs(session, task_args)
                     logger.info(this_task_kwargs)
@@ -211,9 +207,9 @@ def run_stm(logger):
 
 
 def _get_task_args(session: StmSession, stimulus_id: str):
-        if session.task_func_dict is None:
-            raise RuntimeError("task_func_dict is not set in StmSession")
-        return session.task_func_dict[stimulus_id]
+    if session.task_func_dict is None:
+        raise RuntimeError("task_func_dict is not set in StmSession")
+    return session.task_func_dict[stimulus_id]
 
 
 def stop_acq(executor, session: StmSession, stimulus_id: str):
@@ -229,7 +225,7 @@ def stop_acq(executor, session: StmSession, stimulus_id: str):
     acq_result.result()  # Raise any exceptions swallowed by the executor
 
 
-def start_acq(calib_instructions, executor, session:StmSession, stimulus_id: str, task_id: str, this_task_kwargs,
+def start_acq(calib_instructions, executor, session: StmSession, stimulus_id: str, task_id: str, this_task_kwargs,
               tsk_start_time):
     """
     Start recording on ACQ in parallel to starting on STM

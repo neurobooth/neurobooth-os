@@ -1,0 +1,8 @@
+task_id: coord_pause_obs_2
+feature_of_interest: pause
+stimulus_id: coord_pause_task_2
+inst_id: null
+device_id_array:
+- Intel_D455_1
+sensor_id_array:
+- - Intel_D455_rgb_1

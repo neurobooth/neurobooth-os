@@ -1,0 +1,10 @@
+device_id: FLIR_blackfly_1
+device_sn: '20522874'
+device_name: FLIR Blackfly S BFS-U3-17S7C
+device_location: '50_50_180'
+wearable_bool: false
+device_make: FLIR
+device_model: Blackfly S BFS-U3-17S7C
+device_firmware: 1910.0.122.0
+sensor_id_array:
+- FLIR_rgb_1

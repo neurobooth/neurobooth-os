@@ -1,0 +1,10 @@
+device_id: Mic_Yeti_dev_1
+device_sn: None
+device_name: Microphone (BLUE USB Audio 2.0)
+device_location: '44_42_56'
+wearable_bool: false
+device_make: BLUE Yeti
+device_model: Yeti Pro
+device_firmware: None
+sensor_id_array:
+- Mic_Yeti_sens_1

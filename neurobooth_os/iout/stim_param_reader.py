@@ -18,7 +18,6 @@ the pydantic BaseModel class). This class handles the parsing of the yaml file i
 Parsers for all the standard stimulus yaml files are found in this module.   
 """
 
-
 class InstructionArgs(BaseModel):
     """
         Arguments controlling psychopy instructions
@@ -165,3 +164,21 @@ def _get_param_dictionary(task_param_file_name: str, conf_folder_name: str) -> d
     with open(filename) as param_file:
         param_dict = yaml.load(param_file, yaml.FullLoader)
         return param_dict
+
+
+class DeviceArgs(BaseModel):
+    pass
+
+
+class SensorArgs(BaseModel):
+    pass
+
+
+class TaskParams():
+    task_id: str
+    stim_id: str
+    feature_of_interest: str
+    stimulus_args: StimulusArgs
+    instr_args: Optional[InstructionArgs]
+    device_args: List[DeviceArgs]
+    sensor_args: List[SensorArgs]

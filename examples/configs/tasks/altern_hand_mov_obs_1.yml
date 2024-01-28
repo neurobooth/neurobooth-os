@@ -1,0 +1,26 @@
+task_id: altern_hand_mov_obs_1
+feature_of_interest: motor
+stimulus_id: altern_hand_mov_task1
+inst_id: alt_hand_1
+device_id_array:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+sensor_id_array:
+- - Intel_D455_rgb_1
+  - Intel_D455_depth_1
+- - Intel_D455_rgb_1
+  - Intel_D455_depth_1
+- - Intel_D455_rgb_1
+  - Intel_D455_depth_1
+- - FLIR_rgb_1
+  - ''
+- - Mic_Yeti_sens_1
+  - ''

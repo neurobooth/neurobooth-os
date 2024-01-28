@@ -1,0 +1,10 @@
+device_id: IPhone_dev_1
+device_sn: None
+device_name: IPhone
+device_location: null
+wearable_bool: false
+device_make: Apple Inc
+device_model: '13'
+device_firmware: '14.5'
+sensor_id_array:
+- IPhone_sens_1

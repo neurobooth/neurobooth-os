@@ -1,0 +1,11 @@
+device_id: Mbient_LF_2
+device_sn: DA:B0:96:E4:7F:A3
+device_name: mbient
+device_location: 'Null'
+wearable_bool: true
+device_make: MbientLab Inc
+device_model: MMS
+device_firmware: '1.7'
+sensor_id_array:
+- mbient_acc_1
+- mbient_gra_1

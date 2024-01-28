@@ -2,7 +2,7 @@
 import logging
 from collections import OrderedDict
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
@@ -210,7 +210,11 @@ def get_task_param(task_id, conn):
     (sensor_ids,) = task_df["sensor_id_array"]
     (stimulus_id,) = task_df["stimulus_id"]
     (instr_id,) = task_df["instruction_id"]
-    instr_kwargs: InstructionArgs = _get_instruction_kwargs_from_file(instr_id)
+
+    instr_kwargs: Optional[InstructionArgs] = None
+
+    if instr_id is not None:
+        instr_kwargs = _get_instruction_kwargs_from_file(instr_id)
     return (
         stimulus_id,
         device_ids,
@@ -220,9 +224,7 @@ def get_task_param(task_id, conn):
 
 
 def _get_instruction_kwargs_from_file(instruction_id: str) -> InstructionArgs:
-    """Get dictionary from instruction table."""
-    if instruction_id is None:
-        return {}
+    """Return InstructionArgs with the given id from yaml parameter file."""
     file_name = instruction_id + ".yml"
     instr_param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file_name, 'instructions')
     param_parser: str = instr_param_dict['arg_parser']
@@ -268,7 +270,7 @@ def get_stimulus_kwargs_from_file(stimulus_id):
     """Get task (stimulus) parameters from a yaml file."""
 
     stimulus_file_name = stimulus_id + ".yml"
-    task_param_dict = stim_param_reader.get_param_dictionary(stimulus_file_name, 'tasks')
+    task_param_dict = stim_param_reader.get_param_dictionary(stimulus_file_name, 'stimuli')
     stim_file = task_param_dict["stimulus_file"]
     return stim_file, task_param_dict
 

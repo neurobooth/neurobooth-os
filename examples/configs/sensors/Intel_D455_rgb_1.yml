@@ -1,0 +1,6 @@
+sensor_id: Intel_D455_rgb_1
+temporal_res: 60.0
+spatial_res_x: 640.0
+spatial_res_y: 480.0
+file_type: bag
+laterality: null

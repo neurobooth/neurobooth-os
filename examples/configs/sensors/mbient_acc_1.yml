@@ -1,0 +1,6 @@
+sensor_id: mbient_acc_1
+temporal_res: 100.0
+spatial_res_x: .nan
+spatial_res_y: .nan
+file_type: xdf
+laterality: null
