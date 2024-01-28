@@ -117,10 +117,10 @@ def export_all_task_records():
         task_dict['task_id'] = t_id
         task_dict['feature_of_interest'] = feature_of_interest
         task_dict['stimulus_id'] = stimulus_id
-        task_dict['inst_id'] = instr_id
+        task_dict['instruction_id'] = instr_id
         task_dict['device_id_array'] = device_ids
         task_dict["sensor_id_array"] = sensor_ids
-
+        task_dict['arg_parser'] = 'iout.stim_param_reader.py::RawTaskParams'
 
         filename = os.path.join(path, t_id + ".yml")
         with open(filename, 'w') as f:
@@ -202,8 +202,8 @@ def export_all_sensor_records():
             yaml.dump(sens_dict, f, sort_keys=False)
 
 
-# export_all_task_records()
+export_all_task_records()
 # export_all_stimulus_records()
 # export_all_instruction_records()
-export_all_device_records()
+# export_all_device_records()
 # export_all_sensor_records()

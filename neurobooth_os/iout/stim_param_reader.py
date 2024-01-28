@@ -197,11 +197,15 @@ class EyelinkSensorArgs(SensorArgs):
     calibration_type: str
 
 
-class TaskParams():
+class RawTaskParams(BaseModel):
+    """
+        Raw (un-reified) Task params (ie., instead of a list of DeviceArgs,
+        it has a list of strings representing device ids
+    """
+
     task_id: str
-    stim_id: str
     feature_of_interest: str
-    stimulus_args: StimulusArgs
-    instr_args: Optional[InstructionArgs]
-    device_args: List[DeviceArgs]
-    sensor_args: List[SensorArgs]
+    stimulus_id: str
+    instruction_id: Optional[str]
+    device_id_array: List[str]
+    sensor_id_array: List[List[str]]

@@ -1,8 +1,9 @@
 task_id: intro_occulo_obs_1
 feature_of_interest: intro
 stimulus_id: intro_occulo_task_1
-inst_id: '12'
+instruction_id: '12'
 device_id_array:
 - Intel_D455_1
 sensor_id_array:
 - - Intel_D455_rgb_1
+arg_parser: iout.stim_param_reader.py::RawTaskParams

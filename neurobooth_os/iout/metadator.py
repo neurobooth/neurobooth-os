@@ -11,7 +11,8 @@ from neurobooth_terra import Table
 
 import neurobooth_os.config as cfg
 from neurobooth_os.iout import stim_param_reader
-from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, get_cfg_path, DeviceArgs
+from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, get_cfg_path, DeviceArgs, StimulusArgs, \
+    RawTaskParams
 from neurobooth_os.tasks.task_importer import str_fileid_to_eval
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
@@ -412,7 +413,6 @@ def read_sensors() -> Dict[str, SensorArgs]:
     """Return dictionary of sensor_id to SensorArgs for all yaml sensor parameter files."""
 
     directory: str = get_cfg_path("sensors")
-    # directory: str = get_cfg_path(os.path.join('config', "sensors"))
     sens_dict = {}
     for file in os.listdir(directory):
         file_name = os.fsdecode(file).split(".")[0]
@@ -425,10 +425,9 @@ def read_sensors() -> Dict[str, SensorArgs]:
 
 
 def read_devices() -> Dict[str, DeviceArgs]:
-    """Return dictionary of sensor_id to SensorArgs for all yaml sensor parameter files."""
+    """Return dictionary of device_id to DeviceArgs for all yaml device parameter files."""
 
     directory: str = get_cfg_path("devices")
-    # directory: str = get_cfg_path(os.path.join('config', "sensors"))
     sens_dict = {}
     for file in os.listdir(directory):
         file_name = os.fsdecode(file).split(".")[0]
@@ -438,3 +437,48 @@ def read_devices() -> Dict[str, DeviceArgs]:
         args: DeviceArgs = parser_func(**param_dict)
         sens_dict[file_name] = args
     return sens_dict
+
+
+def read_instructions() -> Dict[str, InstructionArgs]:
+    """Return dictionary of instruction_id to InstructionArgs for all yaml instruction parameter files."""
+
+    directory: str = get_cfg_path("instructions")
+    sens_dict = {}
+    for file in os.listdir(directory):
+        file_name = os.fsdecode(file).split(".")[0]
+        param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, 'instructions')
+        param_parser: str = param_dict['arg_parser']
+        parser_func = str_fileid_to_eval(param_parser)
+        args: InstructionArgs = parser_func(**param_dict)
+        sens_dict[file_name] = args
+    return sens_dict
+
+
+def read_stimuli() -> Dict[str, StimulusArgs]:
+    """Return dictionary of stimulus_id to StimulusArgs for all yaml stimulus parameter files."""
+
+    directory: str = get_cfg_path("stimuli")
+    stim_dict = {}
+    for file in os.listdir(directory):
+        file_name = os.fsdecode(file).split(".")[0]
+        param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, 'stimuli')
+        param_parser: str = param_dict['arg_parser']
+        parser_func = str_fileid_to_eval(param_parser)
+        args: StimulusArgs = parser_func(**param_dict)
+        stim_dict[file_name] = args
+    return stim_dict
+
+
+def read_tasks() -> Dict[str, RawTaskParams]:
+    """Return dictionary of task_id to TaskArgs for all yaml task parameter files."""
+
+    directory: str = get_cfg_path("tasks")
+    task_dict = {}
+    for file in os.listdir(directory):
+        file_name = os.fsdecode(file).split(".")[0]
+        param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, 'tasks')
+        param_parser: str = param_dict['arg_parser']
+        parser_func = str_fileid_to_eval(param_parser)
+        args: RawTaskParams = parser_func(**param_dict)
+        task_dict[file_name] = args
+    return task_dict

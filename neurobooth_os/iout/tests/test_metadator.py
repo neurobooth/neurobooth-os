@@ -12,6 +12,18 @@ class TestMetadator(unittest.TestCase):
         sens_dict = meta.read_devices()
         print(sens_dict)
 
+    def test_read_instructions(self):
+        sens_dict = meta.read_instructions()
+        print(sens_dict)
+
+    def test_read_stimuli(self):
+        sens_dict = meta.read_stimuli()
+        print(sens_dict)
+
+    def test_read_tasks(self):
+        a_dict = meta.read_tasks()
+        print(a_dict)
+
 
 def test_task_addition(database):
 

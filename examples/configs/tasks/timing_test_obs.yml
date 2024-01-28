@@ -1,7 +1,7 @@
 task_id: timing_test_obs
 feature_of_interest: timing
 stimulus_id: timing_test_task_1
-inst_id: sacc_horiz_1
+instruction_id: sacc_horiz_1
 device_id_array:
 - Intel_D455_1
 - Intel_D455_2
@@ -40,3 +40,4 @@ sensor_id_array:
   - ''
 - - IPhone_sens_1
   - ''
+arg_parser: iout.stim_param_reader.py::RawTaskParams

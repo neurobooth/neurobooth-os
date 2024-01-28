@@ -1,7 +1,7 @@
 task_id: calibration_obs_1
 feature_of_interest: eytracker calibration
 stimulus_id: calibration_task_1
-inst_id: '13'
+instruction_id: '13'
 device_id_array:
 - FLIR_blackfly_1
 - Eyelink_1
@@ -16,3 +16,4 @@ sensor_id_array:
   - ''
 - - IPhone_sens_1
   - ''
+arg_parser: iout.stim_param_reader.py::RawTaskParams

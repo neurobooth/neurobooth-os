@@ -1,7 +1,7 @@
 task_id: MOT_obs_1
 feature_of_interest: cognitive
 stimulus_id: MOT_task_1
-inst_id: mot_1
+instruction_id: mot_1
 device_id_array:
 - Intel_D455_1
 - Intel_D455_2
@@ -43,3 +43,4 @@ sensor_id_array:
   - ''
 - - IPhone_sens_1
   - ''
+arg_parser: iout.stim_param_reader.py::RawTaskParams
