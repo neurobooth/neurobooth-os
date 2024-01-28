@@ -9,3 +9,4 @@ device_firmware: '1.7'
 sensor_id_array:
 - mbient_acc_1
 - mbient_gra_1
+arg_parser: iout.stim_param_reader.py::DeviceArgs

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
 from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -10,7 +11,7 @@ from neurobooth_terra import Table
 
 import neurobooth_os.config as cfg
 from neurobooth_os.iout import stim_param_reader
-from neurobooth_os.iout.stim_param_reader import InstructionArgs
+from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, get_cfg_path, DeviceArgs
 from neurobooth_os.tasks.task_importer import str_fileid_to_eval
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
@@ -36,7 +37,7 @@ def get_conn(database, validate_config_paths: bool = True):
 
     if database is None:
         logger.critical("Database name is a required parameter.")
-        raise  RuntimeError("No database name was provided to get_conn().")
+        raise RuntimeError("No database name was provided to get_conn().")
 
     port = cfg.neurobooth_config["database"]["port"]
     tunnel = SSHTunnelForwarder(
@@ -254,13 +255,13 @@ def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_diction
         }
         _log_task_parameter(conn, args)
     conn.commit()
-        
+
 
 def _log_task_parameter(conn, value_dict: Dict[str, Any]):
     query = "INSERT INTO log_task_param " \
-             "(log_task_id, stimulus_id, key, value, value_type)  " \
-             " VALUES " \
-             " (%(log_task_id)s, %(stimulus_id)s, %(key)s, %(value)s, %(value_type)s)"
+            "(log_task_id, stimulus_id, key, value, value_type)  " \
+            " VALUES " \
+            " (%(log_task_id)s, %(stimulus_id)s, %(key)s, %(value)s, %(value_type)s)"
 
     cursor = conn.cursor()
     cursor.execute(query, value_dict)
@@ -407,3 +408,33 @@ def get_device_kwargs_by_task(collection_id, conn) -> OrderedDict:
     return tasks_kwarg
 
 
+def read_sensors() -> Dict[str, SensorArgs]:
+    """Return dictionary of sensor_id to SensorArgs for all yaml sensor parameter files."""
+
+    directory: str = get_cfg_path("sensors")
+    # directory: str = get_cfg_path(os.path.join('config', "sensors"))
+    sens_dict = {}
+    for file in os.listdir(directory):
+        file_name = os.fsdecode(file).split(".")[0]
+        param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, 'sensors')
+        param_parser: str = param_dict['arg_parser']
+        parser_func = str_fileid_to_eval(param_parser)
+        args: SensorArgs = parser_func(**param_dict)
+        sens_dict[file_name] = args
+    return sens_dict
+
+
+def read_devices() -> Dict[str, DeviceArgs]:
+    """Return dictionary of sensor_id to SensorArgs for all yaml sensor parameter files."""
+
+    directory: str = get_cfg_path("devices")
+    # directory: str = get_cfg_path(os.path.join('config', "sensors"))
+    sens_dict = {}
+    for file in os.listdir(directory):
+        file_name = os.fsdecode(file).split(".")[0]
+        param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, 'devices')
+        param_parser: str = param_dict['arg_parser']
+        parser_func = str_fileid_to_eval(param_parser)
+        args: DeviceArgs = parser_func(**param_dict)
+        sens_dict[file_name] = args
+    return sens_dict

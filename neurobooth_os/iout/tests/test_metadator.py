@@ -1,4 +1,16 @@
+import unittest
+
 from neurobooth_os.iout import metadator as meta
+
+class TestMetadator(unittest.TestCase):
+
+    def test_read_sensors(self):
+        sens_dict = meta.read_sensors()
+        print(sens_dict)
+
+    def test_read_devices(self):
+        sens_dict = meta.read_devices()
+        print(sens_dict)
 
 
 def test_task_addition(database):
@@ -17,3 +29,4 @@ def test_task_addition(database):
     vals_dict["site_id"] = "mock_site"
 
     meta.fill_task_row(task_id, vals_dict, conn)
+

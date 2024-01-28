@@ -8,3 +8,4 @@ device_model: Blackfly S BFS-U3-17S7C
 device_firmware: 1910.0.122.0
 sensor_id_array:
 - FLIR_rgb_1
+arg_parser: iout.stim_param_reader.py::DeviceArgs

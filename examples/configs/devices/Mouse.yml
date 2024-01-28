@@ -8,3 +8,4 @@ device_model: null
 device_firmware: null
 sensor_id_array:
 - Mouse
+arg_parser: iout.stim_param_reader.py::DeviceArgs

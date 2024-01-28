@@ -1,3 +1,5 @@
+import math
+
 from neurobooth_terra import Table
 import yaml
 from neurobooth_os.iout.metadator import get_conn, get_task_ids_for_collection, get_task_param
@@ -157,6 +159,7 @@ def export_all_device_records():
             dev_dict["device_model"] = device_model
             dev_dict["device_firmware"] = device_firmware
             dev_dict["sensor_id_array"] = sensor_id_array
+            dev_dict['arg_parser'] = 'iout.stim_param_reader.py::DeviceArgs'
 
             filename = os.path.join(path, device_id + ".yml")
             with open(filename, 'w') as f:
@@ -176,16 +179,18 @@ def export_all_sensor_records():
         spatial_res_x = row["spatial_res_x"]
         spatial_res_y = row["spatial_res_y"]
         file_type = row["file_type"]
-        laterality = row["laterality"]
         additional_parameters = row["additional_parameters"]
 
         sens_dict = {}
         sens_dict["sensor_id"] = sensor_id
-        sens_dict["temporal_res"] = temporal_res
-        sens_dict["spatial_res_x"] = spatial_res_x
-        sens_dict["spatial_res_y"] = spatial_res_y
+        if not math.isnan(temporal_res):
+            sens_dict["temporal_res"] = temporal_res
+        if not math.isnan(spatial_res_x):
+            sens_dict["spatial_res_x"] = spatial_res_x
+        if not math.isnan(spatial_res_y):
+            sens_dict["spatial_res_y"] = spatial_res_y
         sens_dict["file_type"] = file_type
-        sens_dict["laterality"] = laterality
+        sens_dict['arg_parser'] = 'iout.stim_param_reader.py::SensorArgs'
 
         if additional_parameters is not None:
             for key in additional_parameters:
@@ -200,5 +205,5 @@ def export_all_sensor_records():
 # export_all_task_records()
 # export_all_stimulus_records()
 # export_all_instruction_records()
-# export_all_device_records()
-export_all_sensor_records()
+export_all_device_records()
+# export_all_sensor_records()

@@ -1,7 +1,6 @@
 sensor_id: Eyelink_sens_1
 temporal_res: 1000.0
 spatial_res_x: 5.0
-spatial_res_y: .nan
 file_type: edf
-laterality: null
+arg_parser: iout.stim_param_reader.py::SensorArgs
 calibration_type: HV5

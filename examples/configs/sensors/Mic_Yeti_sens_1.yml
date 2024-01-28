@@ -1,6 +1,5 @@
 sensor_id: Mic_Yeti_sens_1
 temporal_res: 44100.0
 spatial_res_x: 1024.0
-spatial_res_y: .nan
 file_type: xdf
-laterality: null
+arg_parser: iout.stim_param_reader.py::SensorArgs

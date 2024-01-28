@@ -1,6 +1,6 @@
 from os import environ, path
 
-from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field
+from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveFloat, PositiveInt
 from typing import Optional, List, Callable
 import os
 import yaml
@@ -167,11 +167,34 @@ def _get_param_dictionary(task_param_file_name: str, conf_folder_name: str) -> d
 
 
 class DeviceArgs(BaseModel):
-    pass
+    device_id: str
+    device_sn: Optional[str] = None
+    device_name: str
+    device_location: Optional[str] = None
+    wearable_bool: bool
+    device_make: Optional[str] = None
+    device_model: Optional[str] = None
+    device_firmware: Optional[str] = None
+    sensor_id_array: List[str]
+    arg_parser: str
 
 
 class SensorArgs(BaseModel):
-    pass
+    sensor_id: str = Field(min_length=1, max_length=255)
+    temporal_res: Optional[PositiveFloat] = None
+    spatial_res_x: Optional[PositiveFloat] = None
+    spatial_res_y: Optional[PositiveFloat] = None
+    file_type: str
+    arg_parser: str
+
+
+class FlirSensorArgs(SensorArgs):
+    offsetX: PositiveInt
+    offsetY: PositiveInt
+
+
+class EyelinkSensorArgs(SensorArgs):
+    calibration_type: str
 
 
 class TaskParams():
