@@ -2,36 +2,12 @@
 """
 
 """
-import importlib
 import os.path as op
-from typing import List, Dict, Any
+from typing import Dict, Any
 
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
 from neurobooth_os.iout.stim_param_reader import TaskArgs
-
-
-def str_fileid_to_eval(stim_file_str):
-    """ Converts string path.to.module.py::function() to callable
-
-    Parameters
-    ----------
-        stim_file_str: str
-            string with path to py file :: and function()
-
-    Returns
-    -------
-        task_func: callable
-            callable of the function pointed by stim_file_str
-    """
-
-    strpars = stim_file_str.split(".py::")
-    filepath = "neurobooth_os." + strpars[0]
-    func = strpars[1].replace("()", "")
-
-    task_module = importlib.import_module(filepath)
-    task_func = getattr(task_module, func)
-    return task_func
 
 
 # TODO(larry): replace calls to this function with validated version get_task_arguments()?
@@ -66,7 +42,7 @@ def get_task_funcs(collection_id, conn):
         task_kwargs: Dict[str:Any] = {**stim_kwargs, **instr_kwargs}
 
         # Convert path to class to class inst.
-        stim_func = str_fileid_to_eval(stim_file)
+        stim_func = meta.str_fileid_to_eval(stim_file)
 
         task_func_dict[task_stim_id] = {}
         task_func_dict[task_stim_id]["obj"] = stim_func
@@ -128,8 +104,8 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
     arg_parser = stim_kwargs["arg_parser"]
 
     # Convert path class path to class inst.
-    stim_func = str_fileid_to_eval(stim_file)
-    parser_func = str_fileid_to_eval(arg_parser)
+    stim_func = meta.str_fileid_to_eval(stim_file)
+    parser_func = meta.str_fileid_to_eval(arg_parser)
     parser = parser_func(**stim_kwargs)
 
     if instr_kwargs.instruction_file is not None:

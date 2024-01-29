@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import importlib
 import logging
 import os
 from collections import OrderedDict
@@ -13,8 +14,30 @@ import neurobooth_os.config as cfg
 from neurobooth_os.iout import stim_param_reader
 from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, get_cfg_path, DeviceArgs, StimulusArgs, \
     RawTaskParams, TaskArgs
-from neurobooth_os.tasks.task_importer import str_fileid_to_eval
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
+
+
+def str_fileid_to_eval(stim_file_str):
+    """ Converts string path.to.module.py::function() to callable
+
+    Parameters
+    ----------
+        stim_file_str: str
+            string with path to py file :: and function()
+
+    Returns
+    -------
+        task_func: callable
+            callable of the function pointed by stim_file_str
+    """
+
+    strpars = stim_file_str.split(".py::")
+    filepath = "neurobooth_os." + strpars[0]
+    func = strpars[1].replace("()", "")
+
+    task_module = importlib.import_module(filepath)
+    task_func = getattr(task_module, func)
+    return task_func
 
 
 def get_conn(database, validate_config_paths: bool = True):
