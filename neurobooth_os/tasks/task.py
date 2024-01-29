@@ -21,6 +21,7 @@ import neurobooth_os
 from neurobooth_os.tasks import utils
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 from neurobooth_os.log_manager import APP_LOG_NAME
+import neurobooth_os.config as cfg
 
 
 class Task:
@@ -84,7 +85,10 @@ class Task:
             self.win_temp = False
 
         if self.path_instruction_video is not None:
-            print(self.path_instruction_video)
+            self.path_instruction_file = op.join(
+                cfg.neurobooth_config["video_tasks"], self.path_instruction_file.instruction_file
+            )
+
             self.instruction_video = visual.MovieStim3(
                 win=self.win, filename=self.path_instruction_video, noAudio=False
             )
