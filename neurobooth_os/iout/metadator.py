@@ -495,7 +495,7 @@ def read_all_task_params():
     return params
 
 
-def build_tasks_for_collection(collection_id: str, conn):
+def build_tasks_for_collection(collection_id: str, conn) -> Dict[str, TaskArgs]:
     task_ids = get_task_ids_for_collection(collection_id, conn)
     task_dict: Dict[str:TaskArgs] = {}
     param_dictionary = read_all_task_params()

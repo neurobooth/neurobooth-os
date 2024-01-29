@@ -144,3 +144,8 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
                              stim_args=parser)
 
     return task_args
+
+
+def get_task_arguments_for_collection(collection_id: str, conn):
+    """"Returns a dictionary of TaskArgs for all tasks in collection"""
+    return meta.build_tasks_for_collection(collection_id, conn)

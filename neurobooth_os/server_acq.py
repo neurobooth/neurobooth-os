@@ -103,16 +103,7 @@ def run_acq(logger):
             print("UPDATOR:-Connect-")
 
         elif "frame_preview" in data and not recording:
-            frame = device_manager.iphone_frame_preview()
-            if frame is None:
-                print("no iphone")
-                connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
-                logger.debug('Frame preview unavailable')
-            else:
-                frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
-                frame = frame_prefix + frame
-                connx.send(frame)
-                logger.debug('Frame preview sent')
+            iphone_frame_preview(connx, device_manager, logger)
 
         # TODO: Both reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
         elif "reset_mbients" in data:
@@ -170,6 +161,19 @@ def run_acq(logger):
 
         else:
             logger.error(f'Unexpected message received: {data}')
+
+
+def iphone_frame_preview(connx, device_manager, logger):
+    frame = device_manager.iphone_frame_preview()
+    if frame is None:
+        print("no iphone")
+        connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
+        logger.debug('Frame preview unavailable')
+    else:
+        frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
+        frame = frame_prefix + frame
+        connx.send(frame)
+        logger.debug('Frame preview sent')
 
 
 if __name__ == '__main__':

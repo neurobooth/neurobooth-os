@@ -12,8 +12,7 @@ import threading
 from datetime import datetime
 import cv2
 import numpy as np
-import psutil
-from typing import Dict
+# from typing import Dict
 
 import PySimpleGUI as sg
 import liesl
@@ -132,12 +131,13 @@ def _select_subject(window, subject_df):
 
 
 def _get_tasks(window, conn, collection_id):
-    tasks_obs = meta.get_task_ids_for_collection(collection_id, conn)
-    tasks = list()
-    for task in tasks_obs:
-        task_id, *_ = meta.get_task_param(task, conn)
-        tasks.append(task_id)
-    tasks = ", ".join(tasks)
+    task_obs = meta.get_task_ids_for_collection(collection_id, conn)
+    # TODO(larry): remove this dead code when change works properly in ACQ and STM
+    # tasks = list()
+    # for task in tasks_obs:
+    #     task_id, *_ = meta.get_task_param(task, conn)
+    #     tasks.append(task_id)
+    tasks = ", ".join(task_obs)
     window["tasks"].update(value=tasks)
     return tasks
 
@@ -264,7 +264,6 @@ def _stop_lsl_and_save(
 ):
     """Stop LSL stream and save"""
     t0 = time.time()
-    # print("memory: ", psutil.virtual_memory())
     # Stop LSL recording
     session.stop_recording()
     print(f"CTR Stop session took: {time.time() - t0}")

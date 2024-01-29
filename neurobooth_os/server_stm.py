@@ -336,7 +336,7 @@ def prepare_session(data: str, socket_1: socket, logger):
         db_conn=meta.get_conn(database=database_name),
         socket=socket_1
     )
-    # TODO(larry): See about refactoring so we don't need to create a new logger here.
+    #  TODO(larry): See about refactoring so we don't need to create a new logger here.
     #   (continued) We already have a db_logger, it just needs session attributes
     stm_session.logger = make_db_logger(subject_id, stm_session.session_name)
     stm_session.logger.info('LOGGER CREATED FOR SESSION')
