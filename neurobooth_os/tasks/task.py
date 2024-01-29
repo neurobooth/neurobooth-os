@@ -361,9 +361,11 @@ class Task_Eyetracker(Task):
         if self.eye_tracker is not None:
             self.eye_tracker.tk.doDriftCorrect(*vals)
 
-    def update_tablet_background(self, x, y):
-        '''Draw a cross and a box on the eyelink tablet.
+    def update_tablet_background(self, x: float, y: float) -> None:
+        '''
+           Draw a cross and a box on the eyelink tablet.
            x and y are positions in 0 centered psychopy coordinate space.
+           x and y can be int or float
            See pos_psych2pix above
         '''
 
@@ -377,13 +379,12 @@ class Task_Eyetracker(Task):
         self.sendCommand('draw_cross %d %d 10' % tuple(top_left_xy))
 
         # draw box around cross
-        box_len_pix = 50 ## this is box_length of 100 pixels
+        half_box_len_in_pix = 50 ## this is box_length of 100 pixels
         # box coords are defined in a single list as x,y at the diagonal vertices
-        # color is defined by number - 12 is for red
-        box_coords_top = [top_left_xy[0]-box_len_pix, top_left_xy[1]-box_len_pix]
-        box_coords_bot = [top_left_xy[0]+box_len_pix, top_left_xy[1]+box_len_pix]
+        # color is defined by number - 12 is for red, 10 is for green
+        box_coords_top = [top_left_xy[0]-half_box_len_in_pix, top_left_xy[1]-half_box_len_in_pix]
+        box_coords_bot = [top_left_xy[0]+half_box_len_in_pix, top_left_xy[1]+half_box_len_in_pix]
         self.sendCommand('draw_box %d %d %d %d 12' % tuple(box_coords_top + box_coords_bot))
-
 
     def gaze_contingency():
         # move task
