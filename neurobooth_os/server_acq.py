@@ -59,6 +59,7 @@ def run_acq(logger):
     host = ''
     device_manager = None
     system_resource_logger = None
+    task_args: Dict[str, TaskArgs] = {}
 
     for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
@@ -119,9 +120,12 @@ def run_acq(logger):
             # "record_start::filename::task_id" FILENAME = {subj_id}_{obs_id}
             print("Starting recording")
             t0 = time()
-            fname, task = data.split("::")[1:]
+            fname, stimulus_id = data.split("::")[1:]
+            task = fname.split("_")[2]
+            print(data)
+            print(task)
             fname = f"{config.neurobooth_config['acquisition']['local_data_dir']}{session_name}/{fname}"
-
+            print(task_args)
             device_manager.start_cameras(fname, task_args[task].device_args)
             device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
 
