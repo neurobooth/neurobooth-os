@@ -160,18 +160,9 @@ class Saccade(Task_Eyetracker):
 
 
 if __name__ == "__main__":
-    # from neurobooth_os.iout.eyelink_tracker import EyeTracker
-    from neurobooth_os.tasks import utils
-    # from neurobooth_os.tasks.eye_tracker_calibrate import Calibrate
-    
-    # # task = Saccade()
-    # # task.run(prompt=False)
 
+    from neurobooth_os.tasks import utils
     win = utils.make_win(False, 200)
-    # eye_tracker = EyeTracker(win=win, ip="192.168.100.15")
-    # cal = Calibrate(eye_tracker=eye_tracker, win=win)
-    # cal.run()
     
-    # task = Saccade(eye_tracker=eye_tracker, win=win, direction="vertical", amplitude_deg=30)
     task = Saccade(win=win, direction="vertical", amplitude_deg=30)
     task.run(prompt=False)
