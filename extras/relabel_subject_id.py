@@ -260,13 +260,18 @@ def relabel_log_task(log_session_ids: List[int], args: RelabelParams, conn: conn
 
     # Correct file names; there can be multiple task output files per row
     task_notes_files = [fix_filename(args, f) for f in task_notes_files]
-    task_output_files = [[fix_filename(args, f) for f in files] for files in task_output_files]
+    task_output_files = [
+        [fix_filename(args, f) for f in files] if files else files
+        for files in task_output_files
+    ]
 
     # Update impacted rows. We could speed this up, but there isn't a pressing need.
     with conn.cursor() as cursor:
         for log_task_id, task_notes_file, task_output_file in zip(log_task_ids, task_notes_files, task_output_files):
-            if task_notes_file is None or None in task_output_file:
-                raise RelabelException(f'Error renaming files for log_task_id={log_task_id}.')
+            if task_notes_file is None:
+                raise RelabelException(f'Error renaming task notes for log_task_id={log_task_id}.')
+            if (task_output_file is not None) and (None in task_output_file):
+                raise RelabelException(f'Error renaming output file for log_task_id={log_task_id}.')
 
             LOGGER.info(f'UPDATE log_task {log_task_id}: {task_notes_file}, {task_output_file}')
             cursor.execute(
@@ -308,7 +313,10 @@ def relabel_log_sensor_file(log_task_ids: List[str], args: RelabelParams, conn: 
                 sensor_file_paths.append(sensor_file_path)
 
     # Correct file names; there can be multiple sensor files per row
-    sensor_file_paths = [[fix_filename(args, f) for f in files] for files in sensor_file_paths]
+    sensor_file_paths = [
+        [fix_filename(args, f) for f in files] if files else files
+        for files in sensor_file_paths
+    ]
 
     # Update impacted rows. We could speed this up, but there isn't a pressing need.
     with conn.cursor() as cursor:
