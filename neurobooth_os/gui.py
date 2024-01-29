@@ -482,7 +482,7 @@ def gui():
 
         elif event == "Start":
             session_id = meta._make_session_id(conn, log_sess)
-            tasks = [k for k, v in values.items() if "task" in k and v is True]
+            tasks = [k for k, v in values.items() if "obs" in k and v is True]
             _start_task_presentation(
                 window, tasks, sess_info["subject_id"], session_id, steps, node=nodes[1]
             )
