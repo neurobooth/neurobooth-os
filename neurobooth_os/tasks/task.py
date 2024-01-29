@@ -85,8 +85,8 @@ class Task:
             self.win_temp = False
 
         if self.path_instruction_video is not None:
-            self.path_instruction_file = op.join(
-                cfg.neurobooth_config["video_tasks"], self.path_instruction_file.instruction_file
+            self.path_instruction_video = op.join(
+                cfg.neurobooth_config["video_tasks"], self.path_instruction_video.instruction_file
             )
 
             self.instruction_video = visual.MovieStim3(
