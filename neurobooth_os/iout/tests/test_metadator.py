@@ -24,6 +24,20 @@ class TestMetadator(unittest.TestCase):
         a_dict = meta.read_tasks()
         print(a_dict)
 
+    def test_read_all_task_params(self):
+        a_dict = meta.read_all_task_params()
+        print(a_dict["tasks"])
+        print(a_dict["stimuli"])
+        print(a_dict["instructions"])
+        print(a_dict["devices"])
+        print(a_dict["sensors"])
+
+    def test_build_tasks_for_collection(self):
+        collection_id = 'mvp_030'
+        conn = meta.get_conn('neurobooth', False)
+        task_dict = meta.build_tasks_for_collection(collection_id, conn)
+        print(task_dict)
+
 
 def test_task_addition(database):
 

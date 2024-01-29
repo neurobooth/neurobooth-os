@@ -12,7 +12,7 @@ from neurobooth_terra import Table
 import neurobooth_os.config as cfg
 from neurobooth_os.iout import stim_param_reader
 from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, get_cfg_path, DeviceArgs, StimulusArgs, \
-    RawTaskParams
+    RawTaskParams, TaskArgs
 from neurobooth_os.tasks.task_importer import str_fileid_to_eval
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
@@ -482,3 +482,48 @@ def read_tasks() -> Dict[str, RawTaskParams]:
         args: RawTaskParams = parser_func(**param_dict)
         task_dict[file_name] = args
     return task_dict
+
+
+def read_all_task_params():
+    """Returns a dictionary containing all task parameters of all types"""
+    params = {}
+    params["tasks"] = read_tasks()
+    params["stimuli"] = read_stimuli()
+    params["instructions"] = read_instructions()
+    params["devices"] = read_devices()
+    params["sensors"] = read_sensors()
+    return params
+
+
+def build_tasks_for_collection(collection_id: str, conn):
+    task_ids = get_task_ids_for_collection(collection_id, conn)
+    task_dict: Dict[str:TaskArgs] = {}
+    param_dictionary = read_all_task_params()
+    for task_id in task_ids:
+        raw_task_args: RawTaskParams = param_dictionary["tasks"][task_id]
+        stim_args: StimulusArgs = param_dictionary["stimuli"][raw_task_args.stimulus_id]
+        task_constructor = stim_args.stimulus_file
+        instr_args: Optional[InstructionArgs] = None
+        if raw_task_args.instruction_id:
+            instr_args = param_dictionary["instructions"][raw_task_args.instruction_id]
+        device_ids = raw_task_args.device_id_array
+        device_args = []
+        for dev_id in device_ids:
+            dev_args: DeviceArgs = param_dictionary["devices"][dev_id]
+            sensor_args = []
+            for sens_id in dev_args.sensor_id_array:
+                sensor_args.append(param_dictionary["sensors"][sens_id])
+            dev_args.sensor_array = sensor_args
+            device_args.append(dev_args)
+
+        task_constructor_callable = str_fileid_to_eval(task_constructor)
+        task_args: TaskArgs = TaskArgs(
+            task_id=task_id,
+            task_constructor_callable=task_constructor_callable,
+            stim_args=stim_args,
+            instr_args=instr_args,
+            device_args=device_args
+        )
+        task_dict[task_id] = task_args
+    return task_dict
+
