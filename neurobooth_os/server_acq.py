@@ -3,6 +3,8 @@ import os
 import sys
 from time import time, sleep
 from collections import OrderedDict
+from typing import Dict
+
 import cv2
 import numpy as np
 from pylsl import local_clock
@@ -11,6 +13,7 @@ import json
 
 import neurobooth_os
 from neurobooth_os import config
+from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.camera_brio import VidRec_Brio
@@ -93,7 +96,8 @@ def run_acq(logger):
                 system_resource_logger = SystemResourceLogger(ses_folder, 'ACQ')
                 system_resource_logger.start()
 
-            task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
+            # task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
+            task_args: Dict[str, TaskArgs] = meta.build_tasks_for_collection(collection_id, conn)
 
             device_manager = DeviceManager(node_name='acquisition')
             if device_manager.streams:
@@ -118,7 +122,7 @@ def run_acq(logger):
             fname, task = data.split("::")[1:]
             fname = f"{config.neurobooth_config['acquisition']['local_data_dir']}{session_name}/{fname}"
 
-            device_manager.start_cameras(fname, task_devs_kw[task])
+            device_manager.start_cameras(fname, task_args[task].device_args)
             device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
 
             elapsed_time = time() - t0
@@ -130,7 +134,7 @@ def run_acq(logger):
 
         elif "record_stop" in data:
             t0 = time()
-            device_manager.stop_cameras(task_devs_kw[task])
+            device_manager.stop_cameras(task_args[task].device_args)
             elapsed_time = time() - t0
             print(f"Device stop took {elapsed_time:.2f}")
             logger.info(f'Device stop took {elapsed_time:.2f}')

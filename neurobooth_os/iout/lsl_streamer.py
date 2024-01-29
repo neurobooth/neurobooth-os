@@ -1,6 +1,7 @@
 import logging
 import threading
 from neurobooth_os.iout import metadator as meta
+from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 from typing import Any, Dict, List, Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
@@ -199,10 +200,11 @@ class DeviceManager:
         """Test to see if a stream is a camera stream based on its name."""
         return stream_name.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]
 
-    def get_camera_streams(self, task_devices: List[str]) -> List[Any]:
+    def get_camera_streams(self, task_devices: List[DeviceArgs]) -> List[Any]:
+        device_ids = [x.device_id for x in task_devices]
         return [
             stream for stream_name, stream in self.streams.items()
-            if DeviceManager.is_camera(stream_name) and stream_name in task_devices
+            if DeviceManager.is_camera(stream_name) and stream_name in device_ids
         ]
 
     def get_mbient_streams(self) -> Dict[str, Any]:
@@ -216,14 +218,14 @@ class DeviceManager:
                 return stream
         return None
 
-    def start_cameras(self, filename: str, task_devices: List[str]) -> None:
+    def start_cameras(self, filename: str, task_devices: List[DeviceArgs]) -> None:
         for stream in self.get_camera_streams(task_devices):
             try:
                 stream.start(filename)
             except Exception as e:
                 self.logger.exception(e)
 
-    def stop_cameras(self, task_devices: List[str]):
+    def stop_cameras(self, task_devices: List[DeviceArgs]):
         cameras = self.get_camera_streams(task_devices)
         for stream in cameras:  # Signal cameras to stop
             stream.stop()

@@ -76,11 +76,11 @@ def run_stm(logger):
             # Preload tasks media
             t0 = time()
 
-            # split into a list of stimulus_id strings
+            # split into a list of task_id strings
             tasks = tasks.split("-")
-            for stimulus_id in tasks:
-                if stimulus_id in session.tasks():
-                    task_args: TaskArgs = _get_task_args(session, stimulus_id)
+            for task_id in tasks:
+                if task_id in session.tasks():
+                    task_args: TaskArgs = _get_task_args(session, task_id)
                     logger.info(task_args)
                     tsk_fun_obj: Callable = copy.copy(
                         task_args.task_constructor_callable)  # callable for Task constructor
@@ -98,39 +98,39 @@ def run_stm(logger):
             calib_instructions = True
 
             while len(tasks):
-                stimulus_id: str = tasks.pop(0)
+                task_id: str = tasks.pop(0)
 
-                session.logger.info(f'TASK: {stimulus_id}')
+                session.logger.info(f'TASK: {task_id}')
                 tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
 
-                if stimulus_id not in session.tasks():
-                    session.logger.warning(f'Task {stimulus_id} not implemented')
+                if task_id not in session.tasks():
+                    session.logger.warning(f'Task {task_id} not implemented')
                 else:
                     t00 = time()
                     # get task and params
-                    task_args: TaskArgs = _get_task_args(session, stimulus_id)
+                    task_args: TaskArgs = _get_task_args(session, task_id)
                     task: Task = task_args.task_instance
                     this_task_kwargs = create_task_kwargs(session, task_args)
                     task_id = task_args.task_id
 
                     # Do not record if intro instructions"
-                    if "intro_" in stimulus_id or "pause_" in stimulus_id:
+                    if "intro_" in task_id or "pause_" in task_id:
                         session.logger.debug(f"RUNNING PAUSE/INTRO (No Recording)")
                         task.run(**this_task_kwargs)
                     else:
                         log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
-                        meta.log_task_params(session.db_conn, stimulus_id, log_task_id,
-                                             dict(session.task_func_dict[stimulus_id].stim_args))
+                        meta.log_task_params(session.db_conn, task_id, log_task_id,
+                                             dict(session.task_func_dict[task_id].stim_args))
                         task_log_entry.date_times = (
                                 "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","
                         )
                         task_log_entry.log_task_id = log_task_id
 
                         # Signal CTR to start LSL rec and wait for start confirmation
-                        session.logger.info(f'STARTING TASK: {stimulus_id}')
+                        session.logger.info(f'STARTING TASK: {task_id}')
                         t0 = time()
-                        print(f"Initiating task:{stimulus_id}:{task_id}:{log_task_id}:{tsk_start_time}")
-                        session.logger.info(f'Initiating task:{stimulus_id}:{task_id}:{log_task_id}:{tsk_start_time}')
+                        print(f"Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}")
+                        session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
                         ctr_msg: Optional[str] = None
                         while ctr_msg != "lsl_recording":
                             ctr_msg = get_data_with_timeout(session.socket, 4)
@@ -138,7 +138,7 @@ def run_stm(logger):
                         session.logger.info(f'Waiting for CTR took: {elapsed_time:.2f}')
 
                         with ThreadPoolExecutor(max_workers=1) as executor:
-                            start_acq(calib_instructions, executor, session, stimulus_id, task_id, this_task_kwargs,
+                            start_acq(calib_instructions, executor, session, task_id, task_id, this_task_kwargs,
                                       tsk_start_time)
 
                         this_task_kwargs.update({"last_task": len(tasks) == 0})
@@ -153,13 +153,13 @@ def run_stm(logger):
                         session.logger.debug(f"TASK FUNCTION RETURNED")
 
                         with ThreadPoolExecutor(max_workers=1) as executor:
-                            stop_acq(executor, session, stimulus_id)
+                            stop_acq(executor, session, task_id)
 
                         # Signal CTR to start LSL rec and wait for start confirmation
-                        print(f"Finished task: {stimulus_id}")
-                        session.logger.info(f'FINISHED TASK: {stimulus_id}')
+                        print(f"Finished task: {task_id}")
+                        session.logger.info(f'FINISHED TASK: {task_id}')
 
-                        log_task(events, session, task_id, stimulus_id, task_log_entry, task)
+                        log_task(events, session, task_id, task_id, task_log_entry, task)
 
                         elapsed_time = time() - t00
                         session.logger.info(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
@@ -206,10 +206,10 @@ def run_stm(logger):
     exit()
 
 
-def _get_task_args(session: StmSession, stimulus_id: str):
+def _get_task_args(session: StmSession, task_id: str):
     if session.task_func_dict is None:
         raise RuntimeError("task_func_dict is not set in StmSession")
-    return session.task_func_dict[stimulus_id]
+    return session.task_func_dict[task_id]
 
 
 def stop_acq(executor, session: StmSession, stimulus_id: str):

@@ -88,18 +88,20 @@ def get_task_arguments(collection_id, conn):
 
     Returns
     -------
-    dict of stimulus_id to TaskArgs object for every task in collection
+    dict of task_ids to TaskArgs object for every task in collection
     """
+    return meta.build_tasks_for_collection(collection_id, conn)
 
-    task_ids: List[str] = meta.get_task_ids_for_collection(collection_id, conn)
-
-    task_func_dict = {}
-    for task_id in task_ids:
-        task_args: TaskArgs = _get_task_arg(task_id, conn)
-        task_stim_id = task_args.stim_args.stimulus_id
-        task_func_dict[task_stim_id] = task_args
-
-    return task_func_dict
+    # TODO(larry): Remove dead code below
+    # task_ids: List[str] = meta.get_task_ids_for_collection(collection_id, conn)
+    #
+    # task_func_dict = {}
+    # for task_id in task_ids:
+    #     task_args: TaskArgs = _get_task_arg(task_id, conn)
+    #     task_stim_id = task_args.stim_args.stimulus_id
+    #     task_func_dict[task_stim_id] = task_args
+    #
+    # return task_func_dict
 
 
 def _get_task_arg(task_id: str, conn) -> TaskArgs:
