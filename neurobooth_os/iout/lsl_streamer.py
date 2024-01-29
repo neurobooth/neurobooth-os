@@ -179,7 +179,6 @@ class DeviceManager:
         Fetch the keyword arguments for each device from the database.
 
         :param collection_id: Name of study collection in the database.
-        :param win: PsychoPy window
         :param conn: Connection to the database
         """
         # Get params from all tasks
