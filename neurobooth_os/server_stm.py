@@ -153,7 +153,7 @@ def run_stm(logger):
                         session.logger.debug(f"TASK FUNCTION RETURNED")
 
                         with ThreadPoolExecutor(max_workers=1) as executor:
-                            stop_acq(executor, session, task_id)
+                            stop_acq(executor, session, task_args)
 
                         # Signal CTR to start LSL rec and wait for start confirmation
                         print(f"Finished task: {task_id}")
@@ -212,9 +212,10 @@ def _get_task_args(session: StmSession, task_id: str):
     return session.task_func_dict[task_id]
 
 
-def stop_acq(executor, session: StmSession, task_args: TaskArgs, stimulus_id: str):
+def stop_acq(executor, session: StmSession, task_args: TaskArgs):
     """ Stop recording on ACQ in parallel to stopping on STM """
     session.logger.info(f'SENDING record_stop TO ACQ')
+    stimulus_id = task_args.stim_args.stimulus_id
     acq_result = executor.submit(socket_message, "record_stop", "acquisition", wait_data=15)
     # Stop eyetracker
     device_ids = [x.device_id for x in task_args.device_args]
