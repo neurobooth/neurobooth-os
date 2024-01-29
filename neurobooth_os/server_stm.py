@@ -138,8 +138,8 @@ def run_stm(logger):
                         session.logger.info(f'Waiting for CTR took: {elapsed_time:.2f}')
 
                         with ThreadPoolExecutor(max_workers=1) as executor:
-                            start_acq(calib_instructions, executor, session, task_id, task_id, this_task_kwargs,
-                                      tsk_start_time)
+                            start_acq(calib_instructions, executor, session, task_args,
+                                      task_id, this_task_kwargs, tsk_start_time)
 
                         this_task_kwargs.update({"last_task": len(tasks) == 0})
                         this_task_kwargs["task_name"] = task_id
@@ -225,7 +225,7 @@ def stop_acq(executor, session: StmSession, stimulus_id: str):
     acq_result.result()  # Raise any exceptions swallowed by the executor
 
 
-def start_acq(calib_instructions, executor, session: StmSession, stimulus_id: str, task_id: str, this_task_kwargs,
+def start_acq(calib_instructions, executor, session: StmSession, task_args: TaskArgs, task_id: str, this_task_kwargs,
               tsk_start_time):
     """
     Start recording on ACQ in parallel to starting on STM
@@ -235,7 +235,7 @@ def start_acq(calib_instructions, executor, session: StmSession, stimulus_id: st
     calib_instructions
     executor
     session
-    stimulus_id
+    task_args
     task_id
     this_task_kwargs
     tsk_start_time
@@ -245,6 +245,7 @@ def start_acq(calib_instructions, executor, session: StmSession, stimulus_id: st
 
     """
     session.logger.info(f'SENDING record_start TO ACQ')
+    stimulus_id = task_args.stim_args.stimulus_id
     acq_result = executor.submit(
         socket_message,
         f"record_start::{session.session_name}_{tsk_start_time}_{task_id}::{stimulus_id}",
@@ -252,8 +253,8 @@ def start_acq(calib_instructions, executor, session: StmSession, stimulus_id: st
         wait_data=10,
     )
     # Start eyetracker if device in task
-    if session.eye_tracker is not None and any(
-            "Eyelink" in d for d in list(session.device_kwargs[stimulus_id])):
+    device_ids = [x.device_id for x in task_args.device_args]
+    if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
         if "calibration_task" in stimulus_id:  # if not calibration record with start method
             this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
