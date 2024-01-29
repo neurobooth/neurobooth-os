@@ -120,8 +120,7 @@ def run_acq(logger):
             # "record_start::filename::task_id" FILENAME = {subj_id}_{obs_id}
             print("Starting recording")
             t0 = time()
-            fname, stimulus_id = data.split("::")[1:]
-            task = fname.split("_")[2]
+            fname, task = data.split("::")[1:]
             print(data)
             print(task)
             fname = f"{config.neurobooth_config['acquisition']['local_data_dir']}{session_name}/{fname}"

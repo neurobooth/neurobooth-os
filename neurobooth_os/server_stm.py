@@ -248,7 +248,7 @@ def start_acq(calib_instructions, executor, session: StmSession, task_args: Task
     stimulus_id = task_args.stim_args.stimulus_id
     acq_result = executor.submit(
         socket_message,
-        f"record_start::{session.session_name}_{tsk_start_time}_{task_id}::{stimulus_id}",
+        f"record_start::{session.session_name}_{tsk_start_time}_{task_id}::{task_id}",
         "acquisition",
         wait_data=10,
     )
