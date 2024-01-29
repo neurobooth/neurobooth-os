@@ -212,13 +212,13 @@ def _get_task_args(session: StmSession, task_id: str):
     return session.task_func_dict[task_id]
 
 
-def stop_acq(executor, session: StmSession, stimulus_id: str):
+def stop_acq(executor, session: StmSession, task_args: TaskArgs, stimulus_id: str):
     """ Stop recording on ACQ in parallel to stopping on STM """
     session.logger.info(f'SENDING record_stop TO ACQ')
     acq_result = executor.submit(socket_message, "record_stop", "acquisition", wait_data=15)
     # Stop eyetracker
-    if session.eye_tracker is not None and any(
-            "Eyelink" in d for d in list(session.device_kwargs[stimulus_id])):
+    device_ids = [x.device_id for x in task_args.device_args]
+    if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         if "calibration_task" not in stimulus_id:
             session.eye_tracker.stop()
     wait([acq_result])  # Wait for ACQ to finish

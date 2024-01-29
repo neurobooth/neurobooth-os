@@ -3,13 +3,11 @@ import os
 import typing
 import socket
 
-from collections import OrderedDict
 from typing import Optional, Dict, Any
 
 from pydantic import BaseModel
 
 from neurobooth_os import config
-from neurobooth_os.iout import metadator as meta
 from neurobooth_os.iout.eyelink_tracker import EyeTracker
 from neurobooth_os.iout.lsl_streamer import DeviceManager
 from neurobooth_os.log_manager import SystemResourceLogger
@@ -30,7 +28,6 @@ class StmSession(BaseModel):
     win: Optional[object] = None
     session_folder: Optional[str] = None
     system_resource_logger: Optional[object] = None
-    device_kwargs: OrderedDict = OrderedDict()
     task_func_dict: Optional[Dict] = {}
     path: Optional[typing.Tuple[Any]] = None
     prompt: Optional[bool] = None
@@ -50,7 +47,6 @@ class StmSession(BaseModel):
         self.socket = kwargs["socket"]
         self.session_folder = self.create_session_folder(self.logger, self.session_name)
         self.system_resource_logger: SystemResourceLogger = self.create_sys_resource_logger()
-        #  TODO: self.device_kwargs = meta.get_device_kwargs_by_task(kwargs["collection_id"], kwargs["db_conn"])
         self.task_func_dict = get_task_arguments(self.collection_id, self.db_conn)
         self.path = config.neurobooth_config['presentation']["local_data_dir"] + f"{self.session_name}/"
         self.win = self.init_window()
