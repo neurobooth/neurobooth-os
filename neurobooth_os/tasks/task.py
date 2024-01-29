@@ -84,6 +84,7 @@ class Task:
             self.win_temp = False
 
         if self.path_instruction_video is not None:
+            print(self.path_instruction_video)
             self.instruction_video = visual.MovieStim3(
                 win=self.win, filename=self.path_instruction_video, noAudio=False
             )
