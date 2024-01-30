@@ -25,7 +25,7 @@ class TestMetadator(unittest.TestCase):
         print(a_dict)
 
     def test_read_all_task_params(self):
-        a_dict = meta.read_all_task_params()
+        a_dict = meta._read_all_task_params()
         print(a_dict["tasks"])
         print(a_dict["stimuli"])
         print(a_dict["instructions"])
@@ -37,6 +37,21 @@ class TestMetadator(unittest.TestCase):
         conn = meta.get_conn('neurobooth', False)
         task_dict = meta.build_tasks_for_collection(collection_id, conn)
         print(task_dict)
+
+    def test_get_device_kwargs_by_task(self):
+        collection_id = 'testing'
+        conn = meta.get_conn('mock_neurobooth_1', False)
+        args = meta.get_device_kwargs_by_task(collection_id, conn)
+        print(args)
+
+        task_dict = meta.build_tasks_for_collection(collection_id, conn)
+        kwargs = {}
+        for val in task_dict.values():
+            dev_dict = {}
+            kwargs[val.stim_args.stimulus_id] = dev_list
+            for dev_args in val.device_args:
+                dev_list.append(dict(dev_args))
+        print(kwargs)
 
 
 def test_task_addition(database):

@@ -307,7 +307,7 @@ def _get_sensor_kwargs(sens_id, conn):
     return param
 
 
-def get_dev_sn(dev_id, conn):
+def _get_dev_sn(dev_id, conn):
     table_sens = Table("nb_device", conn=conn)
     device_df = table_sens.query(where=f"device_id = '{dev_id}'")
     sn = device_df["device_sn"]
@@ -404,7 +404,7 @@ def _get_device_kwargs(task_id, conn):
         # TODO test that dev_sens_ids are from correct dev_id, eg. dev_sens_ids =
         # {Intel_D455_rgb_1,Intel_D455_depth_1} dev_id= Intel_D455_x
         dev_id_param = {}
-        dev_id_param["SN"] = get_dev_sn(dev_id, conn)
+        dev_id_param["SN"] = _get_dev_sn(dev_id, conn)
 
         dev_id_param["sensors"] = {}
         for sens_id in dev_sens_ids:
@@ -507,7 +507,7 @@ def read_tasks() -> Dict[str, RawTaskParams]:
     return task_dict
 
 
-def read_all_task_params():
+def _read_all_task_params():
     """Returns a dictionary containing all task parameters of all types"""
     params = {}
     params["tasks"] = read_tasks()
@@ -521,7 +521,7 @@ def read_all_task_params():
 def build_tasks_for_collection(collection_id: str, conn) -> Dict[str, TaskArgs]:
     task_ids = get_task_ids_for_collection(collection_id, conn)
     task_dict: Dict[str:TaskArgs] = {}
-    param_dictionary = read_all_task_params()
+    param_dictionary = _read_all_task_params()
     for task_id in task_ids:
         raw_task_args: RawTaskParams = param_dictionary["tasks"][task_id]
         stim_args: StimulusArgs = param_dictionary["stimuli"][raw_task_args.stimulus_id]
