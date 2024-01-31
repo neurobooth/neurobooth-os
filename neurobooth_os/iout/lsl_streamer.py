@@ -151,6 +151,7 @@ class DeviceManager:
 
         def start_and_register_device(device_key: str, device_args: Dict[str, Any]) -> None:
             self.logger.debug(f'Device Manager Starting: {device_key}')
+            self.logger.debug(f'Device Manager Starting with args: {device_args}')
             device = DEVICE_START_FUNCS[device_key](win, **device_args)
             if device is None:
                 self.logger.warning(f'Device Manager Failed to Start: {device_key}')
