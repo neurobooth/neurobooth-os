@@ -45,7 +45,7 @@ class DeviceArgs(BaseModel):
     device_make: Optional[str] = None
     device_model: Optional[str] = None
     device_firmware: Optional[str] = None
-    sensor_id_array: List[str]
+    sensor_ids: List[str]
     sensor_array: List[SensorArgs] = []
     arg_parser: str
 
