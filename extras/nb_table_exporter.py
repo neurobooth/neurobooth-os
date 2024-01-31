@@ -158,7 +158,7 @@ def export_all_device_records():
             dev_dict["device_make"] = device_make
             dev_dict["device_model"] = device_model
             dev_dict["device_firmware"] = device_firmware
-            dev_dict["sensor_id_array"] = sensor_id_array
+            dev_dict["sensor_ids"] = sensor_id_array
             dev_dict['arg_parser'] = 'iout.stim_param_reader.py::DeviceArgs'
 
             filename = os.path.join(path, device_id + ".yml")
@@ -202,8 +202,8 @@ def export_all_sensor_records():
             yaml.dump(sens_dict, f, sort_keys=False)
 
 
-export_all_task_records()
+# export_all_task_records()
 # export_all_stimulus_records()
 # export_all_instruction_records()
-# export_all_device_records()
+export_all_device_records()
 # export_all_sensor_records()
