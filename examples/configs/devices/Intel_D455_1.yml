@@ -6,7 +6,7 @@ wearable_bool: false
 device_make: Intel RealSense
 device_model: D455
 device_firmware: 05.13.00.50
-sensor_id_array:
+sensor_ids:
 - Intel_D455_rgb_1
 - Intel_D455_depth_1
 arg_parser: iout.stim_param_reader.py::DeviceArgs

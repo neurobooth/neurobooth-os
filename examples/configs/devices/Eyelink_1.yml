@@ -6,6 +6,6 @@ wearable_bool: false
 device_make: SR
 device_model: 'EYELINK CL 6.50  '
 device_firmware: None
-sensor_id_array:
+sensor_ids:
 - Eyelink_sens_1
 arg_parser: iout.stim_param_reader.py::DeviceArgs
