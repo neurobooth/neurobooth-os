@@ -15,7 +15,6 @@ dependencies:
   - colorama=0.4.6
   - dataclasses=0.8
   - executing=0.8.3
-  - hdf5=1.12.1
   - icc_rt=2022.1.0
   - intel-openmp=2023.1.0
   - ipython=8.12.2
@@ -88,8 +87,8 @@ dependencies:
       - gitdb==4.0.11
       - gitpython==3.1.40
       - greenlet==3.0.1
-      - h5io==0.1.9
       - h5py==3.10.0
+      - h5io==0.2.1
       - html2text==2020.1.16
       - idna==3.4
       - imageio==2.32.0
