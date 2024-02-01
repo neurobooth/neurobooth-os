@@ -2,6 +2,7 @@ import unittest
 
 from neurobooth_os.iout import metadator as meta
 
+
 class TestMetadator(unittest.TestCase):
 
     def test_read_sensors(self):
@@ -38,24 +39,54 @@ class TestMetadator(unittest.TestCase):
         task_dict = meta.build_tasks_for_collection(collection_id, conn)
         print(task_dict)
 
+    def test_garbage(self):
+        info = {
+            "sensors": {
+                "s1": 1}
+        }
+        (k,) = info["sensors"].keys()
+        print(k)
+
     def test_get_device_kwargs_by_task(self):
         collection_id = 'testing'
         conn = meta.get_conn('mock_neurobooth_1', False)
         args = meta.get_device_kwargs_by_task(collection_id, conn)
-        print(args)
+        #print(args)
+
+        kwarg_alldevs = {}
+        for dc in args.values():
+           kwarg_alldevs.update(dc)
+        #print("Value size: " + str(len(kwarg_alldevs.keys())))
+        #print("Values: " + str(kwarg_alldevs))
 
         task_dict = meta.build_tasks_for_collection(collection_id, conn)
         kwargs = {}
         for val in task_dict.values():
-            dev_dict = {}
-            kwargs[val.stim_args.stimulus_id] = dev_list
-            for dev_args in val.device_args:
-                dev_list.append(dict(dev_args))
-        print(kwargs)
+            list_of_devs_in_task = val.device_args
+            for dev_args in list_of_devs_in_task:
+                kwargs[dev_args.device_id] = (dict(dev_args))
+        #print("New values size: " + str(len(kwargs.keys())))
+        #print(kwargs)
+        print()
+
+        for k in kwarg_alldevs.keys():
+            val1 = kwarg_alldevs[k]
+            print(val1)
+            val2 = kwargs[k]
+            print(val2)
+            print()
+            for k2 in val1.keys():
+                print()
+                val1_2 = val1[k2]
+                print(val1_2)
+                val2_2 = val2[k2]
+                assert(val1_2 is not None)
+                assert(val2_2 is not None)
+                print(val2_2)
+                print()
 
 
 def test_task_addition(database):
-
     conn = meta.get_conn(database)
     subj_id = "Test"
     task_id = meta.make_new_task_row(conn, subj_id)
@@ -70,4 +101,3 @@ def test_task_addition(database):
     vals_dict["site_id"] = "mock_site"
 
     meta.fill_task_row(task_id, vals_dict, conn)
-
