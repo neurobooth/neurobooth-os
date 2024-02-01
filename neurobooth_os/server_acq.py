@@ -5,20 +5,18 @@ from time import time, sleep
 from collections import OrderedDict
 from typing import Dict
 
-import cv2
-import numpy as np
 from pylsl import local_clock
 import logging
 import json
 
 import neurobooth_os
+from neurobooth_os.iout.camera_brio import VidRec_Brio
+
 from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
-from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import DeviceManager
-from neurobooth_os.iout.mbient import Mbient
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
 

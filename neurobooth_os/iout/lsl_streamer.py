@@ -82,6 +82,7 @@ SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
 }
 
 
+# TODO: Move this mapping to configuration files
 DEVICE_START_FUNCS: Dict[str, Callable] = {
     'Eyelink_1': start_eyelink_stream,
     'FLIR_blackfly_1': start_flir_stream,
@@ -161,7 +162,8 @@ class DeviceManager:
 
         with ThreadPoolExecutor(max_workers=N_ASYNC_THREADS) as executor:
             futures = []
-            for device_key, device_args in DeviceManager._get_device_kwargs(collection_id, conn).items():
+            kwargs: Dict[str, Dict[str, Any]] = DeviceManager._get_device_kwargs(collection_id, conn)
+            for device_key, device_args in kwargs.items():
                 if device_key not in self.assigned_devices:
                     continue
                 if device_key in ASYNC_STARTUP:
@@ -195,13 +197,15 @@ class DeviceManager:
     # TODO: The below device-specific calls should all be refactored so that devices can be generically handled
     # TODO: E.g., devices should be able to register handlers for lifecycle phases
 
+    # TODO: the is_camera check should be based on an attribute of the DeviceArgs, not a check against
+    #  a list of words, which requires updating code for every new camera
     @staticmethod
     def is_camera(stream_name: str) -> bool:
         """Test to see if a stream is a camera stream based on its name."""
         return stream_name.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]
 
     def get_camera_streams(self, task_devices: List[DeviceArgs]) -> List[Any]:
-        device_ids = [x.device_id for x in task_devices]
+        device_ids = [dev.device_id for dev in task_devices]
         return [
             stream for stream_name, stream in self.streams.items()
             if DeviceManager.is_camera(stream_name) and stream_name in device_ids
