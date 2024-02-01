@@ -39,19 +39,11 @@ class TestMetadator(unittest.TestCase):
         task_dict = meta.build_tasks_for_collection(collection_id, conn)
         print(task_dict)
 
-    def test_garbage(self):
-        info = {
-            "sensors": {
-                "s1": 1}
-        }
-        (k,) = info["sensors"].keys()
-        print(k)
-
     def test_get_device_kwargs_by_task(self):
         collection_id = 'testing'
         conn = meta.get_conn('mock_neurobooth_1', False)
         args = meta.get_device_kwargs_by_task(collection_id, conn)
-        #print(args)
+        # print(args)
 
         kwarg_alldevs = {}
         for dc in args.values():
