@@ -5,6 +5,8 @@ Ensures that the base neurobooth-os config file exists and makes config file ava
 
 from os import environ, path, getenv
 from typing import Optional
+from typing_extensions import Annotated
+from pydantic import BaseModel, Field
 import json
 
 
@@ -33,7 +35,38 @@ def validate_folder(value: str) -> None:
         raise IOError(f"The path '{value}' is not a folder.")
 
 
+class DatabaseSpec(BaseModel):
+    dbname: str
+    user: str
+    password: Annotated[str, Field(alias='pass')]
+    host: str
+    port: int
+    remote_user: Annotated[str, Field(alias='remote_username')]
+    remote_host: Annotated[str, Field(alias='remote_address')]
+
+
+class ServerSpec(BaseModel):
+    name: str
+    user: str
+    password: Annotated[str, Field(alias='pass')]
+    port: int
+    local_data_dir: str
+    bat: Optional[str] = None
+
+
+class NeuroboothConfig(BaseModel):
+    default_log_path: str
+    remote_data_dir: str
+    video_task_dir: Annotated[str, Field(alias='video_tasks')]
+    cam_inx_lowfeed: int
+    acquisition: ServerSpec
+    presentation: ServerSpec
+    control: ServerSpec
+    database: DatabaseSpec
+
+
 neurobooth_config = None
+neurobooth_config_pydantic: Optional[NeuroboothConfig] = None
 
 
 def load_config(fname: Optional[str] = None, validate_paths: bool = True) -> None:
@@ -70,3 +103,8 @@ def load_config(fname: Optional[str] = None, validate_paths: bool = True) -> Non
                 raise FileNotFoundError(f"The local_data_dir '{source}' for server {server_name} does not exist.")
             if not path.isdir(source):
                 raise IOError(f"The local_data_dir '{source}' for server {server_name} is not a folder.")
+
+        # TODO: This is a stopgap. Update everything to use the structured model and validate with pydantic.
+        global neurobooth_config_pydantic
+        neurobooth_config_pydantic = NeuroboothConfig(**neurobooth_config)
+
