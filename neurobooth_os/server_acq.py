@@ -119,10 +119,7 @@ def run_acq(logger):
             print("Starting recording")
             t0 = time()
             fname, task = data.split("::")[1:]
-            print(data)
-            print(task)
             fname = f"{config.neurobooth_config['acquisition']['local_data_dir']}{session_name}/{fname}"
-            print(task_args)
             device_manager.start_cameras(fname, task_args[task].device_args)
             device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
 
