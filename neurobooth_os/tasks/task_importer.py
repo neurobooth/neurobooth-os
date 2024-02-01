@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
-from neurobooth_os.iout.stim_param_reader import TaskArgs, InstructionArgs
+from neurobooth_os.iout.stim_param_reader import TaskArgs
 
 
 def str_fileid_to_eval(stim_file_str):
@@ -117,7 +117,7 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
     TaskArgs object
     """
 
-    task_stim_id, task_dev, task_sens, instr_kwargs = meta.get_task_param(
+    task_stim_id, task_dev, task_sens, instr_kwargs= meta.get_task_param(
         task_id, conn
     )  # xtask_sens -> sens_id, always end with id
     stim_file, stim_kwargs = meta.get_stimulus_kwargs_from_file(task_stim_id)
@@ -130,15 +130,14 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
     parser_func = str_fileid_to_eval(arg_parser)
     parser = parser_func(**stim_kwargs)
 
-    if instr_kwargs.get("instruction_file") is not None:
-        instr_kwargs["instruction_file"] = op.join(
-            cfg.neurobooth_config.video_task_dir, instr_kwargs["instruction_file"]
+    if instr_kwargs.instruction_file is not None:
+        instr_kwargs.instruction_file = op.join(
+            cfg.neurobooth_config.video_task_dir, instr_kwargs.instruction_file
         )
-        instr_args = InstructionArgs(**instr_kwargs)
         task_args = TaskArgs(task_id=task_id,
                              task_constructor_callable=stim_func,
                              stim_args=parser,
-                             instr_args=instr_args)
+                             instr_args=instr_kwargs)
     else:
         task_args = TaskArgs(task_id=task_id,
                              task_constructor_callable=stim_func,
