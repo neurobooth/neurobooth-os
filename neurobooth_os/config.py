@@ -42,17 +42,17 @@ def validate_folder(value: str) -> None:
 class DatabaseSpec(BaseModel):
     dbname: str
     user: str
-    password: Annotated[str, Field(alias='pass')]
+    password: str
     host: str
     port: int
-    remote_user: Annotated[str, Field(alias='remote_username')]
-    remote_host: Annotated[str, Field(alias='remote_address')]
+    remote_user: str
+    remote_host: str
 
 
 class ServerSpec(BaseModel):
     name: str
     user: str
-    password: Annotated[str, Field(alias='pass')]
+    password: str
     port: int
     local_data_dir: str
     bat: Optional[str] = None
@@ -61,7 +61,7 @@ class ServerSpec(BaseModel):
 class NeuroboothConfig(BaseModel):
     default_log_path: str
     remote_data_dir: str
-    video_task_dir: Annotated[str, Field(alias='video_tasks')]
+    video_task_dir: str
     cam_inx_lowfeed: int
     acquisition: ServerSpec
     presentation: ServerSpec
