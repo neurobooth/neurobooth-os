@@ -15,6 +15,7 @@ from psychopy import prefs
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
+from neurobooth_os.tasks.task_importer import get_task_arguments
 from neurobooth_os.util.task_log_entry import TaskLogEntry
 
 prefs.hardware["audioLib"] = ["PTB"]
@@ -72,6 +73,9 @@ def run_stm(logger):
             session.logger.info("Beginning Presentation")
             tasks, subj_id, session_id = data.split(":")[1:]
             task_log_entry.log_session_id = session_id
+
+            if presented:
+                session.task_func_dict = get_task_arguments(session.collection_id, session.db_conn)
 
             # Preload tasks media
             t0 = time()

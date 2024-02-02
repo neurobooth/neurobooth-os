@@ -108,10 +108,11 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
     parser_func = meta.str_fileid_to_eval(arg_parser)
     parser = parser_func(**stim_kwargs)
 
-    if instr_kwargs.instruction_file is not None:
-        instr_kwargs.instruction_file = op.join(
-            cfg.neurobooth_config["video_tasks"], instr_kwargs.instruction_file
-        )
+    if instr_kwargs is not None:
+        if instr_kwargs.instruction_file is not None:
+            instr_kwargs.instruction_file = op.join(
+                cfg.neurobooth_config["video_tasks"], instr_kwargs.instruction_file
+            )
         task_args = TaskArgs(task_id=task_id,
                              task_constructor_callable=stim_func,
                              stim_args=parser,
@@ -120,7 +121,6 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
         task_args = TaskArgs(task_id=task_id,
                              task_constructor_callable=stim_func,
                              stim_args=parser)
-
     return task_args
 
 
