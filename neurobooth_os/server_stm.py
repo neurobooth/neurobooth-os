@@ -62,7 +62,6 @@ def run_stm(logger):
     host: str = ''
     session: Optional[StmSession] = None
     task_log_entry: Optional[TaskLogEntry] = None
-    task_func_dict: Dict[str, TaskArgs] = {}
     for data, socket_conn in get_client_messages(socket_1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 
@@ -76,7 +75,7 @@ def run_stm(logger):
             task_log_entry.log_session_id = session_id
 
             if presented:
-                task_func_dict = get_task_arguments(session.collection_id, session.db_conn)
+                session.task_func_dict = get_task_arguments(session.collection_id, session.db_conn)
 
             # Preload tasks media
             t0 = time()

@@ -98,7 +98,7 @@ def get_task_arguments(collection_id, conn):
         task_args: TaskArgs = _get_task_arg(task_id, conn)
         task_stim_id = task_args.stim_args.stimulus_id
         task_func_dict[task_stim_id] = task_args
-
+    print(task_func_dict)
     return task_func_dict
 
 
@@ -117,7 +117,7 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
     TaskArgs object
     """
 
-    task_stim_id, task_dev, task_sens, instr_kwargs= meta.get_task_param(
+    task_stim_id, task_dev, task_sens, instr_kwargs = meta.get_task_param(
         task_id, conn
     )  # xtask_sens -> sens_id, always end with id
     stim_file, stim_kwargs = meta.get_stimulus_kwargs_from_file(task_stim_id)
@@ -139,8 +139,8 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
                              task_constructor_callable=stim_func,
                              stim_args=parser,
                              instr_args=instr_kwargs)
-        return task_args
-    task_args = TaskArgs(task_id=task_id,
-                         task_constructor_callable=stim_func,
-                         stim_args=parser)
+    else:
+        task_args = TaskArgs(task_id=task_id,
+                             task_constructor_callable=stim_func,
+                             stim_args=parser)
     return task_args
