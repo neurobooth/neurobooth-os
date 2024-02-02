@@ -98,7 +98,6 @@ def get_task_arguments(collection_id, conn):
         task_args: TaskArgs = _get_task_arg(task_id, conn)
         task_stim_id = task_args.stim_args.stimulus_id
         task_func_dict[task_stim_id] = task_args
-    print(task_func_dict)
     return task_func_dict
 
 
