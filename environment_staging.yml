@@ -87,8 +87,6 @@ dependencies:
       - gitdb==4.0.11
       - gitpython==3.1.40
       - greenlet==3.0.1
-      - h5py==3.10.0
-      - h5io==0.2.1
       - html2text==2020.1.16
       - idna==3.4
       - imageio==2.32.0
@@ -111,7 +109,7 @@ dependencies:
       - pillow==10.0.1
       - proglog==0.1.10
       - psutil==5.9.6
-      - psychopy==2023.2.3
+      - psychopy==2023.1.2
       - psychtoolbox==3.0.19.0
       - psycopg2==2.9.9
       - pycap==2.6.0
@@ -164,4 +162,6 @@ dependencies:
       - zope-event==5.0
       - zope-interface==6.1
       - git+https://github.com/neurobooth/neurobooth-terra.git#egg=neurobooth_terra
+      - h5py==3.10.0
+      - h5io==0.2.1
 prefix: C:\Users\lw412\anaconda3\envs\neurobooth-staging
