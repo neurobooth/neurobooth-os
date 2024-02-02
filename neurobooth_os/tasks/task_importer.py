@@ -98,7 +98,6 @@ def get_task_arguments(collection_id, conn):
         task_args: TaskArgs = _get_task_arg(task_id, conn)
         task_stim_id = task_args.stim_args.stimulus_id
         task_func_dict[task_stim_id] = task_args
-
     return task_func_dict
 
 
@@ -117,7 +116,7 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
     TaskArgs object
     """
 
-    task_stim_id, task_dev, task_sens, instr_kwargs= meta.get_task_param(
+    task_stim_id, task_dev, task_sens, instr_kwargs = meta.get_task_param(
         task_id, conn
     )  # xtask_sens -> sens_id, always end with id
     stim_file, stim_kwargs = meta.get_stimulus_kwargs_from_file(task_stim_id)
@@ -130,10 +129,11 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
     parser_func = str_fileid_to_eval(arg_parser)
     parser = parser_func(**stim_kwargs)
 
-    if instr_kwargs.instruction_file is not None:
-        instr_kwargs.instruction_file = op.join(
-            cfg.neurobooth_config["video_tasks"], instr_kwargs.instruction_file
-        )
+    if instr_kwargs is not None:
+        if instr_kwargs.instruction_file is not None:
+            instr_kwargs.instruction_file = op.join(
+                cfg.neurobooth_config["video_tasks"], instr_kwargs.instruction_file
+            )
         task_args = TaskArgs(task_id=task_id,
                              task_constructor_callable=stim_func,
                              stim_args=parser,
@@ -142,5 +142,4 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
         task_args = TaskArgs(task_id=task_id,
                              task_constructor_callable=stim_func,
                              stim_args=parser)
-
     return task_args
