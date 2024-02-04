@@ -1,3 +1,5 @@
+REM run in conda prompt in project root
+echo on
 conda deactivate
 conda env remove --name neurobooth-staging
 conda env create --file environment_staging.yml
