@@ -1,9 +1,14 @@
 REM run in conda prompt in project root
 echo on
-conda deactivate
-conda env remove --name neurobooth-staging
-conda env create --file environment_staging.yml
-pip install -e .
-pip install --index-url=https://pypi.sr-support.com sr-research-pylink
-pip install c:\spinnaker\spinnaker_python-3.1.0.79-cp38-cp38-win_amd64.whl
-pip install --user --force-reinstall h5py-3.10.0-cp312-cp312-win_amd64.whl
+call conda deactivate
+pause
+call conda env remove --name neurobooth-staging
+pause
+call conda env create --file environment_staging.yml
+pause
+call conda activate neurobooth-staging
+call pip install -e .
+call pip install --index-url=https://pypi.sr-support.com sr-research-pylink
+call pip install c:\spinnaker\spinnaker_python-3.1.0.79-cp38-cp38-win_amd64.whl
+pause
+call pip install --user --force-reinstall h5py==3.8.0
