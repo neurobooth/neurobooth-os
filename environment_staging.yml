@@ -62,7 +62,7 @@ dependencies:
       - numpy==1.23.5
       - h5py==3.7.0
       - h5io
-        tables==3.8.0
+      - tables==3.8.0
       - paramiko== 2.8.1
       - arabic-reshaper==3.0.0
       - astunparse==1.6.3
