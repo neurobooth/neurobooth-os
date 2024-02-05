@@ -11,4 +11,4 @@ call pip install -e .
 call pip install --index-url=https://pypi.sr-support.com sr-research-pylink
 call pip install c:\spinnaker\spinnaker_python-3.1.0.79-cp38-cp38-win_amd64.whl
 pause
-call pip install --user --force-reinstall h5py==3.8.0
+call pip install --user --force-reinstall h5py==3.7.0
