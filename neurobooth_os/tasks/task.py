@@ -24,6 +24,8 @@ from neurobooth_os.tasks import utils
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 from neurobooth_os.log_manager import APP_LOG_NAME
 
+from enum import Enum
+
 
 class Task:
     def __init__(
@@ -361,7 +363,66 @@ class Task_Eyetracker(Task):
         if self.eye_tracker is not None:
             self.eye_tracker.tk.doDriftCorrect(*vals)
 
-    def update_tablet_background(self, x: float, y: float) -> None:
+    def gaze_contingency():
+        # move task
+        pass
+
+
+class Color(Enum):
+    BLACK = 0
+    RED = 12
+    GREEN = 10
+
+
+class Eyelink_HostPC(Task_Eyetracker):
+    '''
+       Class containing methods that interact with the HostPC display.
+       HostPC is the computer that controls the eye tracker camera. Tasks
+       can interact with the display that is attached to this computer. In
+       our set up, the display is an Android tablet running the Eyelink app.
+
+       The commands that are sent to the HostPC are in the form of strings,
+       the list of commands and documentation is available in the
+       "commands.ini" file inside the HostPC (i.e. NUC) - this can be found 
+       via the WebUI or by browsing the filesystem in the NUC. Additional
+       documentation is in the SR Research forums.
+    '''
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    def draw_cross(self, x: int, y: int, colour: Color) -> None:
+        '''Draw a cross at the x,y position on the screen of the specified colour
+           x, y must be in the top-left centered coordinate space 
+        '''
+        self.sendCommand('draw_cross %d %d %d' % tuple(x, y, colour.value))
+        
+    def draw_box(self, x: int, y: int, length: int, breadth: int, colour: Color, filled: bool = False) -> None:
+        '''
+           Draw a rectangle of size length by breadth (in pixels) around a point 
+           x,y on the screen. x, y must be in the top-left centered coordinate
+           space.
+
+           'draw_box' command for the HostPC takes in the diagonal coordinates and
+           a color integer
+        '''
+        half_box_len_in_pix = int(length/2)
+        half_box_brd_in_pix = int(breadth/2)
+
+        box_coords_top_x = x-half_box_len_in_pix
+        box_coords_top_y = y-half_box_brd_in_pix
+        box_coords_bot_x = x+half_box_len_in_pix
+        box_coords_bot_y = y+half_box_brd_in_pix
+
+        if not filled:
+            self.sendCommand('draw_box %d %d %d %d %d' % tuple(box_coords_top_x, box_coords_top_y,
+                                                               box_coords_bot_x, box_coords_bot_y,
+                                                               colour.value))
+        else:
+            # add command for filled box
+            pass
+
+    def update_screen(self, x: float, y: float) -> None:
         '''
            Draw a cross and a box on the eyelink tablet.
            x and y are positions in 0 centered psychopy coordinate space.
@@ -370,25 +431,23 @@ class Task_Eyetracker(Task):
         '''
 
         # First clear tablet screen
-        self.sendCommand('clear_screen 0')
+        self.clear_screen()
 
         # convert from 0 centered to top-left centered coordinate space
-        top_left_xy = self.pos_psych2pix([x, y])
+        xy = self.pos_psych2pix([x, y])
+        top_left_x = xy[0]
+        top_left_y = xy[1]
 
         # draw cross at top_left centered x,y position
-        self.sendCommand('draw_cross %d %d 10' % tuple(top_left_xy))
+        self.draw_box(top_left_x, top_left_y, Color.GREEN)
 
         # draw box around cross
-        half_box_len_in_pix = 50 ## this is box_length of 100 pixels
-        # box coords are defined in a single list as x,y at the diagonal vertices
-        # color is defined by number - 12 is for red, 10 is for green
-        box_coords_top = [top_left_xy[0]-half_box_len_in_pix, top_left_xy[1]-half_box_len_in_pix]
-        box_coords_bot = [top_left_xy[0]+half_box_len_in_pix, top_left_xy[1]+half_box_len_in_pix]
-        self.sendCommand('draw_box %d %d %d %d 12' % tuple(box_coords_top + box_coords_bot))
+        box_len_in_pix = 100
+        self.draw_box(top_left_x, top_left_y, box_len_in_pix, box_len_in_pix, Color.RED)
 
-    def gaze_contingency():
-        # move task
-        pass
+    def clear_screen(self, colour: Color = Color.BLACK) -> None:
+        '''Clear the HostPC screen and leave a Black background by default'''
+        self.sendCommand('clear_screen %d' % colour.value)
 
 
 class Introduction_Task(Task):
