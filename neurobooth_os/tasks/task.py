@@ -370,8 +370,21 @@ class Task_Eyetracker(Task):
 
 class Color(Enum):
     BLACK = 0
-    RED = 12
-    GREEN = 10
+    BLUE = 1
+    GREEN = 2
+    CYAN = 3
+    RED = 4
+    MAGENTA = 5
+    BROWN = 6
+    LIGHTGRAY = 7
+    DARKGRAY = 8
+    LIGHTBLUE = 9
+    LIGHTGREEN = 10
+    LIGHTCYAN = 11
+    LIGHTRED = 12
+    BRIGHTMAGENTA = 13
+    YELLOW = 14
+    BRIGHTWHITE = 15
 
 
 class Eyelink_HostPC(Task_Eyetracker):
@@ -395,7 +408,7 @@ class Eyelink_HostPC(Task_Eyetracker):
         '''Draw a cross at the x,y position on the screen of the specified colour
            x, y must be in the top-left centered coordinate space 
         '''
-        self.sendCommand('draw_cross %d %d %d' % tuple(x, y, colour.value))
+        self.sendCommand('draw_cross %d %d %d' % (x, y, colour.value))
         
     def draw_box(self, x: int, y: int, length: int, breadth: int, colour: Color, filled: bool = False) -> None:
         '''
@@ -415,11 +428,13 @@ class Eyelink_HostPC(Task_Eyetracker):
         box_coords_bot_y = y+half_box_brd_in_pix
 
         if not filled:
-            self.sendCommand('draw_box %d %d %d %d %d' % tuple(box_coords_top_x, box_coords_top_y,
+            self.sendCommand('draw_box %d %d %d %d %d' % (box_coords_top_x, box_coords_top_y,
                                                                box_coords_bot_x, box_coords_bot_y,
                                                                colour.value))
         else:
-            # add command for filled box
+            self.sendCommand('draw_filled_box %d %d %d %d %d' % (box_coords_top_x, box_coords_top_y,
+                                                               box_coords_bot_x, box_coords_bot_y,
+                                                               colour.value))
             pass
 
     def update_screen(self, x: float, y: float) -> None:
@@ -439,11 +454,11 @@ class Eyelink_HostPC(Task_Eyetracker):
         top_left_y = xy[1]
 
         # draw cross at top_left centered x,y position
-        self.draw_box(top_left_x, top_left_y, Color.GREEN)
+        self.draw_cross(top_left_x, top_left_y, Color.LIGHTGREEN)
 
         # draw box around cross
         box_len_in_pix = 100
-        self.draw_box(top_left_x, top_left_y, box_len_in_pix, box_len_in_pix, Color.RED)
+        self.draw_box(top_left_x, top_left_y, box_len_in_pix, box_len_in_pix, Color.LIGHTRED)
 
     def clear_screen(self, colour: Color = Color.BLACK) -> None:
         '''Clear the HostPC screen and leave a Black background by default'''
