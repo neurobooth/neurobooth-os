@@ -10,8 +10,7 @@ from psychopy import core
 import pylink
 import neurobooth_os
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
-# from neurobooth_os.tasks.task import Task_Eyetracker
-from neurobooth_os.tasks.task import Eyelink_HostPC as Tablet
+from neurobooth_os.tasks.task import Eyelink_HostPC
 import numpy as np
 from pylsl import local_clock
 
@@ -24,7 +23,7 @@ def countdown(period):
         t2 = local_clock()
 
 
-class Saccade(Tablet):
+class Saccade(Eyelink_HostPC):
     def __init__(
         self,
         amplitude_deg=30,

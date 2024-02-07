@@ -368,7 +368,14 @@ class Task_Eyetracker(Task):
         pass
 
 
-class Color(Enum):
+class EyelinkColor(Enum):
+    '''
+       Color codes accepted by the Eyetracker.
+       The source of these codes is from the comments in the examples
+       provided by SR Research - specifically saccade.py
+       Example script can be found in:
+       C:\Program Files (x86)\SR Research\EyeLink\SampleExperiments\Python\examples\Psychopy_examples
+    '''
     BLACK = 0
     BLUE = 1
     GREEN = 2
@@ -404,13 +411,13 @@ class Eyelink_HostPC(Task_Eyetracker):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
-    def draw_cross(self, x: int, y: int, colour: Color) -> None:
+    def draw_cross(self, x: int, y: int, colour: EyelinkColor) -> None:
         '''Draw a cross at the x,y position on the screen of the specified colour
            x, y must be in the top-left centered coordinate space 
         '''
         self.sendCommand('draw_cross %d %d %d' % (x, y, colour.value))
         
-    def draw_box(self, x: int, y: int, length: int, breadth: int, colour: Color, filled: bool = False) -> None:
+    def draw_box(self, x: int, y: int, length: int, breadth: int, colour: EyelinkColor, filled: bool = False) -> None:
         '''
            Draw a rectangle of size length by breadth (in pixels) around a point 
            x,y on the screen. x, y must be in the top-left centered coordinate
@@ -454,13 +461,13 @@ class Eyelink_HostPC(Task_Eyetracker):
         top_left_y = xy[1]
 
         # draw cross at top_left centered x,y position
-        self.draw_cross(top_left_x, top_left_y, Color.LIGHTGREEN)
+        self.draw_cross(top_left_x, top_left_y, EyelinkColor.LIGHTGREEN)
 
         # draw box around cross
         box_len_in_pix = 100
-        self.draw_box(top_left_x, top_left_y, box_len_in_pix, box_len_in_pix, Color.LIGHTRED)
+        self.draw_box(top_left_x, top_left_y, box_len_in_pix, box_len_in_pix, EyelinkColor.LIGHTRED)
 
-    def clear_screen(self, colour: Color = Color.BLACK) -> None:
+    def clear_screen(self, colour: EyelinkColor = EyelinkColor.BLACK) -> None:
         '''Clear the HostPC screen and leave a Black background by default'''
         self.sendCommand('clear_screen %d' % colour.value)
 

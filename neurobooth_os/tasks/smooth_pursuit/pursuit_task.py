@@ -11,10 +11,10 @@ from psychopy import core
 import pylink
 import neurobooth_os
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
-from neurobooth_os.tasks.task import Task_Eyetracker
+from neurobooth_os.tasks.task import Eyelink_HostPC
 
 
-class Pursuit(Task_Eyetracker):
+class Pursuit(Eyelink_HostPC):
     def __init__(
         self,
         amplitude_deg=30,
@@ -79,7 +79,7 @@ class Pursuit(Task_Eyetracker):
         self.target.pos = (tar_x, tar_y)
         self.target.draw()
         self.win.flip()
-        self.update_tablet_background(tar_x, tar_y)
+        self.update_screen(tar_x, tar_y)
         self.send_target_loc(self.target.pos)
 
         frame = 0
@@ -89,7 +89,7 @@ class Pursuit(Task_Eyetracker):
             self.target.pos = (tar_x, tar_y)
             self.target.draw()
             self.win.flip()
-            self.update_tablet_background(tar_x, tar_y)
+            self.update_screen(tar_x, tar_y)
             self.send_target_loc(self.target.pos)
 
             flip_time = core.getTime()
@@ -121,7 +121,7 @@ class Pursuit(Task_Eyetracker):
         # clear the window
         self.win.color = (0, 0, 0)
         self.win.flip()
-        self.sendCommand('clear_screen 0')
+        self.clear_screen()
 
         # Stop recording
         self.setOfflineMode()
