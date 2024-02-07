@@ -1,0 +1,12 @@
+device_id: Mbient_LH_2
+device_sn: E8:95:D6:F7:39:D2
+device_name: mbient
+device_location: 'Null'
+wearable_bool: true
+device_make: MbientLab Inc
+device_model: MMS
+device_firmware: '1.7'
+sensor_ids:
+- mbient_acc_1
+- mbient_gra_1
+arg_parser: iout.stim_param_reader.py::DeviceArgs
