@@ -17,35 +17,30 @@ from neurobooth_os.tasks.task import Eyelink_HostPC
 class Pursuit(Eyelink_HostPC):
     def __init__(
         self,
-        amplitude_deg=30,
-        peak_velocity_deg=30,
-        start_phase_deg=0,
-        ntrials=5,
         **kwargs,
     ):
 
         super().__init__(**kwargs)
-        self.amplitude_deg = amplitude_deg
-        self.peak_velocity_deg = peak_velocity_deg
+        self.amplitude_deg = kwargs["amplitude_deg"]
+        self.peak_velocity_deg = kwargs["peak_velocity_deg"]
         self.amplitude_pixel = deg2pix(
             self.amplitude_deg, self.subj_screendist_cm, self.pixpercm
         )
         self.angular_freq = peak_vel2freq(
             self.peak_velocity_deg, self.peak_velocity_deg
         )
-        self.ntrials = ntrials
+        self.ntrials = kwargs["ntrials"]
         # [amp_x, amp_y, phase_x, phase_y, angular_freq_x, angular_freq_y]
         self.mov_pars = [
             self.amplitude_pixel,
             0,
-            deg2rad(start_phase_deg),
+            deg2rad(kwargs["start_phase_deg"]),
             0,
             self.angular_freq,
             self.angular_freq,
         ]
 
-    def run(self, prompt=True, last_task=False, **kwargs):
-        # self.setOfflineMode()
+    def run(self, prompt=True, last_task=False, **kwarg):
         self.present_instructions(prompt)
         self.run_trial(prompt, self.mov_pars)
         self.present_complete(last_task)
@@ -156,7 +151,7 @@ class Pursuit(Eyelink_HostPC):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    task = Pursuit(full_screen=False, target_size=0.7)
+    task = Pursuit()
     task.run(prompt=True)
 
     tstmp = task.time_array

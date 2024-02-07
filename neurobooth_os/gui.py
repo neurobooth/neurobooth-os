@@ -12,8 +12,7 @@ import threading
 from datetime import datetime
 import cv2
 import numpy as np
-import psutil
-from typing import Dict
+# from typing import Dict
 
 import PySimpleGUI as sg
 import liesl
@@ -132,12 +131,13 @@ def _select_subject(window, subject_df):
 
 
 def _get_tasks(window, conn, collection_id):
-    tasks_obs = meta.get_tasks(collection_id, conn)
-    tasks = list()
-    for task in tasks_obs:
-        task_id, *_ = meta._get_task_param(task, conn)
-        tasks.append(task_id)
-    tasks = ", ".join(tasks)
+    task_obs = meta.get_task_ids_for_collection(collection_id, conn)
+    # TODO(larry): remove this dead code when change works properly in ACQ and STM
+    # tasks = list()
+    # for task in tasks_obs:
+    #     task_id, *_ = meta.get_task_param(task, conn)
+    #     tasks.append(task_id)
+    tasks = ", ".join(task_obs)
     window["tasks"].update(value=tasks)
     return tasks
 
@@ -264,7 +264,6 @@ def _stop_lsl_and_save(
 ):
     """Stop LSL stream and save"""
     t0 = time.time()
-    # print("memory: ", psutil.virtual_memory())
     # Stop LSL recording
     session.stop_recording()
     print(f"CTR Stop session took: {time.time() - t0}")
@@ -483,7 +482,7 @@ def gui():
 
         elif event == "Start":
             session_id = meta._make_session_id(conn, log_sess)
-            tasks = [k for k, v in values.items() if "task" in k and v is True]
+            tasks = [k for k, v in values.items() if "obs" in k and v is True]
             _start_task_presentation(
                 window, tasks, sess_info["subject_id"], session_id, steps, node=nodes[1]
             )
@@ -616,15 +615,13 @@ def main():
         logger.debug("Starting GUI")
         gui()
         logger.debug("Stopping GUI")
-    except Exception as e:
-        logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
-        logger.critical(e, exc_info=sys.exc_info())
-        logger.critical("Stopping GUI (error-state)")
-        raise e
+    except Exception as argument:
+        logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
+                        exc_info=sys.exc_info())
+        raise argument
+
     finally:
-        print("logging shutdown starting")
         logging.shutdown()
-        print("logging shutdown complete")
 
 if __name__ == "__main__":
     main()

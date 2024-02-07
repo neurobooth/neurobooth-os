@@ -3,19 +3,20 @@ import os
 import sys
 from time import time, sleep
 from collections import OrderedDict
-import cv2
-import numpy as np
+from typing import Dict
+
 from pylsl import local_clock
 import logging
 import json
 
 import neurobooth_os
+from neurobooth_os.iout.camera_brio import VidRec_Brio
+
 from neurobooth_os import config
+from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
-from neurobooth_os.iout.camera_brio import VidRec_Brio
 from neurobooth_os.iout.lsl_streamer import DeviceManager
-from neurobooth_os.iout.mbient import Mbient
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
 
@@ -38,11 +39,11 @@ def main():
         run_acq(logger)
         logger.debug("Stopping ACQ")
 
-    except Exception as e:
-        logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
-        logger.critical(e, exc_info=sys.exc_info())
-        logger.critical("Stopping ACQ (error-state)")
-        raise
+    except Exception as argument:
+        logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
+                        exc_info=sys.exc_info())
+        raise argument
+
     finally:
         logging.shutdown()
 
@@ -56,6 +57,7 @@ def run_acq(logger):
     host = ''
     device_manager = None
     system_resource_logger = None
+    task_args: Dict[str, TaskArgs] = {}
 
     for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
@@ -93,7 +95,8 @@ def run_acq(logger):
                 system_resource_logger = SystemResourceLogger(ses_folder, 'ACQ')
                 system_resource_logger.start()
 
-            task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
+            # task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
+            task_args: Dict[str, TaskArgs] = meta.build_tasks_for_collection(collection_id, conn)
 
             device_manager = DeviceManager(node_name='acquisition')
             if device_manager.streams:
@@ -103,16 +106,7 @@ def run_acq(logger):
             print("UPDATOR:-Connect-")
 
         elif "frame_preview" in data and not recording:
-            frame = device_manager.iphone_frame_preview()
-            if frame is None:
-                print("no iphone")
-                connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
-                logger.debug('Frame preview unavailable')
-            else:
-                frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
-                frame = frame_prefix + frame
-                connx.send(frame)
-                logger.debug('Frame preview sent')
+            iphone_frame_preview(connx, device_manager, logger)
 
         # TODO: Both reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
         elif "reset_mbients" in data:
@@ -126,8 +120,7 @@ def run_acq(logger):
             t0 = time()
             fname, task = data.split("::")[1:]
             fname = f"{config.neurobooth_config['acquisition']['local_data_dir']}{session_name}/{fname}"
-
-            device_manager.start_cameras(fname, task_devs_kw[task])
+            device_manager.start_cameras(fname, task_args[task].device_args)
             device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
 
             elapsed_time = time() - t0
@@ -139,7 +132,7 @@ def run_acq(logger):
 
         elif "record_stop" in data:
             t0 = time()
-            device_manager.stop_cameras(task_devs_kw[task])
+            device_manager.stop_cameras(task_args[task].device_args)
             elapsed_time = time() - t0
             print(f"Device stop took {elapsed_time:.2f}")
             logger.info(f'Device stop took {elapsed_time:.2f}')
@@ -170,6 +163,19 @@ def run_acq(logger):
 
         else:
             logger.error(f'Unexpected message received: {data}')
+
+
+def iphone_frame_preview(connx, device_manager, logger):
+    frame = device_manager.iphone_frame_preview()
+    if frame is None:
+        print("no iphone")
+        connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
+        logger.debug('Frame preview unavailable')
+    else:
+        frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
+        frame = frame_prefix + frame
+        connx.send(frame)
+        logger.debug('Frame preview sent')
 
 
 if __name__ == '__main__':

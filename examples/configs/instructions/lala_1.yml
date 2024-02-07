@@ -1,0 +1,5 @@
+instruction_id: lala_1
+instruction_text: null
+instruction_filetype: null
+instruction_file: speech_lalala_2021_10_14_v0.6.mp4
+arg_parser: iout.stim_param_reader.py::InstructionArgs()

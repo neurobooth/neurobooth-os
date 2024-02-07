@@ -1,0 +1,10 @@
+stimulus_id: saccades_vertical_task_1
+stimulus_description: vertical sacade
+num_iterations: 1
+duration: null
+arg_parser: iout.stim_param_reader.py::SaccadesStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.saccade.saccade_task.py::Saccade()
+direction: vertical
+amplitude_deg: 10
+target_size: 0.7
