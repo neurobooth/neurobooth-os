@@ -1,6 +1,6 @@
 from os import environ, path
 
-from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field
+from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveFloat, PositiveInt
 from typing import Optional, List, Callable
 import os
 import yaml
@@ -17,6 +17,37 @@ the pydantic BaseModel class). This class handles the parsing of the yaml file i
 
 Parsers for all the standard stimulus yaml files are found in this module.   
 """
+
+class SensorArgs(BaseModel):
+    sensor_id: str = Field(min_length=1, max_length=255)
+    temporal_res: Optional[PositiveFloat] = None
+    spatial_res_x: Optional[PositiveFloat] = None
+    spatial_res_y: Optional[PositiveFloat] = None
+    file_type: str
+    arg_parser: str
+
+
+class FlirSensorArgs(SensorArgs):
+    offsetX: PositiveInt
+    offsetY: PositiveInt
+
+
+class EyelinkSensorArgs(SensorArgs):
+    calibration_type: str
+
+
+class DeviceArgs(BaseModel):
+    device_id: str
+    device_sn: Optional[str] = None
+    device_name: str
+    device_location: Optional[str] = None
+    wearable_bool: bool
+    device_make: Optional[str] = None
+    device_model: Optional[str] = None
+    device_firmware: Optional[str] = None
+    sensor_ids: List[str]
+    sensor_array: List[SensorArgs] = []
+    arg_parser: str
 
 
 class InstructionArgs(BaseModel):
@@ -55,7 +86,7 @@ class TaskArgs(BaseModel):
     stim_args: StimulusArgs
     instr_args: Optional[InstructionArgs] = None
     task_instance: Optional[object] = None  # created by client code from above callable
-
+    device_args: List[DeviceArgs] = []
     class Config:
         arbitrary_types_allowed = True
 
@@ -165,3 +196,17 @@ def _get_param_dictionary(task_param_file_name: str, conf_folder_name: str) -> d
     with open(filename) as param_file:
         param_dict = yaml.load(param_file, yaml.FullLoader)
         return param_dict
+
+
+class RawTaskParams(BaseModel):
+    """
+        Raw (un-reified) Task params (ie., instead of a list of DeviceArgs,
+        it has a list of strings representing device ids
+    """
+
+    task_id: str
+    feature_of_interest: str
+    stimulus_id: str
+    instruction_id: Optional[str]
+    device_id_array: List[str]
+    sensor_id_array: List[List[str]]
