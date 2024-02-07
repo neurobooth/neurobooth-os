@@ -249,15 +249,18 @@ def get_task_param(task_id, conn):
     )  # XXX: name similarly in calling function
 
 
-def _get_instruction_kwargs_from_file(instruction_id: str) -> InstructionArgs:
-    """Return InstructionArgs with the given id from yaml parameter file."""
-    file_name = instruction_id + ".yml"
-    instr_param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file_name, 'instructions')
-    param_parser: str = instr_param_dict['arg_parser']
-    parser_func = str_fileid_to_eval(param_parser)
-    args: InstructionArgs = parser_func(**instr_param_dict)
-    assert isinstance(args, InstructionArgs)
-    return args
+def _get_instruction_kwargs_from_file(instruction_id: str) -> Optional[InstructionArgs]:
+    """Get InstructionArgs from instruction yml files."""
+    if instruction_id is not None:
+        from neurobooth_os.tasks.task_importer import str_fileid_to_eval
+        file_name = instruction_id + ".yml"
+        instr_param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file_name, 'instructions')
+        param_parser: str = instr_param_dict['arg_parser']
+        parser_func = str_fileid_to_eval(param_parser)
+        args: InstructionArgs = parser_func(**instr_param_dict)
+        return args
+    else:
+        return None
 
 
 def log_task_params(conn, stimulus_id: str, log_task_id: str, task_param_dictionary: Dict[str, Any]):
@@ -411,9 +414,7 @@ def _get_device_kwargs(task_id, conn):
         for sens_id in dev_sens_ids:
             if len(sens_id):
                 dev_id_param["sensors"][sens_id] = _get_sensor_kwargs(sens_id, conn)
-
         kwarg = map_database_to_deviceclass(dev_id, dev_id_param)
-
         dev_kwarg[dev_id] = kwarg
     return dev_kwarg
 

@@ -52,7 +52,7 @@ def get_task_funcs(collection_id, conn):
     return task_func_dict
 
 
-def get_task_arguments(collection_id, conn):
+def get_task_arguments(collection_id, conn) -> Dict[str, TaskArgs]:
     """Retrieves TaskArgs objects from database using collection_id
 
     Parameters
@@ -67,17 +67,6 @@ def get_task_arguments(collection_id, conn):
     dict of task_ids to TaskArgs object for every task in collection
     """
     return meta.build_tasks_for_collection(collection_id, conn)
-
-    # TODO(larry): Remove dead code below
-    # task_ids: List[str] = meta.get_task_ids_for_collection(collection_id, conn)
-    #
-    # task_func_dict = {}
-    # for task_id in task_ids:
-    #     task_args: TaskArgs = _get_task_arg(task_id, conn)
-    #     task_stim_id = task_args.stim_args.stimulus_id
-    #     task_func_dict[task_stim_id] = task_args
-    #
-    # return task_func_dict
 
 
 def _get_task_arg(task_id: str, conn) -> TaskArgs:
@@ -122,8 +111,3 @@ def _get_task_arg(task_id: str, conn) -> TaskArgs:
                              task_constructor_callable=stim_func,
                              stim_args=parser)
     return task_args
-
-
-def get_task_arguments_for_collection(collection_id: str, conn):
-    """"Returns a dictionary of TaskArgs for all tasks in collection"""
-    return meta.build_tasks_for_collection(collection_id, conn)
