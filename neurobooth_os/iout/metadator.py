@@ -6,6 +6,7 @@ from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+from pydantic import BaseModel
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
 from neurobooth_terra import Table
@@ -434,76 +435,60 @@ def get_device_kwargs_by_task(collection_id, conn) -> OrderedDict:
 
 def read_sensors() -> Dict[str, SensorArgs]:
     """Return dictionary of sensor_id to SensorArgs for all yaml sensor parameter files."""
-
-    directory: str = get_cfg_path("sensors")
+    folder = 'sensors'
+    directory: str = get_cfg_path(folder)
     sens_dict = {}
+    _parse_files(directory, folder, sens_dict)
+    return sens_dict
+
+
+def _dynamic_parse(file: str, param_type: str) -> BaseModel:
+    param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, param_type)
+    param_parser: str = param_dict['arg_parser']
+    parser_func = str_fileid_to_eval(param_parser)
+    return parser_func(**param_dict)
+
+
+def _parse_files(directory, folder, sens_dict):
     for file in os.listdir(directory):
         file_name = os.fsdecode(file).split(".")[0]
-        param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, 'sensors')
-        param_parser: str = param_dict['arg_parser']
-        parser_func = str_fileid_to_eval(param_parser)
-        args: SensorArgs = parser_func(**param_dict)
-        sens_dict[file_name] = args
-    return sens_dict
+        sens_dict[file_name] = _dynamic_parse(file, folder)
 
 
 def read_devices() -> Dict[str, DeviceArgs]:
     """Return dictionary of device_id to DeviceArgs for all yaml device parameter files."""
-
-    directory: str = get_cfg_path("devices")
+    folder = 'devices'
+    directory: str = get_cfg_path(folder)
     sens_dict = {}
-    for file in os.listdir(directory):
-        file_name = os.fsdecode(file).split(".")[0]
-        param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, 'devices')
-        param_parser: str = param_dict['arg_parser']
-        parser_func = str_fileid_to_eval(param_parser)
-        args: DeviceArgs = parser_func(**param_dict)
-        sens_dict[file_name] = args
+    _parse_files(directory, folder, sens_dict)
     return sens_dict
 
 
 def read_instructions() -> Dict[str, InstructionArgs]:
     """Return dictionary of instruction_id to InstructionArgs for all yaml instruction parameter files."""
 
-    directory: str = get_cfg_path("instructions")
+    folder = 'instructions'
+    directory: str = get_cfg_path(folder)
     sens_dict = {}
-    for file in os.listdir(directory):
-        file_name = os.fsdecode(file).split(".")[0]
-        param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, 'instructions')
-        param_parser: str = param_dict['arg_parser']
-        parser_func = str_fileid_to_eval(param_parser)
-        args: InstructionArgs = parser_func(**param_dict)
-        sens_dict[file_name] = args
+    _parse_files(directory, folder, sens_dict)
     return sens_dict
-
 
 def read_stimuli() -> Dict[str, StimulusArgs]:
     """Return dictionary of stimulus_id to StimulusArgs for all yaml stimulus parameter files."""
-
-    directory: str = get_cfg_path("stimuli")
+    folder = 'stimuli'
+    directory: str = get_cfg_path(folder)
     stim_dict = {}
-    for file in os.listdir(directory):
-        file_name = os.fsdecode(file).split(".")[0]
-        param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, 'stimuli')
-        param_parser: str = param_dict['arg_parser']
-        parser_func = str_fileid_to_eval(param_parser)
-        args: StimulusArgs = parser_func(**param_dict)
-        stim_dict[file_name] = args
+    _parse_files(directory, folder, stim_dict)
     return stim_dict
 
 
 def read_tasks() -> Dict[str, RawTaskParams]:
     """Return dictionary of task_id to TaskArgs for all yaml task parameter files."""
 
-    directory: str = get_cfg_path("tasks")
+    folder = 'tasks'
+    directory: str = get_cfg_path(folder)
     task_dict = {}
-    for file in os.listdir(directory):
-        file_name = os.fsdecode(file).split(".")[0]
-        param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, 'tasks')
-        param_parser: str = param_dict['arg_parser']
-        parser_func = str_fileid_to_eval(param_parser)
-        args: RawTaskParams = parser_func(**param_dict)
-        task_dict[file_name] = args
+    _parse_files(directory, folder, task_dict)
     return task_dict
 
 
