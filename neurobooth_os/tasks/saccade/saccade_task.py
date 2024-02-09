@@ -10,7 +10,7 @@ from psychopy import core
 import pylink
 import neurobooth_os
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
-from neurobooth_os.tasks.task import Task_Eyetracker
+from neurobooth_os.tasks.task import Eyelink_HostPC
 import numpy as np
 from pylsl import local_clock
 
@@ -23,7 +23,7 @@ def countdown(period):
         t2 = local_clock()
 
 
-class Saccade(Task_Eyetracker):
+class Saccade(Eyelink_HostPC):
     def __init__(
         self,
         amplitude_deg=30,
@@ -91,6 +91,7 @@ class Saccade(Task_Eyetracker):
         self.target.size = self.pointer_size_pixel
         self.target.draw()
         self.win.flip()
+        self.update_screen(0, 0)
         # self.doDriftCorrect([int(0 + self.mon_size[0] / 2.0),
         #                        int(self.mon_size[1] / 2.0 - 0), 0, 1])
         self.win.color = (0, 0, 0)
@@ -105,6 +106,7 @@ class Saccade(Task_Eyetracker):
             self.target.pos = (0, 0)
             self.target.draw()
             self.win.flip()
+            self.update_screen(0, 0)
             self.send_target_loc(self.target.pos)
 
             # core.wait(self.wait_center + self.jitter_percent*self.wait_center*np.random.random(1)[0])
@@ -116,6 +118,7 @@ class Saccade(Task_Eyetracker):
             self.target.pos = (tar_x, tar_y)
             self.target.draw()
             self.win.flip()
+            self.update_screen(tar_x, tar_y)
             self.send_target_loc(self.target.pos)
 
             # update the target position
@@ -131,6 +134,7 @@ class Saccade(Task_Eyetracker):
         # clear the window
         self.win.color = (0, 0, 0)
         self.win.flip()
+        self.clear_screen()
 
         # Stop recording
         self.setOfflineMode()
@@ -156,6 +160,5 @@ class Saccade(Task_Eyetracker):
 
 
 if __name__ == "__main__":
-
     task = Saccade(direction="vertical", amplitude_deg=30)
     task.run(prompt=False)
