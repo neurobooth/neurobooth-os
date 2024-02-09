@@ -58,7 +58,7 @@ def main():
 def run_stm(logger):
     socket_1: socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     presented: bool = False
-    port: int = config.neurobooth_config['presentation']["port"]
+    port: int = config.neurobooth_config.presentation.port
     host: str = ''
     session: Optional[StmSession] = None
     task_log_entry: Optional[TaskLogEntry] = None
@@ -339,7 +339,7 @@ def prepare_session(data: str, socket_1: socket, logger):
         logger=logger,
         session_name=task_log_entry.subject_id_date,
         collection_id=collection_id,
-        db_conn=meta.get_conn(database=database_name),
+        db_conn=meta.get_database_connection(database=database_name),
         socket=socket_1
     )
     #  TODO(larry): See about refactoring so we don't need to create a new logger here.

@@ -8,7 +8,7 @@ import unittest
 from neurobooth_terra import Table
 
 from neurobooth_os.log_manager import make_default_logger, make_db_logger, _test_log_handler_fallback
-from neurobooth_os.iout.metadator import get_conn
+from neurobooth_os.iout.metadator import get_database_connection
 
 log_path = r"C:\neurobooth\test_data\test_logs"
 database = "mock_neurobooth_1"
@@ -19,7 +19,7 @@ session = "000000_2023_12_25 12:12:12"
 
 
 def get_connection():
-    c = get_conn(database, False)
+    c = get_database_connection(database, False)
     c.autocommit = True
     return c
 

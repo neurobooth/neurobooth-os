@@ -10,7 +10,7 @@ def test_neurobooth_mock():
 
     with SSHTunnelForwarder(
         "neurodoor.nmr.mgh.harvard.edu",
-        ssh_username=cfg.neurobooth_config["database"]["remote_username"],
+        ssh_username=cfg.neurobooth_config.database.remote_user,
         ssh_config_file="~/.ssh/config",
         ssh_pkey="~/.ssh/id_rsa",
         remote_bind_address=("192.168.100.1", 5432),
@@ -18,9 +18,9 @@ def test_neurobooth_mock():
     ) as tunnel:
 
         with psycopg2.connect(
-            database=cfg.neurobooth_config["database"]["name"],
-            user=cfg.neurobooth_config["database"]["user"],
-            password=cfg.neurobooth_config["database"]["pass"],
+            database=cfg.neurobooth_config.database.dbname,
+            user=cfg.neurobooth_config.database.user,
+            password=cfg.neurobooth_config.database.password,
             host=tunnel.local_bind_host,
             port=tunnel.local_bind_port,
         ) as conn_mock:

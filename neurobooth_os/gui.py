@@ -216,7 +216,7 @@ def _start_lsl_session(window, inlets, folder=""):
     # Create LSL session
     streamargs = [{"name": n} for n in list(inlets)]
     session = liesl.Session(
-        prefix=folder, streamargs=streamargs, mainfolder=cfg.neurobooth_config['control']["local_data_dir"]
+        prefix=folder, streamargs=streamargs, mainfolder=cfg.neurobooth_config.control.local_data_dir
     )
     print("LSL session with: ", list(inlets))
     return session
@@ -383,17 +383,17 @@ def _prepare_devices(window, nodes, collection_id, log_task, database):
     return vidf_mrkr, event, values
 
 
-def _get_ports(database):
+def _get_ports():
     nodes = ("acquisition", "presentation")
     host_ctr, port_ctr = node_info("control")
-    return database, nodes, host_ctr, port_ctr
+    return nodes, host_ctr, port_ctr
 
 
 def gui():
     """Start the Graphical User Interface.
     """
-    database = cfg.neurobooth_config["database"]["dbname"]
-    database, nodes, host_ctr, port_ctr = _get_ports(database=database)
+    database = cfg.neurobooth_config.database.dbname
+    nodes, host_ctr, port_ctr = _get_ports()
 
     # declare and intialize vars
     subject_id = None
@@ -401,7 +401,7 @@ def gui():
     last_name = None
     tasks = None
 
-    conn = meta.get_conn(database=database)
+    conn = meta.get_database_connection()
     window = _win_gen(_init_layout, conn)
 
     plttr = stream_plotter()
@@ -497,8 +497,10 @@ def gui():
                     "Pressed saving notes without task, select one in the dropdown list"
                 )
                 continue
-            if not op.exists(f"{cfg.neurobooth_config['control']['local_data_dir']}/{sess_info['subject_id_date']}"):
-                os.mkdir(f"{cfg.neurobooth_config['control']['local_data_dir']}/{sess_info['subject_id_date']}")
+
+            session_dir = op.join(cfg.neurobooth_config.control.local_data_dir, sess_info['subject_id_date'])
+            if not op.exists(session_dir):
+                os.mkdir(session_dir)
 
             if values["_notes_taskname_"] == "All tasks":
                 for task in sess_info["tasks"].split(", "):

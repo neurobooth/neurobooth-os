@@ -2,7 +2,7 @@ import math
 
 from neurobooth_terra import Table
 import yaml
-from neurobooth_os.iout.metadator import get_conn, get_task_ids_for_collection, get_task_param
+from neurobooth_os.iout.metadator import get_database_connection, get_task_ids_for_collection, get_task_param
 import os.path
 
 """
@@ -78,14 +78,14 @@ def export_instructions(identifier, conn):
 
 # NOTE: Exports from production neurobooth. Don't write anything to the DB!!
 def export_all_stimulus_records():
-    connection = get_conn("neurobooth", False)
+    connection = get_database_connection("neurobooth", False)
     task_ids = get_task_ids_for_collection("test_mvp_030", connection)
     for task_id in task_ids:
         result = get_task_param(task_id, connection)
         export_stimulus(result[0], connection)
 
 def export_all_instruction_records():
-    connection = get_conn("neurobooth", False)
+    connection = get_database_connection("neurobooth", False)
     task_ids = get_task_ids_for_collection("test_mvp_030", connection)
 
     def get_instruction_id(t_id, connection):
