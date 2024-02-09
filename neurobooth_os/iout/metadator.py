@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+import importlib
 import logging
+import os
 from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+from pydantic import BaseModel
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
 from psycopg2.extensions import connection
@@ -11,12 +14,36 @@ from neurobooth_terra import Table
 
 import neurobooth_os.config as cfg
 from neurobooth_os.iout import stim_param_reader
-from neurobooth_os.iout.stim_param_reader import InstructionArgs
+from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, get_cfg_path, DeviceArgs, StimulusArgs, \
+    RawTaskParams, TaskArgs
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
 
+def str_fileid_to_eval(stim_file_str):
+    """ Converts string path.to.module.py::function() to callable
+
+    Parameters
+    ----------
+        stim_file_str: str
+            string with path to py file :: and function()
+
+    Returns
+    -------
+        task_func: callable
+            callable of the function pointed by stim_file_str
+    """
+
+    strpars = stim_file_str.split(".py::")
+    filepath = "neurobooth_os." + strpars[0]
+    func = strpars[1].replace("()", "")
+
+    task_module = importlib.import_module(filepath)
+    task_func = getattr(task_module, func)
+    return task_func
+
+
 def get_database_connection(database: Optional[str] = None, validate_config_paths: bool = True) -> connection:
-    """Get a connection to the database
+    """Gets connector to the database
 
     :param database: If provided, override the database name in the configration.
     :param validate_config_paths: True if the config file path should be validated.
@@ -27,7 +54,6 @@ def get_database_connection(database: Optional[str] = None, validate_config_path
     log_man.make_default_logger(log_level=logging.ERROR, validate_paths=validate_config_paths)
 
     database_info = cfg.neurobooth_config.database
-
     tunnel = SSHTunnelForwarder(
         database_info.remote_host,
         ssh_username=database_info.remote_user,
@@ -198,7 +224,11 @@ def get_task_param(task_id, conn: connection):
     (sensor_ids,) = task_df["sensor_id_array"]
     (stimulus_id,) = task_df["stimulus_id"]
     (instr_id,) = task_df["instruction_id"]
-    instr_kwargs = _get_instruction_kwargs_from_file(instr_id)
+
+    instr_kwargs: Optional[InstructionArgs] = None
+
+    if instr_id is not None:
+        instr_kwargs = _get_instruction_kwargs_from_file(instr_id)
     return (
         stimulus_id,
         device_ids,
@@ -207,17 +237,17 @@ def get_task_param(task_id, conn: connection):
     )  # XXX: name similarly in calling function
 
 
-def _get_instruction_kwargs_from_file(instruction_id: str) -> InstructionArgs:
-    """Get dictionary from instruction table."""
-    if instruction_id is None:
-        return {}
-    from neurobooth_os.tasks.task_importer import str_fileid_to_eval
-    file_name = instruction_id + ".yml"
-    instr_param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file_name, 'instructions')
-    param_parser: str = instr_param_dict['arg_parser']
-    parser_func = str_fileid_to_eval(param_parser)
-    args: InstructionArgs = parser_func(**instr_param_dict)
-    return args
+def _get_instruction_kwargs_from_file(instruction_id: str) -> Optional[InstructionArgs]:
+    """Get InstructionArgs from instruction yml files."""
+    if instruction_id is not None:
+        file_name = instruction_id + ".yml"
+        instr_param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file_name, 'instructions')
+        param_parser: str = instr_param_dict['arg_parser']
+        parser_func = str_fileid_to_eval(param_parser)
+        args: InstructionArgs = parser_func(**instr_param_dict)
+        return args
+    else:
+        return None
 
 
 def log_task_params(conn: connection, stimulus_id: str, log_task_id: str, task_param_dictionary: Dict[str, Any]):
@@ -240,13 +270,13 @@ def log_task_params(conn: connection, stimulus_id: str, log_task_id: str, task_p
         }
         _log_task_parameter(conn, args)
     conn.commit()
-        
+
 
 def _log_task_parameter(conn: connection, value_dict: Dict[str, Any]):
     query = "INSERT INTO log_task_param " \
-             "(log_task_id, stimulus_id, key, value, value_type)  " \
-             " VALUES " \
-             " (%(log_task_id)s, %(stimulus_id)s, %(key)s, %(value)s, %(value_type)s)"
+            "(log_task_id, stimulus_id, key, value, value_type)  " \
+            " VALUES " \
+            " (%(log_task_id)s, %(stimulus_id)s, %(key)s, %(value)s, %(value_type)s)"
 
     cursor = conn.cursor()
     cursor.execute(query, value_dict)
@@ -256,7 +286,7 @@ def get_stimulus_kwargs_from_file(stimulus_id):
     """Get task (stimulus) parameters from a yaml file."""
 
     stimulus_file_name = stimulus_id + ".yml"
-    task_param_dict = stim_param_reader.get_param_dictionary(stimulus_file_name, 'tasks')
+    task_param_dict = stim_param_reader.get_param_dictionary(stimulus_file_name, 'stimuli')
     stim_file = task_param_dict["stimulus_file"]
     return stim_file, task_param_dict
 
@@ -268,7 +298,7 @@ def _get_sensor_kwargs(sens_id, conn: connection):
     return param
 
 
-def get_dev_sn(dev_id, conn: connection):
+def _get_dev_sn(dev_id, conn: connection):
     table_sens = Table("nb_device", conn=conn)
     device_df = table_sens.query(where=f"device_id = '{dev_id}'")
     sn = device_df["device_sn"]
@@ -365,15 +395,13 @@ def _get_device_kwargs(task_id, conn: connection):
         # TODO test that dev_sens_ids are from correct dev_id, eg. dev_sens_ids =
         # {Intel_D455_rgb_1,Intel_D455_depth_1} dev_id= Intel_D455_x
         dev_id_param = {}
-        dev_id_param["SN"] = get_dev_sn(dev_id, conn)
+        dev_id_param["SN"] = _get_dev_sn(dev_id, conn)
 
         dev_id_param["sensors"] = {}
         for sens_id in dev_sens_ids:
             if len(sens_id):
                 dev_id_param["sensors"][sens_id] = _get_sensor_kwargs(sens_id, conn)
-
         kwarg = map_database_to_deviceclass(dev_id, dev_id_param)
-
         dev_kwarg[dev_id] = kwarg
     return dev_kwarg
 
@@ -391,3 +419,108 @@ def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
         tasks_kwarg[stim_id] = task_kwarg
 
     return tasks_kwarg
+
+
+def read_sensors() -> Dict[str, SensorArgs]:
+    """Return dictionary of sensor_id to SensorArgs for all yaml sensor parameter files."""
+    folder = 'sensors'
+    directory: str = get_cfg_path(folder)
+    sens_dict = {}
+    _parse_files(directory, folder, sens_dict)
+    return sens_dict
+
+
+def _dynamic_parse(file: str, param_type: str) -> BaseModel:
+    param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, param_type)
+    param_parser: str = param_dict['arg_parser']
+    parser_func = str_fileid_to_eval(param_parser)
+    return parser_func(**param_dict)
+
+
+def _parse_files(directory, folder, sens_dict):
+    for file in os.listdir(directory):
+        file_name = os.fsdecode(file).split(".")[0]
+        sens_dict[file_name] = _dynamic_parse(file, folder)
+
+
+def read_devices() -> Dict[str, DeviceArgs]:
+    """Return dictionary of device_id to DeviceArgs for all yaml device parameter files."""
+    folder = 'devices'
+    directory: str = get_cfg_path(folder)
+    sens_dict = {}
+    _parse_files(directory, folder, sens_dict)
+    return sens_dict
+
+
+def read_instructions() -> Dict[str, InstructionArgs]:
+    """Return dictionary of instruction_id to InstructionArgs for all yaml instruction parameter files."""
+
+    folder = 'instructions'
+    directory: str = get_cfg_path(folder)
+    sens_dict = {}
+    _parse_files(directory, folder, sens_dict)
+    return sens_dict
+
+
+def read_stimuli() -> Dict[str, StimulusArgs]:
+    """Return dictionary of stimulus_id to StimulusArgs for all yaml stimulus parameter files."""
+    folder = 'stimuli'
+    directory: str = get_cfg_path(folder)
+    stim_dict = {}
+    _parse_files(directory, folder, stim_dict)
+    return stim_dict
+
+
+def read_tasks() -> Dict[str, RawTaskParams]:
+    """Return dictionary of task_id to TaskArgs for all yaml task parameter files."""
+
+    folder = 'tasks'
+    directory: str = get_cfg_path(folder)
+    task_dict = {}
+    _parse_files(directory, folder, task_dict)
+    return task_dict
+
+
+def _read_all_task_params():
+    """Returns a dictionary containing all task parameters of all types"""
+    params = {}
+    params["tasks"] = read_tasks()
+    params["stimuli"] = read_stimuli()
+    params["instructions"] = read_instructions()
+    params["devices"] = read_devices()
+    params["sensors"] = read_sensors()
+    return params
+
+
+def build_tasks_for_collection(collection_id: str, conn) -> Dict[str, TaskArgs]:
+    task_ids = get_task_ids_for_collection(collection_id, conn)
+    task_dict: Dict[str:TaskArgs] = {}
+    param_dictionary = _read_all_task_params()
+    for task_id in task_ids:
+        raw_task_args: RawTaskParams = param_dictionary["tasks"][task_id]
+        stim_args: StimulusArgs = param_dictionary["stimuli"][raw_task_args.stimulus_id]
+        task_constructor = stim_args.stimulus_file
+        instr_args: Optional[InstructionArgs] = None
+        if raw_task_args.instruction_id:
+            instr_args = param_dictionary["instructions"][raw_task_args.instruction_id]
+        device_ids = raw_task_args.device_id_array
+        device_args = []
+        for dev_id in device_ids:
+            dev_args: DeviceArgs = param_dictionary["devices"][dev_id]
+            sensor_args = []
+            for sens_id in dev_args.sensor_ids:
+                sensor_args.append(param_dictionary["sensors"][sens_id])
+            dev_args.sensor_array = sensor_args
+            device_args.append(dev_args)
+
+        task_constructor_callable = str_fileid_to_eval(task_constructor)
+        task_args: TaskArgs = TaskArgs(
+            task_id=task_id,
+            task_constructor_callable=task_constructor_callable,
+            stim_args=stim_args,
+            instr_args=instr_args,
+            device_args=device_args
+        )
+        task_dict[task_id] = task_args
+    return task_dict
+

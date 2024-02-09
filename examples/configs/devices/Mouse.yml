@@ -1,0 +1,11 @@
+device_id: Mouse
+device_sn: None
+device_name: Mouse
+device_location: null
+wearable_bool: false
+device_make: null
+device_model: null
+device_firmware: null
+sensor_ids:
+- Mouse
+arg_parser: iout.stim_param_reader.py::DeviceArgs

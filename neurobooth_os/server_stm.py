@@ -15,6 +15,7 @@ from psychopy import prefs
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
+from neurobooth_os.tasks.task_importer import get_task_arguments
 from neurobooth_os.util.task_log_entry import TaskLogEntry
 
 prefs.hardware["audioLib"] = ["PTB"]
@@ -34,7 +35,6 @@ from neurobooth_os.netcomm import (
 
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
-from neurobooth_os.tasks.task_importer import get_task_arguments
 from neurobooth_os.log_manager import make_db_logger
 
 
@@ -62,7 +62,6 @@ def run_stm(logger):
     host: str = ''
     session: Optional[StmSession] = None
     task_log_entry: Optional[TaskLogEntry] = None
-    task_func_dict: Dict[str, TaskArgs] = {}
     for data, socket_conn in get_client_messages(socket_1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 
@@ -76,18 +75,19 @@ def run_stm(logger):
             task_log_entry.log_session_id = session_id
 
             if presented:
-                task_func_dict = get_task_arguments(session.collection_id, session.db_conn)
+                session.task_func_dict = get_task_arguments(session.collection_id, session.db_conn)
 
             # Preload tasks media
             t0 = time()
 
-            # split into a list of stimulus_id strings
+            # split into a list of task_id strings
             tasks = tasks.split("-")
-            for stimulus_id in tasks:
-                if stimulus_id in session.tasks():
-                    task_args: TaskArgs = _get_task_args(session, stimulus_id)
+            for task_id in tasks:
+                if task_id in session.tasks():
+                    task_args: TaskArgs = _get_task_args(session, task_id)
                     logger.info(task_args)
-                    tsk_fun_obj: Callable = copy.copy(task_args.task_constructor_callable)  # callable for Task constructor
+                    tsk_fun_obj: Callable = copy.copy(
+                        task_args.task_constructor_callable)  # callable for Task constructor
                     logger.info(tsk_fun_obj)
                     this_task_kwargs = create_task_kwargs(session, task_args)
                     logger.info(this_task_kwargs)
@@ -102,39 +102,39 @@ def run_stm(logger):
             calib_instructions = True
 
             while len(tasks):
-                stimulus_id: str = tasks.pop(0)
+                task_id: str = tasks.pop(0)
 
-                session.logger.info(f'TASK: {stimulus_id}')
+                session.logger.info(f'TASK: {task_id}')
                 tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
 
-                if stimulus_id not in session.tasks():
-                    session.logger.warning(f'Task {stimulus_id} not implemented')
+                if task_id not in session.tasks():
+                    session.logger.warning(f'Task {task_id} not implemented')
                 else:
                     t00 = time()
                     # get task and params
-                    task_args: TaskArgs = _get_task_args(session, stimulus_id)
+                    task_args: TaskArgs = _get_task_args(session, task_id)
                     task: Task = task_args.task_instance
                     this_task_kwargs = create_task_kwargs(session, task_args)
                     task_id = task_args.task_id
 
                     # Do not record if intro instructions"
-                    if "intro_" in stimulus_id or "pause_" in stimulus_id:
+                    if "intro_" in task_id or "pause_" in task_id:
                         session.logger.debug(f"RUNNING PAUSE/INTRO (No Recording)")
                         task.run(**this_task_kwargs)
                     else:
                         log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
-                        meta.log_task_params(session.db_conn, stimulus_id, log_task_id,
-                                             dict(session.task_func_dict[stimulus_id].stim_args))
+                        meta.log_task_params(session.db_conn, task_id, log_task_id,
+                                             dict(session.task_func_dict[task_id].stim_args))
                         task_log_entry.date_times = (
                                 "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","
                         )
                         task_log_entry.log_task_id = log_task_id
 
                         # Signal CTR to start LSL rec and wait for start confirmation
-                        session.logger.info(f'STARTING TASK: {stimulus_id}')
+                        session.logger.info(f'STARTING TASK: {task_id}')
                         t0 = time()
-                        print(f"Initiating task:{stimulus_id}:{task_id}:{log_task_id}:{tsk_start_time}")
-                        session.logger.info(f'Initiating task:{stimulus_id}:{task_id}:{log_task_id}:{tsk_start_time}')
+                        print(f"Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}")
+                        session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
                         ctr_msg: Optional[str] = None
                         while ctr_msg != "lsl_recording":
                             ctr_msg = get_data_with_timeout(session.socket, 4)
@@ -142,8 +142,8 @@ def run_stm(logger):
                         session.logger.info(f'Waiting for CTR took: {elapsed_time:.2f}')
 
                         with ThreadPoolExecutor(max_workers=1) as executor:
-                            start_acq(calib_instructions, executor, session, stimulus_id, task_id, this_task_kwargs,
-                                      tsk_start_time)
+                            start_acq(calib_instructions, executor, session, task_args,
+                                      task_id, this_task_kwargs, tsk_start_time)
 
                         this_task_kwargs.update({"last_task": len(tasks) == 0})
                         this_task_kwargs["task_name"] = task_id
@@ -157,13 +157,13 @@ def run_stm(logger):
                         session.logger.debug(f"TASK FUNCTION RETURNED")
 
                         with ThreadPoolExecutor(max_workers=1) as executor:
-                            stop_acq(executor, session, stimulus_id)
+                            stop_acq(executor, session, task_args)
 
                         # Signal CTR to start LSL rec and wait for start confirmation
-                        print(f"Finished task: {stimulus_id}")
-                        session.logger.info(f'FINISHED TASK: {stimulus_id}')
+                        print(f"Finished task: {task_id}")
+                        session.logger.info(f'FINISHED TASK: {task_id}')
 
-                        log_task(events, session, task_id, stimulus_id, task_log_entry, task)
+                        log_task(events, session, task_id, task_id, task_log_entry, task)
 
                         elapsed_time = time() - t00
                         session.logger.info(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
@@ -210,26 +210,27 @@ def run_stm(logger):
     exit()
 
 
-def _get_task_args(session: StmSession, stimulus_id: str):
-        if session.task_func_dict is None:
-            raise RuntimeError("task_func_dict is not set in StmSession")
-        return session.task_func_dict[stimulus_id]
+def _get_task_args(session: StmSession, task_id: str):
+    if session.task_func_dict is None:
+        raise RuntimeError("task_func_dict is not set in StmSession")
+    return session.task_func_dict[task_id]
 
 
-def stop_acq(executor, session: StmSession, stimulus_id: str):
+def stop_acq(executor, session: StmSession, task_args: TaskArgs):
     """ Stop recording on ACQ in parallel to stopping on STM """
     session.logger.info(f'SENDING record_stop TO ACQ')
+    stimulus_id = task_args.stim_args.stimulus_id
     acq_result = executor.submit(socket_message, "record_stop", "acquisition", wait_data=15)
     # Stop eyetracker
-    if session.eye_tracker is not None and any(
-            "Eyelink" in d for d in list(session.device_kwargs[stimulus_id])):
+    device_ids = [x.device_id for x in task_args.device_args]
+    if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         if "calibration_task" not in stimulus_id:
             session.eye_tracker.stop()
     wait([acq_result])  # Wait for ACQ to finish
     acq_result.result()  # Raise any exceptions swallowed by the executor
 
 
-def start_acq(calib_instructions, executor, session:StmSession, stimulus_id: str, task_id: str, this_task_kwargs,
+def start_acq(calib_instructions, executor, session: StmSession, task_args: TaskArgs, task_id: str, this_task_kwargs,
               tsk_start_time):
     """
     Start recording on ACQ in parallel to starting on STM
@@ -239,7 +240,7 @@ def start_acq(calib_instructions, executor, session:StmSession, stimulus_id: str
     calib_instructions
     executor
     session
-    stimulus_id
+    task_args
     task_id
     this_task_kwargs
     tsk_start_time
@@ -249,15 +250,16 @@ def start_acq(calib_instructions, executor, session:StmSession, stimulus_id: str
 
     """
     session.logger.info(f'SENDING record_start TO ACQ')
+    stimulus_id = task_args.stim_args.stimulus_id
     acq_result = executor.submit(
         socket_message,
-        f"record_start::{session.session_name}_{tsk_start_time}_{task_id}::{stimulus_id}",
+        f"record_start::{session.session_name}_{tsk_start_time}_{task_id}::{task_id}",
         "acquisition",
         wait_data=10,
     )
     # Start eyetracker if device in task
-    if session.eye_tracker is not None and any(
-            "Eyelink" in d for d in list(session.device_kwargs[stimulus_id])):
+    device_ids = [x.device_id for x in task_args.device_args]
+    if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
         if "calibration_task" in stimulus_id:  # if not calibration record with start method
             this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
@@ -340,7 +342,7 @@ def prepare_session(data: str, socket_1: socket, logger):
         db_conn=meta.get_database_connection(database=database_name),
         socket=socket_1
     )
-    # TODO(larry): See about refactoring so we don't need to create a new logger here.
+    #  TODO(larry): See about refactoring so we don't need to create a new logger here.
     #   (continued) We already have a db_logger, it just needs session attributes
     stm_session.logger = make_db_logger(subject_id, stm_session.session_name)
     stm_session.logger.info('LOGGER CREATED FOR SESSION')
