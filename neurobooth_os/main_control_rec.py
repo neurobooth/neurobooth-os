@@ -81,14 +81,3 @@ def test_lan_delay(n=100, nodes=("acquisition", "presentation")):
     ]
 
     return times_2w, times_1w
-
-
-def initiate_labRec():
-    # Start LabRecorder
-    if "LabRecorder.exe" not in (p.name() for p in psutil.process_iter()):
-        os.startfile(config.neurobooth_config["LabRecorder"])
-
-    time.sleep(0.05)
-    s = socket.create_connection(("localhost", 22345))
-    s.sendall(b"select all\n")
-    s.close()

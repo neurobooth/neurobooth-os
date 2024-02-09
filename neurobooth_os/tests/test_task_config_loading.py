@@ -91,7 +91,7 @@ class TestTask(unittest.TestCase):
 
     # Integration test (uses database)
     def test_all_validated_task_args_in_folder(self):
-        connection = meta.get_conn("neurobooth", False)
+        connection = meta.get_database_connection("neurobooth", False)
         tasks = [
             "ahh_obs_1",
             "altern_hand_mov_obs_1",
@@ -130,14 +130,14 @@ class TestTask(unittest.TestCase):
             self.assertIsNotNone(task_args)
 
     def test_task_args(self):
-        connection = meta.get_conn("neurobooth", False)
+        connection = meta.get_database_connection("neurobooth", False)
         task_id = "lalala_obs_1"
         task_args = task_importer._get_task_arg(task_id, connection)
         print(task_args)
 
     def test_stm_session_as_dict(self):
         sock: socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        connection = meta.get_conn("neurobooth", False)
+        connection = meta.get_database_connection("neurobooth", False)
         task_id = "saccades_horizontal_obs_1"
         task_args = task_importer._get_task_arg(task_id, connection)
         log_path = r"C:\neurobooth\test_data\test_logs"

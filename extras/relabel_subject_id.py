@@ -46,10 +46,10 @@ def main() -> None:
     args = parse_arguments()
 
     try:
-        configs = nb_config.neurobooth_config_pydantic
+        configs = nb_config.neurobooth_config
 
         LOGGER.info('Applying Database Updates')
-        relabel_database(args, database_info=configs.database)
+        relabel_database(args)
 
         LOGGER.info('Renaming files in NAS')
         relabel_filesystem(args, data_dir=configs.remote_data_dir)
@@ -173,17 +173,16 @@ def relabel_filesystem(args: RelabelParams, data_dir: str) -> None:
         os.rename(session_path, new_session_path)
 
 
-def relabel_database(args: RelabelParams, database_info: nb_config.DatabaseSpec) -> None:
+def relabel_database(args: RelabelParams) -> None:
     """
     Correct subject IDs and file names in the database log_ tables.
     We do not currently handle the log_file table. (Could purge log_file rows and data from drwho/neo, relabel on NAS,
     and then do normal data flow.)
 
     :param args: Structure describing the affected session and correct subject ID.
-    :param database_info: Database connection details from neurobooth OS config.
     """
     from neurobooth_os.iout import metadator
-    conn: connection = metadator.get_conn(database_info.dbname)
+    conn: connection = metadator.get_database_connection()
 
     check_subject_table(args.new_id, conn)
     log_session_ids = relabel_log_session(args, conn)

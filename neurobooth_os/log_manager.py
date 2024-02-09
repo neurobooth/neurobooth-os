@@ -60,7 +60,7 @@ def make_db_logger(subject: str = None,
     """
 
     if fallback_log_path is None:
-        fallback_log_path = config.neurobooth_config["default_log_path"]
+        fallback_log_path = config.neurobooth_config.default_log_path
 
     global SUBJECT_ID, SESSION_ID, APP_LOGGER
 
@@ -88,7 +88,7 @@ def get_default_log_handler(
     """Returns a log handler suitable for logging when the DB isn't available
     """
     if log_path is None:
-        log_path = config.neurobooth_config["default_log_path"]
+        log_path = config.neurobooth_config.default_log_path
 
     if not os.path.exists(log_path):
         os.makedirs(log_path)
@@ -109,7 +109,7 @@ def make_default_logger(
     if config.neurobooth_config is None:
         config.load_config(None, validate_paths)
     if log_path is None:
-        log_path = config.neurobooth_config["default_log_path"]
+        log_path = config.neurobooth_config.default_log_path
 
     logger = logging.getLogger('default')
     logger.addHandler(get_default_log_handler(log_path, log_level))
@@ -278,7 +278,7 @@ class PostgreSQLHandler(logging.Handler):
                 "filename": record.filename,
                 "line_no": record.lineno,
                 "traceback": traceback_text,
-                "server_type": config.neurobooth_config["server_name"],
+                "server_type": config.get_server_name_from_env(),
                 "server_id": platform.uname().node,
                 "subject_id": SUBJECT_ID,
                 "session_id": SESSION_ID,
@@ -295,7 +295,7 @@ class PostgreSQLHandler(logging.Handler):
             logging.getLogger(APP_LOG_NAME).exception(msg)
 
     def _get_logger_connection(self):
-        self.connection = metadator.get_conn(config.neurobooth_config["database"]["dbname"])
+        self.connection = metadator.get_database_connection()
         self.connection.autocommit = True
         self.cursor = self.connection.cursor()
 

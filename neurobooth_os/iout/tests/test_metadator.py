@@ -35,13 +35,13 @@ class TestMetadator(unittest.TestCase):
 
     def test_build_tasks_for_collection(self):
         collection_id = 'mvp_030'
-        conn = meta.get_conn('neurobooth', False)
+        conn = meta.get_database_connection('neurobooth', False)
         task_dict = meta.build_tasks_for_collection(collection_id, conn)
         print(task_dict)
 
     def test_get_device_kwargs_by_task(self):
         collection_id = 'testing'
-        conn = meta.get_conn('mock_neurobooth_1', False)
+        conn = meta.get_database_connection('mock_neurobooth_1', False)
         args = meta.get_device_kwargs_by_task(collection_id, conn)
         # print(args)
 
@@ -78,8 +78,8 @@ class TestMetadator(unittest.TestCase):
                 print()
 
 
-def test_task_addition(database):
-    conn = meta.get_conn(database)
+def test_task_addition():
+    conn = meta.get_database_connection()
     subj_id = "Test"
     task_id = meta.make_new_task_row(conn, subj_id)
 

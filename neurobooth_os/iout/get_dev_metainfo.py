@@ -16,7 +16,7 @@ from neurobooth_terra import Table
 
 import neurobooth_os.config as cfg
 from neurobooth_os.iout.mbient import Mbient
-from neurobooth_os.iout.metadator import get_conn
+from neurobooth_os.iout.metadator import get_database_connection
 
 ############# INSERT ROWS IN DATABASE #############
 
@@ -32,7 +32,7 @@ def insert_to_table(table_id, row_dicts):
         The rows to insert
     """
 
-    conn = get_conn()
+    conn = get_database_connection()
 
     table = Table(table_id, conn=conn)
     cols = table.column_names

@@ -1,7 +1,7 @@
 import unittest
 
 from neurobooth_terra import Table
-from neurobooth_os.iout.metadator import get_conn
+from neurobooth_os.iout.metadator import get_database_connection
 
 TEST_DATABASE = "mock_neurobooth_1"
 TEST_CONNECTION = None
@@ -27,7 +27,7 @@ def delete_records(db_table, where=None) -> None:
 
 
 def get_connection():
-    c = get_conn(TEST_DATABASE, False)
+    c = get_database_connection(TEST_DATABASE, False)
     c.autocommit = True
     return c
 

@@ -29,7 +29,7 @@ class StmSession(BaseModel):
     session_folder: Optional[str] = None
     system_resource_logger: Optional[object] = None
     task_func_dict: Optional[Dict] = {}
-    path: Optional[typing.Tuple[Any]] = None
+    path: Optional[str] = None
     prompt: Optional[bool] = None
     device_manager: Optional[DeviceManager] = None
     eye_tracker: Optional[EyeTracker] = None
@@ -48,7 +48,7 @@ class StmSession(BaseModel):
         self.session_folder = self.create_session_folder(self.logger, self.session_name)
         self.system_resource_logger: SystemResourceLogger = self.create_sys_resource_logger()
         self.task_func_dict = get_task_arguments(self.collection_id, self.db_conn)
-        self.path = config.neurobooth_config['presentation']["local_data_dir"] + f"{self.session_name}/"
+        self.path = os.path.join(config.neurobooth_config.presentation.local_data_dir, self.session_name)
         self.win = self.init_window()
 
         # TODO(larry): This was set to true in 'present' phase, but get from stimulus obj?
@@ -77,7 +77,7 @@ class StmSession(BaseModel):
 
     @staticmethod
     def create_session_folder(logger, session_name: str):
-        ses_folder = f"{config.neurobooth_config['presentation']['local_data_dir']}{session_name}"
+        ses_folder = os.path.join(config.neurobooth_config.presentation.local_data_dir, session_name)
         logger.info(f"Creating session folder: {ses_folder}")
         if not os.path.exists(ses_folder):
             os.mkdir(ses_folder)
