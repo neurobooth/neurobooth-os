@@ -16,6 +16,7 @@ import os.path as op
 
 import neurobooth_os
 from neurobooth_os.tasks.task import Task_Eyetracker
+from neurobooth_os.tasks.task import Eyelink_HostPC
 from neurobooth_os.tasks import utils
 
 
@@ -55,7 +56,7 @@ class Fixation_Target(Task_Eyetracker):
             )
 
 
-class Fixation_Target_Multiple(Task_Eyetracker):
+class Fixation_Target_Multiple(Eyelink_HostPC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -81,6 +82,7 @@ class Fixation_Target_Multiple(Task_Eyetracker):
 
             # Send event to eyetracker and to LSL separately
             self.sendMessage(self.marker_trial_start, False)
+            self.update_screen(self.target.pos[0], self.target.pos[1])
             self.show_text(
                 screen=self.target,
                 msg="Trial",
@@ -91,6 +93,7 @@ class Fixation_Target_Multiple(Task_Eyetracker):
             self.sendMessage(self.marker_trial_end, False)
 
         self.sendMessage(self.marker_task_end)
+        self.clear_screen()
 
         if prompt:
             func_kwargs = locals()
