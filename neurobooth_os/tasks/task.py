@@ -119,7 +119,7 @@ class Task:
 
         self.press_task_screen = visual.ImageStim(
             self.win,
-            image=task_end_image,
+            image=task_end_img,
             pos=(0, 0),
             units="deg",
         )
