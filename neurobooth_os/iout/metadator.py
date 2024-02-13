@@ -196,6 +196,16 @@ def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn: connecti
     table.update_row(log_task_id, tuple(vals), cols=list(dict_vals))
 
 
+def get_stimulus_id(task_id: str) -> str:
+    task : RawTaskParams = read_tasks()[task_id]
+    return task.stimulus_id
+
+
+def get_device_ids(task_id: str) -> List[str]:
+    task : RawTaskParams = read_tasks()[task_id]
+    return task.device_id_array
+
+
 def get_task_param(task_id, conn: connection):
     """
 
@@ -382,9 +392,9 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
 
 
 def _get_device_kwargs(task_id, conn: connection):
-    stim_id, dev_ids, sens_ids, _ = get_task_param(task_id, conn)
+    task: RawTaskParams = get_task(task_id)
     dev_kwarg = {}
-    for dev_id, dev_sens_ids in zip(dev_ids, sens_ids):
+    for dev_id, dev_sens_ids in zip(task.device_id_array, task.sensor_id_array):
         # TODO test that dev_sens_ids are from correct dev_id, eg. dev_sens_ids =
         # {Intel_D455_rgb_1,Intel_D455_depth_1} dev_id= Intel_D455_x
         dev_id_param = {}
@@ -401,7 +411,7 @@ def _get_device_kwargs(task_id, conn: connection):
 
 def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
     """
-    Gets devices kwargs for all the tasks
+    Gets devices kwargs for all the tasks in the collection
 
     Parameters
     ----------
@@ -415,11 +425,11 @@ def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
         Dict with keys = stimulus_id, vals = dict with dev parameters
     """
 
-    tasks = get_task_ids_for_collection(collection_id)
+    task_ids = get_task_ids_for_collection(collection_id)
 
     tasks_kwarg = OrderedDict()
-    for task in tasks:
-        stim_id, *_ = get_task_param(task, conn)
+    for task in task_ids:
+        stim_id, *_ = get_stimulus_id(task)
         task_kwarg = _get_device_kwargs(task, conn)
         tasks_kwarg[stim_id] = task_kwarg
     return tasks_kwarg
@@ -476,7 +486,7 @@ def read_stimuli() -> Dict[str, StimulusArgs]:
 
 
 def read_tasks() -> Dict[str, RawTaskParams]:
-    """Return dictionary of task_id to TaskArgs for all yaml task parameter files."""
+    """Return dictionary of task_id to RawTaskParams for all yaml task parameter files."""
 
     folder = 'tasks'
     directory: str = get_cfg_path(folder)
@@ -505,7 +515,12 @@ def read_collections() -> Dict[str, CollectionArgs]:
     return collection_dict
 
 
-def _read_all_task_params():
+def get_task(task_id:str) -> RawTaskParams:
+    tasks = read_tasks()
+    return tasks[task_id]
+
+
+def read_all_task_params():
     """Returns a dictionary containing all task parameters of all types"""
     params = {}
     params["tasks"] = read_tasks()
@@ -532,32 +547,36 @@ def build_tasks_for_collection(collection_id: str) -> Dict[str, TaskArgs]:
     """
     task_ids = get_task_ids_for_collection(collection_id)
     task_dict: Dict[str:TaskArgs] = {}
-    param_dictionary = _read_all_task_params()
+    param_dictionary = read_all_task_params()
     for task_id in task_ids:
-        raw_task_args: RawTaskParams = param_dictionary["tasks"][task_id]
-        stim_args: StimulusArgs = param_dictionary["stimuli"][raw_task_args.stimulus_id]
-        task_constructor = stim_args.stimulus_file
-        instr_args: Optional[InstructionArgs] = None
-        if raw_task_args.instruction_id:
-            instr_args = param_dictionary["instructions"][raw_task_args.instruction_id]
-        device_ids = raw_task_args.device_id_array
-        device_args = []
-        for dev_id in device_ids:
-            dev_args: DeviceArgs = param_dictionary["devices"][dev_id]
-            sensor_args = []
-            for sens_id in dev_args.sensor_ids:
-                sensor_args.append(param_dictionary["sensors"][sens_id])
-            dev_args.sensor_array = sensor_args
-            device_args.append(dev_args)
-
-        task_constructor_callable = str_fileid_to_eval(task_constructor)
-        task_args: TaskArgs = TaskArgs(
-            task_id=task_id,
-            task_constructor_callable=task_constructor_callable,
-            stim_args=stim_args,
-            instr_args=instr_args,
-            device_args=device_args
-        )
+        task_args = build_task(param_dictionary, task_id)
         task_dict[task_id] = task_args
     return task_dict
+
+
+def build_task(param_dictionary, task_id) -> TaskArgs:
+    raw_task_args: RawTaskParams = param_dictionary["tasks"][task_id]
+    stim_args: StimulusArgs = param_dictionary["stimuli"][raw_task_args.stimulus_id]
+    task_constructor = stim_args.stimulus_file
+    instr_args: Optional[InstructionArgs] = None
+    if raw_task_args.instruction_id:
+        instr_args = param_dictionary["instructions"][raw_task_args.instruction_id]
+    device_ids = raw_task_args.device_id_array
+    device_args = []
+    for dev_id in device_ids:
+        dev_args: DeviceArgs = param_dictionary["devices"][dev_id]
+        sensor_args = []
+        for sens_id in dev_args.sensor_ids:
+            sensor_args.append(param_dictionary["sensors"][sens_id])
+        dev_args.sensor_array = sensor_args
+        device_args.append(dev_args)
+    task_constructor_callable = str_fileid_to_eval(task_constructor)
+    task_args: TaskArgs = TaskArgs(
+        task_id=task_id,
+        task_constructor_callable=task_constructor_callable,
+        stim_args=stim_args,
+        instr_args=instr_args,
+        device_args=device_args
+    )
+    return task_args
 

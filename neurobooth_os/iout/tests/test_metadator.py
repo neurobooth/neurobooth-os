@@ -41,6 +41,10 @@ class TestMetadator(unittest.TestCase):
     def test_read_studies(self):
         self.assertIsNotNone(meta.read_studies())
 
+    def test_get_stimulus_id(self):
+        print(meta.get_stimulus_id("altern_hand_mov_obs_1"))
+        self.assertIsNotNone(meta.get_stimulus_id("altern_hand_mov_obs_1"))
+
     def test_read_collections(self):
         self.assertIsNotNone(meta.read_collections())
 

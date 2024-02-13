@@ -57,7 +57,7 @@ def mock_stm_routine(host, port, conn):
             # delete subj_date as not present in DB
             del log_task["subject_id-date"]
 
-            task_func_dict = get_task_funcs(collection_id, conn)
+            task_func_dict = get_task_funcs(collection_id)
             task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
 
             if len(streams):

@@ -2,7 +2,7 @@ import math
 
 from neurobooth_terra import Table
 import yaml
-from neurobooth_os.iout.metadator import get_database_connection, get_task_param
+from neurobooth_os.iout.metadator import get_database_connection
 import os.path
 
 """
@@ -288,6 +288,41 @@ def get_task_ids_for_collection(collection_id, conn):
     collection_df = table_collection.query(where=f"collection_id = '{collection_id}'")
     (tasks_ids,) = collection_df["task_array"]
     return tasks_ids
+
+
+def get_task_param(task_id, conn: connection):
+    """
+
+    Parameters
+    ----------
+    task_id : str
+        The unique identifier for a task
+    conn : object
+        database connection
+
+    Returns
+    -------
+        tuple of task parameters
+    """
+    # task_data, stimulus, instruction
+    table_task = Table("nb_task", conn=conn)
+    task_df = table_task.query(where=f"task_id = '{task_id}'")
+    (device_ids,) = task_df["device_id_array"]
+    (sensor_ids,) = task_df["sensor_id_array"]
+    (stimulus_id,) = task_df["stimulus_id"]
+    (instr_id,) = task_df["instruction_id"]
+
+    instr_kwargs: Optional[InstructionArgs] = None
+
+    if instr_id is not None:
+        instr_kwargs = _get_instruction_kwargs_from_file(instr_id)
+    return (
+        stimulus_id,
+        device_ids,
+        sensor_ids,
+        instr_kwargs,
+    )  # XXX: name similarly in calling function
+
 
 # export_all_task_records()
 # export_all_stimulus_records()
