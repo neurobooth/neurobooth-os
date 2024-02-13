@@ -252,7 +252,12 @@ def export_all_study_records():
         study_dict["collection_ids"] = collection_ids
 
         study_dict["irb_protocol_number"] = irb_protocol_number
-        study_dict["protocol_version"] = protocol_version
+
+        if not math.isnan(protocol_version):
+            study_dict["protocol_version"] = protocol_version
+        else:
+            study_dict["protocol_version"] = None
+
         study_dict["consent_version"] = consent_version
         study_dict["consent_dates"] = consent_dates
         study_dict["protocol_dates"] = protocol_dates
@@ -288,6 +293,6 @@ def get_task_ids_for_collection(collection_id, conn):
 # export_all_stimulus_records()
 # export_all_instruction_records()
 # export_all_device_records()
-export_all_connection_records()
-# export_all_study_records()
+# export_all_connection_records()
+export_all_study_records()
 # export_all_sensor_records()

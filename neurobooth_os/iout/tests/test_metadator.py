@@ -36,7 +36,16 @@ class TestMetadator(unittest.TestCase):
     def test_build_tasks_for_collection(self):
         collection_id = 'mvp_030'
         task_dict = meta.build_tasks_for_collection(collection_id)
-        print(task_dict)
+        self.assertIsNotNone(task_dict)
+
+    def test_read_studies(self):
+        self.assertIsNotNone(meta.read_studies())
+
+    def test_read_collections(self):
+        self.assertIsNotNone(meta.read_collections())
+
+    def test_read_collection_ids(self):
+        self.assertIsNotNone(meta.get_collection_ids("study1"))
 
     def test_get_device_kwargs_by_task(self):
         collection_id = 'testing'

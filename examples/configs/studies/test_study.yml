@@ -5,7 +5,7 @@ collection_ids:
 - et_calib_test
 - test_mvp_030
 irb_protocol_number: 0
-protocol_version: .nan
+protocol_version: null
 consent_version: null
 consent_dates: null
 protocol_dates: null

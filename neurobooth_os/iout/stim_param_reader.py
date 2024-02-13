@@ -23,7 +23,8 @@ class StudyArgs(BaseModel):
     study_id: str = Field(min_length=1, max_length=255)
     study_title: str = Field(min_length=1, max_length=512)
     collection_ids: List[str]
-    irb_protocol_number: Optional[PositiveInt]
+    irb_protocol_number: Optional[NonNegativeInt] = None
+    protocol_version: Optional[NonNegativeInt] = None
     arg_parser: str
 
 
