@@ -206,40 +206,6 @@ def get_device_ids(task_id: str) -> List[str]:
     return task.device_id_array
 
 
-def get_task_param(task_id, conn: connection):
-    """
-
-    Parameters
-    ----------
-    task_id : str
-        The unique identifier for a task
-    conn : object
-        database connection
-
-    Returns
-    -------
-        tuple of task parameters
-    """
-    # task_data, stimulus, instruction
-    table_task = Table("nb_task", conn=conn)
-    task_df = table_task.query(where=f"task_id = '{task_id}'")
-    (device_ids,) = task_df["device_id_array"]
-    (sensor_ids,) = task_df["sensor_id_array"]
-    (stimulus_id,) = task_df["stimulus_id"]
-    (instr_id,) = task_df["instruction_id"]
-
-    instr_kwargs: Optional[InstructionArgs] = None
-
-    if instr_id is not None:
-        instr_kwargs = _get_instruction_kwargs_from_file(instr_id)
-    return (
-        stimulus_id,
-        device_ids,
-        sensor_ids,
-        instr_kwargs,
-    )  # XXX: name similarly in calling function
-
-
 def _get_instruction_kwargs_from_file(instruction_id: str) -> Optional[InstructionArgs]:
     """Get InstructionArgs from instruction yml files."""
     if instruction_id is not None:
@@ -438,10 +404,7 @@ def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
 def read_sensors() -> Dict[str, SensorArgs]:
     """Return dictionary of sensor_id to SensorArgs for all yaml sensor parameter files."""
     folder = 'sensors'
-    directory: str = get_cfg_path(folder)
-    sens_dict = {}
-    _parse_files(directory, folder, sens_dict)
-    return sens_dict
+    return _parse_files(folder)
 
 
 def _dynamic_parse(file: str, param_type: str) -> BaseModel:
@@ -451,58 +414,45 @@ def _dynamic_parse(file: str, param_type: str) -> BaseModel:
     return parser_func(**param_dict)
 
 
-def _parse_files(directory, folder, sens_dict):
+def _parse_files(folder):
+    directory: str = get_cfg_path(folder)
+    result_dict = {}
     for file in os.listdir(directory):
         file_name = os.fsdecode(file).split(".")[0]
-        sens_dict[file_name] = _dynamic_parse(file, folder)
-
+        result_dict[file_name] = _dynamic_parse(file, folder)
+    return result_dict
 
 def read_devices() -> Dict[str, DeviceArgs]:
     """Return dictionary of device_id to DeviceArgs for all yaml device parameter files."""
     folder = 'devices'
-    directory: str = get_cfg_path(folder)
-    sens_dict = {}
-    _parse_files(directory, folder, sens_dict)
-    return sens_dict
+    return _parse_files(folder)
 
 
 def read_instructions() -> Dict[str, InstructionArgs]:
     """Return dictionary of instruction_id to InstructionArgs for all yaml instruction parameter files."""
 
     folder = 'instructions'
-    directory: str = get_cfg_path(folder)
-    sens_dict = {}
-    _parse_files(directory, folder, sens_dict)
-    return sens_dict
+    return _parse_files(folder)
 
 
 def read_stimuli() -> Dict[str, StimulusArgs]:
     """Return dictionary of stimulus_id to StimulusArgs for all yaml stimulus parameter files."""
     folder = 'stimuli'
-    directory: str = get_cfg_path(folder)
-    stim_dict = {}
-    _parse_files(directory, folder, stim_dict)
-    return stim_dict
+    return _parse_files(folder)
 
 
 def read_tasks() -> Dict[str, RawTaskParams]:
     """Return dictionary of task_id to RawTaskParams for all yaml task parameter files."""
 
     folder = 'tasks'
-    directory: str = get_cfg_path(folder)
-    task_dict = {}
-    _parse_files(directory, folder, task_dict)
-    return task_dict
+    return _parse_files(folder)
 
 
 def read_studies() -> Dict[str, StudyArgs]:
     """Return dictionary of study_id to StudyArgs for all yaml study parameter files."""
 
     folder = 'studies'
-    directory: str = get_cfg_path(folder)
-    study_dict = {}
-    _parse_files(directory, folder, study_dict)
-    return study_dict
+    return _parse_files(folder)
 
 
 def read_collections() -> Dict[str, CollectionArgs]:
@@ -510,9 +460,7 @@ def read_collections() -> Dict[str, CollectionArgs]:
 
     folder = 'collections'
     directory: str = get_cfg_path(folder)
-    collection_dict = {}
-    _parse_files(directory, folder, collection_dict)
-    return collection_dict
+    return _parse_files(directory, folder)
 
 
 def get_task(task_id:str) -> RawTaskParams:
