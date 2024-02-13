@@ -1,0 +1,8 @@
+collection_id: demo_calib
+is_active: false
+task_array:
+- calibration_obs_1
+- finger_nose_demo_obs_1
+- mouse_demo_obs
+- passage_obs_1
+arg_parser: iout.stim_param_reader.py::CollectionArgs

@@ -18,6 +18,22 @@ the pydantic BaseModel class). This class handles the parsing of the yaml file i
 Parsers for all the standard stimulus yaml files are found in this module.   
 """
 
+
+class StudyArgs(BaseModel):
+    study_id: str = Field(min_length=1, max_length=255)
+    study_title: str = Field(min_length=1, max_length=512)
+    collection_array: List[str]
+    irb_protocol_number: Optional[PositiveInt]
+    arg_parser: str
+
+
+class CollectionArgs(BaseModel):
+    collection_id: str = Field(min_length=1, max_length=255)
+    is_active: bool
+    task_array: List[str]
+    arg_parser: str
+
+
 class SensorArgs(BaseModel):
     sensor_id: str = Field(min_length=1, max_length=255)
     temporal_res: Optional[PositiveFloat] = None

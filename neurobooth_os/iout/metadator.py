@@ -407,8 +407,20 @@ def _get_device_kwargs(task_id, conn: connection):
 
 
 def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
-    # Get devices kwargs for all the tasks
-    # outputs dict with keys = stimulus_id, vals = dict with dev parameters
+    """
+    Gets devices kwargs for all the tasks
+
+    Parameters
+    ----------
+    collection_id str
+        Unique identifier for collection
+    conn Object
+        database connection
+
+    Returns
+    -------
+        Dict with keys = stimulus_id, vals = dict with dev parameters
+    """
 
     tasks = get_task_ids_for_collection(collection_id, conn)
 
@@ -417,7 +429,6 @@ def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
         stim_id, *_ = get_task_param(task, conn)
         task_kwarg = _get_device_kwargs(task, conn)
         tasks_kwarg[stim_id] = task_kwarg
-
     return tasks_kwarg
 
 
@@ -493,6 +504,19 @@ def _read_all_task_params():
 
 
 def build_tasks_for_collection(collection_id: str, conn) -> Dict[str, TaskArgs]:
+    """
+    Constructs a dictionary of task_ids to TaskArgs for every task in the collection
+    Parameters
+    ----------
+    collection_id str
+        The unique identifier for the collection
+    conn object
+        A database connection
+
+    Returns
+    -------
+        Dictionary with task_id = TaskArgs
+    """
     task_ids = get_task_ids_for_collection(collection_id, conn)
     task_dict: Dict[str:TaskArgs] = {}
     param_dictionary = _read_all_task_params()

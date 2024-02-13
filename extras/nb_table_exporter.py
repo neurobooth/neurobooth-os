@@ -100,7 +100,7 @@ def export_all_instruction_records():
 
 
 def export_all_task_records():
-    conn = get_conn("neurobooth", False)
+    conn = get_database_connection("neurobooth", False)
     path = os.path.join(write_path, 'tasks')
 
     task_ids = get_task_ids_for_collection("test_mvp_030", conn)
@@ -128,7 +128,7 @@ def export_all_task_records():
 
 
 def export_all_device_records():
-    conn = get_conn("neurobooth", False)
+    conn = get_database_connection("neurobooth", False)
     path = os.path.join(write_path, 'devices')
 
     task_ids = get_task_ids_for_collection("test_mvp_030", conn)
@@ -167,7 +167,7 @@ def export_all_device_records():
 
 
 def export_all_sensor_records():
-    conn = get_conn("neurobooth", False)
+    conn = get_database_connection("neurobooth", False)
     path = os.path.join(write_path, 'sensors')
 
     table_sens = Table("nb_sensor", conn=conn)
@@ -200,10 +200,72 @@ def export_all_sensor_records():
         filename = os.path.join(path, sensor_id + ".yml")
         with open(filename, 'w') as f:
             yaml.dump(sens_dict, f, sort_keys=False)
+            
+            
+def export_all_connection_records():
+    conn = get_database_connection("neurobooth", False)
+    path = os.path.join(write_path, 'collections')
+
+    table_collection = Table("nb_collection", conn=conn)
+    collection_df = table_collection.query()
+    collection_df.reset_index()
+    for index, row in collection_df.iterrows():
+        collection_id = index
+        is_active = row["is_active"]
+        task_array = row["task_array"]
+
+        collection_dict = {}
+        collection_dict["collection_id"] = collection_id
+        collection_dict["is_active"] = is_active
+        collection_dict["task_array"] = task_array
+        collection_dict['arg_parser'] = 'iout.stim_param_reader.py::CollectionArgs'
+
+        print(collection_dict)
+        filename = os.path.join(path, collection_id + ".yml")
+        with open(filename, 'w') as f:
+            yaml.dump(collection_dict, f, sort_keys=False)
+
+
+def export_all_study_records():
+    conn = get_database_connection("neurobooth", False)
+    path = os.path.join(write_path, 'studies')
+
+    table_study = Table("nb_study", conn=conn)
+    study_df = table_study.query()
+    study_df.reset_index()
+    for index, row in study_df.iterrows():
+        study_id = index
+        irb_protocol_number = row["IRB_protocol_number"]
+        study_title = row["study_title"]
+        protocol_version = row["protocol_version_array"]
+        consent_version = row["consent_version_array"]
+        collection_ids = row["collection_ids"]
+        consent_dates = row["consent_dates"]
+        protocol_dates = row["protocol_dates"]
+
+        study_dict = {}
+        study_dict["study_id"] = study_id
+        study_dict["study_title"] = study_title
+        study_dict["collection_ids"] = collection_ids
+
+        study_dict["irb_protocol_number"] = irb_protocol_number
+        study_dict["protocol_version"] = protocol_version
+        study_dict["consent_version"] = consent_version
+        study_dict["consent_dates"] = consent_dates
+        study_dict["protocol_dates"] = protocol_dates
+        
+        study_dict['arg_parser'] = 'iout.stim_param_reader.py::StudyArgs'
+
+        print(study_dict)
+        filename = os.path.join(path, study_id + ".yml")
+        with open(filename, 'w') as f:
+            yaml.dump(study_dict, f, sort_keys=False)
 
 
 # export_all_task_records()
 # export_all_stimulus_records()
 # export_all_instruction_records()
-export_all_device_records()
+# export_all_device_records()
+# export_all_connection_records()
+export_all_study_records()
 # export_all_sensor_records()

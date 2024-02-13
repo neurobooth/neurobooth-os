@@ -1,0 +1,7 @@
+collection_id: demo
+is_active: false
+task_array:
+- finger_nose_demo_obs_1
+- mouse_demo_obs
+- passage_demo_obs_1
+arg_parser: iout.stim_param_reader.py::CollectionArgs
