@@ -1,6 +1,6 @@
 collection_id: demo
 is_active: false
-task_array:
+task_ids:
 - finger_nose_demo_obs_1
 - mouse_demo_obs
 - passage_demo_obs_1

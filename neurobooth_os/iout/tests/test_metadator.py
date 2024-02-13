@@ -35,8 +35,7 @@ class TestMetadator(unittest.TestCase):
 
     def test_build_tasks_for_collection(self):
         collection_id = 'mvp_030'
-        conn = meta.get_database_connection('neurobooth', False)
-        task_dict = meta.build_tasks_for_collection(collection_id, conn)
+        task_dict = meta.build_tasks_for_collection(collection_id)
         print(task_dict)
 
     def test_get_device_kwargs_by_task(self):
@@ -51,7 +50,7 @@ class TestMetadator(unittest.TestCase):
         #print("Value size: " + str(len(kwarg_alldevs.keys())))
         #print("Values: " + str(kwarg_alldevs))
 
-        task_dict = meta.build_tasks_for_collection(collection_id, conn)
+        task_dict = meta.build_tasks_for_collection(collection_id)
         kwargs = {}
         for val in task_dict.values():
             list_of_devs_in_task = val.device_args

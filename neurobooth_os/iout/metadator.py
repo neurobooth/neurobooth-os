@@ -94,24 +94,21 @@ def get_collection_ids(study_id) -> List[str]:
     return study.collection_ids
 
 
-def get_task_ids_for_collection(collection_id, conn: connection):
+def get_task_ids_for_collection(collection_id) -> List[str]:
     """
 
     Parameters
     ----------
     collection_id: str
-        Unique identifier for collection: (The primary key of nb_collection table)
-    conn : object
-        Database connection
+        Unique identifier for collection as embedded in the yaml file name for collection
 
     Returns
     -------
         List[str] of task_ids for all tasks in the collection
     """
-    table_collection = Table("nb_collection", conn=conn)
-    collection_df = table_collection.query(where=f"collection_id = '{collection_id}'")
-    (tasks_ids,) = collection_df["task_array"]
-    return tasks_ids
+    collections = read_collections()
+    collection: CollectionArgs = collections[collection_id]
+    return collection.task_ids
 
 
 def _new_tech_log_dict():
@@ -418,7 +415,7 @@ def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
         Dict with keys = stimulus_id, vals = dict with dev parameters
     """
 
-    tasks = get_task_ids_for_collection(collection_id, conn)
+    tasks = get_task_ids_for_collection(collection_id)
 
     tasks_kwarg = OrderedDict()
     for task in tasks:
@@ -519,7 +516,7 @@ def _read_all_task_params():
     return params
 
 
-def build_tasks_for_collection(collection_id: str, conn) -> Dict[str, TaskArgs]:
+def build_tasks_for_collection(collection_id: str) -> Dict[str, TaskArgs]:
     """
     Constructs a dictionary of task_ids to TaskArgs for every task in the collection
     Parameters
@@ -533,7 +530,7 @@ def build_tasks_for_collection(collection_id: str, conn) -> Dict[str, TaskArgs]:
     -------
         Dictionary with task_id = TaskArgs
     """
-    task_ids = get_task_ids_for_collection(collection_id, conn)
+    task_ids = get_task_ids_for_collection(collection_id)
     task_dict: Dict[str:TaskArgs] = {}
     param_dictionary = _read_all_task_params()
     for task_id in task_ids:

@@ -2,13 +2,16 @@ import math
 
 from neurobooth_terra import Table
 import yaml
-from neurobooth_os.iout.metadator import get_database_connection, get_task_ids_for_collection, get_task_param
+from neurobooth_os.iout.metadator import get_database_connection, get_task_param
 import os.path
 
 """
     Utility code for exporting database tables to yaml files 
     to support migration of configuration data out of the database
 """
+
+#   TODO(larry): Remove this module after all nb_ tables have been exported
+
 write_path = 'C:\\Users\\lw412\\Documents\\GitHub\\neurobooth\\neurobooth-os\\examples\\configs'
 
 
@@ -217,7 +220,7 @@ def export_all_connection_records():
         collection_dict = {}
         collection_dict["collection_id"] = collection_id
         collection_dict["is_active"] = is_active
-        collection_dict["task_array"] = task_array
+        collection_dict["task_ids"] = task_array
         collection_dict['arg_parser'] = 'iout.stim_param_reader.py::CollectionArgs'
 
         print(collection_dict)
@@ -262,10 +265,29 @@ def export_all_study_records():
             yaml.dump(study_dict, f, sort_keys=False)
 
 
+def get_task_ids_for_collection(collection_id, conn):
+    """
+
+    Parameters
+    ----------
+    collection_id: str
+        Unique identifier for collection: (The primary key of nb_collection table)
+    conn : object
+        Database connection
+
+    Returns
+    -------
+        List[str] of task_ids for all tasks in the collection
+    """
+    table_collection = Table("nb_collection", conn=conn)
+    collection_df = table_collection.query(where=f"collection_id = '{collection_id}'")
+    (tasks_ids,) = collection_df["task_array"]
+    return tasks_ids
+
 # export_all_task_records()
 # export_all_stimulus_records()
 # export_all_instruction_records()
 # export_all_device_records()
-# export_all_connection_records()
-export_all_study_records()
+export_all_connection_records()
+# export_all_study_records()
 # export_all_sensor_records()

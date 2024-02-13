@@ -30,7 +30,7 @@ class StudyArgs(BaseModel):
 class CollectionArgs(BaseModel):
     collection_id: str = Field(min_length=1, max_length=255)
     is_active: bool
-    task_array: List[str]
+    task_ids: List[str]
     arg_parser: str
 
 

@@ -130,8 +130,8 @@ def _select_subject(window, subject_df):
     return first_name, last_name, subject_id
 
 
-def _get_tasks(window, conn, collection_id):
-    task_obs = meta.get_task_ids_for_collection(collection_id, conn)
+def _get_tasks(window, collection_id: str):
+    task_obs = meta.get_task_ids_for_collection(collection_id)
     tasks = ", ".join(task_obs)
     window["tasks"].update(value=tasks)
     return tasks
@@ -436,7 +436,7 @@ def gui():
         elif event == "collection_id":
             collection_id = values[event]
             log_sess["collection_id"] = collection_id
-            tasks = _get_tasks(window, conn, collection_id)
+            tasks = _get_tasks(window, collection_id)
 
         elif event == "_init_sess_save_":
             if values["tasks"] == "":

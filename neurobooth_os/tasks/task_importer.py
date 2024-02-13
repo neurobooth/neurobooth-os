@@ -27,7 +27,7 @@ def get_task_funcs(collection_id, conn):
         dict containing key task name and value callable task
     """
 
-    tasks_obs = meta.get_task_ids_for_collection(collection_id, conn)
+    tasks_obs = meta.get_task_ids_for_collection(collection_id)
 
     task_func_dict = {}
     for task_id in tasks_obs:
@@ -66,7 +66,8 @@ def get_task_arguments(collection_id, conn) -> Dict[str, TaskArgs]:
     -------
     dict of task_ids to TaskArgs object for every task in collection
     """
-    return meta.build_tasks_for_collection(collection_id, conn)
+    # TODO(larry): Remove this method and have clients call meta directly
+    return meta.build_tasks_for_collection(collection_id)
 
 
 def _get_task_arg(task_id: str, conn) -> TaskArgs:

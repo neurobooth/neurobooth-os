@@ -46,7 +46,7 @@ collection_ids = _get_collections(start_window, study_id)
 
 log_sess["collection_id"] = collection_id
 
-tasks = _get_tasks(start_window, conn, collection_id)
+tasks = _get_tasks(start_window, collection_id)
 
 sess_info = _save_session(start_window,
                           log_task, staff_id,
