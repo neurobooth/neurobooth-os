@@ -4,7 +4,7 @@ import logging
 import os
 from collections import OrderedDict
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from pydantic import BaseModel
 from sshtunnel import SSHTunnelForwarder
@@ -15,7 +15,7 @@ from neurobooth_terra import Table
 import neurobooth_os.config as cfg
 from neurobooth_os.iout import stim_param_reader
 from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, get_cfg_path, DeviceArgs, StimulusArgs, \
-    RawTaskParams, TaskArgs
+    RawTaskParams, TaskArgs, StudyArgs, CollectionArgs
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
 
@@ -76,11 +76,8 @@ def get_database_connection(database: Optional[str] = None, validate_config_path
     return conn
 
 
-def get_study_ids(conn: connection):
-    table_study = Table("nb_study", conn=conn)
-    studies_df = table_study.query()
-    study_ids = studies_df.index.values.tolist()
-    return study_ids
+def get_study_ids() -> List[str]:
+    return list(read_studies().keys())
 
 
 def get_subject_ids(conn: connection, first_name, last_name):
@@ -91,11 +88,10 @@ def get_subject_ids(conn: connection, first_name, last_name):
     return subject_df
 
 
-def get_collection_ids(study_id, conn: connection):
-    table_study = Table("nb_study", conn=conn)
-    studies_df = table_study.query()
-    collection_ids = studies_df.loc[study_id, "collection_ids"]
-    return collection_ids
+def get_collection_ids(study_id) -> List[str]:
+    studies = read_studies()
+    study: StudyArgs = studies[study_id]
+    return study.collection_ids
 
 
 def get_task_ids_for_collection(collection_id, conn: connection):
@@ -490,6 +486,26 @@ def read_tasks() -> Dict[str, RawTaskParams]:
     task_dict = {}
     _parse_files(directory, folder, task_dict)
     return task_dict
+
+
+def read_studies() -> Dict[str, StudyArgs]:
+    """Return dictionary of study_id to StudyArgs for all yaml study parameter files."""
+
+    folder = 'studies'
+    directory: str = get_cfg_path(folder)
+    study_dict = {}
+    _parse_files(directory, folder, study_dict)
+    return study_dict
+
+
+def read_collections() -> Dict[str, CollectionArgs]:
+    """Return dictionary of collection_id to CollectionArgs for all yaml collection parameter files."""
+
+    folder = 'collections'
+    directory: str = get_cfg_path(folder)
+    collection_dict = {}
+    _parse_files(directory, folder, collection_dict)
+    return collection_dict
 
 
 def _read_all_task_params():

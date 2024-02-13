@@ -132,18 +132,13 @@ def _select_subject(window, subject_df):
 
 def _get_tasks(window, conn, collection_id):
     task_obs = meta.get_task_ids_for_collection(collection_id, conn)
-    # TODO(larry): remove this dead code when change works properly in ACQ and STM
-    # tasks = list()
-    # for task in tasks_obs:
-    #     task_id, *_ = meta.get_task_param(task, conn)
-    #     tasks.append(task_id)
     tasks = ", ".join(task_obs)
     window["tasks"].update(value=tasks)
     return tasks
 
 
-def _get_collections(window, conn, study_id):
-    collection_ids = meta.get_collection_ids(study_id, conn)
+def _get_collections(window, study_id: str):
+    collection_ids = meta.get_collection_ids(study_id)
     window["collection_id"].update(values=collection_ids)
     return collection_ids
 
@@ -424,7 +419,7 @@ def gui():
         if event == "study_id":
             study_id = values[event]
             log_sess["study_id"] = study_id
-            collection_ids = _get_collections(window, conn, study_id)
+            collection_ids = _get_collections(window, study_id)
 
         elif event == "find_subject":
             subject_df = _find_subject(

@@ -22,7 +22,7 @@ Parsers for all the standard stimulus yaml files are found in this module.
 class StudyArgs(BaseModel):
     study_id: str = Field(min_length=1, max_length=255)
     study_title: str = Field(min_length=1, max_length=512)
-    collection_array: List[str]
+    collection_ids: List[str]
     irb_protocol_number: Optional[PositiveInt]
     arg_parser: str
 

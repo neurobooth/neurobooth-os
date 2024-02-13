@@ -85,7 +85,7 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
         [
             sg.T("Study ID"),
             sg.Combo(
-                meta.get_study_ids(conn),
+                meta.get_study_ids(),
                 key="study_id",
                 enable_events=True,
                 size=(44, 1),

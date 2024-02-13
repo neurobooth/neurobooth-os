@@ -42,7 +42,7 @@ first_name, last_name, subject_id = _select_subject(start_window, subject_df)
 log_sess['subject_id'] = subject_id
 log_task['subject_id-date'] =  f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
 log_sess["study_id"] = study_id
-collection_ids = _get_collections(start_window, conn, study_id)
+collection_ids = _get_collections(start_window, study_id)
 
 log_sess["collection_id"] = collection_id
 
