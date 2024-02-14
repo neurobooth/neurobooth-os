@@ -394,9 +394,9 @@ def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
     task_ids = get_task_ids_for_collection(collection_id)
 
     tasks_kwarg = OrderedDict()
-    for task in task_ids:
-        stim_id, *_ = get_stimulus_id(task)
-        task_kwarg = _get_device_kwargs(task, conn)
+    for task_id in task_ids:
+        stim_id = get_stimulus_id(task_id)
+        task_kwarg = _get_device_kwargs(task_id, conn)
         tasks_kwarg[stim_id] = task_kwarg
     return tasks_kwarg
 
