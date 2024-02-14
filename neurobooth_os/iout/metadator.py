@@ -460,7 +460,7 @@ def read_collections() -> Dict[str, CollectionArgs]:
 
     folder = 'collections'
     directory: str = get_cfg_path(folder)
-    return _parse_files(directory, folder)
+    return _parse_files(folder)
 
 
 def get_task(task_id:str) -> RawTaskParams:
