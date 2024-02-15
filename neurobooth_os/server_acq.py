@@ -58,7 +58,7 @@ def run_acq(logger):
     device_manager = None
     system_resource_logger = None
     task_args: Dict[str, TaskArgs] = {}
-
+    print("ACQ Waiting for message")
     for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 
