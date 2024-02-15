@@ -71,7 +71,7 @@ class StmSession(BaseModel):
             print("Checking prepared devices")
             device_manager.reconnect_streams()
         else:
-            device_manager.create_streams(collection_id=self.collection_id, win=self.win, conn=self.db_conn)
+            device_manager.create_streams(collection_id=self.collection_id, win=self.win)
         return device_manager
 
     @staticmethod

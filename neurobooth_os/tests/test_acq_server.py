@@ -1,11 +1,9 @@
-import logging
 import unittest
-from typing import Dict, List
+from typing import List
 
 from neurobooth_os.iout.lsl_streamer import DeviceManager
-from neurobooth_os.iout.stim_param_reader import TaskArgs, DeviceArgs
+from neurobooth_os.iout.stim_param_reader import DeviceArgs
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.server_stm import prepare_session
 
 
 class TestTaskParamReader(unittest.TestCase):
@@ -25,10 +23,7 @@ class TestTaskParamReader(unittest.TestCase):
 
     def test_get_dev_kwargs(self):
         collection_id = 'testing'
-        database_name = 'mock_neurobooth_1'
-        d = DeviceManager("acquisition")
-        conn = meta.get_conn(database_name, False)
-        devkwargs = DeviceManager._get_device_kwargs(collection_id, conn)
+        devkwargs = DeviceManager._get_device_kwargs(collection_id)
         print(devkwargs)
 
     def test_start_flir(self):

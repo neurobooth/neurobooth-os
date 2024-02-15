@@ -260,10 +260,8 @@ def get_stimulus_kwargs_from_file(stimulus_id):
     return stim_file, task_param_dict
 
 
-def _get_sensor_kwargs(sens_id, conn: connection):
-    table_sens = Table("nb_sensor", conn=conn)
-    task_df = table_sens.query(where=f"sensor_id = '{sens_id}'")
-    param = task_df.iloc[0].to_dict()
+def _get_sensor_kwargs(sens_id):
+    param = dict(read_sensors()[sens_id])
     return param
 
 
@@ -368,7 +366,7 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
     return kwarg
 
 
-def _get_device_kwargs(task_id, conn: connection):
+def _get_device_kwargs(task_id):
     task: RawTaskParams = get_task(task_id)
     dev_kwarg = {}
     for dev_id, dev_sens_ids in zip(task.device_id_array, task.sensor_id_array):
@@ -380,13 +378,13 @@ def _get_device_kwargs(task_id, conn: connection):
         dev_id_param["sensors"] = {}
         for sens_id in dev_sens_ids:
             if len(sens_id):
-                dev_id_param["sensors"][sens_id] = _get_sensor_kwargs(sens_id, conn)
+                dev_id_param["sensors"][sens_id] = _get_sensor_kwargs(sens_id)
         kwarg = map_database_to_deviceclass(dev_id, dev_id_param)
         dev_kwarg[dev_id] = kwarg
     return dev_kwarg
 
 
-def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
+def get_device_kwargs_by_task(collection_id) -> OrderedDict:
     """
     Gets devices kwargs for all the tasks in the collection
 
@@ -401,13 +399,13 @@ def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
     -------
         Dict with keys = stimulus_id, vals = dict with dev parameters
     """
-
-    task_ids = get_task_ids_for_collection(collection_id)
-
+    # TODO(larry): Use TaskArgs to get device and sensor data instead of re-querying the yml files in other methods
+    task_dict : Dict[str, TaskArgs] = build_tasks_for_collection(collection_id)
+    task_list : List[TaskArgs] = list(task_dict.values())
     tasks_kwarg = OrderedDict()
-    for task_id in task_ids:
-        stim_id = get_stimulus_id(task_id)
-        task_kwarg = _get_device_kwargs(task_id, conn)
+    for task in task_list:
+        stim_id = task.stim_args.stimulus_id
+        task_kwarg = _get_device_kwargs(task.task_id)
         tasks_kwarg[stim_id] = task_kwarg
     return tasks_kwarg
 
@@ -477,6 +475,7 @@ def read_collections() -> Dict[str, CollectionArgs]:
 def get_task(task_id:str) -> RawTaskParams:
     tasks = read_tasks()
     return tasks[task_id]
+
 
 def read_all_task_params():
     """Returns a dictionary containing all task parameters of all types"""

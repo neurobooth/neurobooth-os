@@ -83,7 +83,6 @@ def run_acq(logger):
             subject_id: str = log_task["subject_id"]
             session_name: str = log_task["subject_id-date"]
 
-            conn = meta.get_database_connection(database=database_name)
             ses_folder = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name)
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
@@ -102,7 +101,7 @@ def run_acq(logger):
             if device_manager.streams:
                 device_manager.reconnect_streams()
             else:
-                device_manager.create_streams(collection_id=collection_id, conn=conn)
+                device_manager.create_streams(collection_id=collection_id)
             print("UPDATOR:-Connect-")
 
         elif "frame_preview" in data and not recording:
