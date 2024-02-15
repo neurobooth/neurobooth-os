@@ -57,7 +57,6 @@ class VidRec_Flir:
         # need to read these parameters from database
         # need new column in database that allows parameters in json file
         self.open = False
-        self.serial_num = camSN
         self.fps = fps
         self.serial_num = camSN
         self.exposure = exposure
