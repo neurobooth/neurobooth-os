@@ -206,7 +206,7 @@ def get_device_ids(task_id: str) -> List[str]:
     return task.device_id_array
 
 
-def _get_instruction_kwargs_from_file(instruction_id: str) -> Optional[InstructionArgs]:
+def _get_instruction_kwargs(instruction_id: str) -> Optional[InstructionArgs]:
     """Get InstructionArgs from instruction yml files."""
     if instruction_id is not None:
         file_name = instruction_id + ".yml"
@@ -267,13 +267,24 @@ def _get_sensor_kwargs(sens_id, conn: connection):
     return param
 
 
-def _get_dev_sn(dev_id, conn: connection):
-    table_sens = Table("nb_device", conn=conn)
-    device_df = table_sens.query(where=f"device_id = '{dev_id}'")
-    sn = device_df["device_sn"]
+def _get_dev_sn(dev_id:str) -> Optional[str]:
+    """
+    Parameters
+    ----------
+    dev_id : str
+        the id of the device, which is also the file-name for the yml file that contains the dev params
+         (excluding the ".yml" file extension)
+
+    Returns
+    -------
+        the serial number of the device, or None
+    """
+    devices = read_devices()
+    device : DeviceArgs = devices[dev_id]
+    sn = device.device_sn
     if len(sn) == 0:
         return None
-    return sn[0]
+    return sn
 
 
 def map_database_to_deviceclass(dev_id, dev_id_param):
@@ -364,7 +375,7 @@ def _get_device_kwargs(task_id, conn: connection):
         # TODO test that dev_sens_ids are from correct dev_id, eg. dev_sens_ids =
         # {Intel_D455_rgb_1,Intel_D455_depth_1} dev_id= Intel_D455_x
         dev_id_param = {}
-        dev_id_param["SN"] = _get_dev_sn(dev_id, conn)
+        dev_id_param["SN"] = _get_dev_sn(dev_id)
 
         dev_id_param["sensors"] = {}
         for sens_id in dev_sens_ids:
@@ -466,7 +477,6 @@ def read_collections() -> Dict[str, CollectionArgs]:
 def get_task(task_id:str) -> RawTaskParams:
     tasks = read_tasks()
     return tasks[task_id]
-
 
 def read_all_task_params():
     """Returns a dictionary containing all task parameters of all types"""
