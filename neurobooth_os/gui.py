@@ -292,10 +292,13 @@ def _stop_lsl_and_save(
 
 
 def _start_servers(window, nodes):
+    print("GUI starting servers")
     window["-init_servs-"].Update(button_color=("black", "red"))
     event, values = window.read(0.1)
     ctr_rec.start_servers(nodes=nodes)
     time.sleep(1)
+    print("GUI servers started")
+
     return event, values
 
 
