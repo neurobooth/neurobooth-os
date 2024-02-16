@@ -5,15 +5,17 @@
 
 from __future__ import absolute_import, division
 
-from typing import List
+from typing import List, Union
 
 from psychopy import logging as psychopy_logging
 
 psychopy_logging.console.setLevel(psychopy_logging.CRITICAL)
 import logging
+import os
 import os.path as op
 from datetime import datetime
 import time
+import pylink
 
 from psychopy import visual, monitors, sound, event
 
@@ -88,7 +90,7 @@ class Task:
 
         if self.path_instruction_video is not None:
             self.path_instruction_video = op.join(
-                cfg.neurobooth_config["video_tasks"], self.path_instruction_video
+                cfg.neurobooth_config.video_task_dir, self.path_instruction_video
             )
 
             self.instruction_video = visual.MovieStim3(
@@ -157,6 +159,22 @@ class Task:
             pos=(0, 0),
             units="deg",
         )
+
+    def render_image(self):
+        '''
+           Dummy method which does nothing.
+
+           Tasks which need to render an image on HostPC/Tablet screen, need to
+           render image before the eyetracker starts recording. This is done via
+           calling the render_image method inside start_acq in server_stm.py
+           This dummy method gets called for all tasks which don't need to send
+           an image to HostPC screen.
+
+           For tasks which do need to send an image to screen, a render_image
+           method must be implemented inside the task script which will get called
+           instead.
+        '''
+        pass
 
     def repeat_advance(self):
         """
@@ -426,36 +444,37 @@ class Eyelink_HostPC(Task_Eyetracker):
 
        The commands that are sent to the HostPC are in the form of strings,
        the list of commands and documentation is available in the
-       "commands.ini" file inside the HostPC (i.e. NUC) - this can be found 
-       via the WebUI or by browsing the filesystem in the NUC. Additional
-       documentation is in the SR Research forums.
+       "COMMANDS.INI" file inside the HostPC (i.e. NUC) - this can be found 
+       via the WebUI or by browsing the filesystem in the NUC and looking in
+       /elcl/exe directory. Additional documentation is in the SR Research
+       forums.
     '''
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-    
+
     def draw_cross(self, x: int, y: int, colour: EyelinkColor) -> None:
         '''Draw a cross at the x,y position on the screen of the specified colour
            x, y must be in the top-left centered coordinate space 
         '''
         self.sendCommand('draw_cross %d %d %d' % (x, y, colour.value))
-        
-    def draw_box(self, x: int, y: int, length: int, breadth: int, colour: EyelinkColor, filled: bool = False) -> None:
+
+    def draw_box(self, x: int, y: int, width: int, height: int, colour: EyelinkColor, filled: bool = False) -> None:
         '''
-           Draw a rectangle of size length by breadth (in pixels) around a point 
+           Draw a rectangle of size width by height (in pixels) around a point 
            x,y on the screen. x, y must be in the top-left centered coordinate
            space.
 
            'draw_box' command for the HostPC takes in the diagonal coordinates and
            a color integer
         '''
-        half_box_len_in_pix = int(length/2)
-        half_box_brd_in_pix = int(breadth/2)
+        half_box_wid_in_pix = int(width/2)
+        half_box_hei_in_pix = int(height/2)
 
-        box_coords_top_x = x-half_box_len_in_pix
-        box_coords_top_y = y-half_box_brd_in_pix
-        box_coords_bot_x = x+half_box_len_in_pix
-        box_coords_bot_y = y+half_box_brd_in_pix
+        box_coords_top_x = x-half_box_wid_in_pix
+        box_coords_top_y = y-half_box_hei_in_pix
+        box_coords_bot_x = x+half_box_wid_in_pix
+        box_coords_bot_y = y+half_box_hei_in_pix
 
         if not filled:
             self.sendCommand('draw_box %d %d %d %d %d' % (box_coords_top_x, box_coords_top_y,
@@ -493,6 +512,62 @@ class Eyelink_HostPC(Task_Eyetracker):
     def clear_screen(self, colour: EyelinkColor = EyelinkColor.BLACK) -> None:
         '''Clear the HostPC screen and leave a Black background by default'''
         self.sendCommand('clear_screen %d' % colour.value)
+
+    def _render_image(self, path_to_image: Union[str, os.PathLike],
+                     crop_x: int, crop_y: int, crop_width: int, crop_height: int,
+                     host_x: int, host_y: int,
+                     drawing_options: any = pylink.BX_MAXCONTRAST) -> None:
+        '''
+           Employs the imageBackdrop method of eyetracker to display an image on
+           HostPC screen. Documentation available as comments in (and code adapted
+           from) picture.py example provided in SR Research software located at:
+           C:\Program Files (x86)\SR Research\EyeLink\SampleExperiments\Python\examples\Psychopy_examples
+
+           This method:
+           ** DOES NOT SUPPORT IMAGE RESIZING **
+           ** ONLY WORKS WHEN EYETRACKER IS IN OFFLINE MODE **
+
+           Therefore this method needs to be executed before eyetracker starts
+           recording
+
+           :param path_to_image: complete file path to the image file
+           :param crop_x/crop_y: x,y coordinate in pixels for cropping the image
+           :param crop_width/crop_height: width and height in pixels  for cropping
+                                          the image
+           :param host_x/host_y: x,y position in pixels on the HostPC screen where
+                                 the image needs to be rendered
+           :param drawing_options: drawing options from SR Research's pylink package
+
+           Example usage:
+           If you want to render a 1920 by 1080 image on a 1920x1080 screen,
+           crop_x/crop_y would be 0,0, since you do not want to crop anything
+           crop_width/crop_height would be 1920/1080 since you want the full image
+           host_x/host_y would be 0,0 since you want the full image displayed on
+           screen
+
+           For Bamboo Passage the image size is 1536 by 864 which we want to render
+           on a 1920x1080 screen. We do not want to crop the image, but we want to
+           center the image on screen. Therefore the params would be:
+           crop_x/crop_y = 0,0
+           crop_width/crop_height = 1536, 864
+           host_x/host_y = 192, 108 {i.e. (self.SCN_W-1536)/2 & (self.SCN_H-864)/2}
+
+           This method ** DOES NOT SUPPORT ** image resizing. For resizing options
+           follow the el_tracker.bitmapBackdrop() method provided in picture.py
+           example script.
+
+           This method starts with an '_'(underscore) because it is not meant to be
+           called directly, and must be wrapped in a wrapper called 'render_image'
+           within the task script for the image to be rendered when called within 
+           server_stm script.
+        '''
+        self.clear_screen()
+
+        if self.eye_tracker is not None:
+            self.eye_tracker.tk.imageBackdrop(path_to_image,
+                                           crop_x, crop_y, crop_width, crop_height,
+                                           host_x, host_y,
+                                           drawing_options)
 
 
 class Introduction_Task(Task):

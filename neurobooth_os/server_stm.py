@@ -264,6 +264,7 @@ def start_acq(calib_instructions, executor, session: StmSession, task_args: Task
         if "calibration_task" in stimulus_id:  # if not calibration record with start method
             this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
         else:
+            task_args.task_instance.render_image() # Render image on HostPC/Tablet screen
             session.eye_tracker.start(fname)
     session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
     wait([acq_result])  # Wait for ACQ to finish

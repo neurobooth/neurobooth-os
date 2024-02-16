@@ -9,9 +9,7 @@ License: BSD-3-Clause
 
 import os.path as op
 
-# from neurobooth_os.tasks.task import Task_Eyetracker
 from neurobooth_os.tasks.task import Eyelink_HostPC
-from neurobooth_os.tasks.task import EyelinkColor
 from neurobooth_os.tasks import utils
 import neurobooth_os
 
@@ -20,16 +18,16 @@ class Passage_Reading(Eyelink_HostPC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def render_image(self):
+        self._render_image(op.join(neurobooth_os.__path__[0], "tasks/assets/passage_reading_1536x864.jpg"),
+                          0, 0, 1920, 1080, 0, 0)
+
     def present_task(self, prompt=True, duration=0, **kwargs):
-        
-        def _update_tablet_screen_with_passage():
-            self.draw_box(int(self.SCN_W/2), int(self.SCN_H/2), 1536, 864, EyelinkColor.LIGHTRED)
         
         fname = op.join(
             neurobooth_os.__path__[0], "tasks/assets/passage_reading_1536x864.jpg"
         )
         screen = utils.create_image_screen(self.win, fname)
-        _update_tablet_screen_with_passage()
         self.show_text(screen=screen, msg="Task", audio=None, wait_time=5)
 
         if prompt:
@@ -39,7 +37,7 @@ class Passage_Reading(Eyelink_HostPC):
                 func=self.present_task,
                 waitKeys=False,
             )
-        
+
         self.clear_screen()
 
 if __name__ == "__main__":
