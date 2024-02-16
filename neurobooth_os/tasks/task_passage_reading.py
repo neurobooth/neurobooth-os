@@ -19,7 +19,7 @@ class Passage_Reading(Eyelink_HostPC):
         super().__init__(**kwargs)
 
     def render_image(self):
-        self._render_image(op.join(neurobooth_os.__path__[0], "tasks/assets/passage_reading_1536x864.jpg"),
+        self._render_image(op.join(neurobooth_os.__path__[0], "tasks/assets/bamboo_screenshot.jpg"),
                           0, 0, 1920, 1080, 0, 0)
 
     def present_task(self, prompt=True, duration=0, **kwargs):
