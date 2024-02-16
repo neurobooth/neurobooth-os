@@ -285,7 +285,7 @@ def _get_dev_sn(dev_id:str) -> Optional[str]:
     return sn
 
 
-def map_database_to_deviceclass(dev_id, dev_id_param):
+def map_database_to_deviceclass(dev_id: str, dev_id_param:Dict[str, Any]):
     # Convert SN and sens param from metadata to kwarg for device function
     # input: dict, from _get_device_kwargs
     #   dict with keys: "SN":"xx", "sensors": {"sensor_ith":{parameters}}
@@ -294,7 +294,6 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
     kwarg = {}
     kwarg["device_id"] = dev_id
     kwarg["sensor_ids"] = list(info["sensors"])
-
     if "mock_Mbient" in dev_id:
         kwarg["name"] = dev_id
         k = list(info["sensors"])[0]
@@ -349,11 +348,15 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
         kwarg["CHUNK"] = int(info["sensors"][k]["spatial_res_x"])
 
     elif "Eyelink" in dev_id:
+        print(f"dev_id_param values: {dev_id_param}")
+        print(f"Kwarg values: {kwarg}")
         kwarg["ip"] = info["SN"]
         # TODO test asserting assert(len(list(info['sensors']))==1) raise
         # f"{dev_id} should have only one sensor"
         (k,) = info["sensors"].keys()
         kwarg["sample_rate"] = int(info["sensors"][k]["temporal_res"])
+        print(f"Kwarg values final: {kwarg}")
+
     elif "Mouse" in dev_id:
         return kwarg
     elif "IPhone" in dev_id:
