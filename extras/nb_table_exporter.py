@@ -2,13 +2,16 @@ import math
 
 from neurobooth_terra import Table
 import yaml
-from neurobooth_os.iout.metadator import get_database_connection, get_task_ids_for_collection, get_task_param
+from neurobooth_os.iout.metadator import get_database_connection
 import os.path
 
 """
     Utility code for exporting database tables to yaml files 
     to support migration of configuration data out of the database
 """
+
+#   TODO(larry): Remove this module after all nb_ tables have been exported
+
 write_path = 'C:\\Users\\lw412\\Documents\\GitHub\\neurobooth\\neurobooth-os\\examples\\configs'
 
 
@@ -100,7 +103,7 @@ def export_all_instruction_records():
 
 
 def export_all_task_records():
-    conn = get_conn("neurobooth", False)
+    conn = get_database_connection("neurobooth", False)
     path = os.path.join(write_path, 'tasks')
 
     task_ids = get_task_ids_for_collection("test_mvp_030", conn)
@@ -128,7 +131,7 @@ def export_all_task_records():
 
 
 def export_all_device_records():
-    conn = get_conn("neurobooth", False)
+    conn = get_database_connection("neurobooth", False)
     path = os.path.join(write_path, 'devices')
 
     task_ids = get_task_ids_for_collection("test_mvp_030", conn)
@@ -167,7 +170,7 @@ def export_all_device_records():
 
 
 def export_all_sensor_records():
-    conn = get_conn("neurobooth", False)
+    conn = get_database_connection("neurobooth", False)
     path = os.path.join(write_path, 'sensors')
 
     table_sens = Table("nb_sensor", conn=conn)
@@ -200,10 +203,131 @@ def export_all_sensor_records():
         filename = os.path.join(path, sensor_id + ".yml")
         with open(filename, 'w') as f:
             yaml.dump(sens_dict, f, sort_keys=False)
+            
+            
+def export_all_connection_records():
+    conn = get_database_connection("neurobooth", False)
+    path = os.path.join(write_path, 'collections')
+
+    table_collection = Table("nb_collection", conn=conn)
+    collection_df = table_collection.query()
+    collection_df.reset_index()
+    for index, row in collection_df.iterrows():
+        collection_id = index
+        is_active = row["is_active"]
+        task_array = row["task_array"]
+
+        collection_dict = {}
+        collection_dict["collection_id"] = collection_id
+        collection_dict["is_active"] = is_active
+        collection_dict["task_ids"] = task_array
+        collection_dict['arg_parser'] = 'iout.stim_param_reader.py::CollectionArgs'
+
+        print(collection_dict)
+        filename = os.path.join(path, collection_id + ".yml")
+        with open(filename, 'w') as f:
+            yaml.dump(collection_dict, f, sort_keys=False)
+
+
+def export_all_study_records():
+    conn = get_database_connection("neurobooth", False)
+    path = os.path.join(write_path, 'studies')
+
+    table_study = Table("nb_study", conn=conn)
+    study_df = table_study.query()
+    study_df.reset_index()
+    for index, row in study_df.iterrows():
+        study_id = index
+        irb_protocol_number = row["IRB_protocol_number"]
+        study_title = row["study_title"]
+        protocol_version = row["protocol_version_array"]
+        consent_version = row["consent_version_array"]
+        collection_ids = row["collection_ids"]
+        consent_dates = row["consent_dates"]
+        protocol_dates = row["protocol_dates"]
+
+        study_dict = {}
+        study_dict["study_id"] = study_id
+        study_dict["study_title"] = study_title
+        study_dict["collection_ids"] = collection_ids
+
+        study_dict["irb_protocol_number"] = irb_protocol_number
+
+        if not math.isnan(protocol_version):
+            study_dict["protocol_version"] = protocol_version
+        else:
+            study_dict["protocol_version"] = None
+
+        study_dict["consent_version"] = consent_version
+        study_dict["consent_dates"] = consent_dates
+        study_dict["protocol_dates"] = protocol_dates
+        
+        study_dict['arg_parser'] = 'iout.stim_param_reader.py::StudyArgs'
+
+        print(study_dict)
+        filename = os.path.join(path, study_id + ".yml")
+        with open(filename, 'w') as f:
+            yaml.dump(study_dict, f, sort_keys=False)
+
+
+def get_task_ids_for_collection(collection_id, conn):
+    """
+
+    Parameters
+    ----------
+    collection_id: str
+        Unique identifier for collection: (The primary key of nb_collection table)
+    conn : object
+        Database connection
+
+    Returns
+    -------
+        List[str] of task_ids for all tasks in the collection
+    """
+    table_collection = Table("nb_collection", conn=conn)
+    collection_df = table_collection.query(where=f"collection_id = '{collection_id}'")
+    (tasks_ids,) = collection_df["task_array"]
+    return tasks_ids
+
+
+def get_task_param(task_id, conn: connection):
+    """
+
+    Parameters
+    ----------
+    task_id : str
+        The unique identifier for a task
+    conn : object
+        database connection
+
+    Returns
+    -------
+        tuple of task parameters
+    """
+    # task_data, stimulus, instruction
+    table_task = Table("nb_task", conn=conn)
+    task_df = table_task.query(where=f"task_id = '{task_id}'")
+    (device_ids,) = task_df["device_id_array"]
+    (sensor_ids,) = task_df["sensor_id_array"]
+    (stimulus_id,) = task_df["stimulus_id"]
+    (instr_id,) = task_df["instruction_id"]
+
+    instr_kwargs: Optional[InstructionArgs] = None
+
+    if instr_id is not None:
+        instr_kwargs = _get_instruction_kwargs_from_file(instr_id)
+    return (
+        stimulus_id,
+        device_ids,
+        sensor_ids,
+        instr_kwargs,
+    )  # XXX: name similarly in calling function
 
 
 # export_all_task_records()
 # export_all_stimulus_records()
 # export_all_instruction_records()
-export_all_device_records()
+# export_all_device_records()
+# export_all_connection_records()
+export_all_study_records()
 # export_all_sensor_records()
