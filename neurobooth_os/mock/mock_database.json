@@ -7,7 +7,7 @@
 
     "collection":{
         "collection_id":"mock_collection",
-        "task_array": "{mock_obs_1}"
+        "task_ids": "{mock_obs_1}"
 
     },
 

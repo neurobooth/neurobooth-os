@@ -35,15 +35,32 @@ class TestMetadator(unittest.TestCase):
 
     def test_build_tasks_for_collection(self):
         collection_id = 'mvp_030'
-        conn = meta.get_database_connection('neurobooth', False)
-        task_dict = meta.build_tasks_for_collection(collection_id, conn)
-        print(task_dict)
+        task_dict = meta.build_tasks_for_collection(collection_id)
+        self.assertIsNotNone(task_dict)
+
+    def test_read_studies(self):
+        self.assertIsNotNone(meta.read_studies())
+
+    def test_get_stimulus_id(self):
+        print(meta.get_stimulus_id("altern_hand_mov_obs_1"))
+        self.assertIsNotNone(meta.get_stimulus_id("altern_hand_mov_obs_1"))
+
+    def test_read_collections(self):
+        print(meta.read_collections())
+        self.assertIsNotNone(meta.read_collections())
+
+    def test_read_collection_ids(self):
+        self.assertIsNotNone(meta.get_collection_ids("study1"))
+
+    def test_get_task_ids_for_collection(self):
+        print(meta.get_task_ids_for_collection("testing"))
+        self.assertIsNotNone(meta.get_task_ids_for_collection("testing"))
 
     def test_get_device_kwargs_by_task(self):
         collection_id = 'testing'
         conn = meta.get_database_connection('mock_neurobooth_1', False)
         args = meta.get_device_kwargs_by_task(collection_id, conn)
-        # print(args)
+        print(args)
 
         kwarg_alldevs = {}
         for dc in args.values():
@@ -51,14 +68,14 @@ class TestMetadator(unittest.TestCase):
         #print("Value size: " + str(len(kwarg_alldevs.keys())))
         #print("Values: " + str(kwarg_alldevs))
 
-        task_dict = meta.build_tasks_for_collection(collection_id, conn)
+        task_dict = meta.build_tasks_for_collection(collection_id)
         kwargs = {}
         for val in task_dict.values():
             list_of_devs_in_task = val.device_args
             for dev_args in list_of_devs_in_task:
                 kwargs[dev_args.device_id] = (dict(dev_args))
-        #print("New values size: " + str(len(kwargs.keys())))
-        #print(kwargs)
+        print("New values size: " + str(len(kwargs.keys())))
+        print(kwargs)
         print()
 
         for k in kwarg_alldevs.keys():

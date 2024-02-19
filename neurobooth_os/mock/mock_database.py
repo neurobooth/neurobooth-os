@@ -29,7 +29,7 @@ def insert_mock_rows(conn_mock):
     table = Table("nb_collection", conn_mock)
     table.insert_rows(
         [("mock_collection", "{mock_obs_1}")],
-        cols=["collection_id", "task_array"],
+        cols=["collection_id", "task_ids"],
         on_conflict="update",
     )
 

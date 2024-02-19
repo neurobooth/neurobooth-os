@@ -1,18 +1,17 @@
 import logging
 import os
-import typing
 import socket
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 
 from pydantic import BaseModel
 
 from neurobooth_os import config
 from neurobooth_os.iout.eyelink_tracker import EyeTracker
 from neurobooth_os.iout.lsl_streamer import DeviceManager
+from neurobooth_os.iout.metadator import build_tasks_for_collection
 from neurobooth_os.log_manager import SystemResourceLogger
 from neurobooth_os.tasks import utils as utl
-from neurobooth_os.tasks.task_importer import get_task_arguments
 
 
 class StmSession(BaseModel):
@@ -47,7 +46,7 @@ class StmSession(BaseModel):
         self.socket = kwargs["socket"]
         self.session_folder = self.create_session_folder(self.logger, self.session_name)
         self.system_resource_logger: SystemResourceLogger = self.create_sys_resource_logger()
-        self.task_func_dict = get_task_arguments(self.collection_id, self.db_conn)
+        self.task_func_dict = build_tasks_for_collection(self.collection_id)
         self.path = os.path.join(config.neurobooth_config.presentation.local_data_dir, self.session_name)
         self.win = self.init_window()
 

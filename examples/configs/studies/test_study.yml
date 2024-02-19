@@ -1,0 +1,12 @@
+study_id: test_study
+study_title: 'testing '
+collection_ids:
+- testing
+- et_calib_test
+- test_mvp_030
+irb_protocol_number: 0
+protocol_version: null
+consent_version: null
+consent_dates: null
+protocol_dates: null
+arg_parser: iout.stim_param_reader.py::StudyArgs

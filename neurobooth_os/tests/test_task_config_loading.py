@@ -6,9 +6,8 @@ import socket
 
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.iout.stim_param_reader as reader
-from neurobooth_os.iout.stim_param_reader import StimulusArgs, InstructionArgs, _get_cfg_path, _get_param_dictionary
+from neurobooth_os.iout.stim_param_reader import StimulusArgs, _get_cfg_path, _get_param_dictionary
 from neurobooth_os.server_stm import prepare_session, create_task_kwargs
-from neurobooth_os.tasks import task_importer
 from neurobooth_os.tasks.eye_tracker_calibrate import Calibrate
 
 
@@ -125,21 +124,22 @@ class TestTask(unittest.TestCase):
             "sit_to_stand_obs",
             "timing_test_obs",
         ]
+        task_params = meta.read_all_task_params()
         for task_id in tasks:
-            task_args = task_importer._get_task_arg(task_id, connection)
+            task_args = meta.build_task(task_params, task_id)
             self.assertIsNotNone(task_args)
 
     def test_task_args(self):
-        connection = meta.get_database_connection("neurobooth", False)
         task_id = "lalala_obs_1"
-        task_args = task_importer._get_task_arg(task_id, connection)
-        print(task_args)
+        task_params = meta.read_all_task_params()
+        task_args = meta.build_task(task_params, task_id)
+        self.assertIsNotNone(task_args)
 
     def test_stm_session_as_dict(self):
         sock: socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        connection = meta.get_database_connection("neurobooth", False)
+        param_dict = meta.read_all_task_params()
         task_id = "saccades_horizontal_obs_1"
-        task_args = task_importer._get_task_arg(task_id, connection)
+        task_args = meta.build_task(param_dict, task_id)
         log_path = r"C:\neurobooth\test_data\test_logs"
         collection_id = 'testing'
         database_name = 'mock_neurobooth_1'

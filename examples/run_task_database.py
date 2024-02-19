@@ -30,7 +30,7 @@ use_instruction_videos = True  # False if instruction videos not available
 conn = meta.get_database_connection()
 win = utl.make_win(full_screen=False)
 
-task_func_dict = get_task_funcs(collection_id, conn)
+task_func_dict = get_task_funcs(collection_id)
 task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
 
 task_karg ={"win": win,
