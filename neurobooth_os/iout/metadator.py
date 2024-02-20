@@ -200,11 +200,9 @@ def get_stimulus_id(task_id: str) -> str:
     task : RawTaskParams = read_tasks()[task_id]
     return task.stimulus_id
 
-
 def get_device_ids(task_id: str) -> List[str]:
     task : RawTaskParams = read_tasks()[task_id]
     return task.device_id_array
-
 
 def _get_instruction_kwargs(instruction_id: str) -> Optional[InstructionArgs]:
     """Get InstructionArgs from instruction yml files."""
@@ -367,7 +365,6 @@ def map_database_to_deviceclass(dev_id: str, dev_id_param:Dict[str, Any]):
         )
 
     return kwarg
-
 
 def _get_device_kwargs(task_id):
     task: RawTaskParams = get_task(task_id)
