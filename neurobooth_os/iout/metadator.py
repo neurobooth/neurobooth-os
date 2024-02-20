@@ -366,6 +366,7 @@ def map_database_to_deviceclass(dev_id: str, dev_id_param:Dict[str, Any]):
 
     return kwarg
 
+
 def _get_device_kwargs(task_id):
     task: RawTaskParams = get_task(task_id)
     dev_kwarg = {}
