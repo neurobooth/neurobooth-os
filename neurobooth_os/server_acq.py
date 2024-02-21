@@ -49,16 +49,23 @@ def main():
 
 
 def run_acq(logger):
+    print("ACQ running")
+
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print("ACQ Created socket")
 
     lowFeed_running = False
     recording = False
+    print("ACQ initialized recording var")
+
     port = config.neurobooth_config.acquisition.port
     host = ''
     device_manager = None
+    print("ACQ initialized device mgr")
+
     system_resource_logger = None
     task_args: Dict[str, TaskArgs] = {}
-
+    print("ACQ Waiting for message")
     for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 
@@ -83,7 +90,6 @@ def run_acq(logger):
             subject_id: str = log_task["subject_id"]
             session_name: str = log_task["subject_id-date"]
 
-            conn = meta.get_database_connection(database=database_name)
             ses_folder = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name)
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
@@ -102,7 +108,7 @@ def run_acq(logger):
             if device_manager.streams:
                 device_manager.reconnect_streams()
             else:
-                device_manager.create_streams(collection_id=collection_id, conn=conn)
+                device_manager.create_streams(collection_id=collection_id)
             print("UPDATOR:-Connect-")
 
         elif "frame_preview" in data and not recording:

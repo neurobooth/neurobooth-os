@@ -102,6 +102,8 @@ class TaskArgs(BaseModel):
     task_constructor_callable: Callable  # callable of constructor for a Task
     stim_args: StimulusArgs
     instr_args: Optional[InstructionArgs] = None
+
+    # task_instance is a Task, but using Optional[Task] as the type causes circular import problems
     task_instance: Optional[object] = None  # created by client code from above callable
     device_args: List[DeviceArgs] = []
     class Config:

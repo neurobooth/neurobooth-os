@@ -200,13 +200,11 @@ def get_stimulus_id(task_id: str) -> str:
     task : RawTaskParams = read_tasks()[task_id]
     return task.stimulus_id
 
-
 def get_device_ids(task_id: str) -> List[str]:
     task : RawTaskParams = read_tasks()[task_id]
     return task.device_id_array
 
-
-def _get_instruction_kwargs_from_file(instruction_id: str) -> Optional[InstructionArgs]:
+def _get_instruction_kwargs(instruction_id: str) -> Optional[InstructionArgs]:
     """Get InstructionArgs from instruction yml files."""
     if instruction_id is not None:
         file_name = instruction_id + ".yml"
@@ -260,23 +258,32 @@ def get_stimulus_kwargs_from_file(stimulus_id):
     return stim_file, task_param_dict
 
 
-def _get_sensor_kwargs(sens_id, conn: connection):
-    table_sens = Table("nb_sensor", conn=conn)
-    task_df = table_sens.query(where=f"sensor_id = '{sens_id}'")
-    param = task_df.iloc[0].to_dict()
+def _get_sensor_kwargs(sens_id):
+    param = dict(read_sensors()[sens_id])
     return param
 
 
-def _get_dev_sn(dev_id, conn: connection):
-    table_sens = Table("nb_device", conn=conn)
-    device_df = table_sens.query(where=f"device_id = '{dev_id}'")
-    sn = device_df["device_sn"]
+def _get_dev_sn(dev_id:str) -> Optional[str]:
+    """
+    Parameters
+    ----------
+    dev_id : str
+        the id of the device, which is also the file-name for the yml file that contains the dev params
+         (excluding the ".yml" file extension)
+
+    Returns
+    -------
+        the serial number of the device, or None
+    """
+    devices = read_devices()
+    device : DeviceArgs = devices[dev_id]
+    sn = device.device_sn
     if len(sn) == 0:
         return None
-    return sn[0]
+    return sn
 
 
-def map_database_to_deviceclass(dev_id, dev_id_param):
+def map_database_to_deviceclass(dev_id: str, dev_id_param:Dict[str, Any]):
     # Convert SN and sens param from metadata to kwarg for device function
     # input: dict, from _get_device_kwargs
     #   dict with keys: "SN":"xx", "sensors": {"sensor_ith":{parameters}}
@@ -285,7 +292,6 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
     kwarg = {}
     kwarg["device_id"] = dev_id
     kwarg["sensor_ids"] = list(info["sensors"])
-
     if "mock_Mbient" in dev_id:
         kwarg["name"] = dev_id
         k = list(info["sensors"])[0]
@@ -345,6 +351,7 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
         # f"{dev_id} should have only one sensor"
         (k,) = info["sensors"].keys()
         kwarg["sample_rate"] = int(info["sensors"][k]["temporal_res"])
+
     elif "Mouse" in dev_id:
         return kwarg
     elif "IPhone" in dev_id:
@@ -357,25 +364,25 @@ def map_database_to_deviceclass(dev_id, dev_id_param):
     return kwarg
 
 
-def _get_device_kwargs(task_id, conn: connection):
+def _get_device_kwargs(task_id):
     task: RawTaskParams = get_task(task_id)
     dev_kwarg = {}
     for dev_id, dev_sens_ids in zip(task.device_id_array, task.sensor_id_array):
         # TODO test that dev_sens_ids are from correct dev_id, eg. dev_sens_ids =
         # {Intel_D455_rgb_1,Intel_D455_depth_1} dev_id= Intel_D455_x
         dev_id_param = {}
-        dev_id_param["SN"] = _get_dev_sn(dev_id, conn)
+        dev_id_param["SN"] = _get_dev_sn(dev_id)
 
         dev_id_param["sensors"] = {}
         for sens_id in dev_sens_ids:
             if len(sens_id):
-                dev_id_param["sensors"][sens_id] = _get_sensor_kwargs(sens_id, conn)
+                dev_id_param["sensors"][sens_id] = _get_sensor_kwargs(sens_id)
         kwarg = map_database_to_deviceclass(dev_id, dev_id_param)
         dev_kwarg[dev_id] = kwarg
     return dev_kwarg
 
 
-def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
+def get_device_kwargs_by_task(collection_id) -> OrderedDict:
     """
     Gets devices kwargs for all the tasks in the collection
 
@@ -390,13 +397,13 @@ def get_device_kwargs_by_task(collection_id, conn: connection) -> OrderedDict:
     -------
         Dict with keys = stimulus_id, vals = dict with dev parameters
     """
-
-    task_ids = get_task_ids_for_collection(collection_id)
-
+    # TODO(larry): Use TaskArgs to get device and sensor data instead of re-querying the yml files in other methods
+    task_dict : Dict[str, TaskArgs] = build_tasks_for_collection(collection_id)
+    task_list : List[TaskArgs] = list(task_dict.values())
     tasks_kwarg = OrderedDict()
-    for task_id in task_ids:
-        stim_id = get_stimulus_id(task_id)
-        task_kwarg = _get_device_kwargs(task_id, conn)
+    for task in task_list:
+        stim_id = task.stim_args.stimulus_id
+        task_kwarg = _get_device_kwargs(task.task_id)
         tasks_kwarg[stim_id] = task_kwarg
     return tasks_kwarg
 

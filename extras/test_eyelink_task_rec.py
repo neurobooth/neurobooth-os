@@ -83,7 +83,7 @@ tsk_fun(**task_karg)
 streams["eye_tracker"].stop()
 
 
-# fname =  f"{server_config['local_data_dir']}{subj_id}{task}2.edf"
+# fname =  f"{server_config.local_data_dir}{subj_id}{task}2.edf"
 # streams['eye_tracker'].start(fname)
 
 # # res = run_task(tsk_fun, s2, cmd, subj_id, task, send_stdout, task_karg)
