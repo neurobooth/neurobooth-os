@@ -56,10 +56,17 @@ class TestMetadator(unittest.TestCase):
         print(meta.get_task_ids_for_collection("testing"))
         self.assertIsNotNone(meta.get_task_ids_for_collection("testing"))
 
+    def test_get_dev_sn(self):
+        print(meta._get_dev_sn("FLIR_blackfly_1"))
+        self.assertIsNotNone(meta._get_dev_sn("FLIR_blackfly_1"))
+
+    def test_get_sensor_kwargs(self):
+        print(meta._get_sensor_kwargs("Eyelink_sens_1"))
+        self.assertIsNotNone(meta._get_sensor_kwargs("Eyelink_sens_1"))
+
     def test_get_device_kwargs_by_task(self):
         collection_id = 'testing'
-        conn = meta.get_database_connection('mock_neurobooth_1', False)
-        args = meta.get_device_kwargs_by_task(collection_id, conn)
+        args = meta.get_device_kwargs_by_task(collection_id)
         print(args)
 
         kwarg_alldevs = {}

@@ -135,7 +135,7 @@ class DeviceManager:
 
         self.marker_stream = node_name in ['presentation', 'dummy_stm']
 
-    def create_streams(self, collection_id: str = "mvp_030", win=None, conn=None) -> None:
+    def create_streams(self, collection_id: str = "mvp_030", win=None) -> None:
         """
         Initialize devices and LSL streams.
 
@@ -162,7 +162,7 @@ class DeviceManager:
 
         with ThreadPoolExecutor(max_workers=N_ASYNC_THREADS) as executor:
             futures = []
-            kwargs: Dict[str, Dict[str, Any]] = DeviceManager._get_device_kwargs(collection_id, conn)
+            kwargs: Dict[str, Dict[str, Any]] = DeviceManager._get_device_kwargs(collection_id)
             for device_key, device_args in kwargs.items():
                 if device_key not in self.assigned_devices:
                     continue
@@ -177,7 +177,7 @@ class DeviceManager:
         self.logger.info(f'LOADED DEVICES: {list(self.streams.keys())}')
 
     @staticmethod
-    def _get_device_kwargs(collection_id: str, conn=None) -> Dict[str, Any]:
+    def _get_device_kwargs(collection_id: str) -> Dict[str, Any]:
         """
         Fetch the keyword arguments for each device from the database.
 
@@ -185,7 +185,7 @@ class DeviceManager:
         :param conn: Connection to the database
         """
         # Get params from all tasks
-        kwarg_devs = meta.get_device_kwargs_by_task(collection_id, conn)
+        kwarg_devs = meta.get_device_kwargs_by_task(collection_id)
 
         # Get all device params from session
         kwarg_alldevs = {}

@@ -61,6 +61,7 @@ def run_stm(logger):
     host: str = ''
     session: Optional[StmSession] = None
     task_log_entry: Optional[TaskLogEntry] = None
+    print("STM waiting for message")
     for data, socket_conn in get_client_messages(socket_1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 

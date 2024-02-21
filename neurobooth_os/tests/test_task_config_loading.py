@@ -61,7 +61,7 @@ class TestTask(unittest.TestCase):
     # Integration Test (uses database)
     def test_instruction_args(self):
         instruction_id = "sacc_horiz_1"
-        args = meta._get_instruction_kwargs_from_file(instruction_id)
+        args = meta._get_instruction_kwargs(instruction_id)
         self.assertIsNone(args.instruction_text)
         self.assertEquals('mp4', args.instruction_filetype)
         self.assertEquals('oculomotor_horizontal_saccades_2022_06_03_v0.6.mp4', args.instruction_file)
