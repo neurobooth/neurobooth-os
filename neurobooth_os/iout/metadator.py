@@ -346,14 +346,11 @@ def map_database_to_deviceclass(dev_id: str, dev_id_param:Dict[str, Any]):
         kwarg["CHUNK"] = int(info["sensors"][k]["spatial_res_x"])
 
     elif "Eyelink" in dev_id:
-        print(f"dev_id_param values: {dev_id_param}")
-        print(f"Kwarg values: {kwarg}")
         kwarg["ip"] = info["SN"]
         # TODO test asserting assert(len(list(info['sensors']))==1) raise
         # f"{dev_id} should have only one sensor"
         (k,) = info["sensors"].keys()
         kwarg["sample_rate"] = int(info["sensors"][k]["temporal_res"])
-        print(f"Kwarg values final: {kwarg}")
 
     elif "Mouse" in dev_id:
         return kwarg
