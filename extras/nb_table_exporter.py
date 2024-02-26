@@ -80,6 +80,7 @@ def export_stimulus(id: str, conn):
         stim_dict['arg_parser'] = 'iout.stim_param_reader.py::MotStimArgs()'
     elif id.startswith("pursuit"):
         stim_dict['arg_parser'] = 'iout.stim_param_reader.py::PursuitStimArgs()'
+        stim_dict['start_phase_deg'] = 0
     elif id.startswith("saccades"):
         stim_dict['arg_parser'] = 'iout.stim_param_reader.py::SaccadesStimArgs()'
 
