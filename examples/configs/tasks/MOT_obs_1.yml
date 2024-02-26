@@ -43,4 +43,4 @@ sensor_id_array:
   - ''
 - - IPhone_sens_1
   - ''
-arg_parser: iout.stim_param_reader.py::RawTaskParams
+arg_parser: iout.stim_param_reader.py::RawTaskParams()

@@ -1,7 +1,7 @@
-task_id: hevelius_obs
-feature_of_interest: hand movement
-stimulus_id: hevelius_task_1
-instruction_id: mouse_1
+task_id: passage_demo_obs_1
+feature_of_interest: speech
+stimulus_id: passage_reading_task_1
+instruction_id: '9'
 device_id_array:
 - Intel_D455_1
 - Intel_D455_2
@@ -12,9 +12,9 @@ device_id_array:
 - Mbient_LF_2
 - Mbient_BK_1
 - FLIR_blackfly_1
-- Eyelink_1
-- Mouse
+- Eyelink_demo
 - Mic_Yeti_dev_1
+- Eyelink_1
 - IPhone_dev_1
 sensor_id_array:
 - - Intel_D455_rgb_1

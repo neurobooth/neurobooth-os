@@ -9,3 +9,6 @@ target_pos:
 - 0
 - 7.5
 target_size: 2.2
+trial_intruct:
+- Perform the task with your DOMINANT arm
+- Repeat the task with your NON-DOMINANT arm

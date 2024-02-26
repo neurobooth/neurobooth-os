@@ -1,18 +1,15 @@
-task_id: calibration_obs_1
-feature_of_interest: eytracker calibration
-stimulus_id: calibration_task_1
-instruction_id: '13'
+task_id: pursuit_test_obs_1
+feature_of_interest: eye movement
+stimulus_id: pursuit_task_1
+instruction_id: null
 device_id_array:
 - FLIR_blackfly_1
 - Eyelink_1
-- Mic_Yeti_dev_1
 - IPhone_dev_1
 sensor_id_array:
 - - FLIR_rgb_1
   - ''
 - - Eyelink_sens_1
-  - ''
-- - Mic_Yeti_sens_1
   - ''
 - - IPhone_sens_1
   - ''

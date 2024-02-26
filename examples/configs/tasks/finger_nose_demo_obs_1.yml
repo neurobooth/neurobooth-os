@@ -1,7 +1,7 @@
-task_id: hevelius_obs
-feature_of_interest: hand movement
-stimulus_id: hevelius_task_1
-instruction_id: mouse_1
+task_id: finger_nose_demo_obs_1
+feature_of_interest: motor
+stimulus_id: finger_nose_demo_task_1
+instruction_id: fnf_1
 device_id_array:
 - Intel_D455_1
 - Intel_D455_2
@@ -12,10 +12,7 @@ device_id_array:
 - Mbient_LF_2
 - Mbient_BK_1
 - FLIR_blackfly_1
-- Eyelink_1
-- Mouse
 - Mic_Yeti_dev_1
-- IPhone_dev_1
 sensor_id_array:
 - - Intel_D455_rgb_1
   - Intel_D455_depth_1
@@ -35,11 +32,9 @@ sensor_id_array:
   - mbient_gyro_1
 - - FLIR_rgb_1
   - ''
-- - Eyelink_sens_1
-  - ''
-- - Mouse
-  - ''
 - - Mic_Yeti_sens_1
+  - ''
+- - Eyelink_sens_1
   - ''
 - - IPhone_sens_1
   - ''

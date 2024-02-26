@@ -9,5 +9,4 @@ target_size: 0.7
 peak_velocity_deg: 33.3
 amplitude_deg: 15
 starting_offset_deg: 270
-start_phase_deg: 0
 ntrials: 5

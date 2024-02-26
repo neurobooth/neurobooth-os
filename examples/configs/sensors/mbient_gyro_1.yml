@@ -1,4 +1,0 @@
-sensor_id: mbient_gyro_1
-temporal_res: 100.0
-file_type: xdf
-arg_parser: iout.stim_param_reader.py::SensorArgs

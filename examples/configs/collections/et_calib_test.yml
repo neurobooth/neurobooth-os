@@ -4,4 +4,4 @@ task_ids:
 - calibration_obs_1
 - pursuit_test_obs_test
 - saccades_horizontal_obs_test
-arg_parser: iout.stim_param_reader.py::CollectionArgs
+arg_parser: iout.stim_param_reader.py::CollectionArgs()
