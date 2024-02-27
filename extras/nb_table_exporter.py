@@ -183,6 +183,7 @@ def export_all_device_records(task_ids):
             if dev_id == 'Eyelink_demo_1':
                 dev_id = 'Eyelink_demo'
             device_id_set.add(dev_id)
+
         table_device = Table("nb_device", conn=conn)
         for device_id in device_id_set:
             device_df = table_device.query(where=f"device_id = '{device_id}'")
@@ -212,6 +213,11 @@ def export_all_device_records(task_ids):
                 dev_dict['device_name'] = 'EYELINK Portable Duo'
                 dev_dict['sensor_ids'] = ['Eyelink_sens_1']
 
+            sensors = dev_dict['sensor_ids']
+            for i in range(len(sensors)):
+                if sensors[i] == 'mbient_gra_1':
+                    sensors[i] = 'mbient_gyro_1'
+
             filename = os.path.join(path, device_id + ".yml")
             with open(filename, 'w') as f:
                 yaml.dump(dev_dict, f, sort_keys=False)
@@ -225,6 +231,8 @@ def export_all_sensor_records():
     sensor_id_set = set()
     for dev in devices:
         for sens_id in dev.sensor_ids:
+            if sens_id == 'mbient_gra_1':
+                sens_id = 'mbient_gyro_1'
             sensor_id_set.add(sens_id)
     table_sens = Table("nb_sensor", conn=conn)
     sens_df = table_sens.query()
