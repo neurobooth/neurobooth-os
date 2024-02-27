@@ -1,5 +1,5 @@
 import math
-from typing import Optional
+from typing import Optional, List
 
 from neurobooth_terra import Table
 import yaml
@@ -92,13 +92,9 @@ def export_stimulus(id: str, conn):
     with open(filename, 'w') as file:
         yaml.dump(stim_dict, file, sort_keys=False)
 
-    print(yaml.dump(stim_dict, sort_keys=False))
-
 
 def export_instructions(identifier, conn):
     if identifier is not None:
-        print()
-        print(f"instruction_id = {identifier}")
         path = os.path.join(write_path, 'instructions')
         table = Table("nb_instruction", conn=conn)
 
@@ -114,7 +110,6 @@ def export_instructions(identifier, conn):
             instr_dict['instruction_filetype'] = file_type
             instr_dict['instruction_file'] = file
             instr_dict['arg_parser'] = 'iout.stim_param_reader.py::InstructionArgs()'
-            print(instr_dict)
             filename = os.path.join(path, identifier + ".yml")
             with open(filename, 'w') as f:
                 yaml.dump(instr_dict, f, sort_keys=False)
@@ -151,6 +146,17 @@ def export_task_records(task_ids):
         (feature_of_interest,) = task_df["feature_of_interest"]
         (device_ids,) = task_df["device_id_array"]
         (sensor_ids,) = task_df["sensor_id_array"]
+        new_sensor_ids = []
+
+        for i in sensor_ids:
+            sids = []
+            for j in i:
+                if len(j):
+                    sids.append(j)
+                else:
+                    "found empty"
+            new_sensor_ids.append(sids)
+
         (stimulus_id,) = task_df["stimulus_id"]
         (instr_id,) = task_df["instruction_id"]
 
@@ -160,11 +166,8 @@ def export_task_records(task_ids):
         task_dict['stimulus_id'] = stimulus_id
         task_dict['instruction_id'] = instr_id
         task_dict['device_id_array'] = device_ids
-        task_dict["sensor_id_array"] = sensor_ids
+        task_dict["sensor_id_array"] = new_sensor_ids
         task_dict['arg_parser'] = 'iout.stim_param_reader.py::RawTaskParams()'
-
-        while "" in sensor_ids:
-            sensor_ids.remove("")
 
         filename = os.path.join(path, t_id + ".yml")
         with open(filename, 'w') as f:
@@ -182,7 +185,6 @@ def export_all_device_records(task_ids):
         (device_ids,) = task_df["device_id_array"]
         device_id_set = set()
         for dev_id in device_ids:
-            print(dev_id)
             if dev_id == 'Eyelink_demo_1':
                 dev_id = 'Eyelink_demo'
             device_id_set.add(dev_id)
@@ -270,7 +272,6 @@ def export_all_sensor_records():
                 for key in additional_parameters:
                     sens_dict[key] = additional_parameters[key]
 
-            print(sens_dict)
             filename = os.path.join(path, sensor_id + ".yml")
             with open(filename, 'w') as f:
                 yaml.dump(sens_dict, f, sort_keys=False)
@@ -295,7 +296,6 @@ def export_used_collection_records(collection_ids):
             collection_dict["task_ids"] = task_array
             collection_dict['arg_parser'] = 'iout.stim_param_reader.py::CollectionArgs()'
 
-            print(collection_dict)
             filename = os.path.join(path, collection_id + ".yml")
             with open(filename, 'w') as f:
                 yaml.dump(collection_dict, f, sort_keys=False)
@@ -337,7 +337,6 @@ def export_all_study_records() -> int:
         
         study_dict['arg_parser'] = 'iout.stim_param_reader.py::StudyArgs()'
 
-        print(study_dict)
         filename = os.path.join(path, study_id + ".yml")
         with open(filename, 'w') as f:
             yaml.dump(study_dict, f, sort_keys=False)

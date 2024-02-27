@@ -9,11 +9,7 @@ device_id_array:
 - IPhone_dev_1
 sensor_id_array:
 - - FLIR_rgb_1
-  - ''
 - - Eyelink_sens_1
-  - ''
 - - Mic_Yeti_sens_1
-  - ''
 - - IPhone_sens_1
-  - ''
 arg_parser: iout.stim_param_reader.py::RawTaskParams()
