@@ -163,6 +163,9 @@ def export_task_records(task_ids):
         task_dict["sensor_id_array"] = sensor_ids
         task_dict['arg_parser'] = 'iout.stim_param_reader.py::RawTaskParams()'
 
+        while "" in sensor_ids:
+            sensor_ids.remove("")
+
         filename = os.path.join(path, t_id + ".yml")
         with open(filename, 'w') as f:
             yaml.dump(task_dict, f, sort_keys=False)
