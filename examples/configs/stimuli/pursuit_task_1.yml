@@ -5,9 +5,9 @@ duration: null
 arg_parser: iout.stim_param_reader.py::PursuitStimArgs()
 stimulus_file_type: psychopy
 stimulus_file: tasks.smooth_pursuit.pursuit_task.py::Pursuit()
+start_phase_deg: 0
 target_size: 0.7
 peak_velocity_deg: 33.3
 amplitude_deg: 15
 starting_offset_deg: 270
-start_phase_deg: 0
 ntrials: 5
