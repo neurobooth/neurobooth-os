@@ -184,6 +184,7 @@ class GazeHoldingStimArgs(EyeTrackerStimArgs):
 class FingerNoseStimArgs(EyeTrackerStimArgs):
     target_size: NonNegativeFloat
     target_pos: List[float]
+    trial_intruct: List[str]
 
 
 class FootTappingStimArgs(EyeTrackerStimArgs):
