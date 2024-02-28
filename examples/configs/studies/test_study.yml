@@ -9,4 +9,4 @@ protocol_version: null
 consent_version: null
 consent_dates: null
 protocol_dates: null
-arg_parser: iout.stim_param_reader.py::StudyArgs
+arg_parser: iout.stim_param_reader.py::StudyArgs()

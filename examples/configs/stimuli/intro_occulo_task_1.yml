@@ -2,7 +2,6 @@ stimulus_id: intro_occulo_task_1
 stimulus_description: intro
 num_iterations: 1
 duration: null
-arg_parser: iout.stim_param_reader.py::StimulusArgs()
+arg_parser: iout.stim_param_reader.py::StimulusArgs
 stimulus_file_type: psychopy
 stimulus_file: tasks.task.py::Introduction_Task()
-prompt: false

@@ -1,9 +1,7 @@
 import logging
 import os
-import socket
 
 from typing import Optional, Dict
-
 from pydantic import BaseModel
 
 from neurobooth_os import config
@@ -20,7 +18,7 @@ class StmSession(BaseModel):
     """
 
     session_name: str = ''
-    socket: socket
+    socket: object
     collection_id: str
     logger: logging.Logger
     db_conn: object
