@@ -145,6 +145,11 @@ def export_task_records(task_ids):
         task_df = table_task.query(where=f"task_id = '{t_id}'")
         (feature_of_interest,) = task_df["feature_of_interest"]
         (device_ids,) = task_df["device_id_array"]
+        new_dev_ids = []
+        for dev_id in device_ids:
+            if dev_id == 'Eyelink_demo_1':
+                dev_id = 'Eyelink_demo'
+            new_dev_ids.append(dev_id)
         (sensor_ids,) = task_df["sensor_id_array"]
         new_sensor_ids = []
 
@@ -165,7 +170,7 @@ def export_task_records(task_ids):
         task_dict['feature_of_interest'] = feature_of_interest
         task_dict['stimulus_id'] = stimulus_id
         task_dict['instruction_id'] = instr_id
-        task_dict['device_id_array'] = device_ids
+        task_dict['device_id_array'] = new_dev_ids
         task_dict["sensor_id_array"] = new_sensor_ids
         task_dict['arg_parser'] = 'iout.stim_param_reader.py::RawTaskParams()'
 
@@ -188,6 +193,7 @@ def export_all_device_records(task_ids):
             if dev_id == 'Eyelink_demo_1':
                 dev_id = 'Eyelink_demo'
             device_id_set.add(dev_id)
+        print(device_id_set)
 
         table_device = Table("nb_device", conn=conn)
         for device_id in device_id_set:
