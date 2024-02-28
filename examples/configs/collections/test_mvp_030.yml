@@ -28,4 +28,4 @@ task_ids:
 - altern_hand_mov_obs_1
 - coord_pause_obs_2
 - sit_to_stand_obs
-arg_parser: iout.stim_param_reader.py::CollectionArgs
+arg_parser: iout.stim_param_reader.py::CollectionArgs()

@@ -3,4 +3,4 @@ temporal_res: 60.0
 spatial_res_x: 640.0
 spatial_res_y: 480.0
 file_type: bag
-arg_parser: iout.stim_param_reader.py::SensorArgs
+arg_parser: iout.stim_param_reader.py::SensorArgs()

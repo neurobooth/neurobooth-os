@@ -5,4 +5,4 @@ task_ids:
 - saccades_horizontal_obs_1
 - timing_test_obs
 - clapping_test
-arg_parser: iout.stim_param_reader.py::CollectionArgs
+arg_parser: iout.stim_param_reader.py::CollectionArgs()

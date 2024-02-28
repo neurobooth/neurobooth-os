@@ -33,11 +33,7 @@ sensor_id_array:
 - - mbient_acc_1
   - mbient_gyro_1
 - - FLIR_rgb_1
-  - ''
 - - Mic_Yeti_sens_1
-  - ''
 - - Eyelink_sens_1
-  - ''
 - - IPhone_sens_1
-  - ''
-arg_parser: iout.stim_param_reader.py::RawTaskParams
+arg_parser: iout.stim_param_reader.py::RawTaskParams()

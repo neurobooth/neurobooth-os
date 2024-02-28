@@ -1,9 +1,15 @@
 import math
+from typing import Optional, List
 
 from neurobooth_terra import Table
 import yaml
 from neurobooth_os.iout.metadator import get_database_connection
 import os.path
+import shutil
+
+from neurobooth_os.iout.stim_param_reader import InstructionArgs
+
+import neurobooth_os.iout.metadator as meta
 
 """
     Utility code for exporting database tables to yaml files 
@@ -13,12 +19,13 @@ import os.path
 #   TODO(larry): Remove this module after all nb_ tables have been exported
 
 write_path = 'C:\\Users\\lw412\\Documents\\GitHub\\neurobooth\\neurobooth-os\\examples\\configs'
+copy_path = 'C:\\Users\\lw412\\.neurobooth_os'
 
 
-def export_stimulus(identifier, conn):
+def export_stimulus(id: str, conn):
     table = Table("nb_stimulus", conn=conn)
 
-    df = table.query(where=f"stimulus_id = '{identifier}'")
+    df = table.query(where=f"stimulus_id = '{id}'")
     (desc,) = df["stimulus_description"]
     (iterations,) = df["num_iterations"]
     (duration,) = df["duration"]
@@ -27,11 +34,11 @@ def export_stimulus(identifier, conn):
     (params,) = df["parameters"]
 
     stim_dict = {}
-    stim_dict['stimulus_id'] = identifier
+    stim_dict['stimulus_id'] = id
     stim_dict['stimulus_description'] = desc
     stim_dict['num_iterations'] = None
     stim_dict["duration"] = None
-    stim_dict['arg_parser'] = None
+    stim_dict['arg_parser'] = 'iout.stim_param_reader.py::StimulusArgs'
     stim_dict['stimulus_file_type'] = file_type
     stim_dict['stimulus_file'] = file
     if iterations is not None:
@@ -44,21 +51,50 @@ def export_stimulus(identifier, conn):
     else:
         stim_dict["duration"] = None
 
+    # handle specialized argument_parsers
+    if id.startswith("GoGo") or id.startswith("LaLa") or id.startswith("MeMe")\
+            or id.startswith("PaTa") or id.startswith("ahhh"):
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::SpeechStimArgs()'
+    elif id.startswith("passage"):
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::PassageReadingStimArgs()'
+    elif id.startswith("altern"):
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::HandMovementStimArgs()'
+    elif id.startswith("clapping"):
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::ClappingStimArgs()'
+    elif id == "coord_pause_task_1":
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::CoordPauseStimArgs()'
+    elif id == "coord_pause_task_2":
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::CoordPause2StimArgs()'
+    elif id.startswith("finger_nose"):
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::FingerNoseStimArgs()'
+    elif id == "fixation_no_targ_task_1" or id == 'sit_to_stand_task_1' \
+            or id == 'timing_test_task_1' or id.startswith('calibration'):
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::EyeTrackerStimArgs()'
+    elif id == "foot_tapping_task_1":
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::FootTappingStimArgs()'
+    elif id.startswith("gaze"):
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::GazeHoldingStimArgs()'
+    elif id.startswith("hevel"):
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::HeveliusStimArgs()'
+    elif id.startswith("MOT"):
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::MotStimArgs()'
+    elif id.startswith("pursuit"):
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::PursuitStimArgs()'
+        stim_dict['start_phase_deg'] = 0
+    elif id.startswith("saccades"):
+        stim_dict['arg_parser'] = 'iout.stim_param_reader.py::SaccadesStimArgs()'
+
     if params is not None:
         for key in params:
             stim_dict[key] = params[key]
 
-    filename = os.path.join(write_path, "stimuli", identifier + ".yml")
+    filename = os.path.join(write_path, "stimuli", id + ".yml")
     with open(filename, 'w') as file:
         yaml.dump(stim_dict, file, sort_keys=False)
-
-    print(yaml.dump(stim_dict, sort_keys=False))
 
 
 def export_instructions(identifier, conn):
     if identifier is not None:
-        print()
-        print(f"instruction_id = {identifier}")
         path = os.path.join(write_path, 'instructions')
         table = Table("nb_instruction", conn=conn)
 
@@ -73,46 +109,59 @@ def export_instructions(identifier, conn):
             instr_dict['instruction_text'] = text
             instr_dict['instruction_filetype'] = file_type
             instr_dict['instruction_file'] = file
-            print(instr_dict)
+            instr_dict['arg_parser'] = 'iout.stim_param_reader.py::InstructionArgs()'
             filename = os.path.join(path, identifier + ".yml")
             with open(filename, 'w') as f:
                 yaml.dump(instr_dict, f, sort_keys=False)
 
 
 # NOTE: Exports from production neurobooth. Don't write anything to the DB!!
-def export_all_stimulus_records():
+def export_all_stimulus_records(task_ids):
     connection = get_database_connection("neurobooth", False)
-    task_ids = get_task_ids_for_collection("test_mvp_030", connection)
+    # task_ids = get_task_ids_for_collection("test_mvp_030", connection)
     for task_id in task_ids:
-        result = get_task_param(task_id, connection)
-        export_stimulus(result[0], connection)
+        stim_id = get_task_param(task_id, connection)
+        export_stimulus(stim_id[0], connection)
 
-def export_all_instruction_records():
+
+def export_instruction_records(task_ids):
     connection = get_database_connection("neurobooth", False)
-    task_ids = get_task_ids_for_collection("test_mvp_030", connection)
-
-    def get_instruction_id(t_id, connection):
-        table_task = Table("nb_task", conn=connection)
-        task_df = table_task.query(where=f"task_id = '{t_id}'")
-        (instr,) = task_df["instruction_id"]
-        return instr
-
-    for task_id in task_ids:
-        instruction_id = get_instruction_id(task_id, connection)
+    # task_ids = get_task_ids_for_collection("test_mvp_030", connection)
+    tasks = meta.read_tasks()
+    instr_set = set()
+    for task in list(tasks.values()):
+        instr_set.add(task.instruction_id)
+    for instruction_id in instr_set:
         export_instructions(instruction_id, connection)
 
 
-def export_all_task_records():
+def export_task_records(task_ids):
     conn = get_database_connection("neurobooth", False)
     path = os.path.join(write_path, 'tasks')
 
-    task_ids = get_task_ids_for_collection("test_mvp_030", conn)
+    #task_ids = get_task_ids_for_collection("test_mvp_030", conn)
     for t_id in task_ids:
         table_task = Table("nb_task", conn=conn)
         task_df = table_task.query(where=f"task_id = '{t_id}'")
         (feature_of_interest,) = task_df["feature_of_interest"]
         (device_ids,) = task_df["device_id_array"]
+        new_dev_ids = []
+        for dev_id in device_ids:
+            if dev_id == 'Eyelink_demo_1':
+                dev_id = 'Eyelink_demo'
+            new_dev_ids.append(dev_id)
         (sensor_ids,) = task_df["sensor_id_array"]
+        new_sensor_ids = []
+
+        for i in sensor_ids:
+            sids = []
+            for j in i:
+                if len(j):
+                    sids.append(j)
+                else:
+                    "found empty"
+            new_sensor_ids.append(sids)
+
         (stimulus_id,) = task_df["stimulus_id"]
         (instr_id,) = task_df["instruction_id"]
 
@@ -121,27 +170,33 @@ def export_all_task_records():
         task_dict['feature_of_interest'] = feature_of_interest
         task_dict['stimulus_id'] = stimulus_id
         task_dict['instruction_id'] = instr_id
-        task_dict['device_id_array'] = device_ids
-        task_dict["sensor_id_array"] = sensor_ids
-        task_dict['arg_parser'] = 'iout.stim_param_reader.py::RawTaskParams'
+        task_dict['device_id_array'] = new_dev_ids
+        task_dict["sensor_id_array"] = new_sensor_ids
+        task_dict['arg_parser'] = 'iout.stim_param_reader.py::RawTaskParams()'
 
         filename = os.path.join(path, t_id + ".yml")
         with open(filename, 'w') as f:
             yaml.dump(task_dict, f, sort_keys=False)
 
 
-def export_all_device_records():
+def export_all_device_records(task_ids):
     conn = get_database_connection("neurobooth", False)
     path = os.path.join(write_path, 'devices')
 
-    task_ids = get_task_ids_for_collection("test_mvp_030", conn)
+    # task_ids = get_task_ids_for_collection("test_mvp_030", conn)
     for t_id in task_ids:
         table_task = Table("nb_task", conn=conn)
         task_df = table_task.query(where=f"task_id = '{t_id}'")
         (device_ids,) = task_df["device_id_array"]
+        device_id_set = set()
+        for dev_id in device_ids:
+            if dev_id == 'Eyelink_demo_1':
+                dev_id = 'Eyelink_demo'
+            device_id_set.add(dev_id)
+        print(device_id_set)
 
         table_device = Table("nb_device", conn=conn)
-        for device_id in device_ids:
+        for device_id in device_id_set:
             device_df = table_device.query(where=f"device_id = '{device_id}'")
             (device_sn,) = device_df["device_sn"]
             (device_name,) = device_df["device_name"]
@@ -162,7 +217,17 @@ def export_all_device_records():
             dev_dict["device_model"] = device_model
             dev_dict["device_firmware"] = device_firmware
             dev_dict["sensor_ids"] = sensor_id_array
-            dev_dict['arg_parser'] = 'iout.stim_param_reader.py::DeviceArgs'
+            dev_dict['arg_parser'] = 'iout.stim_param_reader.py::DeviceArgs()'
+
+            if dev_dict['device_name'] == 'EYELIN Portable Duo':
+                # fix data quality issues in database
+                dev_dict['device_name'] = 'EYELINK Portable Duo'
+                dev_dict['sensor_ids'] = ['Eyelink_sens_1']
+
+            sensors = dev_dict['sensor_ids']
+            for i in range(len(sensors)):
+                if sensors[i] == 'mbient_gra_1':
+                    sensors[i] = 'mbient_gyro_1'
 
             filename = os.path.join(path, device_id + ".yml")
             with open(filename, 'w') as f:
@@ -173,39 +238,52 @@ def export_all_sensor_records():
     conn = get_database_connection("neurobooth", False)
     path = os.path.join(write_path, 'sensors')
 
+    devices = list(meta.read_devices().values())
+    sensor_id_set = set()
+    for dev in devices:
+        for sens_id in dev.sensor_ids:
+            if sens_id == 'mbient_gra_1':
+                sens_id = 'mbient_gyro_1'
+            sensor_id_set.add(sens_id)
     table_sens = Table("nb_sensor", conn=conn)
     sens_df = table_sens.query()
     sens_df.reset_index()
     for index, row in sens_df.iterrows():
-        sensor_id = index
-        temporal_res = row["temporal_res"]
-        spatial_res_x = row["spatial_res_x"]
-        spatial_res_y = row["spatial_res_y"]
-        file_type = row["file_type"]
-        additional_parameters = row["additional_parameters"]
+        sensor_id: str = index
+        if sensor_id in sensor_id_set:
+            temporal_res = row["temporal_res"]
+            spatial_res_x = row["spatial_res_x"]
+            spatial_res_y = row["spatial_res_y"]
+            file_type = row["file_type"]
+            additional_parameters = row["additional_parameters"]
 
-        sens_dict = {}
-        sens_dict["sensor_id"] = sensor_id
-        if not math.isnan(temporal_res):
-            sens_dict["temporal_res"] = temporal_res
-        if not math.isnan(spatial_res_x):
-            sens_dict["spatial_res_x"] = spatial_res_x
-        if not math.isnan(spatial_res_y):
-            sens_dict["spatial_res_y"] = spatial_res_y
-        sens_dict["file_type"] = file_type
-        sens_dict['arg_parser'] = 'iout.stim_param_reader.py::SensorArgs'
+            sens_dict = {}
+            sens_dict["sensor_id"] = sensor_id
+            if not math.isnan(temporal_res):
+                sens_dict["temporal_res"] = temporal_res
+            if not math.isnan(spatial_res_x):
+                sens_dict["spatial_res_x"] = spatial_res_x
+            if not math.isnan(spatial_res_y):
+                sens_dict["spatial_res_y"] = spatial_res_y
+            sens_dict["file_type"] = file_type
 
-        if additional_parameters is not None:
-            for key in additional_parameters:
-                sens_dict[key] = additional_parameters[key]
+            if sensor_id.startswith("FLIR"):
+                sens_dict['arg_parser'] = 'iout.stim_param_reader.py::FlirSensorArgs()'
+            elif sensor_id.startswith("Eyelink"):
+                sens_dict['arg_parser'] = 'iout.stim_param_reader.py::EyelinkSensorArgs()'
+            else:
+                sens_dict['arg_parser'] = 'iout.stim_param_reader.py::SensorArgs()'
 
-        print(sens_dict)
-        filename = os.path.join(path, sensor_id + ".yml")
-        with open(filename, 'w') as f:
-            yaml.dump(sens_dict, f, sort_keys=False)
+            if additional_parameters is not None:
+                for key in additional_parameters:
+                    sens_dict[key] = additional_parameters[key]
+
+            filename = os.path.join(path, sensor_id + ".yml")
+            with open(filename, 'w') as f:
+                yaml.dump(sens_dict, f, sort_keys=False)
             
             
-def export_all_connection_records():
+def export_used_collection_records(collection_ids):
     conn = get_database_connection("neurobooth", False)
     path = os.path.join(write_path, 'collections')
 
@@ -214,28 +292,29 @@ def export_all_connection_records():
     collection_df.reset_index()
     for index, row in collection_df.iterrows():
         collection_id = index
-        is_active = row["is_active"]
-        task_array = row["task_array"]
+        if collection_id in collection_ids:
+            is_active = row["is_active"]
+            task_array = row["task_array"]
 
-        collection_dict = {}
-        collection_dict["collection_id"] = collection_id
-        collection_dict["is_active"] = is_active
-        collection_dict["task_ids"] = task_array
-        collection_dict['arg_parser'] = 'iout.stim_param_reader.py::CollectionArgs'
+            collection_dict = {}
+            collection_dict["collection_id"] = collection_id
+            collection_dict["is_active"] = is_active
+            collection_dict["task_ids"] = task_array
+            collection_dict['arg_parser'] = 'iout.stim_param_reader.py::CollectionArgs()'
 
-        print(collection_dict)
-        filename = os.path.join(path, collection_id + ".yml")
-        with open(filename, 'w') as f:
-            yaml.dump(collection_dict, f, sort_keys=False)
+            filename = os.path.join(path, collection_id + ".yml")
+            with open(filename, 'w') as f:
+                yaml.dump(collection_dict, f, sort_keys=False)
 
 
-def export_all_study_records():
+def export_all_study_records() -> int:
     conn = get_database_connection("neurobooth", False)
     path = os.path.join(write_path, 'studies')
 
     table_study = Table("nb_study", conn=conn)
     study_df = table_study.query()
     study_df.reset_index()
+    study_count = 0
     for index, row in study_df.iterrows():
         study_id = index
         irb_protocol_number = row["IRB_protocol_number"]
@@ -262,12 +341,14 @@ def export_all_study_records():
         study_dict["consent_dates"] = consent_dates
         study_dict["protocol_dates"] = protocol_dates
         
-        study_dict['arg_parser'] = 'iout.stim_param_reader.py::StudyArgs'
+        study_dict['arg_parser'] = 'iout.stim_param_reader.py::StudyArgs()'
 
-        print(study_dict)
         filename = os.path.join(path, study_id + ".yml")
         with open(filename, 'w') as f:
             yaml.dump(study_dict, f, sort_keys=False)
+        study_count = study_count + 1
+
+    return study_count
 
 
 def get_task_ids_for_collection(collection_id, conn):
@@ -290,7 +371,7 @@ def get_task_ids_for_collection(collection_id, conn):
     return tasks_ids
 
 
-def get_task_param(task_id, conn: connection):
+def get_task_param(task_id, conn):
     """
 
     Parameters
@@ -304,30 +385,63 @@ def get_task_param(task_id, conn: connection):
     -------
         tuple of task parameters
     """
-    # task_data, stimulus, instruction
     table_task = Table("nb_task", conn=conn)
     task_df = table_task.query(where=f"task_id = '{task_id}'")
-    (device_ids,) = task_df["device_id_array"]
-    (sensor_ids,) = task_df["sensor_id_array"]
     (stimulus_id,) = task_df["stimulus_id"]
-    (instr_id,) = task_df["instruction_id"]
+    return stimulus_id,
 
-    instr_kwargs: Optional[InstructionArgs] = None
 
-    if instr_id is not None:
-        instr_kwargs = _get_instruction_kwargs_from_file(instr_id)
-    return (
-        stimulus_id,
-        device_ids,
-        sensor_ids,
-        instr_kwargs,
-    )  # XXX: name similarly in calling function
+def export_all_records():
+    study_path = os.path.join(write_path, 'studies')
+    coll_path = os.path.join(write_path, 'collections')
+    task_path = os.path.join(write_path, 'tasks')
+    instr_path = os.path.join(write_path, 'instructions')
+    stim_path = os.path.join(write_path, 'stimuli')
+    dev_path = os.path.join(write_path, 'devices')
+    sens_path = os.path.join(write_path, 'sensors')
+
+    dest_study_path = os.path.join(copy_path, 'studies')
+    dest_coll_path = os.path.join(copy_path, 'collections')
+    dest_task_path = os.path.join(copy_path, 'tasks')
+    dest_instr_path = os.path.join(copy_path, 'instructions')
+    dest_stim_path = os.path.join(copy_path, 'stimuli')
+    dest_dev_path = os.path.join(copy_path, 'devices')
+    dest_sens_path = os.path.join(copy_path, 'sensors')
+
+    study_count = export_all_study_records()   # export all studies from database to yaml
+    shutil.copytree(study_path, dest_study_path)     # copy the studies to .neurobooth, where they can be used
+
+    studies = list(meta.read_studies().values())
+    assert study_count == len(studies)
+    for study in studies:
+        collection_ids = study.collection_ids
+        export_used_collection_records(collection_ids) # read all the stud
+    shutil.copytree(coll_path, dest_coll_path)     # copy the collections to .neurobooth, where they can be used
+    collections = list(meta.read_collections().values())
+    task_id_set = set()
+    for collection in collections:
+        for task in collection.task_ids:
+            task_id_set.add(task)
+    export_task_records(task_id_set)
+
+    shutil.copytree(task_path, dest_task_path)     # copy the tasks to .neurobooth, where they can be used
+    export_instruction_records(task_id_set)
+    shutil.copytree(instr_path, dest_instr_path)  # copy the instructions to .neurobooth, where they can be used
+    export_all_stimulus_records(task_id_set)
+    shutil.copytree(stim_path, dest_stim_path)  # copy the stimuli to .neurobooth, where they can be used
+    export_all_device_records(task_id_set)
+    shutil.copytree(dev_path, dest_dev_path)  # copy the devices to .neurobooth, where they can be used
+    export_all_sensor_records()
+    shutil.copytree(sens_path, dest_sens_path)  # copy the devices to .neurobooth, where they can be used
 
 
 # export_all_task_records()
 # export_all_stimulus_records()
 # export_all_instruction_records()
 # export_all_device_records()
-# export_all_connection_records()
-export_all_study_records()
+# export_all_collection_records()
+# export_all_study_records()
 # export_all_sensor_records()
+
+export_all_records()
+
