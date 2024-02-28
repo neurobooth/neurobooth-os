@@ -10,6 +10,18 @@ class PathError(Exception):
 
 
 def check_paths_from_study(study_name: str):
+    """
+    Reads and parses all yaml files found in NB_CONFIG folder. The named study is checked to
+    ensure that every element referenced from that study has an associated yaml file.
+
+    Parameters
+    ----------
+    study_name Name of the study to check
+
+    Returns
+    -------
+
+    """
     print("Note: Checking against yaml files in location specified in the NB_CONFIG environment variable.")
     studies: Dict[str, StudyArgs] = meta.read_studies()
     if study_name not in studies:
@@ -63,13 +75,19 @@ def check_paths_from_study(study_name: str):
 
     print(f"All elements referenced from study '{study_name}' have a yaml file"
           f" and all yaml files were successfully parsed.")
+    print("")
 
 
 def check_all_paths():
+    """
+    Reads all study yaml files in the NB_CONFIG folder and checks every one
+
+    Returns
+    -------
+    """
     studies: Dict[str, StudyArgs] = meta.read_studies()
     for study in studies:
         check_paths_from_study(study)
 
 
-# check_paths_from_study("study1")
 check_all_paths()
