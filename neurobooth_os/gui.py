@@ -318,6 +318,7 @@ def _start_ctr_server(window, host_ctr, port_ctr):
         daemon=True,
     )
     server_thread.start()
+    time.sleep(10)
     print("CTR server started")
 
 
