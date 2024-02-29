@@ -461,7 +461,6 @@ def gui():
                 # Open new layout with main window
                 window = _win_gen(_main_layout, sess_info)
                 _start_ctr_server(window, host_ctr, port_ctr)
-                time.sleep(10)
 
         ############################################################
         # Main Window -> Run neurobooth session
@@ -469,6 +468,7 @@ def gui():
 
         # Start servers on STM, ACQ
         elif event == "-init_servs-":
+            time.sleep(10)
             _start_servers(window, nodes)
 
         # Turn on devices
