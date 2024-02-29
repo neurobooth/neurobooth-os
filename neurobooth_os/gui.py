@@ -292,7 +292,7 @@ def _stop_lsl_and_save(
 
 
 def _start_servers(window, nodes):
-    print("GUI is starting STM and ACQ servers")
+    print("CTR is starting STM and ACQ servers")
     window["-init_servs-"].Update(button_color=("black", "red"))
     event, values = window.read(0.1)
     ctr_rec.start_servers(nodes=nodes)
@@ -304,7 +304,7 @@ def _start_servers(window, nodes):
 
 def _start_ctr_server(window, host_ctr, port_ctr):
     """Start threaded control server and new window."""
-    print("starting CTR server")
+    print("Starting CTR server")
     # Start a threaded socket CTR server once main window generated
     callback_args = window
     server_thread = threading.Thread(
@@ -318,6 +318,7 @@ def _start_ctr_server(window, host_ctr, port_ctr):
         daemon=True,
     )
     server_thread.start()
+    print("CTR server started")
 
 
 ######### Visualization ############
