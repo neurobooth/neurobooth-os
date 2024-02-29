@@ -309,6 +309,7 @@ def _win_gen(layout, *args):
         #    no_titlebar=False,
         grab_anywhere=False,
         default_button_element_size=(12, 1),
+        finalize=True
     )
     return window
 

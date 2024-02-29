@@ -304,7 +304,6 @@ def _start_servers(window, nodes):
 
 def _start_ctr_server(window, host_ctr, port_ctr):
     """Start threaded control server and new window."""
-
     print("starting CTR server")
     # Start a threaded socket CTR server once main window generated
     callback_args = window
