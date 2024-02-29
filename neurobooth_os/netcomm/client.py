@@ -44,7 +44,7 @@ def socket_message(message, node_name, wait_data=False):
         # connect to server on local computer
         s.connect((host, port))
         s.send(message.encode("ascii"))
-        logger.info("Connecting to host: {host} and port: {port}")
+        logger.info(f"Connecting to {node_name} at host: {host} and port: {port}")
 
         data = None
         if wait_data:
@@ -58,7 +58,7 @@ def socket_message(message, node_name, wait_data=False):
     try:
         data = connect()
     except (TimeoutError, ConnectionRefusedError) as e:
-        logger.error(f"Unable to connect to client: {e}. Retrying.")
+        logger.error(f"Unable to connect to {node_name} client at {host}:{port} : {e}. Retrying.")
         try:
             data = connect()
         except Exception as e:
@@ -108,7 +108,7 @@ def socket_time(node_name, print_flag=1, time_out=3):
 
     s.send(message.encode("ascii"))
     # message received from server
-    data = wait_socket_data(s, 2)
+    data = wait_socket_data(s, 30)
     s.close()
 
     t1 = time()
