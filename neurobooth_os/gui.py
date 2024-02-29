@@ -468,7 +468,6 @@ def gui():
 
         # Start servers on STM, ACQ
         elif event == "-init_servs-":
-            time.sleep(10)
             _start_servers(window, nodes)
 
         # Turn on devices
