@@ -318,7 +318,6 @@ def _start_ctr_server(window, host_ctr, port_ctr):
         daemon=True,
     )
     server_thread.start()
-    time.sleep(10)
     print("CTR server started")
 
 
@@ -462,6 +461,7 @@ def gui():
                 # Open new layout with main window
                 window = _win_gen(_main_layout, sess_info)
                 _start_ctr_server(window, host_ctr, port_ctr)
+                time.sleep(10)
 
         ############################################################
         # Main Window -> Run neurobooth session
