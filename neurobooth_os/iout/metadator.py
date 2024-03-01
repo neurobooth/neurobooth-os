@@ -330,7 +330,7 @@ def map_database_to_deviceclass(dev_id: str, dev_id_param:Dict[str, Any]):
                 kwarg["gyro_hz"] = int(info["sensors"][k]["temporal_res"])
 
     elif "FLIR_blackfly" in dev_id:
-        kwarg["camSN"] = info["SN"]
+        kwarg["device_sn"] = info["SN"]
         (k,) = info["sensors"].keys()
         # TODO test asserting assert(len(list(info['sensors']))==1) raise
         # f"{dev_id} should have only one sensor"
