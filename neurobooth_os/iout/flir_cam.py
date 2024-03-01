@@ -76,7 +76,9 @@ class VidRec_Flir:
         self.offsetX = offsetX
         self.offsetY = offsetY
         self.recording = False
+
         self.get_cam()
+        self.reset_cam()
         self.setup_cam()
 
         self.image_queue = queue.Queue(0)
@@ -88,6 +90,16 @@ class VidRec_Flir:
         self.system = PySpin.System.GetInstance()
         cam_list = self.system.GetCameras()
         self.cam = cam_list.GetBySerial(self.serial_num)
+
+    def reset_cam(self) -> None:
+        """
+        During setup_cam, sometimes we get "GenICam::AccessException= Node is not writable." errors.
+        This sequence of calls seems to get the camera into a clean state to resolve such issues.
+        """
+        self.cam.Init()
+        self.cam.BeginAcquisition()
+        self.cam.EndAcquisition()
+        self.cam.DeInit()
 
     def try_setval(self, func: Callable, val: Any) -> None:
         try:
