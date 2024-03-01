@@ -49,23 +49,16 @@ def main():
 
 
 def run_acq(logger):
-    print("ACQ running")
-
     s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print("ACQ Created socket")
+    port = config.neurobooth_config.acquisition.port
+    host = ''  # Listen on all network interfaces
 
+    device_manager = None
     lowFeed_running = False
     recording = False
-    print("ACQ initialized recording var")
-
-    port = config.neurobooth_config.acquisition.port
-    host = ''
-    device_manager = None
-    print("ACQ initialized device mgr")
-
     system_resource_logger = None
     task_args: Dict[str, TaskArgs] = {}
-    print("ACQ Waiting for message")
+
     for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 

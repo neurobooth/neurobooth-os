@@ -56,12 +56,13 @@ def main():
 
 def run_stm(logger):
     socket_1: socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    presented: bool = False
     port: int = config.neurobooth_config.presentation.port
-    host: str = ''
+    host: str = ''  # Listen on all network interfaces
+
+    presented: bool = False
     session: Optional[StmSession] = None
     task_log_entry: Optional[TaskLogEntry] = None
-    print("STM waiting for message")
+
     for data, socket_conn in get_client_messages(socket_1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 
