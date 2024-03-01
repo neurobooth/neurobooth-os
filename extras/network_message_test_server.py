@@ -55,6 +55,7 @@ def listener_callback(data: str, *args) -> None:
     if data == 'close':
         print('Close received!')
         sigint_event.set()
+        return
 
     data = int(data)
     with lock:
