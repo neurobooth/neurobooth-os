@@ -13,6 +13,7 @@ import os
 import threading
 import uuid
 import logging
+from typing import Callable, Any
 
 import cv2
 import PySpin
@@ -61,6 +62,8 @@ class VidRec_Flir:
         if self.serial_num is None:
             raise FlirException('FLIR serial number must be provided!')
 
+        self.logger = logging.getLogger(APP_LOG_NAME)
+
         self.fps = fps
         self.exposure = exposure
         self.gain = gain
@@ -79,7 +82,6 @@ class VidRec_Flir:
         self.image_queue = queue.Queue(0)
         self.outlet = self.createOutlet()
 
-        self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(f'FLIR: fps={str(self.fps)}; frame_size={str((self.sizex, self.sizey))}')
 
     def get_cam(self):
@@ -87,19 +89,17 @@ class VidRec_Flir:
         cam_list = self.system.GetCameras()
         self.cam = cam_list.GetBySerial(self.serial_num)
 
-    def try_setval(self, funct, val):
+    def try_setval(self, func: Callable, val: Any) -> None:
         try:
-            funct(val)
-        except:
-            print(f"FLIR {val} couldn't be changed")
+            func(val)
+        except Exception as e:
+            self.logger.error(f'FLIR: Error Setting Value [{func.__name__}({val})]: {e}')
 
     def setup_cam(self):
         self.cam.Init()
         self.open = True
 
-        self.try_setval(
-            self.cam.AcquisitionMode.SetValue, PySpin.AcquisitionMode_Continuous
-        )
+        self.try_setval(self.cam.AcquisitionMode.SetValue, PySpin.AcquisitionMode_Continuous)
         self.try_setval(self.cam.ExposureAuto.SetValue, PySpin.ExposureAuto_Off)
         self.try_setval(self.cam.AcquisitionFrameRate.SetValue, self.fps)
         self.try_setval(self.cam.Height.SetValue, self.sizey)
@@ -109,9 +109,7 @@ class VidRec_Flir:
         self.try_setval(self.cam.ExposureTime.SetValue, self.exposure)
         self.try_setval(self.cam.Gamma.SetValue, self.gamma)
         self.try_setval(self.cam.Gain.SetValue, self.gain)
-        self.try_setval(
-            self.cam.BalanceWhiteAuto.SetValue, PySpin.BalanceWhiteAuto_Once
-        )
+        self.try_setval(self.cam.BalanceWhiteAuto.SetValue, PySpin.BalanceWhiteAuto_Once)
 
         s_node_map = self.cam.GetTLStreamNodeMap()
         handling_mode = PySpin.CEnumerationPtr(
