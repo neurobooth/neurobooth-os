@@ -35,6 +35,7 @@ def main() -> None:
 
     signal.signal(signal.SIGINT, sigint_callback)
     sigint_event.wait()
+    listen_thread.join(timeout=5)
 
     print(f'Received {recv_array.sum()}/{len(recv_array)} messages.')
 
