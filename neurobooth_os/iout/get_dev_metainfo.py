@@ -81,8 +81,8 @@ sens_mbient["mbient_acc_1"] = {
     "temporal_res": 200,  # FLOAT NOT NULL,
     "file_type": "xdf",
 }
-sens_mbient["mbient_gra_1"] = {
-    "sensor_id": "mbient_gra_1",  # VARCHAR(255) NOT NULL,
+sens_mbient["mbient_gyro_1"] = {
+    "sensor_id": "mbient_gyro_1",  # VARCHAR(255) NOT NULL,
     "temporal_res": 200,  # FLOAT NOT NULL,
     "file_type": "xdf",
 }
