@@ -5,7 +5,6 @@ Created on Wed May 12 16:13:50 2021
 @author: CTR
 """
 import os.path as op
-import matplotlib.pyplot as plt
 import numpy as np
 import queue
 import time
@@ -261,13 +260,13 @@ class VidRec_Flir:
 
 
 if __name__ == "__main__":
-
     flir = VidRec_Flir()
+    print('Recording...')
     flir.start()
     time.sleep(10)
-    flir.close()
+    flir.stop()
+    print('Stopping...')
+    flir.ensure_stopped(timeout_seconds=5)
     flir.close()
     tdiff = np.diff(flir.stamp) / 1e6
-    plt.figure(), plt.hist(tdiff, 50), plt.show()
-    plt.figure(), plt.plot(tdiff), plt.show()
-    print("diff max min", tdiff.max() - tdiff.min())
+    print(f"diff range {np.ptp(tdiff):.2e}")
