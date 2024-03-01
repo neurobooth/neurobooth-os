@@ -183,7 +183,7 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
             justification="left",
             auto_size_text=True,
         ),
-        sg.Output(key="-OUTPUT-", size=(90, 28)),
+        # sg.Output(key="-OUTPUT-", size=(90, 28)),
     ]
     subject_text = (
         f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}'

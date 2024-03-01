@@ -602,7 +602,7 @@ def gui():
             inlet_keys = list(inlets)
             window["inlet_State"].update("\n".join(inlet_keys))
     window.close()
-    window["-OUTPUT-"].__del__()
+    # window["-OUTPUT-"].__del__()
     print("Session terminated")
 
 
