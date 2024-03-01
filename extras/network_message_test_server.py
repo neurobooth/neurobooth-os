@@ -50,7 +50,7 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def listener_callback(data: str) -> None:
+def listener_callback(data: str, *args) -> None:
     if data == 'close':
         print('Close received!')
         sigint_event.set()
