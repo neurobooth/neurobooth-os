@@ -110,20 +110,14 @@ def get_client_messages(s1: socket, port: int, host: str):
     conn : callable
         Socket connector for sending back data.
     """
-
     s1.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s1.bind((host, port))
-    print("socket bound to port", port)
-
-    # put the socket into listening mode
-    s1.listen(5)
-    print("socket is listening")
+    s1.listen(5)  # Put the socket into listening mode
 
     # Signal event to change init_serv button to green
     print("UPDATOR:-init_servs-")
 
-    # a forever loop until client wants to exit
-    while True:
+    while True:  # a forever loop until client wants to exit
 
         # establish connection with client
         try:
