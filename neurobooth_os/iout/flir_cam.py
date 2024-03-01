@@ -45,7 +45,7 @@ class VidRec_Flir:
         fps=195,
         offsetX=528,
         offsetY=152,
-        camSN=os.getenv("FLIR_SN"),
+        device_sn=None,
         exposure=4500,
         gain=20,
         gamma=0.6,
@@ -57,9 +57,11 @@ class VidRec_Flir:
         # need to read these parameters from database
         # need new column in database that allows parameters in json file
         self.open = False
-        self.serial_num = camSN
+        self.serial_num = device_sn
+        if self.serial_num is None:
+            raise FlirException('FLIR serial number must be provided!')
+
         self.fps = fps
-        self.serial_num = camSN
         self.exposure = exposure
         self.gain = gain
         self.gamma = gamma
