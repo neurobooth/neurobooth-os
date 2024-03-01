@@ -78,7 +78,6 @@ class VidRec_Flir:
         self.recording = False
 
         self.get_cam()
-        self.reset_cam()
         self.setup_cam()
 
         self.image_queue = queue.Queue(0)
