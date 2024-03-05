@@ -7,59 +7,77 @@ from typing import Any, Dict, List, Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
 
+IMPORT_LOCK = threading.Lock()
+
+
 # --------------------------------------------------------------------------------
 # Wrappers for device setup procedures.
 # TODO: Handle device setup calls and imports in a more standardized/extensible fashion!!!
 # --------------------------------------------------------------------------------
 def start_eyelink_stream(win, **device_args):
-    from neurobooth_os.iout.eyelink_tracker import EyeTracker
+    with IMPORT_LOCK:
+        from neurobooth_os.iout.eyelink_tracker import EyeTracker
     return EyeTracker(win=win, **device_args)
 
 
 def start_mouse_stream(_, **device_args):
-    from neurobooth_os.iout.mouse_tracker import MouseStream
+    with IMPORT_LOCK:
+        from neurobooth_os.iout.mouse_tracker import MouseStream
+
     device = MouseStream(**device_args)
     device.start()
     return device
 
+
 def start_mbient_stream(_, **device_args):
-    from neurobooth_os.iout.mbient import Mbient
+    with IMPORT_LOCK:
+        from neurobooth_os.iout.mbient import Mbient
+
     device = Mbient(**device_args)
     if not device.prepare():
         return None
     device.start()
     return device
 
+
 def start_mbient_mock_stream(_, **device_args):
-    from neurobooth_os.mock.mock_device_streamer import MockMbient
+    with IMPORT_LOCK:
+        from neurobooth_os.mock.mock_device_streamer import MockMbient
+
     device = MockMbient(**device_args)
     device.start()
     return device
 
 
 def start_intel_stream(_, **device_args):
-    from neurobooth_os.iout.camera_intel import VidRec_Intel
+    with IMPORT_LOCK:
+        from neurobooth_os.iout.camera_intel import VidRec_Intel
     return VidRec_Intel(**device_args)
 
 
 def start_intel_mock_stream(_, **device_args):
-    from neurobooth_os.mock.mock_device_streamer import MockCamera
+    with IMPORT_LOCK:
+        from neurobooth_os.mock.mock_device_streamer import MockCamera
     return MockCamera(**device_args)
 
 
 def start_flir_stream(_, **device_args):
-    from neurobooth_os.iout.flir_cam import VidRec_Flir
+    with IMPORT_LOCK:
+        from neurobooth_os.iout.flir_cam import VidRec_Flir
     return VidRec_Flir(**device_args)
 
 
 def start_iphone_stream(_, **device_args):
-    from neurobooth_os.iout.iphone import IPhone
+    with IMPORT_LOCK:
+        from neurobooth_os.iout.iphone import IPhone
     device = IPhone(name="IPhoneFrameIndex", **device_args)
     return device if device.prepare() else None
 
 
 def start_yeti_stream(_, **device_args):
-    from neurobooth_os.iout.microphone import MicStream
+    with IMPORT_LOCK:
+        from neurobooth_os.iout.microphone import MicStream
+
     device = MicStream(**device_args)
     device.start()
     return device
