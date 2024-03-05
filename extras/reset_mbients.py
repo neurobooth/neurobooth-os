@@ -7,7 +7,8 @@ from time import time
 import multiprocessing as mp
 import logging
 from neurobooth_os.iout.mbient import scan_BLE, connect_device, reset_device, MbientFailedConnection
-from neurobooth_os.log_manager import make_db_logger, APP_LOG_NAME
+from neurobooth_os.log_manager import make_db_logger, APP_LOG_NAME, PostgreSQLHandler
+from neurobooth_os.config import load_config
 
 
 DESCRIPTION = """Find and reset Mbient wearable devices.
@@ -204,7 +205,10 @@ class ResetDeviceProcess(mp.Process):
         return f'{self.device_info.name} <{self.device_info.address}>: {msg}'
 
     def run(self) -> None:
+        load_config()
         logger = make_db_logger()
+        logger.addHandler(logging.StreamHandler(sys.stdout))
+
         t0 = time()
         try:
             device = connect_device(
@@ -225,6 +229,7 @@ class ResetDeviceProcess(mp.Process):
                 logger.debug(self.format_message(f'Reset took {time() - t0:0.1f} sec.'))
             else:
                 logger.debug(self.format_message(f'Reset timed out!'))
+            logging.shutdown()
 
     def on_disconnect(self, status) -> None:
         logging.getLogger(APP_LOG_NAME).debug(self.format_message(f'Disconnected with status {status}.'))
@@ -267,7 +272,10 @@ def reset_devices(args: argparse.Namespace, devices: ADDRESS_MAP) -> (ADDRESS_MA
 
 
 def main():
+    load_config()
     logger = make_db_logger()
+    logger.addHandler(logging.StreamHandler(sys.stdout))
+
     try:
         args = parse_arguments()
         devices = device_discovery(args)
@@ -285,6 +293,8 @@ def main():
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
         raise e
+    finally:
+        logging.shutdown()
 
 
 if __name__ == "__main__":
