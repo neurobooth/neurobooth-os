@@ -6,8 +6,19 @@ from neurobooth_os.log_manager import APP_LOG_NAME
 from typing import Any, Dict, List, Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
-
-IMPORT_LOCK = threading.Lock()
+# --------------------------------------------------------------------------------
+# Device class imports
+# TODO: These need to be handled in a more flexible/extensible yet thread-safe way during device rework
+# --------------------------------------------------------------------------------
+from neurobooth_os.iout.eyelink_tracker import EyeTracker
+from neurobooth_os.iout.mouse_tracker import MouseStream
+from neurobooth_os.iout.microphone import MicStream
+from neurobooth_os.iout.mbient import Mbient
+from neurobooth_os.iout.camera_intel import VidRec_Intel
+from neurobooth_os.iout.flir_cam import VidRec_Flir
+from neurobooth_os.iout.iphone import IPhone
+from neurobooth_os.mock.mock_device_streamer import MockMbient
+from neurobooth_os.mock.mock_device_streamer import MockCamera
 
 
 # --------------------------------------------------------------------------------
@@ -15,24 +26,16 @@ IMPORT_LOCK = threading.Lock()
 # TODO: Handle device setup calls and imports in a more standardized/extensible fashion!!!
 # --------------------------------------------------------------------------------
 def start_eyelink_stream(win, **device_args):
-    with IMPORT_LOCK:
-        from neurobooth_os.iout.eyelink_tracker import EyeTracker
     return EyeTracker(win=win, **device_args)
 
 
 def start_mouse_stream(_, **device_args):
-    with IMPORT_LOCK:
-        from neurobooth_os.iout.mouse_tracker import MouseStream
-
     device = MouseStream(**device_args)
     device.start()
     return device
 
 
 def start_mbient_stream(_, **device_args):
-    with IMPORT_LOCK:
-        from neurobooth_os.iout.mbient import Mbient
-
     device = Mbient(**device_args)
     if not device.prepare():
         return None
@@ -41,43 +44,29 @@ def start_mbient_stream(_, **device_args):
 
 
 def start_mbient_mock_stream(_, **device_args):
-    with IMPORT_LOCK:
-        from neurobooth_os.mock.mock_device_streamer import MockMbient
-
     device = MockMbient(**device_args)
     device.start()
     return device
 
 
 def start_intel_stream(_, **device_args):
-    with IMPORT_LOCK:
-        from neurobooth_os.iout.camera_intel import VidRec_Intel
     return VidRec_Intel(**device_args)
 
 
 def start_intel_mock_stream(_, **device_args):
-    with IMPORT_LOCK:
-        from neurobooth_os.mock.mock_device_streamer import MockCamera
     return MockCamera(**device_args)
 
 
 def start_flir_stream(_, **device_args):
-    with IMPORT_LOCK:
-        from neurobooth_os.iout.flir_cam import VidRec_Flir
     return VidRec_Flir(**device_args)
 
 
 def start_iphone_stream(_, **device_args):
-    with IMPORT_LOCK:
-        from neurobooth_os.iout.iphone import IPhone
     device = IPhone(name="IPhoneFrameIndex", **device_args)
     return device if device.prepare() else None
 
 
 def start_yeti_stream(_, **device_args):
-    with IMPORT_LOCK:
-        from neurobooth_os.iout.microphone import MicStream
-
     device = MicStream(**device_args)
     device.start()
     return device
