@@ -17,8 +17,6 @@ from neurobooth_os.iout.mbient import Mbient
 from neurobooth_os.iout.camera_intel import VidRec_Intel
 from neurobooth_os.iout.flir_cam import VidRec_Flir
 from neurobooth_os.iout.iphone import IPhone
-from neurobooth_os.mock.mock_device_streamer import MockMbient
-from neurobooth_os.mock.mock_device_streamer import MockCamera
 
 
 # --------------------------------------------------------------------------------
@@ -43,18 +41,8 @@ def start_mbient_stream(_, **device_args):
     return device
 
 
-def start_mbient_mock_stream(_, **device_args):
-    device = MockMbient(**device_args)
-    device.start()
-    return device
-
-
 def start_intel_stream(_, **device_args):
     return VidRec_Intel(**device_args)
-
-
-def start_intel_mock_stream(_, **device_args):
-    return MockCamera(**device_args)
 
 
 def start_flir_stream(_, **device_args):
@@ -84,8 +72,6 @@ SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
         'Mic_Yeti_dev_1',
     ],
     'presentation': ['Eyelink_1', 'Mouse', 'Mbient_LF_1', 'Mbient_LF_2', 'Mbient_RF_2'],
-    'dummy_acq': ['mock_Intel_1', 'mock_Mbient_1', 'mock_Mbient_2'],
-    'dummy_stm': [],
 }
 
 
@@ -107,10 +93,6 @@ DEVICE_START_FUNCS: Dict[str, Callable] = {
     'Mbient_RH_2': start_mbient_stream,
     'Mic_Yeti_dev_1': start_yeti_stream,
     'Mouse': start_mouse_stream,
-    # ------------------------------
-    'mock_Intel_1': start_intel_mock_stream,
-    'mock_Mbient_1': start_mbient_mock_stream,
-    'mock_Mbient_2': start_mbient_mock_stream,
 }
 
 
