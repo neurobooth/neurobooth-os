@@ -8,7 +8,12 @@ This module handles task-level aspects and organization, such as:
    5. Saving performance reports
 """
 
-# TODO: Update configs to point to new Task object path
+# TODO: Create animation files from prior trial marker series
+# TODO: Finish refactoring of parameter structures
+# TODO: Update configs to point to new Task object path and to define the task parameters
+# TODO: Change circle colors to be more color blind friendly
+# TODO: Implement early task end logic
+# TODO: Update CSV files with one-time v2 updator script as described in Slack/shortcut
 
 import os.path as op
 from typing import List

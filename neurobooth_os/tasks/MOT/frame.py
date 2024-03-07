@@ -13,7 +13,7 @@ import math
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, List, Dict, Optional, Tuple, NamedTuple, Union, Literal
 from typing_extensions import Annotated
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field
 
 from psychopy import visual
 from psychopy.clock import Clock, wait, CountdownTimer
@@ -66,7 +66,8 @@ class TrialFrameParameters(BaseModel):
     click_timeout: Annotated[float, Field(gt=0)] = 60
 
 
-FrameChunk = Dict[str, List[Union[ImageFrameParameters, TrialFrameParameters]]]
+FrameParameters = Union[ImageFrameParameters, TrialFrameParameters]
+FrameChunk = Dict[str, List[FrameParameters]]
 
 
 # ========================================================================
@@ -423,10 +424,10 @@ class TrialFrame(MOTFrame):
     def show_moving_circles(self) -> None:
         clock = Clock()
         while clock.getTime() < self.movement_duration:
-            self.animation.step()
+            self.animation.step(clock.getTime())
             self.present_circles()
             check_if_aborted()
-        # TODO: One last step at last time if using precomputed trajectory
+        self.animation.step(self.movement_duration)  # Ensure consistent endpoint for precomputed trajectory
 
     def handle_clicks(self) -> None:
         """
