@@ -8,6 +8,8 @@ This module handles task-level aspects and organization, such as:
    5. Saving performance reports
 """
 
+# TODO: Update configs to point to new Task object path
+
 import os.path as op
 from typing import List
 from pydantic import BaseModel

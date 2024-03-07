@@ -8,7 +8,7 @@ import unittest
 from neurobooth_terra import Table
 
 from neurobooth_os.log_manager import make_default_logger, make_db_logger, _test_log_handler_fallback
-from neurobooth_os.iout.metadator import get_conn
+from neurobooth_os.iout.metadator import get_database_connection
 
 log_path = r"C:\neurobooth\test_data\test_logs"
 database = "mock_neurobooth_1"
@@ -19,7 +19,7 @@ session = "000000_2023_12_25 12:12:12"
 
 
 def get_connection():
-    c = get_conn(database, False)
+    c = get_database_connection(database, False)
     c.autocommit = True
     return c
 
@@ -82,16 +82,15 @@ class TestLogging(unittest.TestCase):
 
         try:
             do_something()
-        except Exception as e:
+        except Exception as argument:
             logger = make_default_logger(log_path, logging.DEBUG, False)
-            logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
-            logger.critical(e, exc_info=sys.exc_info())
+            logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
+                            exc_info=sys.exc_info())
 
         filename = os.path.join(log_path, os.listdir(log_path)[0])
 
         with open(filename, 'r') as file:
             data = file.read()
-
         self.assertTrue("Exiting" in data)
         self.assertTrue("Traceback" in data)
 
@@ -147,13 +146,21 @@ class TestLogging(unittest.TestCase):
         db_log = make_db_logger("", "")
         db_log.error("No subject or session for new records")
         df = get_records()
-        print(df)
-        print("Subject: " + df.iloc[0]["subject_id"])
         assert df.iloc[0]["subject_id"] == subject
         assert df.iloc[0]["session_id"] == session
 
         assert df.iloc[1]["subject_id"] == ""
         assert df.iloc[1]["session_id"] == ""
+
+    def test_db_logging4(self):
+        db_log = make_db_logger("", "")
+        try:
+            raise ValueError("something happened")
+        except Exception as argument:
+            db_log.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
+                            exc_info=sys.exc_info())
+        df = get_records()
+        assert (df is not None)
 
     def test_fallback(self):
         db_log = make_db_logger("foo", "bar", log_path, logging.DEBUG)
@@ -172,7 +179,6 @@ class TestLogging(unittest.TestCase):
         """
         db_log = make_db_logger(subject, session, log_path)
         db_log.critical("Test fallback logging. No DB Connection should be available")
-        print(log_path)
         file_list = os.listdir(log_path)[0]
         filename = os.path.join(log_path, file_list)
 
@@ -186,7 +192,7 @@ class TestLogging(unittest.TestCase):
         db_log = make_db_logger("000000", "000000_2023_12_25 12:12:12", log_path)
         try:
             raise RuntimeError("This is a test")
-        except RuntimeError as Argument:
+        except RuntimeError:
             db_log.exception("Test db logging with traceback")
         df = get_records()
         assert df.iloc[0]["traceback"] is not None
@@ -195,7 +201,7 @@ class TestLogging(unittest.TestCase):
     def test_get_records(self):
         """Meta-testing: Tests the get_records and delete_records utility function used in these tests"""
         df = get_records()
-        assert(df is not None)
+        assert (df is not None)
         delete_records()
         df = get_records()
         assert df.empty

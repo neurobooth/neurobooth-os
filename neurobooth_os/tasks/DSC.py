@@ -87,7 +87,7 @@ class DSC(Task_Eyetracker):
 
         self.setup(self.win)
 
-    def run(self, prompt=True, last_task=False, subj_id="test", **kwargs):
+    def run(self, prompt=True, last_task=False, subj_id="test", **kwarg):
 
         self.results = []  # array to store trials details and responses
         self.outcomes = {}  # object containing outcome variables

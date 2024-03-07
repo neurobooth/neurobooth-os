@@ -72,7 +72,7 @@ def split_sens_files(
 
     if conn is not None:
         table_sens_log = Table("log_sensor_file", conn=conn)
-        _, devices_ids, _, _ = meta._get_task_param(task_id, conn)
+        devices_ids = meta.get_device_ids(task_id)
 
     # get video filenames if videofiles marker present
     videofiles = {}
@@ -220,7 +220,10 @@ def create_h5_from_csv(dont_split_xdf_fpath, conn, server_name=None):
             # change to NAS path if necessary
             if not os.path.exists(row[0]):
                 row[0] = row[0].replace('\\', '/')
-                row[0] = row[0].replace(cfg.neurobooth_config[server_name]["local_data_dir"][:-1], cfg.neurobooth_config["remote_data_dir"])
+                row[0] = row[0].replace(
+                    cfg.neurobooth_config.server_by_name(server_name).local_data_dir[:-1],
+                    cfg.neurobooth_config.remote_data_dir
+                )
             out = split_sens_files(row[0], task_id=row[1], conn=conn)
 
             if len(out) == 0:

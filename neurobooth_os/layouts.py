@@ -85,7 +85,7 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
         [
             sg.T("Study ID"),
             sg.Combo(
-                meta.get_study_ids(conn),
+                meta.get_study_ids(),
                 key="study_id",
                 enable_events=True,
                 size=(44, 1),
@@ -327,7 +327,7 @@ def write_task_notes(subject_id, staff_id, task_name, task_notes):
         The task notes.
     """
 
-    fname = f'{cfg.neurobooth_config["control"]["local_data_dir"]}{subject_id}/{subject_id}-{task_name}-notes.txt'
+    fname = op.join(cfg.neurobooth_config.control.local_data_dir, subject_id, f'{subject_id}-{task_name}-notes.txt')
     task_txt = ""
     if not op.exists(fname):
         task_txt += f"{subject_id}, {staff_id}\n"

@@ -1,0 +1,5 @@
+instruction_id: fnf_1
+instruction_text: null
+instruction_filetype: null
+instruction_file: motor_Finger_to_Nose_Task_2022_03_21_v0.5.mp4
+arg_parser: iout.stim_param_reader.py::InstructionArgs()

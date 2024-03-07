@@ -23,7 +23,6 @@ from neurobooth_os.tasks import SitToStand
 from neurobooth_os.tasks import utils
 from neurobooth_os.iout.eyelink_tracker import EyeTracker
 from neurobooth_os.layouts import  write_task_notes
-from neurobooth_os.tasks.task_importer import get_task_funcs
 
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -46,7 +45,6 @@ mock = True
 # paramaters = query_database(subject, study, collection, mock)
 
 # tasks = read_collection(collection_id) # Json file, dictionary of dictionaries
-#tasks = get_task_funcs(collection_id, conn)
 
 #for task, param in tasks.items():
 #    task

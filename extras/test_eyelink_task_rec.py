@@ -31,7 +31,7 @@ print(os.getcwd())
 
 server_name = "presentation"
 config.load_config()
-server_config = config.neurobooth_config[server_name]
+server_config = config.neurobooth_config.server_by_name(server_name)
 
 def fake_task(**kwarg):
     sleep(10)
@@ -66,7 +66,7 @@ win.color = [0, 0, 0]
 win.flip()
 task_karg = {
     "win": win,
-    "path": server_config["local_data_dir"],
+    "path": server_config.local_data_dir,
     "subj_id": subj_id,
     "eye_tracker": streams["eye_tracker"],
     "marker_outlet": streams["marker"],
@@ -83,7 +83,7 @@ tsk_fun(**task_karg)
 streams["eye_tracker"].stop()
 
 
-# fname =  f"{server_config['local_data_dir']}{subj_id}{task}2.edf"
+# fname =  f"{server_config.local_data_dir}{subj_id}{task}2.edf"
 # streams['eye_tracker'].start(fname)
 
 # # res = run_task(tsk_fun, s2, cmd, subj_id, task, send_stdout, task_karg)

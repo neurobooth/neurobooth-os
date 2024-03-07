@@ -1,0 +1,6 @@
+collection_id: no_IMU
+is_active: false
+task_ids:
+- noIMU_gogogo_obs_1
+- noIMU_ahh_obs_1
+arg_parser: iout.stim_param_reader.py::CollectionArgs()

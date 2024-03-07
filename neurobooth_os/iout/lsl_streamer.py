@@ -1,9 +1,22 @@
 import logging
 import threading
 from neurobooth_os.iout import metadator as meta
+from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 from typing import Any, Dict, List, Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
+
+# --------------------------------------------------------------------------------
+# Device class imports
+# TODO: These need to be handled in a more flexible/extensible yet thread-safe way during device rework
+# --------------------------------------------------------------------------------
+from neurobooth_os.iout.eyelink_tracker import EyeTracker
+from neurobooth_os.iout.mouse_tracker import MouseStream
+from neurobooth_os.iout.microphone import MicStream
+from neurobooth_os.iout.mbient import Mbient
+from neurobooth_os.iout.camera_intel import VidRec_Intel
+from neurobooth_os.iout.flir_cam import VidRec_Flir
+from neurobooth_os.iout.iphone import IPhone
 
 
 # --------------------------------------------------------------------------------
@@ -11,54 +24,37 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 # TODO: Handle device setup calls and imports in a more standardized/extensible fashion!!!
 # --------------------------------------------------------------------------------
 def start_eyelink_stream(win, **device_args):
-    from neurobooth_os.iout.eyelink_tracker import EyeTracker
     return EyeTracker(win=win, **device_args)
 
 
 def start_mouse_stream(_, **device_args):
-    from neurobooth_os.iout.mouse_tracker import MouseStream
     device = MouseStream(**device_args)
     device.start()
     return device
 
+
 def start_mbient_stream(_, **device_args):
-    from neurobooth_os.iout.mbient import Mbient
     device = Mbient(**device_args)
     if not device.prepare():
         return None
     device.start()
     return device
 
-def start_mbient_mock_stream(_, **device_args):
-    from neurobooth_os.mock.mock_device_streamer import MockMbient
-    device = MockMbient(**device_args)
-    device.start()
-    return device
-
 
 def start_intel_stream(_, **device_args):
-    from neurobooth_os.iout.camera_intel import VidRec_Intel
     return VidRec_Intel(**device_args)
 
 
-def start_intel_mock_stream(_, **device_args):
-    from neurobooth_os.mock.mock_device_streamer import MockCamera
-    return MockCamera(**device_args)
-
-
 def start_flir_stream(_, **device_args):
-    from neurobooth_os.iout.flir_cam import VidRec_Flir
     return VidRec_Flir(**device_args)
 
 
 def start_iphone_stream(_, **device_args):
-    from neurobooth_os.iout.iphone import IPhone
     device = IPhone(name="IPhoneFrameIndex", **device_args)
     return device if device.prepare() else None
 
 
 def start_yeti_stream(_, **device_args):
-    from neurobooth_os.iout.microphone import MicStream
     device = MicStream(**device_args)
     device.start()
     return device
@@ -76,11 +72,10 @@ SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
         'Mic_Yeti_dev_1',
     ],
     'presentation': ['Eyelink_1', 'Mouse', 'Mbient_LF_1', 'Mbient_LF_2', 'Mbient_RF_2'],
-    'dummy_acq': ['mock_Intel_1', 'mock_Mbient_1', 'mock_Mbient_2'],
-    'dummy_stm': [],
 }
 
 
+# TODO: Move this mapping to configuration files
 DEVICE_START_FUNCS: Dict[str, Callable] = {
     'Eyelink_1': start_eyelink_stream,
     'FLIR_blackfly_1': start_flir_stream,
@@ -98,10 +93,6 @@ DEVICE_START_FUNCS: Dict[str, Callable] = {
     'Mbient_RH_2': start_mbient_stream,
     'Mic_Yeti_dev_1': start_yeti_stream,
     'Mouse': start_mouse_stream,
-    # ------------------------------
-    'mock_Intel_1': start_intel_mock_stream,
-    'mock_Mbient_1': start_mbient_mock_stream,
-    'mock_Mbient_2': start_mbient_mock_stream,
 }
 
 
@@ -133,7 +124,7 @@ class DeviceManager:
 
         self.marker_stream = node_name in ['presentation', 'dummy_stm']
 
-    def create_streams(self, collection_id: str = "mvp_030", win=None, conn=None) -> None:
+    def create_streams(self, collection_id: str = "mvp_030", win=None) -> None:
         """
         Initialize devices and LSL streams.
 
@@ -150,6 +141,7 @@ class DeviceManager:
 
         def start_and_register_device(device_key: str, device_args: Dict[str, Any]) -> None:
             self.logger.debug(f'Device Manager Starting: {device_key}')
+            self.logger.debug(f'Device Manager Starting with args: {device_args}')
             device = DEVICE_START_FUNCS[device_key](win, **device_args)
             if device is None:
                 self.logger.warning(f'Device Manager Failed to Start: {device_key}')
@@ -159,7 +151,8 @@ class DeviceManager:
 
         with ThreadPoolExecutor(max_workers=N_ASYNC_THREADS) as executor:
             futures = []
-            for device_key, device_args in DeviceManager._get_device_kwargs(collection_id, conn).items():
+            kwargs: Dict[str, Dict[str, Any]] = DeviceManager._get_device_kwargs(collection_id)
+            for device_key, device_args in kwargs.items():
                 if device_key not in self.assigned_devices:
                     continue
                 if device_key in ASYNC_STARTUP:
@@ -173,16 +166,15 @@ class DeviceManager:
         self.logger.info(f'LOADED DEVICES: {list(self.streams.keys())}')
 
     @staticmethod
-    def _get_device_kwargs(collection_id: str, conn=None) -> Dict[str, Any]:
+    def _get_device_kwargs(collection_id: str) -> Dict[str, Any]:
         """
         Fetch the keyword arguments for each device from the database.
 
         :param collection_id: Name of study collection in the database.
-        :param win: PsychoPy window
         :param conn: Connection to the database
         """
         # Get params from all tasks
-        kwarg_devs = meta.get_device_kwargs_by_task(collection_id, conn)
+        kwarg_devs = meta.get_device_kwargs_by_task(collection_id)
 
         # Get all device params from session
         kwarg_alldevs = {}
@@ -194,15 +186,18 @@ class DeviceManager:
     # TODO: The below device-specific calls should all be refactored so that devices can be generically handled
     # TODO: E.g., devices should be able to register handlers for lifecycle phases
 
+    # TODO: the is_camera check should be based on an attribute of the DeviceArgs, not a check against
+    #  a list of words, which requires updating code for every new camera
     @staticmethod
     def is_camera(stream_name: str) -> bool:
         """Test to see if a stream is a camera stream based on its name."""
         return stream_name.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]
 
-    def get_camera_streams(self, task_devices: List[str]) -> List[Any]:
+    def get_camera_streams(self, task_devices: List[DeviceArgs]) -> List[Any]:
+        device_ids = [dev.device_id for dev in task_devices]
         return [
             stream for stream_name, stream in self.streams.items()
-            if DeviceManager.is_camera(stream_name) and stream_name in task_devices
+            if DeviceManager.is_camera(stream_name) and stream_name in device_ids
         ]
 
     def get_mbient_streams(self) -> Dict[str, Any]:
@@ -216,14 +211,14 @@ class DeviceManager:
                 return stream
         return None
 
-    def start_cameras(self, filename: str, task_devices: List[str]) -> None:
+    def start_cameras(self, filename: str, task_devices: List[DeviceArgs]) -> None:
         for stream in self.get_camera_streams(task_devices):
             try:
                 stream.start(filename)
             except Exception as e:
                 self.logger.exception(e)
 
-    def stop_cameras(self, task_devices: List[str]):
+    def stop_cameras(self, task_devices: List[DeviceArgs]):
         cameras = self.get_camera_streams(task_devices)
         for stream in cameras:  # Signal cameras to stop
             stream.stop()

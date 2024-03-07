@@ -5,7 +5,6 @@ Created on Wed May 12 16:13:50 2021
 @author: CTR
 """
 import os.path as op
-import matplotlib.pyplot as plt
 import numpy as np
 import queue
 import time
@@ -13,6 +12,7 @@ import os
 import threading
 import uuid
 import logging
+from typing import Callable, Any
 
 import cv2
 import PySpin
@@ -45,7 +45,7 @@ class VidRec_Flir:
         fps=195,
         offsetX=528,
         offsetY=152,
-        camSN=os.getenv("FLIR_SN"),
+        device_sn=None,
         exposure=4500,
         gain=20,
         gamma=0.6,
@@ -57,9 +57,13 @@ class VidRec_Flir:
         # need to read these parameters from database
         # need new column in database that allows parameters in json file
         self.open = False
-        self.serial_num = camSN
+        self.serial_num = device_sn
+        if self.serial_num is None:
+            raise FlirException('FLIR serial number must be provided!')
+
+        self.logger = logging.getLogger(APP_LOG_NAME)
+
         self.fps = fps
-        self.serial_num = camSN
         self.exposure = exposure
         self.gain = gain
         self.gamma = gamma
@@ -71,13 +75,13 @@ class VidRec_Flir:
         self.offsetX = offsetX
         self.offsetY = offsetY
         self.recording = False
+
         self.get_cam()
         self.setup_cam()
 
         self.image_queue = queue.Queue(0)
         self.outlet = self.createOutlet()
 
-        self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(f'FLIR: fps={str(self.fps)}; frame_size={str((self.sizex, self.sizey))}')
 
     def get_cam(self):
@@ -85,19 +89,27 @@ class VidRec_Flir:
         cam_list = self.system.GetCameras()
         self.cam = cam_list.GetBySerial(self.serial_num)
 
-    def try_setval(self, funct, val):
+    def reset_cam(self) -> None:
+        """
+        During setup_cam, sometimes we get "GenICam::AccessException= Node is not writable." errors.
+        This sequence of calls seems to get the camera into a clean state to resolve such issues.
+        """
+        self.cam.Init()
+        self.cam.BeginAcquisition()
+        self.cam.EndAcquisition()
+        self.cam.DeInit()
+
+    def try_setval(self, func: Callable, val: Any) -> None:
         try:
-            funct(val)
-        except:
-            print(f"FLIR {val} couldn't be changed")
+            func(val)
+        except Exception as e:
+            self.logger.error(f'FLIR: Error Setting Value [{func.__name__}({val})]: {e}')
 
     def setup_cam(self):
         self.cam.Init()
         self.open = True
 
-        self.try_setval(
-            self.cam.AcquisitionMode.SetValue, PySpin.AcquisitionMode_Continuous
-        )
+        self.try_setval(self.cam.AcquisitionMode.SetValue, PySpin.AcquisitionMode_Continuous)
         self.try_setval(self.cam.ExposureAuto.SetValue, PySpin.ExposureAuto_Off)
         self.try_setval(self.cam.AcquisitionFrameRate.SetValue, self.fps)
         self.try_setval(self.cam.Height.SetValue, self.sizey)
@@ -107,9 +119,7 @@ class VidRec_Flir:
         self.try_setval(self.cam.ExposureTime.SetValue, self.exposure)
         self.try_setval(self.cam.Gamma.SetValue, self.gamma)
         self.try_setval(self.cam.Gain.SetValue, self.gain)
-        self.try_setval(
-            self.cam.BalanceWhiteAuto.SetValue, PySpin.BalanceWhiteAuto_Once
-        )
+        self.try_setval(self.cam.BalanceWhiteAuto.SetValue, PySpin.BalanceWhiteAuto_Once)
 
         s_node_map = self.cam.GetTLStreamNodeMap()
         handling_mode = PySpin.CEnumerationPtr(
@@ -250,13 +260,13 @@ class VidRec_Flir:
 
 
 if __name__ == "__main__":
-
     flir = VidRec_Flir()
+    print('Recording...')
     flir.start()
     time.sleep(10)
-    flir.close()
+    flir.stop()
+    print('Stopping...')
+    flir.ensure_stopped(timeout_seconds=5)
     flir.close()
     tdiff = np.diff(flir.stamp) / 1e6
-    plt.figure(), plt.hist(tdiff, 50), plt.show()
-    plt.figure(), plt.plot(tdiff), plt.show()
-    print("diff max min", tdiff.max() - tdiff.min())
+    print(f"diff range {np.ptp(tdiff):.2e}")

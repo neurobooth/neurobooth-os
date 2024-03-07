@@ -1,0 +1,3 @@
+sensor_id: Mouse
+file_type: xdf
+arg_parser: iout.stim_param_reader.py::SensorArgs()

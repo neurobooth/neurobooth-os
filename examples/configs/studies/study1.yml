@@ -1,0 +1,15 @@
+study_id: study1
+study_title: longitudinal progression monitoring neurodegeneration
+collection_ids:
+- mvp_030
+- cognitive
+- demo
+- demo_calib
+- no_IMU
+- eyetracker_test
+irb_protocol_number: 20210099
+protocol_version: 2.0
+consent_version: null
+consent_dates: null
+protocol_dates: null
+arg_parser: iout.stim_param_reader.py::StudyArgs()

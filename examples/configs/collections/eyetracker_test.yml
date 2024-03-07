@@ -1,0 +1,6 @@
+collection_id: eyetracker_test
+is_active: false
+task_ids:
+- calibration_obs_1
+- pursuit_test_obs_1
+arg_parser: iout.stim_param_reader.py::CollectionArgs()

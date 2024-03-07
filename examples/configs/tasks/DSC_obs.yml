@@ -1,0 +1,39 @@
+task_id: DSC_obs
+feature_of_interest: RT
+stimulus_id: DSC_task_1
+instruction_id: dsc_1
+device_id_array:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+- Eyelink_1
+- IPhone_dev_1
+sensor_id_array:
+- - Intel_D455_rgb_1
+  - Intel_D455_depth_1
+- - Intel_D455_rgb_1
+  - Intel_D455_depth_1
+- - Intel_D455_rgb_1
+  - Intel_D455_depth_1
+- - mbient_acc_1
+  - mbient_gyro_1
+- - mbient_acc_1
+  - mbient_gyro_1
+- - mbient_acc_1
+  - mbient_gyro_1
+- - mbient_acc_1
+  - mbient_gyro_1
+- - mbient_acc_1
+  - mbient_gyro_1
+- - FLIR_rgb_1
+- - Mic_Yeti_sens_1
+- - Eyelink_sens_1
+- - IPhone_sens_1
+arg_parser: iout.stim_param_reader.py::RawTaskParams()

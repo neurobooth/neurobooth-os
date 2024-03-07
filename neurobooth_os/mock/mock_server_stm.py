@@ -19,7 +19,7 @@ from neurobooth_os.iout.lsl_streamer import (
     close_streams,
     reconnect_streams,
 )
-from neurobooth_os.netcomm import socket_message, get_client_messages, get_data_timeout
+from neurobooth_os.netcomm import socket_message, get_client_messages, get_data_with_timeout
 from neurobooth_os.tasks.task_importer import get_task_funcs
 from neurobooth_os.iout import metadator as meta
 
@@ -50,15 +50,15 @@ def mock_stm_routine(host, port, conn):
             log_task = eval(data.replace(f"prepare:{collection_id}:{database_name}:", ""))
             subject_id_date = log_task["subject_id-date"]
 
-            ses_folder = os.path.join(config.neurobooth_config["presentation"]["local_data_dir"], subject_id_date)
+            ses_folder = os.path.join(config.neurobooth_config.presentation.local_data_dir, subject_id_date)
             if not os.path.exists(ses_folder):
                 os.mkdir(ses_folder)
 
             # delete subj_date as not present in DB
             del log_task["subject_id-date"]
 
-            task_func_dict = get_task_funcs(collection_id, conn)
-            task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
+            task_func_dict = get_task_funcs(collection_id)
+            task_devs_kw = meta.get_device_kwargs_by_task(collection_id)
 
             if len(streams):
                 print("Checking prepared devices")
@@ -75,7 +75,7 @@ def mock_stm_routine(host, port, conn):
             log_task["log_session_id"] = session_id
 
             task_karg = {
-                "path": config.neurobooth_config["presentation"]["local_data_dir"],
+                "path": config.neurobooth_config.presentation.local_data_dir,
                 "subj_id": subject_id_date,
                 "marker_outlet": streams["marker"],
             }
@@ -96,7 +96,7 @@ def mock_stm_routine(host, port, conn):
                     continue
 
                 t_obs_id = task_func_dict[task]["t_obs_id"]
-                log_task_id = meta._make_new_task_row(conn, subj_id)
+                log_task_id = meta.make_new_task_row(conn, subj_id)
                 log_task["date_times"] = (
                     "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "}"
                 )
@@ -131,10 +131,10 @@ def mock_stm_routine(host, port, conn):
                     if events is not None
                     else "event:datestamp"
                 )
-                meta._fill_task_row(log_task_id, log_task, conn)
+                meta.fill_task_row(log_task_id, log_task, conn)
 
                 # Check if pause requested, continue or stop
-                data = get_data_timeout(s1, 0.1)
+                data = get_data_with_timeout(s1, 0.1)
                 if data == "pause tasks":
                     print("Session Paused")
 

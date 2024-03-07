@@ -16,6 +16,7 @@ import os.path as op
 
 import neurobooth_os
 from neurobooth_os.tasks.task import Task_Eyetracker
+from neurobooth_os.tasks.task import Eyelink_HostPC
 from neurobooth_os.tasks import utils
 
 
@@ -55,7 +56,7 @@ class Fixation_Target(Task_Eyetracker):
             )
 
 
-class Fixation_Target_Multiple(Task_Eyetracker):
+class Fixation_Target_Multiple(Eyelink_HostPC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -81,6 +82,7 @@ class Fixation_Target_Multiple(Task_Eyetracker):
 
             # Send event to eyetracker and to LSL separately
             self.sendMessage(self.marker_trial_start, False)
+            self.update_screen(self.target.pos[0], self.target.pos[1])
             self.show_text(
                 screen=self.target,
                 msg="Trial",
@@ -91,6 +93,7 @@ class Fixation_Target_Multiple(Task_Eyetracker):
             self.sendMessage(self.marker_trial_end, False)
 
         self.sendMessage(self.marker_task_end)
+        self.clear_screen()
 
         if prompt:
             func_kwargs = locals()
@@ -165,14 +168,5 @@ class Fixation_Target_sidetrials(Task_Eyetracker):
 
 if __name__ == "__main__":
 
-    # task = Task(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
-    # task.run()
-
-    # task = Fixation_Target(instruction_file=op.join(neurobooth_os.__path__[0], 'tasks', 'assets', 'test.mp4'))
-    # task.run(prompt=True, duration=3,  target_pos=(0,0))
-
     t = Fixation_Target_Multiple()
     t.run(duration=3, trial_pos=[(0, 7.5), (15, 7.5), (-15, 0)], target_size=0.7)
-
-    # t= Fixation_Target_sidetrials()
-    # t.run(duration=3, target_pos=(0,7.5), target_size=.7, trial_intruct=["Do the task with your DOMINANT arm", "Do the task with your NON-DOMINANT arm"])

@@ -12,8 +12,7 @@ import threading
 from datetime import datetime
 import cv2
 import numpy as np
-import psutil
-from typing import Dict
+# from typing import Dict
 
 import PySimpleGUI as sg
 import liesl
@@ -131,19 +130,15 @@ def _select_subject(window, subject_df):
     return first_name, last_name, subject_id
 
 
-def _get_tasks(window, conn, collection_id):
-    tasks_obs = meta.get_tasks(collection_id, conn)
-    tasks = list()
-    for task in tasks_obs:
-        task_id, *_ = meta._get_task_param(task, conn)
-        tasks.append(task_id)
-    tasks = ", ".join(tasks)
+def _get_tasks(window, collection_id: str):
+    task_obs = meta.get_task_ids_for_collection(collection_id)
+    tasks = ", ".join(task_obs)
     window["tasks"].update(value=tasks)
     return tasks
 
 
-def _get_collections(window, conn, study_id):
-    collection_ids = meta.get_collection_ids(study_id, conn)
+def _get_collections(window, study_id: str):
+    collection_ids = meta.get_collection_ids(study_id)
     window["collection_id"].update(values=collection_ids)
     return collection_ids
 
@@ -216,7 +211,7 @@ def _start_lsl_session(window, inlets, folder=""):
     # Create LSL session
     streamargs = [{"name": n} for n in list(inlets)]
     session = liesl.Session(
-        prefix=folder, streamargs=streamargs, mainfolder=cfg.neurobooth_config['control']["local_data_dir"]
+        prefix=folder, streamargs=streamargs, mainfolder=cfg.neurobooth_config.control.local_data_dir
     )
     print("LSL session with: ", list(inlets))
     return session
@@ -264,7 +259,6 @@ def _stop_lsl_and_save(
 ):
     """Stop LSL stream and save"""
     t0 = time.time()
-    # print("memory: ", psutil.virtual_memory())
     # Stop LSL recording
     session.stop_recording()
     print(f"CTR Stop session took: {time.time() - t0}")
@@ -298,10 +292,13 @@ def _stop_lsl_and_save(
 
 
 def _start_servers(window, nodes):
+    print("GUI starting servers")
     window["-init_servs-"].Update(button_color=("black", "red"))
     event, values = window.read(0.1)
     ctr_rec.start_servers(nodes=nodes)
     time.sleep(1)
+    print("GUI servers started")
+
     return event, values
 
 
@@ -384,17 +381,17 @@ def _prepare_devices(window, nodes, collection_id, log_task, database):
     return vidf_mrkr, event, values
 
 
-def _get_ports(database):
+def _get_ports():
     nodes = ("acquisition", "presentation")
     host_ctr, port_ctr = node_info("control")
-    return database, nodes, host_ctr, port_ctr
+    return nodes, host_ctr, port_ctr
 
 
 def gui():
     """Start the Graphical User Interface.
     """
-    database = cfg.neurobooth_config["database"]["dbname"]
-    database, nodes, host_ctr, port_ctr = _get_ports(database=database)
+    database = cfg.neurobooth_config.database.dbname
+    nodes, host_ctr, port_ctr = _get_ports()
 
     # declare and intialize vars
     subject_id = None
@@ -402,7 +399,7 @@ def gui():
     last_name = None
     tasks = None
 
-    conn = meta.get_conn(database=database)
+    conn = meta.get_database_connection()
     window = _win_gen(_init_layout, conn)
 
     plttr = stream_plotter()
@@ -425,7 +422,7 @@ def gui():
         if event == "study_id":
             study_id = values[event]
             log_sess["study_id"] = study_id
-            collection_ids = _get_collections(window, conn, study_id)
+            collection_ids = _get_collections(window, study_id)
 
         elif event == "find_subject":
             subject_df = _find_subject(
@@ -442,7 +439,7 @@ def gui():
         elif event == "collection_id":
             collection_id = values[event]
             log_sess["collection_id"] = collection_id
-            tasks = _get_tasks(window, conn, collection_id)
+            tasks = _get_tasks(window, collection_id)
 
         elif event == "_init_sess_save_":
             if values["tasks"] == "":
@@ -483,7 +480,7 @@ def gui():
 
         elif event == "Start":
             session_id = meta._make_session_id(conn, log_sess)
-            tasks = [k for k, v in values.items() if "task" in k and v is True]
+            tasks = [k for k, v in values.items() if "obs" in k and v is True]
             _start_task_presentation(
                 window, tasks, sess_info["subject_id"], session_id, steps, node=nodes[1]
             )
@@ -498,8 +495,10 @@ def gui():
                     "Pressed saving notes without task, select one in the dropdown list"
                 )
                 continue
-            if not op.exists(f"{cfg.neurobooth_config['control']['local_data_dir']}/{sess_info['subject_id_date']}"):
-                os.mkdir(f"{cfg.neurobooth_config['control']['local_data_dir']}/{sess_info['subject_id_date']}")
+
+            session_dir = op.join(cfg.neurobooth_config.control.local_data_dir, sess_info['subject_id_date'])
+            if not op.exists(session_dir):
+                os.mkdir(session_dir)
 
             if values["_notes_taskname_"] == "All tasks":
                 for task in sess_info["tasks"].split(", "):
@@ -616,15 +615,13 @@ def main():
         logger.debug("Starting GUI")
         gui()
         logger.debug("Stopping GUI")
-    except Exception as e:
-        logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
-        logger.critical(e, exc_info=sys.exc_info())
-        logger.critical("Stopping GUI (error-state)")
-        raise e
+    except Exception as argument:
+        logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
+                        exc_info=sys.exc_info())
+        raise argument
+
     finally:
-        print("logging shutdown starting")
         logging.shutdown()
-        print("logging shutdown complete")
 
 if __name__ == "__main__":
     main()

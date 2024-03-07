@@ -7,6 +7,7 @@ import neurobooth_os.iout.metadator as meta
 
 table_name = "log_task_param"
 stimulus_id = "calibration_task_1"
+task_id = "calibration_obs_1"
 log_task_id = "tech_log_885"
 
 
@@ -53,13 +54,17 @@ class TestLogging(unittest.TestCase):
 
     def test_task_logging2(self):
         """Tests logging to database using make_db_logger with session and subject set"""
+
         param_dict = {"foo": "bar", "fizz": "buzz"}
+        task_func_dict = meta.build_tasks_for_collection('testing')
+
+        meta.log_task_params(db_test_utils.TEST_CONNECTION, stimulus_id, log_task_id,
+                             dict(task_func_dict[task_id].stim_args))
 
         meta.log_task_params(db_test_utils.TEST_CONNECTION,
                              stimulus_id=stimulus_id,
                              log_task_id=log_task_id,
                              task_param_dictionary=param_dict)
-        meta._get_stimulus_kwargs("finger_nose_demo_task_1", get_connection())
         df = get_records(table_name)
         assert df.iloc[0]["stimulus_id"] == stimulus_id
         assert df.iloc[0]["log_task_id"] == log_task_id

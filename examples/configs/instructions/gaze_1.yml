@@ -1,0 +1,5 @@
+instruction_id: gaze_1
+instruction_text: null
+instruction_filetype: null
+instruction_file: oculomotor_gaze_holding_2022_01_14_v0.5.mp4
+arg_parser: iout.stim_param_reader.py::InstructionArgs()

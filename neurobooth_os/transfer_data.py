@@ -17,8 +17,8 @@ def log_output(pipe):
 
 
 def main(args: argparse.Namespace):
-    destination = config.neurobooth_config["remote_data_dir"]
-    source = config.neurobooth_config[args.source_node_name]["local_data_dir"]
+    destination = config.neurobooth_config.remote_data_dir
+    source = config.neurobooth_config.server_by_name(args.source_node_name).local_data_dir
 
     try:
         # Move data to remote
