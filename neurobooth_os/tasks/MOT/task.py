@@ -32,6 +32,9 @@ from neurobooth_os.tasks.MOT.frame import (
     TrialFrame,
     ExampleFrame,
     PracticeFrame,
+    FrameParameters,
+    TrialFrameParameters,
+    ImageFrameParameters,
     FrameChunk,
 )
 from neurobooth_os.iout.stim_param_reader import EyeTrackerStimArgs
@@ -44,30 +47,30 @@ class MotStimArgs(EyeTrackerStimArgs):
     test_chunks: List[FrameChunk]
 
 
+class MOTException(Exception):
+    pass
+
+
 class MOT(Task_Eyetracker):
     root_dir = op.join(neurobooth_os.__path__[0], 'tasks', 'MOT')
 
     def __init__(
         self,
-        path: str = "",
-        subj_id: str = "test",
-        task_name: str = "MOT",
-        numCircles: int = 10,
-        time_presentation: float = 3,
-        trial_duration: float = 5,
-        clickTimeout: float = 60,
-        seed: int = 2,
+        path: str = '',
+        subj_id: str = 'test',
+        task_name: str = 'MOT',
+        continue_message: str = 'continue.png',
+        practice_chunks: List[FrameChunk] = (),
+        test_chunks: List[FrameChunk] = (),
         **kwargs,
     ):
         """
         :param path: Output path for the task results.
         :param subj_id: The subject ID.
         :param task_name: The name of this task.
-        :param numCircles: The total number of circles to draw.
-        :param time_presentation: How long the targets flash black and green.
-        :param trial_duration: How long the circles move fot.
-        :param clickTimeout: How long to wait for all clicks to be completed before timing out.
-        :param seed: Seed used to initialize the random number sequence controlling all test trials.
+        :param continue_message: Asset path to the image to display for the task continue message.
+        :param practice_chunks: A series of frame chunk configurations defining the task practice.
+        :param test_chunks: A series of frame chunk configurations defining the testing portion of the test.
         """
         super().__init__(**kwargs)
 
@@ -75,19 +78,14 @@ class MOT(Task_Eyetracker):
         self.task_name = task_name
         self.subject_id = subj_id
 
-        self.n_circles = numCircles
-        self.move_duration = trial_duration
-        self.flash_duration = time_presentation
-        self.click_timeout = clickTimeout
-        self.seed = seed
-        self.paper_size = 500  # size of stimulus graphics page
-
         self.win.color = "white"
         self.win.flip()
 
         self.score: int = 0
         self.n_repetitions: int = 0
-        self._init_frame_sequence()
+        # Stim params are saved in case we need to recreate frames to flush old data during task reinit
+        self.stimulus_params = [continue_message, practice_chunks, test_chunks]
+        self._init_frame_sequence(*self.stimulus_params)
 
     @classmethod
     def asset_path(cls, asset: str) -> str:
@@ -98,80 +96,40 @@ class MOT(Task_Eyetracker):
         """
         return op.join(cls.root_dir, 'assets', asset)
 
-    def _init_frame_sequence(self) -> None:
+    def _create_frame(self, params: FrameParameters) -> MOTFrame:
+        if isinstance(params, TrialFrameParameters):
+            params: TrialFrameParameters
+            return TrialFrame()  # TODO: Refactor TrialFrame to work with an animator
+        elif isinstance(params, ImageFrameParameters):
+            params: ImageFrameParameters
+            return ImageFrame(self.win, self, params.image_path)
+        else:
+            raise MOTException(f'Unexpected frame parameter type: {type(params)}')
+
+    def _create_chunk(self, chunk: FrameChunk) -> List[MOTFrame]:
+        return [self._create_frame(params) for params in chunk.frames]
+
+    def _init_frame_sequence(
+            self,
+            continue_message: str,
+            practice_chunks: List[FrameChunk],
+            test_chunks: List[FrameChunk],
+    ) -> None:
         """Create the sequences of frames that compose this task"""
         self.continue_message = visual.ImageStim(
             self.win,
-            image=MOT.asset_path('continue.png'),
+            image=MOT.asset_path(continue_message),
             pos=(0, 0),
             units="deg",
         )
 
-        common_trial_kwargs = {
-            'flash_duration': self.flash_duration,
-            'movement_duration': self.move_duration,
-            'click_timeout': self.click_timeout,
-            'n_circles': self.n_circles,
-            'paper_size': self.paper_size,
-            'circle_radius': 15,
-            'velocity_noise': 15,
-        }
-
-        self.intro_chunk: List[MOTFrame] = [
-            ImageFrame(self.win, self, 'intro.png'),
-            ImageFrame(self.win, self, 'inst1.png'),
-            ExampleFrame(
-                self.win, self,
-                n_targets=2, circle_speed=0.5, trial_count=0, random_seed='example1',
-                **common_trial_kwargs
-            ),
-            ImageFrame(self.win, 'inst2.png'),
-            PracticeFrame(
-                self.win, self,
-                n_targets=2, circle_speed=0.5, trial_count=0, random_seed='practice1',
-                **common_trial_kwargs
-            ),
-            ImageFrame(self.win, self, 'inst3.png'),
-            PracticeFrame(
-                self.win, self,
-                n_targets=3, circle_speed=0.5, trial_count=0, random_seed='practice2',
-                **common_trial_kwargs
-            ),
-        ]
-
-        self.chunk_3tgt: List[MOTFrame] = [ImageFrame(self.win, self, 'targ3.png')]
-        self.chunk_4tgt: List[MOTFrame] = [ImageFrame(self.win, self, 'targ4.png')]
-        self.chunk_5tgt: List[MOTFrame] = [ImageFrame(self.win, self, 'targ5.png')]
-
-        for i in range(6):
-            speed = i + 1
-            trial_count = i + 1
-
-            seed = self.seed + i
-            self.chunk_3tgt.append(TrialFrame(
-                self.win, self,
-                n_targets=3, circle_speed=speed, trial_count=trial_count, random_seed=seed,
-                **common_trial_kwargs
-            ))
-
-            seed = self.seed + i + 10
-            self.chunk_4tgt.append(TrialFrame(
-                self.win, self,
-                n_targets=4, circle_speed=speed, trial_count=trial_count, random_seed=seed,
-                **common_trial_kwargs
-            ))
-
-            seed = self.seed + i + 20
-            self.chunk_5tgt.append(TrialFrame(
-                self.win, self,
-                n_targets=5, circle_speed=speed, trial_count=trial_count, random_seed=seed,
-                **common_trial_kwargs
-            ))
+        self.practice_chunks = [self._create_chunk(chunk) for chunk in practice_chunks]
+        self.test_chunks = [self._create_chunk(chunk) for chunk in test_chunks]
 
     def run(self, prompt=True, last_task=False, subj_id="test", **kwargs):
         self.subject_id = subj_id
         if self.n_repetitions > 0:
-            self._init_frame_sequence()  # Create new frames for repeats to flush old data
+            self._init_frame_sequence(*self.stimulus_params)  # Create new frames for repeats to flush old data
 
         self.score = 0
         self.present_instructions(prompt)
@@ -179,10 +137,11 @@ class MOT(Task_Eyetracker):
         self.win.flip()
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
         try:
-            self.run_chunk(self.intro_chunk)
-            self.run_chunk(self.chunk_3tgt)
-            self.run_chunk(self.chunk_4tgt)
-            self.run_chunk(self.chunk_5tgt)
+            for chunk in self.practice_chunks:
+                self.run_chunk(chunk)
+            for chunk in self.test_chunks:
+                # TODO: Implement early stopping check
+                self.run_chunk(chunk)
         except TaskAborted:
             print('MOT aborted')
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
@@ -222,7 +181,7 @@ class MOT(Task_Eyetracker):
     def save_results(self):
         results: List[TrialResult] = [
             frame.results()
-            for frame in chain(self.intro_chunk, self.chunk_3tgt, self.chunk_4tgt, self.chunk_5tgt)
+            for frame in chain(self.practice_chunks, self.test_chunks)
             if isinstance(frame, TrialFrame) and frame.trial_type in ['test', 'practice']
         ]
         results_df = pd.DataFrame(results, columns=TrialResult._fields)
