@@ -8,7 +8,7 @@ This module handles task-level aspects and organization, such as:
    5. Saving performance reports
 """
 
-# TODO: Create animation files from prior trial marker series
+# TODO: Load animation files; should probably be in .neurobooth_os by configs
 # TODO: Finish refactoring of parameter structures
 # TODO: Update configs to point to new Task object path and to define the task parameters
 # TODO: Change circle colors to be more color blind friendly
