@@ -1,7 +1,7 @@
 import logging
 import threading
 from neurobooth_os.iout import metadator as meta
-from neurobooth_os.iout.stim_param_reader import DeviceArgs
+from neurobooth_os.iout.stim_param_reader import DeviceArgs, TaskArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 from typing import Any, Dict, List, Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
@@ -139,26 +139,27 @@ class DeviceManager:
 
         register_lock = threading.Lock()
 
-        def start_and_register_device(device_key: str, device_args: Dict[str, Any]) -> None:
-            self.logger.debug(f'Device Manager Starting: {device_key}')
+        def start_and_register_device(device_args: DeviceArgs) -> None:
+            device_id = device_args.device_id
+            self.logger.debug(f'Device Manager Starting: {device_id}')
             self.logger.debug(f'Device Manager Starting with args: {device_args}')
-            device = DEVICE_START_FUNCS[device_key](win, **device_args)
+            device = DEVICE_START_FUNCS[device_id](win, device_args)
             if device is None:
-                self.logger.warning(f'Device Manager Failed to Start: {device_key}')
+                self.logger.warning(f'Device Manager Failed to Start: {device_id}')
                 return
             with register_lock:
-                self.streams[device_key] = device
+                self.streams[device_id] = device
 
         with ThreadPoolExecutor(max_workers=N_ASYNC_THREADS) as executor:
             futures = []
-            kwargs: Dict[str, Dict[str, Any]] = DeviceManager._get_device_kwargs(collection_id)
+            kwargs: Dict[str, DeviceArgs] = DeviceManager._get_unique_devices(collection_id)
             for device_key, device_args in kwargs.items():
                 if device_key not in self.assigned_devices:
                     continue
                 if device_key in ASYNC_STARTUP:
-                    futures.append(executor.submit(start_and_register_device, device_key, device_args))
+                    futures.append(executor.submit(start_and_register_device, device_args))
                 else:  # Run sequentially if not specified as async
-                    start_and_register_device(device_key, device_args)
+                    start_and_register_device(device_args)
 
             for f in as_completed(futures):
                 f.result()  # Raise errors that occur asynchronously
@@ -166,22 +167,20 @@ class DeviceManager:
         self.logger.info(f'LOADED DEVICES: {list(self.streams.keys())}')
 
     @staticmethod
-    def _get_device_kwargs(collection_id: str) -> Dict[str, Any]:
+    def _get_unique_devices(collection_id: str) -> Dict[str, DeviceArgs]:
         """
-        Fetch the keyword arguments for each device from the database.
+        Fetch the DeviceArgs for each device used in the collection, eliminating any duplicates
 
-        :param collection_id: Name of study collection in the database.
-        :param conn: Connection to the database
+        :param collection_id: Name of study collection.
         """
-        # Get params from all tasks
-        kwarg_devs = meta.get_device_kwargs_by_task(collection_id)
-
-        # Get all device params from session
-        kwarg_alldevs = {}
-        for dc in kwarg_devs.values():
-            kwarg_alldevs.update(dc)
-
-        return kwarg_alldevs
+        # Get all tasks in collection
+        kwarg_devs: Dict[str, TaskArgs] = meta.build_tasks_for_collection(collection_id)
+        # Aggregate the devices used by the tasks
+        devices = {}
+        for task in kwarg_devs.values():
+            for device in task.device_args:
+                devices[device.device_id] = device
+        return devices
 
     # TODO: The below device-specific calls should all be refactored so that devices can be generically handled
     # TODO: E.g., devices should be able to register handlers for lifecycle phases

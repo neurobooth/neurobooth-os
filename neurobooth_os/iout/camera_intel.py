@@ -15,6 +15,7 @@ from pylsl import local_clock
 import pyrealsense2 as rs
 from pylsl import StreamInfo, StreamOutlet
 
+from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 
@@ -29,12 +30,7 @@ class RealSenseException(Exception):
 class VidRec_Intel:
     def __init__(
         self,
-        size_rgb=(640, 480),
-        size_depth=(640, 360),
-        device_id="Intel_D455_1",
-        sensor_ids=["Intel_D455_rgb_1", "Intel_D455_depth_1"],
-        fps_rgb=60,
-        fps_depth=60,
+        device_args: DeviceArgs,
         camindex=[3, "SerialNumber"],
     ):
 
@@ -46,14 +42,22 @@ class VidRec_Intel:
 
         self.device_index = camindex[0]
         self.serial_num = camindex[1]
-        self.fps = (fps_rgb, fps_depth)
-        self.frameSize = (size_rgb, size_depth)
-        self.device_id = device_id
-        self.sensor_ids = sensor_ids
+        self.fps = device_args.fps()
+        self.frameSize = device_args.framesize()
+        self.device_id = device_args.device_id
+        self.sensor_ids = device_args.sensor_ids
         self.config = rs.config()
         self.config.enable_device(self.serial_num)
         self.pipeline = rs.pipeline()
 
+        print(f"Framesize: {self.frameSize}")
+        print(f"Framesize: {self.frameSize[0][0]}")
+        print(f"Framesize: {self.frameSize[0][1]}")
+
+        print(f"FPS: {self.fps}")
+        print(f"FPS: {self.fps[0]}")
+        print(f"RS: {rs.stream.color}")
+        print(f"RS: {rs.format.rgb8}")
         self.config.enable_stream(
             rs.stream.color,
             self.frameSize[0][0],
@@ -62,7 +66,7 @@ class VidRec_Intel:
             self.fps[0],
         )
 
-        if fps_depth:
+        if device_args.has_depth_sensor():
             self.config.enable_stream(
                 rs.stream.depth,
                 self.frameSize[1][0],

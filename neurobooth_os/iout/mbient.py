@@ -12,6 +12,8 @@ from enum import IntEnum
 
 from mbientlab.warble import BleScanner
 from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings, Module, Model
+
+from neurobooth_os.iout.stim_param_reader import MbientDeviceArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 
 # --------------------------------------------------------------------------------
@@ -460,6 +462,7 @@ class Mbient:
 
     def __init__(
         self,
+        device_args: MbientDeviceArgs,
         mac: str,
         dev_name: str = "mbient",
         device_id: str = "mbient",
@@ -469,10 +472,10 @@ class Mbient:
         buzz_time_sec: float = 0,
         try_nmax: int = 5,
     ):
-        self.mac = mac
-        self.dev_name = dev_name
-        self.device_id = device_id
-        self.sensor_ids = sensor_ids
+        self.mac = device_args.device_sn
+        self.dev_name = device_args.device_name
+        self.device_id = device_args.device_id
+        self.sensor_ids = device_args.sensor_ids
         self.outlet_id = str(uuid.uuid4())
         self.buzz_time = buzz_time_sec
         self.max_connect_attempts = try_nmax

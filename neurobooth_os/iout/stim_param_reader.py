@@ -1,7 +1,7 @@
 from os import environ, path
 
 from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveFloat, PositiveInt
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Tuple
 import os
 import yaml
 
@@ -37,19 +37,37 @@ class CollectionArgs(BaseModel):
 
 class SensorArgs(BaseModel):
     sensor_id: str = Field(min_length=1, max_length=255)
-    temporal_res: Optional[PositiveFloat] = None
-    spatial_res_x: Optional[PositiveFloat] = None
-    spatial_res_y: Optional[PositiveFloat] = None
     file_type: str
     arg_parser: str
 
 
-class FlirSensorArgs(SensorArgs):
+class StandardSensorArgs(SensorArgs):
+    temporal_res: Optional[PositiveFloat] = None
+    spatial_res_x: Optional[PositiveFloat] = None
+    spatial_res_y: Optional[PositiveFloat] = None
+
+
+class MbientSensorArgs(SensorArgs):
+    hz: PositiveFloat
+
+
+class IntelSensorArgs(SensorArgs):
+    fps: PositiveInt
+    size_x: PositiveInt
+    size_y: PositiveInt
+    size: Optional[Tuple[float, float]] = None
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.size = (self.size_x, self.size_y)
+
+
+class FlirSensorArgs(StandardSensorArgs):
     offsetX: PositiveInt
     offsetY: PositiveInt
 
 
-class EyelinkSensorArgs(SensorArgs):
+class EyelinkSensorArgs(StandardSensorArgs):
     calibration_type: str
 
 
@@ -65,6 +83,60 @@ class DeviceArgs(BaseModel):
     sensor_ids: List[str]
     sensor_array: List[SensorArgs] = []
     arg_parser: str
+
+
+class IntelDeviceArgs(DeviceArgs):
+    sensor_array: List[IntelSensorArgs] = []
+
+    def fps(self):
+        """
+        Returns a tuple containing the fps value from each sensor
+
+        Returns
+        -------
+        tuple(float, float)
+        """
+        fps_rgb = None
+        fps_depth = None
+        for sensor in self.sensor_array:
+            if 'depth' in sensor.sensor_id:
+                fps_depth = sensor.fps
+            elif 'rgb' in sensor.sensor_id:
+                fps_rgb = sensor.fps
+        result = (fps_rgb, fps_depth)
+        return result
+
+    def framesize(self):
+        """
+        Returns a tuple containing the fps value from each sensor
+
+        Returns
+        -------
+        tuple(float, float)
+        """
+        framesize_rgb = None
+        framesize_depth = None
+        for sensor in self.sensor_array:
+            if 'depth' in sensor.sensor_id:
+                framesize_depth = sensor.size
+            elif 'rgb' in sensor.sensor_id:
+                framesize_rgb = sensor.size
+        result = (framesize_rgb, framesize_depth)
+        return result
+
+    def has_depth_sensor(self):
+        for sensor in self.sensor_array:
+            if 'depth' in sensor.sensor_id:
+                return True
+        return False
+
+
+class MbientDeviceArgs(DeviceArgs):
+    sensor_array: List[MbientSensorArgs] = []
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.device_name = self.device_id.split("_")[1]
 
 
 class InstructionArgs(BaseModel):
