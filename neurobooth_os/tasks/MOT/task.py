@@ -8,7 +8,8 @@ This module handles task-level aspects and organization, such as:
    5. Saving performance reports
 """
 
-# TODO: Load animation files; should probably be in .neurobooth_os by configs
+# TODO: Generate animation file for the example trial!
+# TODO: Load new params and animation files; should probably be in .neurobooth_os by configs
 # TODO: Finish refactoring of parameter structures
 # TODO: Update configs to point to new Task object path and to define the task parameters
 # TODO: Change circle colors to be more color blind friendly
@@ -17,7 +18,6 @@ This module handles task-level aspects and organization, such as:
 
 import os.path as op
 from typing import List
-from pydantic import BaseModel
 import pandas as pd
 from psychopy import visual
 from itertools import chain
@@ -34,9 +34,11 @@ from neurobooth_os.tasks.MOT.frame import (
     PracticeFrame,
     FrameChunk,
 )
+from neurobooth_os.iout.stim_param_reader import EyeTrackerStimArgs
 
 
-class MOTParameters(BaseModel):
+# TODO: For review: keep here or move to stim_param_reader?
+class MotStimArgs(EyeTrackerStimArgs):
     continue_message: str
     practice_chunks: List[FrameChunk]
     test_chunks: List[FrameChunk]
