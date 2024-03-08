@@ -16,7 +16,8 @@ continue_message: continue.png
 ################################################################################
 
 practice_chunks:  # Task instructions and practice parameters
-  - practice:
+  - chunk_name: practice
+    frames:
       - image_path: intro.png
       - image_path: inst1.png
       - trial_type: example
@@ -34,7 +35,8 @@ practice_chunks:  # Task instructions and practice parameters
         n_targets: 3
 
 test_chunks:  # Test parameters
-  - 3_targets:
+  - chunk_name: 3-target
+    frames:
       - image_path: targ3.png
       - trial_type: test
         animation_path: trial_02_3tgt.npz
@@ -60,7 +62,8 @@ test_chunks:  # Test parameters
         animation_path: trial_07_3tgt.npz
         n_targets: 3
 
-  - 4_targets:
+  - chunk_name: 4-target
+    frames:
       - image_path: targ4.png
       - trial_type: test
         animation_path: trial_08_4tgt.npz
@@ -86,7 +89,8 @@ test_chunks:  # Test parameters
         animation_path: trial_13_4tgt.npz
         n_targets: 4
 
-  - 5_targets:
+  - chunk_name: 5-target
+    frames:
       - image_path: targ5.png
       - trial_type: test
         animation_path: trial_14_5tgt.npz

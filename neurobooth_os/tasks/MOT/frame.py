@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import math
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, List, Dict, Optional, Tuple, NamedTuple, Union, Literal
+from typing import TYPE_CHECKING, List, Optional, Tuple, NamedTuple, Union, Literal
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field
 
@@ -67,7 +67,11 @@ class TrialFrameParameters(BaseModel):
 
 
 FrameParameters = Union[ImageFrameParameters, TrialFrameParameters]
-FrameChunk = Dict[str, List[FrameParameters]]
+
+
+class FrameChunk(BaseModel):
+    chunk_name: str
+    frames: List[FrameParameters]
 
 
 # ========================================================================
