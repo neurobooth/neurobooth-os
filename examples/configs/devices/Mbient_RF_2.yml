@@ -1,5 +1,5 @@
 device_id: Mbient_RF_2
-device_sn: E5:F6:FB:6D:11:8A
+mac: E5:F6:FB:6D:11:8A
 device_name: mbient
 device_location: 'Null'
 wearable_bool: true

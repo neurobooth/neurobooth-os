@@ -463,12 +463,6 @@ class Mbient:
     def __init__(
         self,
         device_args: MbientDeviceArgs,
-        mac: str,
-        dev_name: str = "mbient",
-        device_id: str = "mbient",
-        sensor_ids: List[str] = ("acc", "gyro"),
-        acc_hz: int = 100,
-        gyro_hz: int = 100,
         buzz_time_sec: float = 0,
         try_nmax: int = 5,
     ):
@@ -491,6 +485,11 @@ class Mbient:
         self.subscribed_signals: List[Any] = []
         self.outlet: Optional[StreamOutlet] = None
         self.data_handlers: List['Mbient.DATA_HANDLER'] = []
+        for sensor in device_args.sensor_array:
+            if "acc" in sensor.sensor_id:
+                self.acc_hz = int(sensor.hz)
+            elif "gyro" in sensor.sensor_id:
+                self.gyro_hz = int(sensor.hz)
 
         # Streaming-related variables
         self.callback = cbindings.FnVoid_VoidP_DataP(self._callback)
@@ -849,7 +848,8 @@ def test_script() -> None:
     logger.setLevel(logging.DEBUG)
 
     logger.info(f'Creating Device {args.name} at {args.mac}')
-    device = Mbient(mac=args.mac, dev_name=args.name)
+    dev_args = MbientDeviceArgs()
+    device = Mbient(dev_args)
     Mbient.SCAN_PERFORMED = True  # Make repeated runs of test script faster; comment out if needed.
 
     def _test_data_handler(epoch: float, acc: Any, gyro: Any) -> None:
