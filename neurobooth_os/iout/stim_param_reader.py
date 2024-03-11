@@ -74,6 +74,7 @@ class MicYetiSensorArgs(SensorArgs):
 
 class EyelinkSensorArgs(StandardSensorArgs):
     calibration_type: str
+    sample_rate: PositiveInt
 
 
 class DeviceArgs(BaseModel):
@@ -93,6 +94,22 @@ class DeviceArgs(BaseModel):
 class MicYetiDeviceArgs(DeviceArgs):
     microphone_name: str
     sensor_array: List[MicYetiSensorArgs] = []
+
+
+class EyelinkDeviceArgs(DeviceArgs):
+    """
+    Eyelink device arguments
+    The eyelink should only one sensor, represented by an instance
+    of type EyelinkSensorArgs
+    """
+    ip: str
+    sensor_array: List[EyelinkSensorArgs] = []
+
+    def sample_rate(self):
+        return self.sensor_array[0].sample_rate
+
+    def calibration_type(self):
+        return self.sensor_array[0].calibration_type
 
 class IntelDeviceArgs(DeviceArgs):
     sensor_array: List[IntelSensorArgs] = []

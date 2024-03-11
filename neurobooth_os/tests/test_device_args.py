@@ -3,6 +3,7 @@ from typing import Dict
 
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.camera_intel import VidRec_Intel
+from neurobooth_os.iout.eyelink_tracker import EyeTracker
 from neurobooth_os.iout.flir_cam import VidRec_Flir
 from neurobooth_os.iout.mbient import Mbient
 from neurobooth_os.iout.microphone import MicStream
@@ -57,3 +58,14 @@ class TestTask(unittest.TestCase):
                     device.sensor_array.append(sensors[sensor_id])
                 print(device)
                 MicStream(device)
+
+    def test_eyelink_setup(self):
+        devices: Dict[str, DeviceArgs] = meta.read_devices()
+        for device in devices.values():
+            if "Eyelink" in device.device_id:
+                print(device)
+                sensors = meta.read_sensors()
+                for sensor_id in device.sensor_ids:
+                    device.sensor_array.append(sensors[sensor_id])
+                print(device)
+                EyeTracker(device)
