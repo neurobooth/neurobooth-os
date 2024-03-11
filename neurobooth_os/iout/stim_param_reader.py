@@ -67,6 +67,11 @@ class FlirSensorArgs(StandardSensorArgs):
     offsetY: PositiveInt
 
 
+class MicYetiSensorArgs(SensorArgs):
+    RATE: PositiveInt
+    CHUNK: PositiveInt
+
+
 class EyelinkSensorArgs(StandardSensorArgs):
     calibration_type: str
 
@@ -84,6 +89,10 @@ class DeviceArgs(BaseModel):
     sensor_array: List[SensorArgs] = []
     arg_parser: str
 
+
+class MicYetiDeviceArgs(DeviceArgs):
+    microphone_name: str
+    sensor_array: List[MicYetiSensorArgs] = []
 
 class IntelDeviceArgs(DeviceArgs):
     sensor_array: List[IntelSensorArgs] = []

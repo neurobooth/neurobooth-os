@@ -1,5 +1,5 @@
 sensor_id: Mic_Yeti_sens_1
-temporal_res: 44100.0
-spatial_res_x: 1024.0
+RATE: 44100.0
+CHUNK: 1024.0
 file_type: xdf
-arg_parser: iout.stim_param_reader.py::StandardSensorArgs()
+arg_parser: iout.stim_param_reader.py::MicYetiSensorArgs()

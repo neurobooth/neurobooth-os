@@ -333,15 +333,11 @@ def map_database_to_deviceclass(dev_id: str, info:Dict[str, Any]):
     elif "FLIR_blackfly" in dev_id:
         kwarg["device_sn"] = info["SN"]
         (sensor_id,) = info["sensors"].keys()
-        # TODO test asserting assert(len(list(info['sensors']))==1) raise
-        # f"{dev_id} should have only one sensor"
         kwarg["fps"] = int(info["sensors"][sensor_id]["temporal_res"])
         kwarg["sizex"] = int(info["sensors"][sensor_id]["spatial_res_x"])
         kwarg["sizey"] = int(info["sensors"][sensor_id]["spatial_res_y"])
 
     elif "Mic_Yeti" in dev_id:
-        # TODO test asserting assert(len(list(info['sensors']))==1) raise
-        # f"{dev_id} should have only one sensor"
         (sensor_id,) = info["sensors"].keys()
         kwarg["RATE"] = int(info["sensors"][sensor_id]["temporal_res"])
         kwarg["CHUNK"] = int(info["sensors"][sensor_id]["spatial_res_x"])

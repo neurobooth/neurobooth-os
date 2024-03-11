@@ -21,6 +21,7 @@ import skvideo
 import skvideo.io
 import h5py
 
+from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 
@@ -40,38 +41,31 @@ class VidRec_Flir:
     # Staging FLIR SN is 22348141
     def __init__(
         self,
-        sizex=548,
-        sizey=800,
-        fps=195,
+        device_args: DeviceArgs,
         offsetX=528,
         offsetY=152,
-        device_sn=None,
         exposure=4500,
         gain=20,
         gamma=0.6,
-        device_id="FLIR_blackfly_1",
-        sensor_ids=["FLIR_rgb_1"],
         fd=1,
     ):
+        self.device_args = device_args
         # not currently using sizex, sizey --> need to update to use these parameters
         # need to read these parameters from database
         # need new column in database that allows parameters in json file
         self.open = False
-        self.serial_num = device_sn
+        self.serial_num = device_args.device_sn
         if self.serial_num is None:
             raise FlirException('FLIR serial number must be provided!')
 
         self.logger = logging.getLogger(APP_LOG_NAME)
 
-        self.fps = fps
         self.exposure = exposure
         self.gain = gain
         self.gamma = gamma
-        self.device_id = device_id
-        self.sensor_ids = sensor_ids
+        self.device_id = device_args.device_id
+        self.sensor_ids = device_args.sensor_ids
         self.fd = fd
-        self.sizex = sizex
-        self.sizey = sizey
         self.offsetX = offsetX
         self.offsetY = offsetY
         self.recording = False

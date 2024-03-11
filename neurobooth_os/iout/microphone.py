@@ -9,23 +9,25 @@ import uuid
 import wave
 import logging
 
+from neurobooth_os.iout.stim_param_reader import MicYetiDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
+
 
 class MicStream:
     def __init__(
         self,
+        device_args: MicYetiDeviceArgs,
         CHANNELS=1,
-        RATE=44100,
-        CHUNK=1024,
-        device_id="Mic_Yeti_1",
-        sensor_ids=["Mic_Yeti_sens_1"],
         FORMAT=pyaudio.paInt16,
         save_on_disk=False,
     ):
-
-        self.CHUNK = CHUNK
-        self.fps = RATE
+        device_id = device_args.device_id
+        # There should always be one and only one sensor for the mic
+        sensor = device_args.sensor_array[0]
+        self.CHUNK = sensor.CHUNK
+        self.fps = sensor.RATE
+        self.sensor_ids = device_args.sensor_ids
         self.save_on_disk = save_on_disk
         self.CHANNELS = CHANNELS
         self.FORMAT = FORMAT
@@ -35,19 +37,16 @@ class MicStream:
         self.last_time = local_clock()
         # Get Blue Yeti mic device ID
         info = audio.get_host_api_info_by_index(0)
+        dev_inx = -1
         for i in range(info.get("deviceCount")):
             if (
                 audio.get_device_info_by_host_api_device_index(0, i).get(
                     "maxInputChannels"
                 )
             ) > 0:
-                dev_name = audio.get_device_info_by_host_api_device_index(0, i).get(
-                    "name"
-                )
-                print(dev_name)
-                if (
-                    os.getenv("MICROPHONE_NAME") in dev_name
-                ):  # replace with Samson if using Samson mic
+                dev_name = audio.get_device_info_by_host_api_device_index(0, i).get("name")
+                print("Device name: " + dev_name)
+                if device_args.microphone_name in dev_name:  # replace with Samson if using Samson mic
                     dev_inx = i
                     self.device_name = dev_name
                     break
@@ -56,28 +55,28 @@ class MicStream:
         self.stream_in = audio.open(
             format=FORMAT,
             channels=CHANNELS,
-            rate=RATE,
+            rate=sensor.RATE,
             input=True,
             output=True,
-            frames_per_buffer=CHUNK,
+            frames_per_buffer=sensor.CHUNK,
             input_device_index=dev_inx,
         )
 
         # Setup outlet stream infos
         self.oulet_id = str(uuid.uuid4())
         self.stream_info_audio = set_stream_description(
-            stream_info=StreamInfo("Audio", "Experimental", CHUNK + 1, RATE / CHUNK, "int16", self.oulet_id),
-            device_id=device_id,
-            sensor_ids=sensor_ids,
+            stream_info=StreamInfo("Audio", "Experimental", sensor.CHUNK + 1, sensor.RATE / sensor.CHUNK, "int16", self.oulet_id),
+            device_id=device_args.device_id,
+            sensor_ids=device_args.sensor_ids,
             data_version=DataVersion(1, 0),
-            columns=['ElapsedTime', f'Amplitude ({CHUNK} samples)'],
+            columns=['ElapsedTime', f'Amplitude ({sensor.CHUNK} samples)'],
             column_desc={
                 'ElapsedTime': 'Elapsed time on the local LSL clock since the last chunk of samples (ms)',
-                f'Amplitude ({CHUNK} samples)': 'Remaining columns represent a chunk of audio samples.',
+                f'Amplitude ({sensor.CHUNK} samples)': 'Remaining columns represent a chunk of audio samples.',
             },
             contains_chunks=True,
             fps=str(self.fps),
-            device_name=self.device_name,
+            device_name=device_args.device_name,
         )
         print(f"-OUTLETID-:Audio:{self.oulet_id}")
 

@@ -476,20 +476,21 @@ class Mbient:
         self.retry_delay_sec = 1
 
         # Device configuration settings
+        for sensor in device_args.sensor_array:
+            if "acc" in sensor.sensor_id:
+                self.acc_hz = int(sensor.hz)
+            elif "gyro" in sensor.sensor_id:
+                self.gyro_hz = int(sensor.hz)
+
         self.connection_params = ConnectionParameters()  # Use the default params
-        self.accel_params = SensorParameters(sample_rate=acc_hz, data_range=16.0)
-        self.gyro_params = SensorParameters(sample_rate=gyro_hz, data_range=2000)
+        self.accel_params = SensorParameters(sample_rate=self.acc_hz, data_range=16.0)
+        self.gyro_params = SensorParameters(sample_rate=self.gyro_hz, data_range=2000)
 
         # Uninitialized Variables
         self.device_wrapper: Optional[MetaWearWrapper] = None
         self.subscribed_signals: List[Any] = []
         self.outlet: Optional[StreamOutlet] = None
         self.data_handlers: List['Mbient.DATA_HANDLER'] = []
-        for sensor in device_args.sensor_array:
-            if "acc" in sensor.sensor_id:
-                self.acc_hz = int(sensor.hz)
-            elif "gyro" in sensor.sensor_id:
-                self.gyro_hz = int(sensor.hz)
 
         # Streaming-related variables
         self.callback = cbindings.FnVoid_VoidP_DataP(self._callback)
