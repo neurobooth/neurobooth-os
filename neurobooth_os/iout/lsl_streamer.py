@@ -45,8 +45,8 @@ def start_intel_stream(_, **device_args):
     return VidRec_Intel(**device_args)
 
 
-def start_flir_stream(_, **device_args):
-    return VidRec_Flir(**device_args)
+def start_flir_stream(_, device_args):
+    return VidRec_Flir(device_args)
 
 
 def start_iphone_stream(_, **device_args):
