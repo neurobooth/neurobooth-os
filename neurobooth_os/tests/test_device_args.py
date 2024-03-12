@@ -8,7 +8,7 @@ from neurobooth_os.iout.flir_cam import VidRec_Flir
 from neurobooth_os.iout.mbient import Mbient
 from neurobooth_os.iout.microphone import MicStream
 from neurobooth_os.iout.stim_param_reader import DeviceArgs
-
+from neurobooth_os.tasks.utils import make_win
 
 class TestTask(unittest.TestCase):
     stimulus_description: str
@@ -69,3 +69,8 @@ class TestTask(unittest.TestCase):
                     device.sensor_array.append(sensors[sensor_id])
                 print(device)
                 EyeTracker(device)
+
+    def test_create_win(self):
+        win = make_win(full_screen=False)
+        frame_rate = win.getActualFrameRate()
+        print("Frame rate: " + str(frame_rate))
