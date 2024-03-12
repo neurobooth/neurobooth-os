@@ -65,6 +65,9 @@ class IntelSensorArgs(SensorArgs):
 class FlirSensorArgs(StandardSensorArgs):
     offsetX: PositiveInt
     offsetY: PositiveInt
+    fps: PositiveInt
+    sizex: PositiveInt
+    sizey: PositiveInt
 
 
 class MicYetiSensorArgs(SensorArgs):
@@ -123,11 +126,17 @@ class FlirDeviceArgs(DeviceArgs):
     def fps(self):
         return self.sensor_array[0].fps
 
-    def sizex(self):
+    def size_x(self):
         return self.sensor_array[0].sizex
 
-    def sizey(self):
+    def size_y(self):
         return self.sensor_array[0].sizey
+
+    def offset_x(self):
+        return self.sensor_array[0].offsetX
+
+    def offset_y(self):
+        return self.sensor_array[0].offsetY
 
 
 class IntelDeviceArgs(DeviceArgs):

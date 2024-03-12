@@ -17,9 +17,6 @@ from typing import Callable, Any
 import cv2
 import PySpin
 from pylsl import StreamInfo, StreamOutlet
-import skvideo
-import skvideo.io
-import h5py
 
 from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
@@ -42,8 +39,6 @@ class VidRec_Flir:
     def __init__(
         self,
         device_args: FlirDeviceArgs,
-        offsetX=528,
-        offsetY=152,
         exposure=4500,
         gain=20,
         gamma=0.6,
@@ -66,8 +61,6 @@ class VidRec_Flir:
         self.device_id = device_args.device_id
         self.sensor_ids = device_args.sensor_ids
         self.fd = fd
-        self.offsetX = offsetX
-        self.offsetY = offsetY
         self.recording = False
 
         self.get_cam()
@@ -77,7 +70,7 @@ class VidRec_Flir:
         self.outlet = self.createOutlet()
 
         self.logger.debug(f'FLIR: fps={str(self.device_args.fps())}; '
-                          f'frame_size={str((self.device_args.sizex(), self.device_args.sizey()))}')
+                          f'frame_size={str((self.device_args.size_x(), self.device_args.size_y()))}')
 
     def get_cam(self):
         self.system = PySpin.System.GetInstance()
@@ -107,10 +100,10 @@ class VidRec_Flir:
         self.try_setval(self.cam.AcquisitionMode.SetValue, PySpin.AcquisitionMode_Continuous)
         self.try_setval(self.cam.ExposureAuto.SetValue, PySpin.ExposureAuto_Off)
         self.try_setval(self.cam.AcquisitionFrameRate.SetValue, self.device_args.fps())
-        self.try_setval(self.cam.Height.SetValue, self.device_args.sizey())
-        self.try_setval(self.cam.Width.SetValue, self.device_args.sizex())
-        self.try_setval(self.cam.OffsetX.SetValue, self.offsetX)
-        self.try_setval(self.cam.OffsetY.SetValue, self.offsetY)
+        self.try_setval(self.cam.Height.SetValue, self.device_args.size_y())
+        self.try_setval(self.cam.Width.SetValue, self.device_args.size_x())
+        self.try_setval(self.cam.OffsetX.SetValue, self.device_args.offset_x())
+        self.try_setval(self.cam.OffsetY.SetValue, self.device_args.offset_y())
         self.try_setval(self.cam.ExposureTime.SetValue, self.exposure)
         self.try_setval(self.cam.Gamma.SetValue, self.gamma)
         self.try_setval(self.cam.Gain.SetValue, self.gain)
