@@ -466,7 +466,7 @@ class Mbient:
         buzz_time_sec: float = 0,
         try_nmax: int = 5,
     ):
-        self.mac = device_args.device_sn
+        self.mac = device_args.mac
         self.dev_name = device_args.device_name
         self.device_id = device_args.device_id
         self.sensor_ids = device_args.sensor_ids
