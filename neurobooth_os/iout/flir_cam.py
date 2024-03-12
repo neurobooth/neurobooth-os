@@ -21,7 +21,7 @@ import skvideo
 import skvideo.io
 import h5py
 
-from neurobooth_os.iout.stim_param_reader import DeviceArgs
+from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 
@@ -41,7 +41,7 @@ class VidRec_Flir:
     # Staging FLIR SN is 22348141
     def __init__(
         self,
-        device_args: DeviceArgs,
+        device_args: FlirDeviceArgs,
         offsetX=528,
         offsetY=152,
         exposure=4500,
@@ -49,7 +49,7 @@ class VidRec_Flir:
         gamma=0.6,
         fd=1,
     ):
-        self.device_args = device_args
+        self.device_args: FlirDeviceArgs = device_args
         # not currently using sizex, sizey --> need to update to use these parameters
         # need to read these parameters from database
         # need new column in database that allows parameters in json file
@@ -76,7 +76,8 @@ class VidRec_Flir:
         self.image_queue = queue.Queue(0)
         self.outlet = self.createOutlet()
 
-        self.logger.debug(f'FLIR: fps={str(self.fps)}; frame_size={str((self.sizex, self.sizey))}')
+        self.logger.debug(f'FLIR: fps={str(self.device_args.fps())}; '
+                          f'frame_size={str((self.device_args.sizex(), self.device_args.sizey()))}')
 
     def get_cam(self):
         self.system = PySpin.System.GetInstance()
@@ -105,9 +106,9 @@ class VidRec_Flir:
 
         self.try_setval(self.cam.AcquisitionMode.SetValue, PySpin.AcquisitionMode_Continuous)
         self.try_setval(self.cam.ExposureAuto.SetValue, PySpin.ExposureAuto_Off)
-        self.try_setval(self.cam.AcquisitionFrameRate.SetValue, self.fps)
-        self.try_setval(self.cam.Height.SetValue, self.sizey)
-        self.try_setval(self.cam.Width.SetValue, self.sizex)
+        self.try_setval(self.cam.AcquisitionFrameRate.SetValue, self.device_args.fps())
+        self.try_setval(self.cam.Height.SetValue, self.device_args.sizey())
+        self.try_setval(self.cam.Width.SetValue, self.device_args.sizex())
         self.try_setval(self.cam.OffsetX.SetValue, self.offsetX)
         self.try_setval(self.cam.OffsetY.SetValue, self.offsetY)
         self.try_setval(self.cam.ExposureTime.SetValue, self.exposure)
@@ -143,7 +144,7 @@ class VidRec_Flir:
                 'Time_FLIR': 'Camera timestamp (ns)',
             },
             serial_number=self.serial_num,
-            fps_rgb=str(self.fps),
+            fps_rgb=str(self.device_args.fps()),
             exposure=str(self.exposure),
             gain=str(self.gain),
             gamma=str(self.gamma),

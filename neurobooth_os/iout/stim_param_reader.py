@@ -111,6 +111,25 @@ class EyelinkDeviceArgs(DeviceArgs):
     def calibration_type(self):
         return self.sensor_array[0].calibration_type
 
+
+class FlirDeviceArgs(DeviceArgs):
+    """
+    FLIR device arguments
+    The FLIR should only one sensor, represented by an instance
+    of type FlirSensorArgs
+    """
+    sensor_array: List[FlirSensorArgs] = []
+
+    def fps(self):
+        return self.sensor_array[0].fps
+
+    def sizex(self):
+        return self.sensor_array[0].sizex
+
+    def sizey(self):
+        return self.sensor_array[0].sizey
+
+
 class IntelDeviceArgs(DeviceArgs):
     sensor_array: List[IntelSensorArgs] = []
 
