@@ -102,7 +102,7 @@ class EyelinkDeviceArgs(DeviceArgs):
     The eyelink should only one sensor, represented by an instance
     of type EyelinkSensorArgs
     """
-    ip: str
+    ip: Optional[str] = None
     sensor_array: List[EyelinkSensorArgs] = []
 
     def sample_rate(self):
