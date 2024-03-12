@@ -44,13 +44,6 @@ class VidRec_Intel:
         self.config.enable_device(self.serial_num)
         self.pipeline = rs.pipeline()
 
-        print(f"Framesize: {self.device_args.framesize()}")
-        print(f"Framesize: {self.device_args.framesize()[0][0]}")
-        print(f"Framesize: {self.device_args.framesize()[0][1]}")
-
-        print(f"FPS: {self.device_args.fps()[0]}")
-        print(f"RS: {rs.stream.color}")
-        print(f"RS: {rs.format.rgb8}")
         self.config.enable_stream(
             rs.stream.color,
             self.device_args.framesize()[0][0],
