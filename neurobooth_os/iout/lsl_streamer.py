@@ -68,10 +68,10 @@ def start_yeti_stream(_, device_args):
 SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
     'acquisition': [
         'Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3', 'FLIR_blackfly_1', 'IPhone_dev_1',
-        'Mbient_BK_1', 'Mbient_LH_1', 'Mbient_LH_2', 'Mbient_RH_1', 'Mbient_RH_2',
+        'Mbient_BK_1', 'Mbient_LH_2', 'Mbient_RH_2',
         'Mic_Yeti_dev_1',
     ],
-    'presentation': ['Eyelink_1', 'Mouse', 'Mbient_LF_1', 'Mbient_LF_2', 'Mbient_RF_2'],
+    'presentation': ['Eyelink_1', 'Mouse', 'Mbient_LF_2', 'Mbient_RF_2'],
 }
 
 
