@@ -23,39 +23,39 @@ from neurobooth_os.iout.iphone import IPhone
 # Wrappers for device setup procedures.
 # TODO: Handle device setup calls and imports in a more standardized/extensible fashion!!!
 # --------------------------------------------------------------------------------
-def start_eyelink_stream(win, **device_args):
-    return EyeTracker(win=win, **device_args)
+def start_eyelink_stream(win, device_args):
+    return EyeTracker(win=win, device_args=device_args)
 
 
-def start_mouse_stream(_, **device_args):
-    device = MouseStream(**device_args)
+def start_mouse_stream(_, device_args):
+    device = MouseStream(device_args)
     device.start()
     return device
 
 
-def start_mbient_stream(_, **device_args):
-    device = Mbient(**device_args)
+def start_mbient_stream(_, device_args):
+    device = Mbient(device_args)
     if not device.prepare():
         return None
     device.start()
     return device
 
 
-def start_intel_stream(_, **device_args):
-    return VidRec_Intel(**device_args)
+def start_intel_stream(_, device_args):
+    return VidRec_Intel(device_args)
 
 
 def start_flir_stream(_, device_args):
     return VidRec_Flir(device_args)
 
 
-def start_iphone_stream(_, **device_args):
-    device = IPhone(name="IPhoneFrameIndex", **device_args)
+def start_iphone_stream(_, device_args):
+    device = IPhone(name="IPhoneFrameIndex", device_args=device_args)
     return device if device.prepare() else None
 
 
-def start_yeti_stream(_, **device_args):
-    device = MicStream(**device_args)
+def start_yeti_stream(_, device_args):
+    device = MicStream(device_args)
     device.start()
     return device
 

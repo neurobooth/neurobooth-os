@@ -16,6 +16,7 @@ from enum import IntEnum
 from hashlib import md5
 from base64 import b64decode
 
+from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.iout.usbmux import USBMux
 from neurobooth_os.log_manager import APP_LOG_NAME
 
@@ -184,14 +185,14 @@ class IPhone:
     MESSAGE_TYPES = set(MESSAGE_TYPES)
     MESSAGE_KEYS = {"MessageType", "SessionID", "TimeStamp", "Message"}
 
-    def __init__(self, name, sess_id="", mock=False, device_id="", sensor_ids=("",), enable_timeout_exceptions=False):
+    def __init__(self, name, sess_id="", mock=False, device_args: DeviceArgs = None, enable_timeout_exceptions=False):
         self.connected = False
         self.tag = 0
         self.iphone_sessionID = sess_id
         self.name = name
         self.mock = mock
-        self.device_id = device_id
-        self.sensor_ids = sensor_ids
+        self.device_id = device_args.device_id
+        self.sensor_ids = device_args.sensor_ids
         self.enable_timeout_exceptions = enable_timeout_exceptions
         self.streaming = False
         self.streamName = "IPhoneFrameIndex"
