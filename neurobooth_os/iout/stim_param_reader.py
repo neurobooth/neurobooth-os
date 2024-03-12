@@ -327,4 +327,3 @@ class RawTaskParams(BaseModel):
     stimulus_id: str
     instruction_id: Optional[str]
     device_id_array: List[str]
-    sensor_id_array: List[List[str]]
