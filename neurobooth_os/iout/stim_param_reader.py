@@ -188,7 +188,7 @@ class IntelDeviceArgs(DeviceArgs):
 class MbientDeviceArgs(DeviceArgs):
     sensor_array: List[MbientSensorArgs] = []
     mac: str
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.device_name = self.device_id.split("_")[1]
