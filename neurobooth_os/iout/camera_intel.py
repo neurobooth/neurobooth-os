@@ -28,8 +28,7 @@ class RealSenseException(Exception):
 class VidRec_Intel:
     def __init__(
         self,
-        device_args: IntelDeviceArgs,
-        camindex=[3, "SerialNumber"],
+        device_args: IntelDeviceArgs
     ):
         self.device_args = device_args
         self.open = True
@@ -38,8 +37,8 @@ class VidRec_Intel:
         self.recording.clear()
         self.video_thread = None
 
-        self.device_index = camindex[0]
-        self.serial_num = camindex[1]
+        self.device_index = int(device_args.device_id[-1])
+        self.serial_num = device_args.device_sn
         self.config = rs.config()
         self.config.enable_device(self.serial_num)
         self.pipeline = rs.pipeline()
