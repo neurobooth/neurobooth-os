@@ -12,8 +12,7 @@ This module handles task-level aspects and organization, such as:
 # TODO: Load new params and animation files; should probably be in .neurobooth_os by configs
 # TODO: Finish refactoring of parameter structures
 # TODO: Update configs to point to new Task object path and to define the task parameters
-# TODO: Change circle colors to be more color blind friendly
-# TODO: Implement early task end logic
+# TODO: Change circle colors to be more color blind friendly (green -> blue; check slides)
 # TODO: Update CSV files with one-time v2 updator script as described in Slack/shortcut
 
 import os.path as op
@@ -30,8 +29,6 @@ from neurobooth_os.tasks.MOT.frame import (
     ImageFrame,
     TrialResult,
     TrialFrame,
-    ExampleFrame,
-    PracticeFrame,
     FrameParameters,
     TrialFrameParameters,
     ImageFrameParameters,
@@ -43,6 +40,7 @@ from neurobooth_os.iout.stim_param_reader import EyeTrackerStimArgs
 # TODO: For review: keep here or move to stim_param_reader?
 class MotStimArgs(EyeTrackerStimArgs):
     continue_message: str
+    chunk_timeout_sec: float
     practice_chunks: List[FrameChunk]
     test_chunks: List[FrameChunk]
 
@@ -60,6 +58,7 @@ class MOT(Task_Eyetracker):
         subj_id: str = 'test',
         task_name: str = 'MOT',
         continue_message: str = 'continue.png',
+        chunk_timeout_sec: float = 120,
         practice_chunks: List[FrameChunk] = (),
         test_chunks: List[FrameChunk] = (),
         **kwargs,
@@ -69,6 +68,7 @@ class MOT(Task_Eyetracker):
         :param subj_id: The subject ID.
         :param task_name: The name of this task.
         :param continue_message: Asset path to the image to display for the task continue message.
+        :param chunk_timeout_sec: How long it takes to "time out" on a chunk and trigger the early stop criterion.
         :param practice_chunks: A series of frame chunk configurations defining the task practice.
         :param test_chunks: A series of frame chunk configurations defining the testing portion of the test.
         """
@@ -83,6 +83,7 @@ class MOT(Task_Eyetracker):
 
         self.score: int = 0
         self.n_repetitions: int = 0
+        self.chunk_timeout_sec: float = chunk_timeout_sec
         # Stim params are saved in case we need to recreate frames to flush old data during task reinit
         self.stimulus_params = [continue_message, practice_chunks, test_chunks]
         self._init_frame_sequence(*self.stimulus_params)
@@ -140,8 +141,13 @@ class MOT(Task_Eyetracker):
             for chunk in self.practice_chunks:
                 self.run_chunk(chunk)
             for chunk in self.test_chunks:
-                # TODO: Implement early stopping check
                 self.run_chunk(chunk)
+                # Check early stopping criterion and stop if met
+                total_click_duration = sum([c.results().click_duration for c in chunk if isinstance(c, TrialFrame)])
+                if total_click_duration > self.chunk_timeout_sec:
+                    print(f'MOT timed out: total_click_duration={total_click_duration} s')
+                    break
+
         except TaskAborted:
             print('MOT aborted')
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
