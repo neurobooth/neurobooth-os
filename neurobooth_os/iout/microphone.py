@@ -45,7 +45,6 @@ class MicStream:
                 )
             ) > 0:
                 dev_name = audio.get_device_info_by_host_api_device_index(0, i).get("name")
-                print("Device name: " + dev_name)
                 if device_args.microphone_name in dev_name:  # replace with Samson if using Samson mic
                     dev_inx = i
                     self.device_name = dev_name
@@ -103,7 +102,6 @@ class MicStream:
         self.stream_thread.start()
 
     def stream(self):
-        print("Microphone stream opened")
         self.last_time = int(local_clock() * 10e3)
         self.logger.debug('Microphone: Entering LSL Loop')
         while self.streaming:
@@ -128,7 +126,6 @@ class MicStream:
                 self.outlet_audio.push_sample(decoded)
             self.tic = time.time()
         self.stream_on = False
-        print("Microphone stream closed")
         self.logger.debug('Microphone: Exiting LSL Thread')
 
     def stop(self):

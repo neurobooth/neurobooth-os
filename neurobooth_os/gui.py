@@ -206,11 +206,13 @@ def _pause_tasks(steps, presentation_node):
 
 
 def _start_lsl_session(window, inlets, folder=""):
+    print("creating lsl session")
+
     window.write_event_value("start_lsl_session", "none")
 
     # Create LSL session
     streamargs = [{"name": n} for n in list(inlets)]
-    print(streamargs)
+    print(f"streamargs: {streamargs}")
     session = liesl.Session(
         prefix=folder, streamargs=streamargs, mainfolder=cfg.neurobooth_config.control.local_data_dir
     )
@@ -350,6 +352,7 @@ def _request_frame_preview(window, nodes):
 
 
 def _update_button_status(window, statecolors, button_name, inlets, folder_session):
+    print("Updating button status")
     if button_name in list(statecolors):
         # 2 colors for init_servers and Connect, 1 connected, 2 connected
         if len(statecolors[button_name]):

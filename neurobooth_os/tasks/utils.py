@@ -57,7 +57,6 @@ def make_win(
     actual_frame_rate = win.getActualFrameRate(
                 nIdentical=30, nMaxFrames=300, nWarmUpFrames=10, threshold=1
             )
-    print(f"actual frame rate: {actual_frame_rate}")
     print(
         "Monitor Actual Refresh Rate:{:.2f} Hz".format(actual_frame_rate)
     )
