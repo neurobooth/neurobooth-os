@@ -67,7 +67,9 @@ def start_yeti_stream(_, device_args):
 
 SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
     'acquisition': [
-        'Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3', 'FLIR_blackfly_1', 'IPhone_dev_1',
+        'Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3',
+        'FLIR_blackfly_1',
+        'IPhone_dev_1',
         'Mbient_BK_1', 'Mbient_LH_2', 'Mbient_RH_2',
         'Mic_Yeti_dev_1',
     ],
@@ -84,12 +86,9 @@ DEVICE_START_FUNCS: Dict[str, Callable] = {
     'Intel_D455_3': start_intel_stream,
     'IPhone_dev_1': start_iphone_stream,
     'Mbient_BK_1': start_mbient_stream,
-    # 'Mbient_LF_1': start_mbient_stream,
     'Mbient_LF_2': start_mbient_stream,
-    # 'Mbient_LH_1': start_mbient_stream,
     'Mbient_LH_2': start_mbient_stream,
     'Mbient_RF_2': start_mbient_stream,
-    # 'Mbient_RH_1': start_mbient_stream,
     'Mbient_RH_2': start_mbient_stream,
     'Mic_Yeti_dev_1': start_yeti_stream,
     'Mouse': start_mouse_stream,
@@ -99,12 +98,9 @@ DEVICE_START_FUNCS: Dict[str, Callable] = {
 N_ASYNC_THREADS: int = 3  # The maximum number of mbients on one machine
 ASYNC_STARTUP: List[str] = [
     'Mbient_BK_1',
-    'Mbient_LF_1',
     'Mbient_LF_2',
-    'Mbient_LH_1',
     'Mbient_LH_2',
     'Mbient_RF_2',
-    'Mbient_RH_1',
     'Mbient_RH_2',
 ]
 
