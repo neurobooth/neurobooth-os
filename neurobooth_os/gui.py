@@ -210,6 +210,7 @@ def _start_lsl_session(window, inlets, folder=""):
 
     # Create LSL session
     streamargs = [{"name": n} for n in list(inlets)]
+    print(streamargs)
     session = liesl.Session(
         prefix=folder, streamargs=streamargs, mainfolder=cfg.neurobooth_config.control.local_data_dir
     )
