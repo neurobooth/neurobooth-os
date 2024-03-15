@@ -206,8 +206,6 @@ def _pause_tasks(steps, presentation_node):
 
 
 def _start_lsl_session(window, inlets, folder=""):
-    print("creating lsl session")
-
     window.write_event_value("start_lsl_session", "none")
 
     # Create LSL session
