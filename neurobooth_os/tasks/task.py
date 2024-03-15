@@ -6,10 +6,11 @@
 from __future__ import absolute_import, division
 
 from typing import List, Union
+from enum import Enum
 
 from psychopy import logging as psychopy_logging
-
 psychopy_logging.console.setLevel(psychopy_logging.CRITICAL)
+
 import logging
 import os
 import os.path as op
@@ -25,7 +26,22 @@ from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 from neurobooth_os.log_manager import APP_LOG_NAME
 import neurobooth_os.config as cfg
 
-from enum import Enum
+from pylsl import local_clock
+
+
+class TaskAborted(Exception):
+    """Exception raised when the task is aborted."""
+    pass
+
+
+def check_if_aborted(keys=("q",)) -> None:
+    """
+    Check to see if a task has been aborted. If so, raise an exception.
+    :param keys: The keys that will abort a task.
+    """
+    if event.getKeys(keyList=keys):
+        print(f"Task Aborted.")  # Send message to CTR
+        raise TaskAborted()
 
 
 class Task:
@@ -297,7 +313,15 @@ class Task_countdown(Task):
 
         self.send_marker(self.marker_task_start, True)
         utils.present(self.win, self.task_screen, waitKeys=False)
-        utils.countdown(duration + 2)
+
+        duration += 2  # No idea why, but the original code was like this...
+        try:  # Keep presenting the screen until the task is over or the task is aborted.
+            start_time = local_clock()
+            while (local_clock() - start_time) < duration:
+                check_if_aborted()
+        except TaskAborted:
+            self.logger.info('Task aborted.')
+
         self.win.flip()
         self.send_marker(self.marker_task_end, True)
 
