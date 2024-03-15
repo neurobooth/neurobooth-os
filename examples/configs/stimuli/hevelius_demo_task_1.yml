@@ -6,3 +6,4 @@ arg_parser: iout.stim_param_reader.py::HeveliusStimArgs()
 stimulus_file_type: psychopy
 stimulus_file: tasks.hevelius.hevelius_task.py::hevelius_task()
 trial_data_fname: tasks/assets/hevelius_centered_config_demo.json
+task_repeatable_by_subject: false
