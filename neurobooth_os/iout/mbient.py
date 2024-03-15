@@ -736,7 +736,7 @@ class Mbient:
         libmetawear.mbl_mw_datasignal_subscribe(processor, None, self.callback)
         self.subscribed_signals.append(processor)
 
-        # print(f"Mbient {self.dev_name} setup")  # Send message to GUI terminal
+        print(f"Mbient {self.dev_name} setup")  # Send message to GUI terminal
         self.logger.debug(self.format_message('Setup Completed'))
 
     def log_battery_info(self) -> None:
