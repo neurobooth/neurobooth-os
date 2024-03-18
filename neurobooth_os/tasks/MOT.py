@@ -578,8 +578,8 @@ class MOT(Task_Eyetracker):
         df_out = pd.DataFrame.from_dict(outcomes, orient="index", columns=["vals"])
         res_fname = f"{self.subj_id}_{self.task_name}_results{self.rep}.csv"
         out_fname = f"{self.subj_id}_{self.task_name}_outcomes{self.rep}.csv"
-        df_res.to_csv(self.path_out + res_fname)
-        df_out.to_csv(self.path_out + out_fname)
+        df_res.to_csv(op.join(self.path_out, res_fname))
+        df_out.to_csv(op.join(self.path_out, out_fname))
 
         if len(self.task_files):
             self.task_files = self.task_files[-1] + f", {res_fname}, {out_fname}" + "}"
