@@ -48,7 +48,7 @@ class StandardSensorArgs(SensorArgs):
 
 
 class MbientSensorArgs(SensorArgs):
-    hz: PositiveFloat
+    sample_rate: PositiveInt
 
 
 class IntelSensorArgs(SensorArgs):
@@ -65,14 +65,14 @@ class IntelSensorArgs(SensorArgs):
 class FlirSensorArgs(StandardSensorArgs):
     offsetX: PositiveInt
     offsetY: PositiveInt
-    fps: PositiveInt
-    sizex: PositiveInt
-    sizey: PositiveInt
+    sample_rate: PositiveInt
+    width_px: PositiveInt
+    height_px: PositiveInt
 
 
 class MicYetiSensorArgs(SensorArgs):
-    RATE: PositiveInt
-    CHUNK: PositiveInt
+    sample_rate: PositiveInt
+    sample_chunk_size: PositiveInt
 
 
 class EyelinkSensorArgs(StandardSensorArgs):
@@ -123,14 +123,14 @@ class FlirDeviceArgs(DeviceArgs):
     """
     sensor_array: List[FlirSensorArgs] = []
 
-    def fps(self):
-        return self.sensor_array[0].fps
+    def sample_rate(self):
+        return self.sensor_array[0].sample_rate
 
-    def size_x(self):
-        return self.sensor_array[0].sizex
+    def width_px(self):
+        return self.sensor_array[0].width_px
 
-    def size_y(self):
-        return self.sensor_array[0].sizey
+    def height_px(self):
+        return self.sensor_array[0].height_px
 
     def offset_x(self):
         return self.sensor_array[0].offsetX

@@ -22,11 +22,10 @@ class MicStream:
         FORMAT=pyaudio.paInt16,
         save_on_disk=False,
     ):
-        device_id = device_args.device_id
         # There should always be one and only one sensor for the mic
         sensor = device_args.sensor_array[0]
-        self.CHUNK = sensor.CHUNK
-        self.fps = sensor.RATE
+        self.CHUNK = sensor.sample_chunk_size
+        self.fps = sensor.sample_rate
         self.sensor_ids = device_args.sensor_ids
         self.save_on_disk = save_on_disk
         self.CHANNELS = CHANNELS
@@ -54,24 +53,25 @@ class MicStream:
         self.stream_in = audio.open(
             format=FORMAT,
             channels=CHANNELS,
-            rate=sensor.RATE,
+            rate=sensor.sample_rate,
             input=True,
             output=True,
-            frames_per_buffer=sensor.CHUNK,
+            frames_per_buffer=sensor.sample_chunk_size,
             input_device_index=dev_inx,
         )
 
         # Setup outlet stream infos
         self.oulet_id = str(uuid.uuid4())
         self.stream_info_audio = set_stream_description(
-            stream_info=StreamInfo("Audio", "Experimental", sensor.CHUNK + 1, sensor.RATE / sensor.CHUNK, "int16", self.oulet_id),
+            stream_info=StreamInfo("Audio", "Experimental", sensor.sample_chunk_size + 1,
+                                   sensor.sample_rate / sensor.sample_chunk_size, "int16", self.oulet_id),
             device_id=device_args.device_id,
             sensor_ids=device_args.sensor_ids,
             data_version=DataVersion(1, 0),
-            columns=['ElapsedTime', f'Amplitude ({sensor.CHUNK} samples)'],
+            columns=['ElapsedTime', f'Amplitude ({sensor.sample_chunk_size} samples)'],
             column_desc={
                 'ElapsedTime': 'Elapsed time on the local LSL clock since the last chunk of samples (ms)',
-                f'Amplitude ({sensor.CHUNK} samples)': 'Remaining columns represent a chunk of audio samples.',
+                f'Amplitude ({sensor.sample_chunk_size} samples)': 'Remaining columns represent a chunk of audio samples.',
             },
             contains_chunks=True,
             fps=str(self.fps),
@@ -149,21 +149,3 @@ class MicStream:
             wf.writeframes(b"".join(self.frames_raw))
             wf.close()
             self.logger.debug('Microphone: Saved Raw Data to Disk')
-
-
-# for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
-#     data = stream.read(CHUNK)
-#     frames.append(data)
-
-# print("* done recording")
-
-# stream.stop_stream()
-# stream.close()
-# p.terminate()
-
-# wf = wave.open(WAVE_OUTPUT_FILENAME, 'wb')
-# wf.setnchannels(CHANNELS)
-# wf.setsampwidth(p.get_sample_size(FORMAT))
-# wf.setframerate(RATE)
-# wf.writeframes(b''.join(frames))
-# wf.close()

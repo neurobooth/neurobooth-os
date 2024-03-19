@@ -478,9 +478,9 @@ class Mbient:
         # Device configuration settings
         for sensor in device_args.sensor_array:
             if "acc" in sensor.sensor_id:
-                self.acc_hz = int(sensor.hz)
+                self.acc_hz = int(sensor.sample_rate)
             elif "gyro" in sensor.sensor_id:
-                self.gyro_hz = int(sensor.hz)
+                self.gyro_hz = int(sensor.sample_rate)
 
         self.connection_params = ConnectionParameters()  # Use the default params
         self.accel_params = SensorParameters(sample_rate=self.acc_hz, data_range=16.0)

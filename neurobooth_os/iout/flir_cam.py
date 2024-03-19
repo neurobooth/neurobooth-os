@@ -72,8 +72,8 @@ class VidRec_Flir:
         self.image_queue = queue.Queue(0)
         self.outlet = self.createOutlet()
 
-        self.logger.debug(f'FLIR: fps={str(self.device_args.fps())}; '
-                          f'frame_size={str((self.device_args.size_x(), self.device_args.size_y()))}')
+        self.logger.debug(f'FLIR: fps={str(self.device_args.sample_rate())}; '
+                          f'frame_size={str((self.device_args.width_px(), self.device_args.height_px()))}')
 
     def get_cam(self):
         self.system = PySpin.System.GetInstance()
@@ -102,9 +102,9 @@ class VidRec_Flir:
 
         self.try_setval(self.cam.AcquisitionMode.SetValue, PySpin.AcquisitionMode_Continuous)
         self.try_setval(self.cam.ExposureAuto.SetValue, PySpin.ExposureAuto_Off)
-        self.try_setval(self.cam.AcquisitionFrameRate.SetValue, self.device_args.fps())
-        self.try_setval(self.cam.Height.SetValue, self.device_args.size_y())
-        self.try_setval(self.cam.Width.SetValue, self.device_args.size_x())
+        self.try_setval(self.cam.AcquisitionFrameRate.SetValue, self.device_args.sample_rate())
+        self.try_setval(self.cam.Height.SetValue, self.device_args.height_px())
+        self.try_setval(self.cam.Width.SetValue, self.device_args.width_px())
         self.try_setval(self.cam.OffsetX.SetValue, self.device_args.offset_x())
         self.try_setval(self.cam.OffsetY.SetValue, self.device_args.offset_y())
         self.try_setval(self.cam.ExposureTime.SetValue, self.exposure)
@@ -140,7 +140,7 @@ class VidRec_Flir:
                 'Time_FLIR': 'Camera timestamp (ns)',
             },
             serial_number=self.serial_num,
-            fps_rgb=str(self.device_args.fps()),
+            fps_rgb=str(self.device_args.sample_rate()),
             exposure=str(self.exposure),
             gain=str(self.gain),
             gamma=str(self.gamma),

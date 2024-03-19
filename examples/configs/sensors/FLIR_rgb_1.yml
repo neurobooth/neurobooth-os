@@ -1,7 +1,7 @@
 sensor_id: FLIR_rgb_1
-fps: 195.0
-sizex: 548.0
-sizey: 800.0
+sample_rate: 195
+width_px: 548
+height_px: 800
 file_type: mp4
 arg_parser: iout.stim_param_reader.py::FlirSensorArgs()
 offsetX: 528
