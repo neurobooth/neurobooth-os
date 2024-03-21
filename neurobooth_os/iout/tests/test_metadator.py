@@ -61,8 +61,8 @@ class TestMetadator(unittest.TestCase):
         self.assertIsNotNone(meta._get_dev_sn("FLIR_blackfly_1"))
 
     def test_get_sensor_kwargs(self):
-        print(meta._get_sensor_kwargs("Eyelink_sens_1"))
-        self.assertIsNotNone(meta._get_sensor_kwargs("Eyelink_sens_1"))
+        print(meta._get_sensor("Eyelink_sens_1"))
+        self.assertIsNotNone(meta._get_sensor("Eyelink_sens_1"))
 
     def test_get_device_kwargs_by_task(self):
         collection_id = 'testing'

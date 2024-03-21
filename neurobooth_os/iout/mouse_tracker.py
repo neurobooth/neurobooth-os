@@ -4,11 +4,12 @@ import logging
 from pynput import mouse
 from pylsl import StreamInfo, StreamOutlet
 
+from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 
 class MouseStream:
-    def __init__(self, device_id="Mouse", sensor_ids=["Mouse"]):
+    def __init__(self, device_args: DeviceArgs):
 
         self.oulet_id = str(uuid.uuid4())
         self.info_stream = set_stream_description(
@@ -19,8 +20,8 @@ class MouseStream:
                 channel_format="int32",
                 source_id=self.oulet_id,
             ),
-            device_id=device_id,
-            sensor_ids=sensor_ids,
+            device_id=device_args.device_id,
+            sensor_ids=device_args.sensor_ids,
             data_version=DataVersion(1, 0),
             columns=['PosX', 'PosY', 'MouseState'],
             column_desc={

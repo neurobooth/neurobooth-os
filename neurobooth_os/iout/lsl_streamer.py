@@ -1,7 +1,7 @@
 import logging
 import threading
 from neurobooth_os.iout import metadator as meta
-from neurobooth_os.iout.stim_param_reader import DeviceArgs
+from neurobooth_os.iout.stim_param_reader import DeviceArgs, TaskArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 from typing import Any, Dict, List, Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
@@ -23,39 +23,39 @@ from neurobooth_os.iout.iphone import IPhone
 # Wrappers for device setup procedures.
 # TODO: Handle device setup calls and imports in a more standardized/extensible fashion!!!
 # --------------------------------------------------------------------------------
-def start_eyelink_stream(win, **device_args):
-    return EyeTracker(win=win, **device_args)
+def start_eyelink_stream(win, device_args):
+    return EyeTracker(win=win, device_args=device_args)
 
 
-def start_mouse_stream(_, **device_args):
-    device = MouseStream(**device_args)
+def start_mouse_stream(_, device_args):
+    device = MouseStream(device_args)
     device.start()
     return device
 
 
-def start_mbient_stream(_, **device_args):
-    device = Mbient(**device_args)
+def start_mbient_stream(_, device_args):
+    device = Mbient(device_args)
     if not device.prepare():
         return None
     device.start()
     return device
 
 
-def start_intel_stream(_, **device_args):
-    return VidRec_Intel(**device_args)
+def start_intel_stream(_, device_args):
+    return VidRec_Intel(device_args)
 
 
-def start_flir_stream(_, **device_args):
-    return VidRec_Flir(**device_args)
+def start_flir_stream(_, device_args):
+    return VidRec_Flir(device_args)
 
 
-def start_iphone_stream(_, **device_args):
-    device = IPhone(name="IPhoneFrameIndex", **device_args)
+def start_iphone_stream(_, device_args):
+    device = IPhone(name="IPhoneFrameIndex", device_args=device_args)
     return device if device.prepare() else None
 
 
-def start_yeti_stream(_, **device_args):
-    device = MicStream(**device_args)
+def start_yeti_stream(_, device_args):
+    device = MicStream(device_args)
     device.start()
     return device
 
@@ -67,11 +67,13 @@ def start_yeti_stream(_, **device_args):
 
 SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
     'acquisition': [
-        'Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3', 'FLIR_blackfly_1', 'IPhone_dev_1',
-        'Mbient_BK_1', 'Mbient_LH_1', 'Mbient_LH_2', 'Mbient_RH_1', 'Mbient_RH_2',
+        'Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3',
+        'FLIR_blackfly_1',
+        'IPhone_dev_1',
+        'Mbient_BK_1', 'Mbient_LH_2', 'Mbient_RH_2',
         'Mic_Yeti_dev_1',
     ],
-    'presentation': ['Eyelink_1', 'Mouse', 'Mbient_LF_1', 'Mbient_LF_2', 'Mbient_RF_2'],
+    'presentation': ['Eyelink_1', 'Mouse', 'Mbient_LF_2', 'Mbient_RF_2'],
 }
 
 
@@ -84,12 +86,9 @@ DEVICE_START_FUNCS: Dict[str, Callable] = {
     'Intel_D455_3': start_intel_stream,
     'IPhone_dev_1': start_iphone_stream,
     'Mbient_BK_1': start_mbient_stream,
-    'Mbient_LF_1': start_mbient_stream,
     'Mbient_LF_2': start_mbient_stream,
-    'Mbient_LH_1': start_mbient_stream,
     'Mbient_LH_2': start_mbient_stream,
     'Mbient_RF_2': start_mbient_stream,
-    'Mbient_RH_1': start_mbient_stream,
     'Mbient_RH_2': start_mbient_stream,
     'Mic_Yeti_dev_1': start_yeti_stream,
     'Mouse': start_mouse_stream,
@@ -99,12 +98,9 @@ DEVICE_START_FUNCS: Dict[str, Callable] = {
 N_ASYNC_THREADS: int = 3  # The maximum number of mbients on one machine
 ASYNC_STARTUP: List[str] = [
     'Mbient_BK_1',
-    'Mbient_LF_1',
     'Mbient_LF_2',
-    'Mbient_LH_1',
     'Mbient_LH_2',
     'Mbient_RF_2',
-    'Mbient_RH_1',
     'Mbient_RH_2',
 ]
 
@@ -139,26 +135,27 @@ class DeviceManager:
 
         register_lock = threading.Lock()
 
-        def start_and_register_device(device_key: str, device_args: Dict[str, Any]) -> None:
-            self.logger.debug(f'Device Manager Starting: {device_key}')
+        def start_and_register_device(device_args: DeviceArgs) -> None:
+            device_id = device_args.device_id
+            self.logger.debug(f'Device Manager Starting: {device_id}')
             self.logger.debug(f'Device Manager Starting with args: {device_args}')
-            device = DEVICE_START_FUNCS[device_key](win, **device_args)
+            device = DEVICE_START_FUNCS[device_id](win, device_args)
             if device is None:
-                self.logger.warning(f'Device Manager Failed to Start: {device_key}')
+                self.logger.warning(f'Device Manager Failed to Start: {device_id}')
                 return
             with register_lock:
-                self.streams[device_key] = device
+                self.streams[device_id] = device
 
         with ThreadPoolExecutor(max_workers=N_ASYNC_THREADS) as executor:
             futures = []
-            kwargs: Dict[str, Dict[str, Any]] = DeviceManager._get_device_kwargs(collection_id)
+            kwargs: Dict[str, DeviceArgs] = DeviceManager._get_unique_devices(collection_id)
             for device_key, device_args in kwargs.items():
                 if device_key not in self.assigned_devices:
                     continue
                 if device_key in ASYNC_STARTUP:
-                    futures.append(executor.submit(start_and_register_device, device_key, device_args))
+                    futures.append(executor.submit(start_and_register_device, device_args))
                 else:  # Run sequentially if not specified as async
-                    start_and_register_device(device_key, device_args)
+                    start_and_register_device(device_args)
 
             for f in as_completed(futures):
                 f.result()  # Raise errors that occur asynchronously
@@ -166,22 +163,20 @@ class DeviceManager:
         self.logger.info(f'LOADED DEVICES: {list(self.streams.keys())}')
 
     @staticmethod
-    def _get_device_kwargs(collection_id: str) -> Dict[str, Any]:
+    def _get_unique_devices(collection_id: str) -> Dict[str, DeviceArgs]:
         """
-        Fetch the keyword arguments for each device from the database.
+        Fetch the DeviceArgs for each device used in the collection, eliminating any duplicates
 
-        :param collection_id: Name of study collection in the database.
-        :param conn: Connection to the database
+        :param collection_id: Name of study collection.
         """
-        # Get params from all tasks
-        kwarg_devs = meta.get_device_kwargs_by_task(collection_id)
-
-        # Get all device params from session
-        kwarg_alldevs = {}
-        for dc in kwarg_devs.values():
-            kwarg_alldevs.update(dc)
-
-        return kwarg_alldevs
+        # Get all tasks in collection
+        kwarg_devs: Dict[str, TaskArgs] = meta.build_tasks_for_collection(collection_id)
+        # Aggregate the devices used by the tasks
+        devices = {}
+        for task in kwarg_devs.values():
+            for device in task.device_args:
+                devices[device.device_id] = device
+        return devices
 
     # TODO: The below device-specific calls should all be refactored so that devices can be generically handled
     # TODO: E.g., devices should be able to register handlers for lifecycle phases

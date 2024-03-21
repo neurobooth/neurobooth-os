@@ -12,6 +12,8 @@ from enum import IntEnum
 
 from mbientlab.warble import BleScanner
 from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings, Module, Model
+
+from neurobooth_os.iout.stim_param_reader import MbientDeviceArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 
 # --------------------------------------------------------------------------------
@@ -460,28 +462,29 @@ class Mbient:
 
     def __init__(
         self,
-        mac: str,
-        dev_name: str = "mbient",
-        device_id: str = "mbient",
-        sensor_ids: List[str] = ("acc", "gyro"),
-        acc_hz: int = 100,
-        gyro_hz: int = 100,
+        device_args: MbientDeviceArgs,
         buzz_time_sec: float = 0,
         try_nmax: int = 5,
     ):
-        self.mac = mac
-        self.dev_name = dev_name
-        self.device_id = device_id
-        self.sensor_ids = sensor_ids
+        self.mac = device_args.mac
+        self.dev_name = device_args.device_name
+        self.device_id = device_args.device_id
+        self.sensor_ids = device_args.sensor_ids
         self.outlet_id = str(uuid.uuid4())
         self.buzz_time = buzz_time_sec
         self.max_connect_attempts = try_nmax
         self.retry_delay_sec = 1
 
         # Device configuration settings
+        for sensor in device_args.sensor_array:
+            if "acc" in sensor.sensor_id:
+                self.acc_hz = int(sensor.sample_rate)
+            elif "gyro" in sensor.sensor_id:
+                self.gyro_hz = int(sensor.sample_rate)
+
         self.connection_params = ConnectionParameters()  # Use the default params
-        self.accel_params = SensorParameters(sample_rate=acc_hz, data_range=16.0)
-        self.gyro_params = SensorParameters(sample_rate=gyro_hz, data_range=2000)
+        self.accel_params = SensorParameters(sample_rate=self.acc_hz, data_range=16.0)
+        self.gyro_params = SensorParameters(sample_rate=self.gyro_hz, data_range=2000)
 
         # Uninitialized Variables
         self.device_wrapper: Optional[MetaWearWrapper] = None
@@ -846,7 +849,8 @@ def test_script() -> None:
     logger.setLevel(logging.DEBUG)
 
     logger.info(f'Creating Device {args.name} at {args.mac}')
-    device = Mbient(mac=args.mac, dev_name=args.name)
+    dev_args = MbientDeviceArgs()
+    device = Mbient(dev_args)
     Mbient.SCAN_PERFORMED = True  # Make repeated runs of test script faster; comment out if needed.
 
     def _test_data_handler(epoch: float, acc: Any, gyro: Any) -> None:

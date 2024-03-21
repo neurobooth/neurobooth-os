@@ -1,5 +1,5 @@
 device_id: Eyelink_1
-device_sn: 192.168.100.15
+ip: 192.168.100.15
 device_name: EYELINK Portable Duo
 device_location: '25_19_36'
 wearable_bool: false
@@ -8,4 +8,4 @@ device_model: 'EYELINK CL 6.50  '
 device_firmware: None
 sensor_ids:
 - Eyelink_sens_1
-arg_parser: iout.stim_param_reader.py::DeviceArgs()
+arg_parser: iout.stim_param_reader.py::EyelinkDeviceArgs()

@@ -20,10 +20,6 @@ call setx /m NB_CONDA_ENV %NB_CONDA_INSTALL%\envs\neurobooth-staging
 :: GUI Configs
 setx /m NB_FULLSCREEN "false"
 
-:: Sensors
-setx /m MICROPHONE_NAME "Yeti"
-setx /m FLIR_SN "22348141"
-
 :: Create folder for holding config files
 start powershell -Command "mkdir -Force %NB_CONFIG%/"
 :: Copy config file to config folder

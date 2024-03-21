@@ -11,33 +11,31 @@ from psychopy import visual, monitors
 from pylsl import StreamInfo, StreamOutlet, local_clock
 from psychopy import core
 
+from neurobooth_os.iout.stim_param_reader import EyelinkDeviceArgs
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
     EyeLinkCoreGraphicsPsychoPy,
 )
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 
+
 class EyeTracker:
     def __init__(
         self,
-        sample_rate=1000,
-        calibration_type="HV5",
+        device_args: EyelinkDeviceArgs,
         win=None,
         with_lsl=True,
-        ip="192.168.100.15",
-        device_id="Eyelink_1",
-        sensor_ids=["Eyelink_sens_1"],
     ):
 
-        self.IP = ip
-        self.sample_rate = sample_rate
-        self.device_id = device_id
-        self.sensor_ids = sensor_ids
+        self.IP = device_args.ip
+        self.sample_rate = device_args.sample_rate()
+        self.device_id = device_args.device_id
+        self.sensor_ids = device_args.sensor_ids
         self.streamName = "EyeLink"
         self.with_lsl = with_lsl
         mon = monitors.getAllMonitors()[0]
         self.mon_size = monitors.Monitor(mon).getSizePix()
-        self.calibration_type = calibration_type
+        self.calibration_type = device_args.calibration_type()
 
         if win is None:
             customMon = monitors.Monitor(
