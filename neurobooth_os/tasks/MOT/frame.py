@@ -45,6 +45,10 @@ class TrialFrameParameters(BaseModel):
     flash_frequency: Annotated[float, Field(gt=0)] = 0.2
     movement_duration: Annotated[float, Field(gt=0)] = 5
     click_timeout: Annotated[float, Field(gt=0)] = 60
+    circle_base_color: str = 'black'
+    circle_flash_color: str = 'cyan'
+    circle_correct_color: str = 'cyan'
+    circle_incorrect_color: str = 'red'
 
 
 FrameParameters = Union[ImageFrameParameters, TrialFrameParameters]
@@ -120,7 +124,7 @@ class CircleStimulus:
             self,
             model: CircleModel,
             window: visual.Window,
-            color: str = 'black'
+            color: str,
     ):
         """
         Create a new stimulus wrapping the logical model.
@@ -218,7 +222,11 @@ class TrialFrame(MOTFrame):
         # Visual properties of the stimulus
         self.trial_count = trial_count
         self.n_targets = trial_param.n_targets
-        self.circles = [CircleStimulus(c, self.window) for c in self.animation.circles]
+        self.circle_base_color = trial_param.circle_base_color
+        self.circle_flash_color = trial_param.circle_flash_color
+        self.circle_correct_color = trial_param.circle_correct_color
+        self.circle_incorrect_color= trial_param.circle_incorrect_color
+        self.circles = [CircleStimulus(c, self.window, self.circle_base_color) for c in self.animation.circles]
         self.background = visual.Rect(
             self.window,
             width=self.animation.paper_size,
@@ -366,12 +374,12 @@ class TrialFrame(MOTFrame):
         target_circles = self.circles[:self.n_targets]
         while countdown.getTime() > 0:
             for circle in target_circles:
-                circle.color = 'green'
+                circle.color = self.circle_flash_color
             self.present_circles(send_location=False)
             wait(self.flash_frequency)
 
             for circle in target_circles:
-                circle.color = 'black'
+                circle.color = self.circle_base_color
             self.present_circles(send_location=False)
             wait(self.flash_frequency)
 
@@ -412,9 +420,9 @@ class TrialFrame(MOTFrame):
                     is_correct = i < self.n_targets
                     if is_correct:
                         self.update_score(1)
-                        circle.color = "green"
+                        circle.color = self.circle_correct_color
                     else:
-                        circle.color = "red"
+                        circle.color = self.circle_incorrect_color
 
                     x, y = mouse.getPos()
                     self.task.sendMessage(self.task.marker_response_start)

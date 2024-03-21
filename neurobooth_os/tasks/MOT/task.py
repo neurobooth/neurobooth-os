@@ -9,7 +9,6 @@ This module handles task-level aspects and organization, such as:
 """
 
 # TODO: Generate animation file for the example trial!
-# TODO: Change circle colors to be more color blind friendly (green -> blue; check slides)
 # TODO: Update CSV files with one-time v2 updator script as described in Slack/shortcut
 
 import os.path as op
@@ -34,7 +33,6 @@ from neurobooth_os.tasks.MOT.frame import (
 from neurobooth_os.iout.stim_param_reader import EyeTrackerStimArgs
 
 
-# TODO: For review: keep here or move to stim_param_reader?
 class MotStimArgs(EyeTrackerStimArgs):
     continue_message: str
     chunk_timeout_sec: float
