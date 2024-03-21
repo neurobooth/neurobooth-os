@@ -6,10 +6,11 @@
 from __future__ import absolute_import, division
 
 from typing import List, Union
+from enum import Enum
 
 from psychopy import logging as psychopy_logging
-
 psychopy_logging.console.setLevel(psychopy_logging.CRITICAL)
+
 import logging
 import os
 import os.path as op
@@ -25,7 +26,12 @@ from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 from neurobooth_os.log_manager import APP_LOG_NAME
 import neurobooth_os.config as cfg
 
-from enum import Enum
+from pylsl import local_clock
+
+
+class TaskAborted(Exception):
+    """Exception raised when the task is aborted."""
+    pass
 
 
 class Task:
@@ -65,13 +71,15 @@ class Task:
         self.path_instruction_video = instruction_file
         self.full_screen = full_screen
         self.events = []
-        self.advance_keys = ['space']
+
+        self.advance_keys: List[str] = ['space']
+        self.abort_keys: List[str] = ['q']
         if task_repeatable_by_subject:
             task_end_image = "tasks/assets/task_end.png"
-            self.repeat_keys = ['r', 'comma']
+            self.repeat_keys: List[str] = ['r', 'comma']
         else:
             task_end_image = "tasks/assets/task_end_disabled.png"
-            self.repeat_keys = ['r']
+            self.repeat_keys: List[str] = ['r']
 
         if marker_outlet is not None:
             self.with_lsl = True
@@ -287,6 +295,12 @@ class Task:
         self.present_complete(last_task)
         return self.events
 
+    def check_if_aborted(self) -> None:
+        """Check to see if a task has been aborted. If so, raise an exception."""
+        if event.getKeys(keyList=self.abort_keys):
+            print(f"Task Aborted.")  # Send message to CTR console if sysout has been redirected
+            raise TaskAborted()
+
 
 class Task_countdown(Task):
     def __init__(self, **kwargs):
@@ -297,7 +311,15 @@ class Task_countdown(Task):
 
         self.send_marker(self.marker_task_start, True)
         utils.present(self.win, self.task_screen, waitKeys=False)
-        utils.countdown(duration + 2)
+
+        duration += 2  # No idea why, but the original code was like this...
+        try:  # Keep presenting the screen until the task is over or the task is aborted.
+            start_time = local_clock()
+            while (local_clock() - start_time) < duration:
+                self.check_if_aborted()
+        except TaskAborted:
+            self.logger.info('Task aborted.')
+
         self.win.flip()
         self.send_marker(self.marker_task_end, True)
 
