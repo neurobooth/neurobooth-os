@@ -34,16 +34,6 @@ class TaskAborted(Exception):
     pass
 
 
-def check_if_aborted(keys=("q",)) -> None:
-    """
-    Check to see if a task has been aborted. If so, raise an exception.
-    :param keys: The keys that will abort a task.
-    """
-    if event.getKeys(keyList=keys):
-        print(f"Task Aborted.")  # Send message to CTR
-        raise TaskAborted()
-
-
 class Task:
     # Note: incorrect file paths passed to Psychopy may cause the python interpreter to crash without raising an error.
     # These file paths must be checked before passing and an appropriate error raised, and so they
@@ -81,13 +71,15 @@ class Task:
         self.path_instruction_video = instruction_file
         self.full_screen = full_screen
         self.events = []
-        self.advance_keys = ['space']
+
+        self.advance_keys: List[str] = ['space']
+        self.abort_keys: List[str] = ['q']
         if task_repeatable_by_subject:
             task_end_image = "tasks/assets/task_end.png"
-            self.repeat_keys = ['r', 'comma']
+            self.repeat_keys: List[str] = ['r', 'comma']
         else:
             task_end_image = "tasks/assets/task_end_disabled.png"
-            self.repeat_keys = ['r']
+            self.repeat_keys: List[str] = ['r']
 
         if marker_outlet is not None:
             self.with_lsl = True
@@ -303,6 +295,12 @@ class Task:
         self.present_complete(last_task)
         return self.events
 
+    def check_if_aborted(self) -> None:
+        """Check to see if a task has been aborted. If so, raise an exception."""
+        if event.getKeys(keyList=self.abort_keys):
+            print(f"Task Aborted.")  # Send message to CTR console if sysout has been redirected
+            raise TaskAborted()
+
 
 class Task_countdown(Task):
     def __init__(self, **kwargs):
@@ -318,7 +316,7 @@ class Task_countdown(Task):
         try:  # Keep presenting the screen until the task is over or the task is aborted.
             start_time = local_clock()
             while (local_clock() - start_time) < duration:
-                check_if_aborted()
+                self.check_if_aborted()
         except TaskAborted:
             self.logger.info('Task aborted.')
 
