@@ -22,9 +22,9 @@ from psychopy import visual
 from itertools import chain
 
 import neurobooth_os
+from neurobooth_os.tasks.task import TaskAborted
 from neurobooth_os.tasks import Task_Eyetracker
 from neurobooth_os.tasks.MOT.frame import (
-    TaskAborted,
     MOTFrame,
     ImageFrame,
     TrialResult,
@@ -147,7 +147,6 @@ class MOT(Task_Eyetracker):
                 if total_click_duration > self.chunk_timeout_sec:
                     print(f'MOT timed out: total_click_duration={total_click_duration} s')
                     break
-
         except TaskAborted:
             print('MOT aborted')
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)

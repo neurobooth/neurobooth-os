@@ -19,33 +19,12 @@ from psychopy import visual
 from psychopy.clock import Clock, wait, CountdownTimer
 from psychopy.event import Mouse
 from psychopy.visual import TextBox2
-from psychopy.event import getKeys
 
 from neurobooth_os.tasks import utils
 from neurobooth_os.tasks.MOT.animate import StepwiseAnimator, CircleModel
 
 if TYPE_CHECKING:  # Prevent circular import during runtime
     from neurobooth_os.tasks.MOT.task import MOT
-
-
-# ========================================================================
-# Task Abort Handling
-# ========================================================================
-class TaskAborted(Exception):
-    """
-    Exception raised when the task is aborted
-    """
-    pass
-
-
-def check_if_aborted(keys=("q",)) -> None:
-    """
-    Check to see if a task has been aborted. If so, raise an exception.
-    :param keys: The keys that will abort a task.
-    """
-    if getKeys(keyList=keys):
-        print("MOT Task aborted")  # Send message to CTR
-        raise TaskAborted()
 
 
 # ========================================================================
@@ -423,14 +402,14 @@ class TrialFrame(MOTFrame):
             self.present_circles(send_location=False)
             wait(self.flash_frequency)
 
-            check_if_aborted()
+            self.task.check_if_aborted()
 
     def show_moving_circles(self) -> None:
         clock = Clock()
         while clock.getTime() < self.movement_duration:
             self.animation.step(clock.getTime())
             self.present_circles()
-            check_if_aborted()
+            self.task.check_if_aborted()
         self.animation.step(self.movement_duration)  # Ensure consistent endpoint for precomputed trajectory
 
     def handle_clicks(self) -> None:
@@ -475,7 +454,7 @@ class TrialFrame(MOTFrame):
             prev_button_state = buttons
             wait(0.001, hogCPUperiod=1)
 
-            check_if_aborted()
+            self.task.check_if_aborted()
             if timeout_clock.getTime() > self.click_timeout:
                 raise TrialTimeout()
 
