@@ -43,23 +43,22 @@ def make_win(
     subj_screendist_cm=60,  # in centimeters from subject head to middle of the screen in our setup. The eye tracker distance measured is from head to center of eye tracker
 ):
     mon = monitors.getAllMonitors()[0]
-    customMon = monitors.Monitor(
+    custom_mon = monitors.Monitor(
         "demoMon", width=monitor_width, distance=subj_screendist_cm
     )
 
     mon_size = monitors.Monitor(mon).getSizePix()
-    customMon.setSizePix(mon_size)
-    customMon.saveMon()
+    custom_mon.setSizePix(mon_size)
+    custom_mon.saveMon()
     win = visual.Window(
-        mon_size, fullscr=full_screen, monitor=customMon, units="pix", color=(0, 0, 0)
+        mon_size, fullscr=full_screen, monitor=custom_mon, units="pix", color=(0, 0, 0)
     )
     print("Monitor Set Refresh Rate:{:.2f} Hz".format(1 / win.monitorFramePeriod))
-    print(
-        "Monitor Actual Refresh Rate:{:.2f} Hz".format(
-            win.getActualFrameRate(
+    actual_frame_rate = win.getActualFrameRate(
                 nIdentical=30, nMaxFrames=300, nWarmUpFrames=10, threshold=1
             )
-        )
+    print(
+        "Monitor Actual Refresh Rate:{:.2f} Hz".format(actual_frame_rate)
     )
     return win
 
