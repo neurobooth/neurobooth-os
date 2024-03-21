@@ -74,7 +74,8 @@ class DSC(Task_Eyetracker):
         self.rootdir = op.join(neurobooth_os.__path__[0], "tasks", "DSC")
         self.tot_time = duration
         self.showresults = False
-        self.rep = ""  # repeated task num to add to filename\
+        self.rep = ""  # repeated task num to add to filename
+        self.task_files = ""
 
         try:
             self.io = launchHubServer()
@@ -383,8 +384,8 @@ class DSC(Task_Eyetracker):
 
         res_fname = f"{self.subj_id}_{self.task_name}_results{self.rep}.csv"
         out_fname = f"{self.subj_id}_{self.task_name}_outcomes{self.rep}.csv"
-        df_res.to_csv(self.path_out + res_fname)
-        df_out.to_csv(self.path_out + out_fname)
+        df_res.to_csv(op.join(self.path_out, res_fname))
+        df_out.to_csv(op.join(self.path_out, out_fname))
         self.task_files.extend([res_fname, out_fname])
 
         # Close win if just created for the task

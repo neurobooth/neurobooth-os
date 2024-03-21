@@ -4,6 +4,4 @@ stimulus_id: coord_pause_task_1
 instruction_id: null
 device_id_array:
 - Intel_D455_1
-sensor_id_array:
-- - Intel_D455_rgb_1
 arg_parser: iout.stim_param_reader.py::RawTaskParams()

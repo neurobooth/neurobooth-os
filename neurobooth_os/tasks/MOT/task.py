@@ -181,7 +181,7 @@ class MOT(Task_Eyetracker):
         """
         repetition_str = f'_rep-{self.n_repetitions}' if self.n_repetitions > 0 else ''
         fname = f"{self.subject_id}_{self.task_name}_{name}_v2{repetition_str}.csv"
-        data.to_csv(self.output_path + fname)
+        data.to_csv(op.join(self.output_path, fname))
         self.task_files.append(fname)
 
     def save_results(self):

@@ -258,9 +258,11 @@ def get_stimulus_kwargs_from_file(stimulus_id):
     return stim_file, task_param_dict
 
 
-def _get_sensor_kwargs(sens_id):
-    param = dict(read_sensors()[sens_id])
-    return param
+def _get_sensor(sens_id) -> SensorArgs:
+    """
+    Returns SensorArgs for sensor with the given id
+    """
+    return read_sensors()[sens_id]
 
 
 def _get_dev_sn(dev_id:str) -> Optional[str]:
@@ -283,79 +285,74 @@ def _get_dev_sn(dev_id:str) -> Optional[str]:
     return sn
 
 
-def map_database_to_deviceclass(dev_id: str, dev_id_param:Dict[str, Any]):
+def map_database_to_deviceclass(dev_id: str, info:Dict[str, Any]):
     # Convert SN and sens param from metadata to kwarg for device function
     # input: dict, from _get_device_kwargs
     #   dict with keys: "SN":"xx", "sensors": {"sensor_ith":{parameters}}
 
-    info = dev_id_param
     kwarg = {}
     kwarg["device_id"] = dev_id
     kwarg["sensor_ids"] = list(info["sensors"])
     if "mock_Mbient" in dev_id:
         kwarg["name"] = dev_id
-        k = list(info["sensors"])[0]
-        kwarg["srate"] = int(info["sensors"][k]["temporal_res"])
+        sensor_id = list(info["sensors"])[0]
+        kwarg["srate"] = int(info["sensors"][sensor_id]["temporal_res"])
 
     elif "mock_Intel" in dev_id:
         kwarg["name"] = dev_id
-        k = list(info["sensors"])[0]
-        kwarg["srate"] = int(info["sensors"][k]["temporal_res"])
-        kwarg["sizex"] = int(info["sensors"][k]["spatial_res_x"])
-        kwarg["sizey"] = int(info["sensors"][k]["spatial_res_y"])
+        sensor_id = list(info["sensors"])[0]
+        kwarg["srate"] = int(info["sensors"][sensor_id]["temporal_res"])
+        kwarg["sizex"] = int(info["sensors"][sensor_id]["spatial_res_x"])
+        kwarg["sizey"] = int(info["sensors"][sensor_id]["spatial_res_y"])
 
     elif "Intel" in dev_id:
         kwarg["camindex"] = [int(dev_id[-1]), info["SN"]]
 
-        for k in info["sensors"].keys():
-            if "rgb" in k:
-                size_x = int(info["sensors"][k]["spatial_res_x"])
-                size_y = int(info["sensors"][k]["spatial_res_y"])
+        for sensor_id in info["sensors"].keys():
+            if "rgb" in sensor_id:
+                size_x = int(info["sensors"][sensor_id]["spatial_res_x"])
+                size_y = int(info["sensors"][sensor_id]["spatial_res_y"])
                 kwarg["size_rgb"] = (size_x, size_y)
-                kwarg["fps_rgb"] = int(info["sensors"][k]["temporal_res"])
+                kwarg["fps_rgb"] = int(info["sensors"][sensor_id]["temporal_res"])
 
-            elif "depth" in k:
-                size_x = int(info["sensors"][k]["spatial_res_x"])
-                size_y = int(info["sensors"][k]["spatial_res_y"])
+            elif "depth" in sensor_id:
+                size_x = int(info["sensors"][sensor_id]["spatial_res_x"])
+                size_y = int(info["sensors"][sensor_id]["spatial_res_y"])
                 kwarg["size_depth"] = (size_x, size_y)
-                kwarg["fps_depth"] = int(info["sensors"][k]["temporal_res"])
+                kwarg["fps_depth"] = int(info["sensors"][sensor_id]["temporal_res"])
 
     elif "Mbient" in dev_id:
         kwarg["dev_name"] = dev_id.split("_")[1]
         kwarg["mac"] = info["SN"]
-        for k in info["sensors"].keys():
-            if "acc" in k:
-                kwarg["acc_hz"] = int(info["sensors"][k]["temporal_res"])
-            elif "gyro" in k:
-                kwarg["gyro_hz"] = int(info["sensors"][k]["temporal_res"])
+        for sensor_id in info["sensors"].keys():
+            if "acc" in sensor_id:
+                kwarg["acc_hz"] = int(info["sensors"][sensor_id]["temporal_res"])
+            elif "gyro" in sensor_id:
+                kwarg["gyro_hz"] = int(info["sensors"][sensor_id]["temporal_res"])
 
     elif "FLIR_blackfly" in dev_id:
         kwarg["device_sn"] = info["SN"]
-        (k,) = info["sensors"].keys()
-        # TODO test asserting assert(len(list(info['sensors']))==1) raise
-        # f"{dev_id} should have only one sensor"
-        kwarg["fps"] = int(info["sensors"][k]["temporal_res"])
-        kwarg["sizex"] = int(info["sensors"][k]["spatial_res_x"])
-        kwarg["sizey"] = int(info["sensors"][k]["spatial_res_y"])
+        (sensor_id,) = info["sensors"].keys()
+        kwarg["fps"] = int(info["sensors"][sensor_id]["temporal_res"])
+        kwarg["sizex"] = int(info["sensors"][sensor_id]["spatial_res_x"])
+        kwarg["sizey"] = int(info["sensors"][sensor_id]["spatial_res_y"])
 
     elif "Mic_Yeti" in dev_id:
-        # TODO test asserting assert(len(list(info['sensors']))==1) raise
-        # f"{dev_id} should have only one sensor"
-        (k,) = info["sensors"].keys()
-        kwarg["RATE"] = int(info["sensors"][k]["temporal_res"])
-        kwarg["CHUNK"] = int(info["sensors"][k]["spatial_res_x"])
+        (sensor_id,) = info["sensors"].keys()
+        kwarg["RATE"] = int(info["sensors"][sensor_id]["temporal_res"])
+        kwarg["CHUNK"] = int(info["sensors"][sensor_id]["spatial_res_x"])
 
     elif "Eyelink" in dev_id:
         kwarg["ip"] = info["SN"]
         # TODO test asserting assert(len(list(info['sensors']))==1) raise
         # f"{dev_id} should have only one sensor"
-        (k,) = info["sensors"].keys()
-        kwarg["sample_rate"] = int(info["sensors"][k]["temporal_res"])
+        (sensor_id,) = info["sensors"].keys()
+        kwarg["sample_rate"] = int(info["sensors"][sensor_id]["temporal_res"])
 
     elif "Mouse" in dev_id:
         return kwarg
     elif "IPhone" in dev_id:
-        (k,) = info["sensors"].keys()
+        (sensor_id,) = info["sensors"].keys()
     else:
         print(
             f"Device id parameters not found for {dev_id} in map_database_to_deviceclass"
@@ -365,24 +362,25 @@ def map_database_to_deviceclass(dev_id: str, dev_id_param:Dict[str, Any]):
 
 
 def _get_device_kwargs(task_id):
+    # TODO: Eliminate this method, which is now used only in tests and mocks
+
     task: RawTaskParams = get_task(task_id)
     dev_kwarg = {}
     for dev_id, dev_sens_ids in zip(task.device_id_array, task.sensor_id_array):
-        # TODO test that dev_sens_ids are from correct dev_id, eg. dev_sens_ids =
-        # {Intel_D455_rgb_1,Intel_D455_depth_1} dev_id= Intel_D455_x
         dev_id_param = {}
         dev_id_param["SN"] = _get_dev_sn(dev_id)
 
         dev_id_param["sensors"] = {}
         for sens_id in dev_sens_ids:
             if len(sens_id):
-                dev_id_param["sensors"][sens_id] = _get_sensor_kwargs(sens_id)
+                dev_id_param["sensors"][sens_id] = _get_sensor(sens_id)
         kwarg = map_database_to_deviceclass(dev_id, dev_id_param)
         dev_kwarg[dev_id] = kwarg
     return dev_kwarg
 
 
-def get_device_kwargs_by_task(collection_id) -> OrderedDict:
+def get_device_kwargs_by_task(collection_id):
+    # TODO: Eliminate this method, which is now used only in tests and mocks
     """
     Gets devices kwargs for all the tasks in the collection
 
@@ -390,14 +388,11 @@ def get_device_kwargs_by_task(collection_id) -> OrderedDict:
     ----------
     collection_id str
         Unique identifier for collection
-    conn Object
-        database connection
 
     Returns
     -------
         Dict with keys = stimulus_id, vals = dict with dev parameters
     """
-    # TODO(larry): Use TaskArgs to get device and sensor data instead of re-querying the yml files in other methods
     task_dict : Dict[str, TaskArgs] = build_tasks_for_collection(collection_id)
     task_list : List[TaskArgs] = list(task_dict.values())
     tasks_kwarg = OrderedDict()
@@ -509,7 +504,7 @@ def build_tasks_for_collection(collection_id: str) -> Dict[str, TaskArgs]:
     return task_dict
 
 
-def build_task(param_dictionary, task_id) -> TaskArgs:
+def build_task(param_dictionary, task_id:str) -> TaskArgs:
     raw_task_args: RawTaskParams = param_dictionary["tasks"][task_id]
     stim_args: StimulusArgs = param_dictionary["stimuli"][raw_task_args.stimulus_id]
     task_constructor = stim_args.stimulus_file

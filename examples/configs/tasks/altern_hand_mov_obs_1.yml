@@ -13,13 +13,4 @@ device_id_array:
 - Mbient_BK_1
 - FLIR_blackfly_1
 - Mic_Yeti_dev_1
-sensor_id_array:
-- - Intel_D455_rgb_1
-  - Intel_D455_depth_1
-- - Intel_D455_rgb_1
-  - Intel_D455_depth_1
-- - Intel_D455_rgb_1
-  - Intel_D455_depth_1
-- - FLIR_rgb_1
-- - Mic_Yeti_sens_1
 arg_parser: iout.stim_param_reader.py::RawTaskParams()

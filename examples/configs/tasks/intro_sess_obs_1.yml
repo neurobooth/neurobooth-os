@@ -4,6 +4,4 @@ stimulus_id: intro_sess_task_1
 instruction_id: intro_sess
 device_id_array:
 - Intel_D455_1
-sensor_id_array:
-- - Intel_D455_rgb_1
 arg_parser: iout.stim_param_reader.py::RawTaskParams()

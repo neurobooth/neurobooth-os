@@ -1,5 +1,5 @@
 device_id: Mbient_BK_1
-device_sn: D7:B0:7E:C2:A1:23
+mac: FE:AB:CF:19:7A:CB
 device_name: mbient
 device_location: 'Null'
 wearable_bool: true
@@ -9,4 +9,4 @@ device_firmware: '1.7'
 sensor_ids:
 - mbient_acc_1
 - mbient_gyro_1
-arg_parser: iout.stim_param_reader.py::DeviceArgs()
+arg_parser: iout.stim_param_reader.py::MbientDeviceArgs()
