@@ -9,9 +9,6 @@ This module handles task-level aspects and organization, such as:
 """
 
 # TODO: Generate animation file for the example trial!
-# TODO: Load new params and animation files; should probably be in .neurobooth_os by configs
-# TODO: Finish refactoring of parameter structures
-# TODO: Update configs to point to new Task object path and to define the task parameters
 # TODO: Change circle colors to be more color blind friendly (green -> blue; check slides)
 # TODO: Update CSV files with one-time v2 updator script as described in Slack/shortcut
 
@@ -100,7 +97,9 @@ class MOT(Task_Eyetracker):
     def _create_frame(self, params: FrameParameters) -> MOTFrame:
         if isinstance(params, TrialFrameParameters):
             params: TrialFrameParameters
-            return TrialFrame()  # TODO: Refactor TrialFrame to work with an animator
+            if params.trial_type == 'test':
+                self.trial_count += 1
+            return TrialFrame(self.win, self, self.trial_count, params)
         elif isinstance(params, ImageFrameParameters):
             params: ImageFrameParameters
             return ImageFrame(self.win, self, params.image_path)
@@ -108,6 +107,7 @@ class MOT(Task_Eyetracker):
             raise MOTException(f'Unexpected frame parameter type: {type(params)}')
 
     def _create_chunk(self, chunk: FrameChunk) -> List[MOTFrame]:
+        self.trial_count = 0  # Keep track of how many test trial frames are in a chunk
         return [self._create_frame(params) for params in chunk.frames]
 
     def _init_frame_sequence(

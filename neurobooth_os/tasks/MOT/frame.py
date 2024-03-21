@@ -21,7 +21,7 @@ from psychopy.event import Mouse
 from psychopy.visual import TextBox2
 
 from neurobooth_os.tasks import utils
-from neurobooth_os.tasks.MOT.animate import StepwiseAnimator, CircleModel
+from neurobooth_os.tasks.MOT.animate import CircleAnimator, SavedAnimationHandler, CircleModel
 
 if TYPE_CHECKING:  # Prevent circular import during runtime
     from neurobooth_os.tasks.MOT.task import MOT
@@ -42,6 +42,8 @@ class TrialFrameParameters(BaseModel):
     animation_path: str
     n_targets: Annotated[int, Field(ge=1)]
     flash_duration: Annotated[float, Field(gt=0)] = 3
+    flash_frequency: Annotated[float, Field(gt=0)] = 0.2
+    movement_duration: Annotated[float, Field(gt=0)] = 5
     click_timeout: Annotated[float, Field(gt=0)] = 60
 
 
@@ -178,8 +180,6 @@ class TrialResult(NamedTuple):
     n_correct: int
     click_duration: float
     circle_speed: float
-    velocity_noise: float
-    random_seed: Union[str, int]
     animation_duration: float
     state: str
 
@@ -193,63 +193,36 @@ class TrialFrame(MOTFrame):
             self,
             window: visual.Window,
             task: MOT,
-            *,  # Remaining arguments must be by keyword
-            flash_duration: float,
-            movement_duration: float,
-            click_timeout: float,
             trial_count: int,
-            n_circles: int,
-            n_targets: int,
-            paper_size: float,
-            circle_radius: float,
-            circle_speed: float,
-            velocity_noise: float,
-            random_seed: Union[int, str],
+            trial_param: TrialFrameParameters,
     ):
         """
         :param window: The PsychoPy window to draw to.
         :param task: The MOT task object.
-        :param flash_duration: How long the cirlces should flash green (s).
-        :param movement_duration: The duration of circle movement (s).
-        :param click_timeout: How long to wait for all clicks before timing out (s).
         :param trial_count: The number of the trial in a sequence of trials.
-        :param n_circles: The total number of circles in the trial.
-        :param n_targets: The number of circles that are designated as targets.
-        :param paper_size: The width or height of the square stimulus area (px).
-        :param circle_radius: The radius of each circle (px).
-        :param circle_speed: The speed at which the circles move (px/s).
-        :param velocity_noise: Noise applied to the velocity vectors during circle motion (deg).
-        :param random_seed: A seed for the RNG to ensure consistency across sessions.
+        :param trial_param: Structured representation of all necessary trial frame parameters.
         """
         super().__init__(window)
         self.task = task
         self._allow_clicks = True
 
         # Time-related properties of the stimulus
-        self.flash_duration = flash_duration
-        self.flash_frequency = 0.2
-        self.movement_duration = movement_duration
-        self.click_timeout = click_timeout
+        self.flash_duration = trial_param.flash_duration
+        self.flash_frequency = trial_param.flash_frequency
+        self.movement_duration = trial_param.movement_duration
+        self.click_timeout = trial_param.click_timeout
 
-        # Properties regarding circle positioning and movement
-        self.animation = StepwiseAnimator(
-            n_circles=n_circles,
-            paper_size=paper_size,
-            circle_radius=circle_radius,
-            circle_speed=circle_speed,
-            velocity_noise=velocity_noise * (math.pi / 180),  # deg -> rad
-            random_seed=random_seed,
-        )
+        # Load a pre-saved animation
+        self.animation: CircleAnimator = SavedAnimationHandler().load(trial_param.animation_path).get_replay()
 
         # Visual properties of the stimulus
         self.trial_count = trial_count
-        self.n_targets = n_targets
-        self.paper_size = paper_size
+        self.n_targets = trial_param.n_targets
         self.circles = [CircleStimulus(c, self.window) for c in self.animation.circles]
         self.background = visual.Rect(
             self.window,
-            width=paper_size,
-            height=paper_size,
+            width=self.animation.paper_size,
+            height=self.animation.paper_size,
             lineColor="black",
             fillColor="white",
             units="pix",
@@ -329,7 +302,7 @@ class TrialFrame(MOTFrame):
         self.task.score += delta
 
     def trial_info_message(self) -> List[visual.TextStim]:
-        offset = self.paper_size // 2
+        offset = self.animation.paper_size // 2
         stimuli = []
         if self.__current_message:
             stimuli.append(visual.TextStim(
@@ -468,9 +441,7 @@ class TrialFrame(MOTFrame):
             n_circles=len(self.circles),
             n_targets=self.n_targets,
             n_correct=sum([c.correct for c in self.click_info]),
-            circle_speed=self.animation.circle_speed,
-            velocity_noise=self.animation.velocity_noise,
-            random_seed=self.animation.random_seed,
+            circle_speed=self.animation.get_circle_speed(),
             animation_duration=self.actual_animation_duration,
             click_duration=max([0, *[c.time for c in self.click_info]]),
             state='aborted' if not self.completed else self.result_status,
@@ -486,7 +457,7 @@ class ExampleFrame(TrialFrame):
         super().__init__(*args, **kwargs)
         self._allow_clicks = False
 
-        # Disable the message at the bottom of the stimulus area
+        # Disable the message at the top/bottom of the stimulus area
         self.click_message = ''
         self.animation_message = ''
         self.score_message = ''

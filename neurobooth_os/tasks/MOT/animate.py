@@ -7,7 +7,7 @@ import math
 import random
 import time
 from abc import ABC, abstractmethod
-from typing import Union, Optional
+from typing import Union, Optional, List
 import numpy as np
 
 
@@ -61,6 +61,10 @@ class CircleAnimator(ABC):
 
     @abstractmethod
     def step(self, elapsed_time: float) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_circle_speed(self) -> float:
         raise NotImplementedError()
 
 
@@ -155,6 +159,10 @@ class StepwiseAnimator(CircleAnimator):
             # Compute final direction and update
             circle.direction = math.atan2(vel_y, vel_x)  # Use atan2 (not atan)!
 
+    def get_circle_speed(self) -> float:
+        """:return: the circle speed in px per animation update."""
+        return self.circle_speed
+
 
 class ReplayAnimator(CircleAnimator):
     """Replays a precomputed animation to allow for consistent/known speeds and trajectories"""
@@ -191,6 +199,20 @@ class ReplayAnimator(CircleAnimator):
         step = int(np.rint(elapsed_time * self.update_freq))
         step = min(step, self.trajectories.shape[0]-1)  # Don't go past the end of the array
         self._update_to_step(step)
+
+    def get_circle_speed(self, per_circle: bool = False) -> Union[float, List[float]]:
+        """
+        Calculate the mean circle speed based on the saved animation trajectory.
+        :param: If True, return speeds calculated individually for each circle. Otherwise, take the mean of the speeds.
+        :return: The mean circle speed in px/s
+        """
+        velocity = np.gradient(self.trajectories, 1/self.update_freq, axis=2)  # Per-axis velocity
+        speed = np.linalg.norm(velocity, axis=2)  # Velocity vector magnitude
+        mean_speed = np.mean(speed, axis=0)  # Average speed over all animation steps
+        if per_circle:
+            return mean_speed.tolist()
+        else:
+            return np.mean(mean_speed)  # Average circle speed
 
 
 class UninitializedAnimationException(Exception):
@@ -244,10 +266,11 @@ class SavedAnimationHandler:
         if self.update_freq is None or self.trajectories is None:
             raise UninitializedAnimationException()
 
-    def save(self, path: str) -> None:
+    def save(self, path: str) -> 'SavedAnimationHandler':
         """
         Save the computed trajectories to a .npz file.
         :param path: The path to the intended file. The file should end in .npz.
+        :return: This object, used for call chaining.
         """
         self._check_if_initialized()
         np.savez_compressed(
@@ -258,17 +281,20 @@ class SavedAnimationHandler:
             paper_size=self.paper_size,
             created_at=time.time(),
         )
+        return self
 
-    def load(self, path: str) -> None:
+    def load(self, path: str) -> 'SavedAnimationHandler':
         """
         Load computed trajectories from a .npz file.
         :param path: The path to the file.
+        :return: This object, used for call chaining.
         """
         data = np.load(path)
         self.update_freq = data['update_freq']
         self.trajectories = data['trajectories']
         self.circle_radius = data['circle_radius']
         self.paper_size = data['paper_size']
+        return self
 
     def get_replay(self) -> ReplayAnimator:
         self._check_if_initialized()
