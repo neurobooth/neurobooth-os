@@ -42,19 +42,16 @@ class SensorArgs(BaseModel):
 
 
 class StandardSensorArgs(SensorArgs):
-    temporal_res: Optional[PositiveFloat] = None
-    spatial_res_x: Optional[PositiveFloat] = None
-    spatial_res_y: Optional[PositiveFloat] = None
+    sample_rate: PositiveInt
+    width_px: PositiveInt
+    height_px: PositiveInt
 
 
 class MbientSensorArgs(SensorArgs):
     sample_rate: PositiveInt
 
 
-class IntelSensorArgs(SensorArgs):
-    fps: PositiveInt
-    size_x: PositiveInt
-    size_y: PositiveInt
+class IntelSensorArgs(StandardSensorArgs):
     size: Optional[Tuple[float, float]] = None
 
     def __init__(self, **kwargs):
@@ -65,9 +62,6 @@ class IntelSensorArgs(SensorArgs):
 class FlirSensorArgs(StandardSensorArgs):
     offsetX: PositiveInt
     offsetY: PositiveInt
-    sample_rate: PositiveInt
-    width_px: PositiveInt
-    height_px: PositiveInt
 
 
 class MicYetiSensorArgs(SensorArgs):
@@ -77,7 +71,6 @@ class MicYetiSensorArgs(SensorArgs):
 
 class EyelinkSensorArgs(StandardSensorArgs):
     calibration_type: str
-    sample_rate: PositiveInt
 
 
 class DeviceArgs(BaseModel):
@@ -142,7 +135,7 @@ class FlirDeviceArgs(DeviceArgs):
 class IntelDeviceArgs(DeviceArgs):
     sensor_array: List[IntelSensorArgs] = []
 
-    def fps(self):
+    def sample_rate(self):
         """
         Returns a tuple containing the fps value from each sensor
 
@@ -154,9 +147,9 @@ class IntelDeviceArgs(DeviceArgs):
         fps_depth = None
         for sensor in self.sensor_array:
             if 'depth' in sensor.sensor_id:
-                fps_depth = sensor.fps
+                fps_depth = sensor.sample_rate
             elif 'rgb' in sensor.sensor_id:
-                fps_rgb = sensor.fps
+                fps_rgb = sensor.sample_rate
         result = (fps_rgb, fps_depth)
         return result
 
