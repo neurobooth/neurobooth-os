@@ -41,7 +41,7 @@ class SensorArgs(BaseModel):
     arg_parser: str
 
 
-class StandardSensorArgs(SensorArgs):
+class CameraSensorArgs(SensorArgs):
     sample_rate: PositiveInt
     width_px: PositiveInt
     height_px: PositiveInt
@@ -51,7 +51,7 @@ class MbientSensorArgs(SensorArgs):
     sample_rate: PositiveInt
 
 
-class IntelSensorArgs(StandardSensorArgs):
+class IntelSensorArgs(CameraSensorArgs):
     size: Optional[Tuple[float, float]] = None
 
     def __init__(self, **kwargs):
@@ -59,7 +59,7 @@ class IntelSensorArgs(StandardSensorArgs):
         self.size = (self.size_x, self.size_y)
 
 
-class FlirSensorArgs(StandardSensorArgs):
+class FlirSensorArgs(CameraSensorArgs):
     offsetX: PositiveInt
     offsetY: PositiveInt
 
@@ -69,7 +69,8 @@ class MicYetiSensorArgs(SensorArgs):
     sample_chunk_size: PositiveInt
 
 
-class EyelinkSensorArgs(StandardSensorArgs):
+class EyelinkSensorArgs(SensorArgs):
+    sample_rate: PositiveInt
     calibration_type: str
 
 
