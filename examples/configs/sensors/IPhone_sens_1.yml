@@ -1,6 +1,6 @@
 sensor_id: IPhone_sens_1
-temporal_res: 60.0
-spatial_res_x: 1024.0
-spatial_res_y: 760.0
+sample_rate: 60
+width_px: 1024
+height_px: 760
 file_type: mov
 arg_parser: iout.stim_param_reader.py::StandardSensorArgs()
