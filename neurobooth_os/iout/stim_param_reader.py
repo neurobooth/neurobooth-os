@@ -56,7 +56,7 @@ class IntelSensorArgs(CameraSensorArgs):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.size = (self.size_x, self.size_y)
+        self.size = (self.width_px, self.height_px)
 
 
 class FlirSensorArgs(CameraSensorArgs):
