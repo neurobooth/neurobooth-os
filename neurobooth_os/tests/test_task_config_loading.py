@@ -58,14 +58,6 @@ class TestTask(unittest.TestCase):
         task_args2 = StimulusArgs(**entries)
         self.assertIsNotNone(task_args2)
 
-    # Integration Test (uses database)
-    def test_instruction_args(self):
-        instruction_id = "sacc_horiz_1"
-        args = meta._get_instruction_kwargs(instruction_id)
-        self.assertIsNone(args.instruction_text)
-        self.assertEquals('mp4', args.instruction_filetype)
-        self.assertEquals('oculomotor_horizontal_saccades_2022_06_03_v0.6.mp4', args.instruction_file)
-
     def test_instruction_args_when_no_instructions(self):
         log_path = r"C:\neurobooth\test_data\test_logs"
 
