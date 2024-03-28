@@ -68,9 +68,14 @@ def run_stm(logger):
 
         if "prepare" in data:
             session, task_log_entry = prepare_session(data, socket_1, logger)
+            if session is None:
+                raise RuntimeError("STM session failed to initialize.")
 
         elif "present" in data:  # -> "present:TASKNAME:subj_id:session_id"
             # task_name can be list of tk1-task2-task3
+            if session is None:
+                raise RuntimeError("Session is not initialized. Likely cause is that STM receive the 'Present' "
+                                   "message without first receiving 'Prepare'")
             session.logger.info("Beginning Presentation")
             tasks, subj_id, session_id = data.split(":")[1:]
             task_log_entry.log_session_id = session_id
