@@ -48,7 +48,7 @@ class VidRec_Intel:
             self.device_args.framesize()[0][0],
             self.device_args.framesize()[0][1],
             rs.format.rgb8,
-            self.device_args.fps()[0],
+            self.device_args.sample_rate()[0],
         )
 
         if device_args.has_depth_sensor():
@@ -57,14 +57,14 @@ class VidRec_Intel:
                 self.device_args.framesize()[1][0],
                 self.device_args.framesize()[1][1],
                 rs.format.z16,
-                self.device_args.fps()[1],
+                self.device_args.sample_rate()[1],
             )
 
         self.outlet = self.createOutlet()
 
         self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(
-            f'RealSense [{self.device_index}] ({self.serial_num}): fps={str(self.device_args.fps())}; frame_size={str(self.device_args.framesize())}'
+            f'RealSense [{self.device_index}] ({self.serial_num}): fps={str(self.device_args.sample_rate())}; frame_size={str(self.device_args.framesize())}'
         )
 
     def start(self, name="temp_video"):
@@ -110,8 +110,8 @@ class VidRec_Intel:
             serial_number=self.serial_num,
             size_rgb=str(self.device_args.framesize()[0]),
             size_depth=str(self.device_args.framesize()[1]),
-            fps_rgb=str(self.device_args.fps()[0]),
-            fps_depth=str(self.device_args.fps()[1]),
+            fps_rgb=str(self.device_args.sample_rate()[0]),
+            fps_depth=str(self.device_args.sample_rate()[1]),
         )
         print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
         return StreamOutlet(info)
