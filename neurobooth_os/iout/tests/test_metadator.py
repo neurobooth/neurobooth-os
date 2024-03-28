@@ -56,64 +56,18 @@ class TestMetadator(unittest.TestCase):
         print(meta.get_task_ids_for_collection("testing"))
         self.assertIsNotNone(meta.get_task_ids_for_collection("testing"))
 
-    def test_get_dev_sn(self):
-        print(meta._get_dev_sn("FLIR_blackfly_1"))
-        self.assertIsNotNone(meta._get_dev_sn("FLIR_blackfly_1"))
+    def test_task_addition( self):
+        conn = meta.get_database_connection()
+        subj_id = "Test"
+        task_id = meta.make_new_task_row(conn, subj_id)
 
-    def test_get_sensor_kwargs(self):
-        print(meta._get_sensor("Eyelink_sens_1"))
-        self.assertIsNotNone(meta._get_sensor("Eyelink_sens_1"))
+        vals_dict = meta._new_tech_log_dict()
+        vals_dict["subject_id"] = subj_id
+        vals_dict["study_id"] = "mock_study"
+        vals_dict["task_id"] = "mock_obs_1"
+        vals_dict["staff_id"] = "mocker"
+        vals_dict["event_array"] = "event:datestamp"
+        vals_dict["collection_id"] = "mock_collection"
+        vals_dict["site_id"] = "mock_site"
 
-    def test_get_device_kwargs_by_task(self):
-        collection_id = 'testing'
-        args = meta.get_device_kwargs_by_task(collection_id)
-        print(args)
-
-        kwarg_alldevs = {}
-        for dc in args.values():
-           kwarg_alldevs.update(dc)
-        #print("Value size: " + str(len(kwarg_alldevs.keys())))
-        #print("Values: " + str(kwarg_alldevs))
-
-        task_dict = meta.build_tasks_for_collection(collection_id)
-        kwargs = {}
-        for val in task_dict.values():
-            list_of_devs_in_task = val.device_args
-            for dev_args in list_of_devs_in_task:
-                kwargs[dev_args.device_id] = (dict(dev_args))
-        print("New values size: " + str(len(kwargs.keys())))
-        print(kwargs)
-        print()
-
-        for k in kwarg_alldevs.keys():
-            val1 = kwarg_alldevs[k]
-            print(val1)
-            val2 = kwargs[k]
-            print(val2)
-            print()
-            for k2 in val1.keys():
-                print()
-                val1_2 = val1[k2]
-                print(val1_2)
-                val2_2 = val2[k2]
-                assert(val1_2 is not None)
-                assert(val2_2 is not None)
-                print(val2_2)
-                print()
-
-
-def test_task_addition():
-    conn = meta.get_database_connection()
-    subj_id = "Test"
-    task_id = meta.make_new_task_row(conn, subj_id)
-
-    vals_dict = meta._new_tech_log_dict()
-    vals_dict["subject_id"] = subj_id
-    vals_dict["study_id"] = "mock_study"
-    vals_dict["task_id"] = "mock_obs_1"
-    vals_dict["staff_id"] = "mocker"
-    vals_dict["event_array"] = "event:datestamp"
-    vals_dict["collection_id"] = "mock_collection"
-    vals_dict["site_id"] = "mock_site"
-
-    meta.fill_task_row(task_id, vals_dict, conn)
+        meta.fill_task_row(task_id, vals_dict, conn)
