@@ -22,27 +22,23 @@ practice_chunks:  # Task instructions and practice parameters
       - image_path: intro.png
       - image_path: inst1.png
       - trial_type: example
-        animation_path: missing.npz
+        animation_path: example_trial_00_2tgt.npz
         n_targets: 2
 
       - image_path: inst2.png
       - trial_type: practice
-        animation_path: practice_trial_00_2tgt.npz
+        animation_path: practice_trial_01_2tgt.npz
         n_targets: 2
 
       - image_path: inst3.png
       - trial_type: practice
-        animation_path: practice_trial_01_3tgt.npz
+        animation_path: practice_trial_02_3tgt.npz
         n_targets: 3
 
 test_chunks:  # Test parameters
   - chunk_name: 3-target
     frames:
       - image_path: targ3.png
-      - trial_type: test
-        animation_path: trial_02_3tgt.npz
-        n_targets: 3
-
       - trial_type: test
         animation_path: trial_03_3tgt.npz
         n_targets: 3
@@ -63,13 +59,13 @@ test_chunks:  # Test parameters
         animation_path: trial_07_3tgt.npz
         n_targets: 3
 
+      - trial_type: test
+        animation_path: trial_08_3tgt.npz
+        n_targets: 3
+
   - chunk_name: 4-target
     frames:
       - image_path: targ4.png
-      - trial_type: test
-        animation_path: trial_08_4tgt.npz
-        n_targets: 4
-
       - trial_type: test
         animation_path: trial_09_4tgt.npz
         n_targets: 4
@@ -90,13 +86,13 @@ test_chunks:  # Test parameters
         animation_path: trial_13_4tgt.npz
         n_targets: 4
 
+      - trial_type: test
+        animation_path: trial_14_4tgt.npz
+        n_targets: 4
+
   - chunk_name: 5-target
     frames:
       - image_path: targ5.png
-      - trial_type: test
-        animation_path: trial_14_5tgt.npz
-        n_targets: 5
-
       - trial_type: test
         animation_path: trial_15_5tgt.npz
         n_targets: 5
@@ -115,4 +111,8 @@ test_chunks:  # Test parameters
 
       - trial_type: test
         animation_path: trial_19_5tgt.npz
+        n_targets: 5
+
+      - trial_type: test
+        animation_path: trial_20_5tgt.npz
         n_targets: 5

@@ -8,7 +8,6 @@ This module handles task-level aspects and organization, such as:
    5. Saving performance reports
 """
 
-# TODO: Generate animation file for the example trial!
 # TODO: Update CSV files with one-time v2 updator script as described in Slack/shortcut
 
 import os.path as op
