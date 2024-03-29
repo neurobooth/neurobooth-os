@@ -29,8 +29,7 @@ from neurobooth_os.tasks.MOT.frame import (
     ImageFrameParameters,
     FrameChunk,
 )
-from neurobooth_os.iout.stim_param_reader import EyeTrackerStimArgs
-from neurobooth_os.iout.stim_param_reader import get_cfg_path
+from neurobooth_os.iout.stim_param_reader import EyeTrackerStimArgs, get_cfg_path
 
 
 class MotStimArgs(EyeTrackerStimArgs):
@@ -99,11 +98,7 @@ class MOT(Task_Eyetracker):
         :param animation_file: The name of the animation file (extension included).
         :return: The path to the file in the config folder.
         """
-        return op.join(
-            get_cfg_path('assets'),
-            'mot_animations',
-            animation_file,
-        )
+        return op.join(get_cfg_path('assets'), 'mot_animations', animation_file)
 
     def _create_frame(self, params: FrameParameters) -> MOTFrame:
         if isinstance(params, TrialFrameParameters):

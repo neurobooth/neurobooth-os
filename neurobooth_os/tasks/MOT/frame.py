@@ -9,7 +9,6 @@ However, MOT.animate handles the logical model of each circle and manages _HOW_ 
 """
 from __future__ import annotations
 
-import math
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, List, Optional, Tuple, NamedTuple, Union, Literal
 from typing_extensions import Annotated
@@ -218,7 +217,7 @@ class TrialFrame(MOTFrame):
 
         # Load a pre-saved animation
         self.animation: CircleAnimator = SavedAnimationHandler().load(
-            MOT.animation_path(trial_param.animation_path)  # Get the full path to the animation
+            self.task.animation_path(trial_param.animation_path)  # Get the full path to the animation
         ).get_replay()
 
         # Visual properties of the stimulus
