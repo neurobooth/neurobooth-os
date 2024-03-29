@@ -13,6 +13,8 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, List, Optional, Tuple, NamedTuple, Union, Literal
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field
+from psycopg2.extensions import register_adapter
+from functools import partial
 
 from psychopy import visual
 from psychopy.clock import Clock, wait, CountdownTimer
@@ -56,6 +58,10 @@ FrameParameters = Union[ImageFrameParameters, TrialFrameParameters]
 class FrameChunk(BaseModel):
     chunk_name: str
     frames: List[FrameParameters]
+
+
+# Tell psycopg2 how to serialize a FrameChunk for log_task entries
+register_adapter(FrameChunk, lambda model: model.model_dump_json())
 
 
 # ========================================================================
