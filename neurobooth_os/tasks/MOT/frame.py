@@ -217,7 +217,9 @@ class TrialFrame(MOTFrame):
         self.click_timeout = trial_param.click_timeout
 
         # Load a pre-saved animation
-        self.animation: CircleAnimator = SavedAnimationHandler().load(trial_param.animation_path).get_replay()
+        self.animation: CircleAnimator = SavedAnimationHandler().load(
+            MOT.animation_path(trial_param.animation_path)  # Get the full path to the animation
+        ).get_replay()
 
         # Visual properties of the stimulus
         self.trial_count = trial_count
