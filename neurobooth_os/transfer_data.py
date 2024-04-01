@@ -7,7 +7,6 @@ from subprocess import PIPE, Popen, STDOUT, CalledProcessError
 import argparse
 
 from neurobooth_os import config
-from neurobooth_os.util.constants import NODE_NAMES
 from neurobooth_os.log_manager import make_db_logger
 
 
@@ -18,7 +17,7 @@ def log_output(pipe):
 
 def main(args: argparse.Namespace):
     destination = config.neurobooth_config.remote_data_dir
-    source = config.neurobooth_config.server_by_name(args.source_node_name).local_data_dir
+    source = config.neurobooth_config.current_server().local_data_dir
 
     try:
         # Move data to remote
@@ -39,16 +38,9 @@ def main(args: argparse.Namespace):
 
 
 def parse_arguments() -> argparse.Namespace:
-
     parser = argparse.ArgumentParser(
         prog='transfer_data',
         description='Transfer data copies data from local folders into remote storage.',
-    )
-
-    parser.add_argument(
-        'source_node_name',  # positional argument
-        choices=NODE_NAMES,
-        help=f'You must provide the name of the node to transfer data from, which must be one of {NODE_NAMES}'
     )
     args = parser.parse_args()
     return args
