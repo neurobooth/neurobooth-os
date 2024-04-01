@@ -1,4 +1,5 @@
 import neurobooth_os.iout.iphone as iphone
+from neurobooth_os.iout.lsl_streamer import get_device_assignment
 import neurobooth_os.config as cfg
 import re
 import os
@@ -26,8 +27,8 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
     args
         Command line arguments.
     """
-    session_root = cfg.neurobooth_config.server_by_name(args.server).local_data_dir
     logger = logging.getLogger(APP_LOG_NAME)
+    session_root = cfg.neurobooth_config.current_server().local_data_dir
     logger.debug(f'Session Root: {session_root}')
 
     # Connect to the iPhone
@@ -146,12 +147,6 @@ def parse_arguments() -> argparse.Namespace:
         type=int,
         help='Specify a timeout (in seconds) for each file retrieval. Default is 10 min. No timeout if <= 0.'
     )
-    parser.add_argument(
-        '--server',
-        default='acquisition',
-        type=str,
-        help='Specify the server to run on so the proper value of local_data_dir is used. Default is "acquisition".'
-    )
     args = parser.parse_args()
 
     if args.delete_zero_byte:
@@ -171,6 +166,13 @@ def main():
     logger = make_db_logger()
     iphone.DISABLE_LSL = True
 
+    # Check if we should be running the dump on this machine.
+    server_name = cfg.get_server_name_from_env()
+    if get_device_assignment('IPhone_dev_1') != server_name:
+        logger.info(f'IPhone not assigned to {server_name}.')
+        return
+
+    # Run and time the dump.
     args = parse_arguments()
     t0 = datetime.datetime.now()
     logger.info('Running Dump')
