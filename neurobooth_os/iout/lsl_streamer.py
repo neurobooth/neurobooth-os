@@ -105,6 +105,23 @@ ASYNC_STARTUP: List[str] = [
 ]
 
 
+class DeviceNotFoundException(Exception):
+    """Exception raised when a given device ID cannot be found."""
+    pass
+
+
+def get_device_assignment(device_id: str) -> str:
+    """
+    Return the server a device is assigned to. Raises a DeviceNotFoundException if the device is not found.
+    :param device_id: The ID of the device.
+    :return: The full name of the assigned server.
+    """
+    for server_name, device_list in SERVER_ASSIGNMENTS.items():
+        if device_id in device_list:
+            return server_name
+    raise DeviceNotFoundException(f'{device_id} is not assigned to any server.')
+
+
 # --------------------------------------------------------------------------------
 # Handle the device life cycle
 # --------------------------------------------------------------------------------
