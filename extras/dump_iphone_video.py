@@ -169,7 +169,7 @@ def main():
     # Check if we should be running the dump on this machine.
     server_name = cfg.get_server_name_from_env()
     if get_device_assignment('IPhone_dev_1') != server_name:
-        logger.info(f'IPhone not assigned to {server_name}.')
+        logger.debug(f'IPhone not assigned to {server_name}.')
         return
 
     # Run and time the dump.
