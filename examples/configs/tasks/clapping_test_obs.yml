@@ -1,4 +1,4 @@
-task_id: clapping_test
+task_id: clapping_test_obs
 feature_of_interest: synch
 stimulus_id: clapping_task
 instruction_id: null
