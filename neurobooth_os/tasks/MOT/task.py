@@ -24,6 +24,8 @@ from neurobooth_os.tasks.MOT.frame import (
     ImageFrame,
     TrialResult,
     TrialFrame,
+    PracticeFrame,
+    ExampleFrame,
     FrameParameters,
     TrialFrameParameters,
     ImageFrameParameters,
@@ -105,7 +107,13 @@ class MOT(Task_Eyetracker):
             params: TrialFrameParameters
             if params.trial_type == 'test':
                 self.trial_count += 1
-            return TrialFrame(self.win, self, self.trial_count, params)
+                return TrialFrame(self.win, self, self.trial_count, params)
+            elif params.trial_type == 'practice':
+                return PracticeFrame(self.win, self, params)
+            elif params.trial_type == 'example':
+                return ExampleFrame(self.win, self, params)
+            else:
+                raise MOTException(f'Unrecognized trial type: {params.trial_type}')
         elif isinstance(params, ImageFrameParameters):
             params: ImageFrameParameters
             return ImageFrame(self.win, self, params.image_path)
