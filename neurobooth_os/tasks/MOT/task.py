@@ -109,9 +109,9 @@ class MOT(Task_Eyetracker):
                 self.trial_count += 1
                 return TrialFrame(self.win, self, self.trial_count, params)
             elif params.trial_type == 'practice':
-                return PracticeFrame(self.win, self, params)
+                return PracticeFrame(self.win, self, 0, params)
             elif params.trial_type == 'example':
-                return ExampleFrame(self.win, self, params)
+                return ExampleFrame(self.win, self, 0, params)
             else:
                 raise MOTException(f'Unrecognized trial type: {params.trial_type}')
         elif isinstance(params, ImageFrameParameters):
