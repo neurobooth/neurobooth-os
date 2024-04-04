@@ -490,7 +490,7 @@ class PracticeFrame(TrialFrame):
         super().__init__(*args, **kwargs)
 
         # Set a different message to display at the bottom of the stimulus area
-        self.click_message = f'Click the {self.n_targets} dots that were green'
+        self.click_message = f'Click the {self.n_targets} dots that were cyan'
         self.animation_message = ''
         self.score_message = ''
         self.trial_count_message = ''
