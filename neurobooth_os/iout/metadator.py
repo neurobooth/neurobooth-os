@@ -252,7 +252,12 @@ def read_sensors() -> Dict[str, SensorArgs]:
 
 
 def _dynamic_parse(file: str, param_type: str) -> BaseModel:
+
+    # TODO(larry): Move this upstream so it doesn't get called on every file parse
+    env_dict = stim_param_reader.get_param_dictionary("environment.yml", "")
+
     param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, param_type)
+    param_dict.update(env_dict)
     param_parser: str = param_dict['arg_parser']
     parser_func = str_fileid_to_eval(param_parser)
     return parser_func(**param_dict)

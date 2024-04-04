@@ -1,7 +1,7 @@
 from os import environ, path
 
 from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, \
-    SerializeAsAny
+    SerializeAsAny, model_validator
 from typing import Optional, List, Callable, Tuple
 import os
 import yaml
@@ -118,6 +118,15 @@ class FlirDeviceArgs(DeviceArgs):
     """
     sensor_array: List[FlirSensorArgs] = []
 
+    @classmethod
+    @model_validator(mode='before')
+    def validate_mac(self, values) -> str:
+        my_id = values.get('device_id')
+        sn = values['_devices'][my_id]['device_sn']
+        values['device_sn'] = sn
+        return values
+
+
     def sample_rate(self):
         return self.sensor_array[0].sample_rate
 
@@ -187,6 +196,14 @@ class MbientDeviceArgs(DeviceArgs):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.device_name = self.device_id.split("_")[1]
+
+    @classmethod
+    @model_validator(mode='before')
+    def validate_mac(self, values) -> str:
+        my_id = values.get('device_id')
+        mac_1 = values['_devices'][my_id]['mac']
+        values['mac'] = mac_1
+        return values
 
 
 class InstructionArgs(BaseModel):
