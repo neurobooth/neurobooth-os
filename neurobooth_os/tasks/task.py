@@ -263,7 +263,6 @@ class Task:
         self.countdown_task()
         self.show_text(screen=self.task_screen, msg="Task", audio=None, wait_time=3)
         if prompt:
-            print(locals())
             self.show_text(
                 screen=self.press_task_screen,
                 msg="Task-continue-repeat",

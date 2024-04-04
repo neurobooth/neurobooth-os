@@ -191,8 +191,9 @@ class IPhone:
         self.iphone_sessionID = sess_id
         self.name = name
         self.mock = mock
-        self.device_id = device_args.device_id
-        self.sensor_ids = device_args.sensor_ids
+        if not DISABLE_LSL:  # Device and sensor IDs are only needed if streaming data to LSL.
+            self.device_id = device_args.device_id
+            self.sensor_ids = device_args.sensor_ids
         self.enable_timeout_exceptions = enable_timeout_exceptions
         self.streaming = False
         self.streamName = "IPhoneFrameIndex"

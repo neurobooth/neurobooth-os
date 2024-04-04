@@ -8,10 +8,22 @@ import time
 import uuid
 import wave
 import logging
+from typing import NamedTuple, List, Optional
 
 from neurobooth_os.iout.stim_param_reader import MicYetiDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
+
+
+class AudioDeviceInfo(NamedTuple):
+    index: int
+    max_input_channels: Optional[float]
+    name: str
+
+
+class AudioDeviceException(Exception):
+    """Exception thrown for errors finding the correct audio device."""
+    pass
 
 
 class MicStream:
@@ -30,24 +42,18 @@ class MicStream:
         self.save_on_disk = save_on_disk
         self.CHANNELS = CHANNELS
         self.FORMAT = FORMAT
+
+        self.logger = logging.getLogger(APP_LOG_NAME)
+
         # Create audio object
         audio = pyaudio.PyAudio()
         self.p = audio
         self.last_time = local_clock()
-        # Get Blue Yeti mic device ID
-        info = audio.get_host_api_info_by_index(0)
-        dev_inx = -1
-        for i in range(info.get("deviceCount")):
-            if (
-                audio.get_device_info_by_host_api_device_index(0, i).get(
-                    "maxInputChannels"
-                )
-            ) > 0:
-                dev_name = audio.get_device_info_by_host_api_device_index(0, i).get("name")
-                if device_args.microphone_name in dev_name:  # replace with Samson if using Samson mic
-                    dev_inx = i
-                    self.device_name = dev_name
-                    break
+
+        # Identify the correct device
+        device = MicStream.find_matching_audio_device(device_args, MicStream.get_audio_devices(audio))
+        self.logger.debug(f'Using audio device "{device.name}" at index {device.index}.')
+        self.device_name = device.name
 
         # Create stream
         self.stream_in = audio.open(
@@ -57,7 +63,7 @@ class MicStream:
             input=True,
             output=True,
             frames_per_buffer=sensor.sample_chunk_size,
-            input_device_index=dev_inx,
+            input_device_index=device.index,
         )
 
         # Setup outlet stream infos
@@ -78,8 +84,6 @@ class MicStream:
             device_name=device_args.device_name,
         )
         print(f"-OUTLETID-:Audio:{self.oulet_id}")
-
-        self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(
             f'Microphone: sample_rate={str(self.fps)}; save_on_disk={self.save_on_disk}; channels={self.CHANNELS}'
         )
@@ -88,6 +92,44 @@ class MicStream:
         self.stream_on = False
         self.tic = 0
         self.outlet_audio = StreamOutlet(self.stream_info_audio)
+
+    @staticmethod
+    def get_audio_devices(audio: pyaudio.PyAudio, host_api_idx: int = 0) -> List[AudioDeviceInfo]:
+        """
+        Extract information about audio devices from PyAudio.
+        :param audio: A PyAudio object.
+        :param host_api_idx: The host_api_index to be passed to PyAudio.
+        :return: A list of identified audio devices.
+        """
+        return [
+            AudioDeviceInfo(
+                index=i,
+                max_input_channels=audio.get_device_info_by_host_api_device_index(host_api_idx, i).get('maxInputChannels'),
+                name=audio.get_device_info_by_host_api_device_index(host_api_idx, i).get('name'),
+            )
+            for i in range(audio.get_host_api_info_by_index(host_api_idx).get("deviceCount"))
+        ]
+
+    @staticmethod
+    def find_matching_audio_device(
+            device_args: MicYetiDeviceArgs, device_info: List[AudioDeviceInfo]
+    ) -> AudioDeviceInfo:
+        """
+        Identify audio devices matching the device arguments.
+        :param device_args: The device arguments to check against.
+        :param device_info: A list of audio devices found by get_audio_devices.
+        :return: The matching audio device. An error is raised if no or multiple devices are found.
+        """
+        device_info = [  # Filter list to matching name and sufficient channels
+            dev for dev in device_info
+            if (device_args.microphone_name in dev.name) and (dev.max_input_channels > 0)
+        ]
+        if len(device_info) == 0:
+            raise AudioDeviceException('No matching audio devices found!')
+        if len(device_info) > 1:
+            dev_names = ', '.join([f'"{dev.name}"' for dev in device_info])
+            raise AudioDeviceException(f'Ambiguous audio device specification. Matches: {dev_names}')
+        return device_info[0]
 
     def start(self):
         # Create outlets
