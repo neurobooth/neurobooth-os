@@ -124,8 +124,10 @@ def run_stm(logger):
                         task.run(**this_task_kwargs)
                     else:
                         log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
-                        meta.log_task_params(session.db_conn, task_id, log_task_id,
-                                             dict(session.task_func_dict[task_id].stim_args))
+                        meta.log_task_params(
+                            session.db_conn, task_id, log_task_id,
+                            session.task_func_dict[task_id].stim_args.model_dump()
+                        )
                         task_log_entry.date_times = (
                                 "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","
                         )
