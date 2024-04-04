@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import importlib
+import json
 import logging
 import os
 from collections import OrderedDict
@@ -216,7 +217,15 @@ def log_task_params(conn: connection, stimulus_id: str, log_task_id: str, task_p
     @return: None
     """
     for key, value in task_param_dictionary.items():
-        value_type = str(type(value))
+        if isinstance(value, (list, dict, tuple)):
+            value_type = 'JSON'
+            value = json.dumps(value)
+        elif isinstance(value, BaseModel):
+            value_type = 'JSON'
+            value = value.model_dump_json()
+        else:
+            value_type = str(type(value))
+
         args = {
             "log_task_id": log_task_id,
             "stimulus_id": stimulus_id,
