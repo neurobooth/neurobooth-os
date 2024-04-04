@@ -203,7 +203,7 @@ class MOT(Task_Eyetracker):
         total_click_duration = test_results['click_duration'].sum()
         outcome_df = pd.DataFrame.from_dict({
             'score': self.score,
-            'pct_correct': round(total_hits / total_targets, 3),
+            'pct_correct': round(total_hits / total_targets, 3) if total_targets > 0 else 0,
             'total_click_duration': round(total_click_duration, 1),
         }, orient="index", columns=["vals"])
 
