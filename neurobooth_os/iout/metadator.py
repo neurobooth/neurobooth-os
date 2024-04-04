@@ -217,9 +217,6 @@ def log_task_params(conn: connection, stimulus_id: str, log_task_id: str, task_p
     """
     for key, value in task_param_dictionary.items():
         value_type = str(type(value))
-        if isinstance(value, BaseModel):  # Serialize complex/nested task parameters as JSON
-            value = value.model_dump_json()
-
         args = {
             "log_task_id": log_task_id,
             "stimulus_id": stimulus_id,
