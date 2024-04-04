@@ -261,8 +261,7 @@ class TrialFrame(MOTFrame):
 
         # Present moving circles
         clock = Clock()
-        self.animation.initial_placement()
-        self.present_circles()
+        self.initial_placement()
         self.flash_targets()
         self.show_moving_circles()
         self.actual_animation_duration = round(clock.getTime(), 2)
@@ -368,6 +367,12 @@ class TrialFrame(MOTFrame):
         for message in self.trial_info_message():
             stimuli.append(message)
         self.present_stimuli(stimuli)
+
+    def initial_placement(self) -> None:
+        self.animation.initial_placement()
+        for circle in self.circles:
+            circle.color = self.circle_base_color
+        self.present_circles()
 
     def flash_targets(self) -> None:
         countdown = CountdownTimer()
