@@ -330,8 +330,6 @@ def build_tasks_for_collection(collection_id: str) -> Dict[str, TaskArgs]:
     ----------
     collection_id str
         The unique identifier for the collection
-    conn object
-        A database connection
 
     Returns
     -------
@@ -362,6 +360,7 @@ def build_task(param_dictionary, task_id:str) -> TaskArgs:
             sensor_args.append(param_dictionary["sensors"][sens_id])
         dev_args.sensor_array = sensor_args
         device_args.append(dev_args)
+
     task_constructor_callable = str_fileid_to_eval(task_constructor)
     task_args: TaskArgs = TaskArgs(
         task_id=task_id,
