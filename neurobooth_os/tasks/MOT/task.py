@@ -12,6 +12,7 @@ This module handles task-level aspects and organization, such as:
 
 import os.path as op
 from typing import List
+from itertools import chain
 import pandas as pd
 from psychopy import visual
 
@@ -197,10 +198,10 @@ class MOT(Task_Eyetracker):
         self.task_files.append(fname)
 
     def save_results(self):
+        all_frames: List[MOTFrame] = [*chain(*self.practice_chunks), *chain(*self.test_chunks)]
         results: List[TrialResult] = [
-            frame.results()
-            for frame in [*self.practice_chunks, *self.test_chunks]
-            if isinstance(frame, TrialFrame) and frame.trial_type in ['test', 'practice']
+            frame.results() for frame in all_frames
+            if isinstance(frame, TrialFrame) and frame.trial_type in ('test', 'practice')
         ]
         results_df = pd.DataFrame(results, columns=TrialResult._fields)
 
