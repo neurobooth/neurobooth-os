@@ -14,7 +14,6 @@ import os.path as op
 from typing import List
 import pandas as pd
 from psychopy import visual
-from itertools import chain
 
 import neurobooth_os
 from neurobooth_os.tasks.task import TaskAborted
@@ -200,7 +199,7 @@ class MOT(Task_Eyetracker):
     def save_results(self):
         results: List[TrialResult] = [
             frame.results()
-            for frame in chain(self.practice_chunks, self.test_chunks)
+            for frame in [*self.practice_chunks, *self.test_chunks]
             if isinstance(frame, TrialFrame) and frame.trial_type in ['test', 'practice']
         ]
         results_df = pd.DataFrame(results, columns=TrialResult._fields)
