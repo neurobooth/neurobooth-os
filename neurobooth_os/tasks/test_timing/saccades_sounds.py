@@ -12,7 +12,7 @@ prefs.hardware["audioLatencyMode"] = 3
 from pylsl import local_clock
 from psychopy import sound
 
-from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
+from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 from neurobooth_os.tasks.task import Task_Eyetracker
 
 
@@ -37,7 +37,7 @@ class Saccade_synch(Task_Eyetracker):
     ):
 
         super().__init__(**kwargs)
-        self.ntrials = int(num_iterations)
+        self.n_trials = int(num_iterations)
         self.wait_center = wait_center
         self.pointer_size_deg = target_size
         self.pointer_size_pixel = deg2pix(
@@ -67,15 +67,12 @@ class Saccade_synch(Task_Eyetracker):
 
         # Send a message to mark movement onset
         self.sendMessage(self.marker_task_start)
-        n_nosound = 0
-        for ix in range(self.ntrials):
+        for _ in range(self.n_trials):
             for tgt_pos, color in zip(self.target_positions, self.color_sequence):
                 self.win.color = color
-                self.win.flip()
-                if ix >= n_nosound:
-                    self.tone.play(when=self.win.getFutureFlipTime(clock="ptb"))
                 self.target.pos = tgt_pos
                 self.target.draw()
+                self.tone.play(when=self.win.getFutureFlipTime(clock="ptb"))
                 self.win.flip()
                 self.sendMessage(self.marker_trial_start)
                 self.send_target_loc(self.target.pos)
