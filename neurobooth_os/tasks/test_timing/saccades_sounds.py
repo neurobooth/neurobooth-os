@@ -9,14 +9,9 @@ from psychopy import prefs
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
 
-from math import sin, pi
-import os.path as op
-import numpy as np
 from pylsl import local_clock
-from psychopy import core, sound
-import pylink
+from psychopy import sound
 
-import neurobooth_os
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
 from neurobooth_os.tasks.task import Task_Eyetracker
 
@@ -30,7 +25,16 @@ def countdown(period):
 
 
 class Saccade_synch(Task_Eyetracker):
-    def __init__(self, wait_center=1, target_size=0.7, num_iterations=10, monochrome=True, **kwargs):
+    def __init__(
+            self,
+            wait_center: float = 1,
+            target_size: float = 0.7,
+            num_iterations: int = 10,
+            monochrome: bool = True,
+            tone_freq: int = 1000,
+            tone_duration: float = 0.1,
+            **kwargs
+    ):
 
         super().__init__(**kwargs)
         self.ntrials = int(num_iterations)
@@ -46,6 +50,7 @@ class Saccade_synch(Task_Eyetracker):
             self.color_sequence = ["green", "red", "green", "blue"]
 
         self.target_positions = [(0, 0), (-480, 0), (0, 0), (480, 0)]
+        self.tone = sound.Sound(tone_freq, tone_duration, stereo=True)
 
     def run(self, prompt=True, last_task=False, **kwarg):
         self.present_instructions(prompt)
@@ -54,32 +59,11 @@ class Saccade_synch(Task_Eyetracker):
         return self.events
 
     def run_trials(self, prompt=True):
-        """Run a smooth pursuit trial"""
-
-        # Take the tracker offline
-        # self.setOfflineMode()
-
-        # Record_status_message : show some info on the Host PC
-        # self.sendCommand("record_status_message 'Pursuit task'")
-
-        # Drift check/correction, params, x, y, draw_target, allow_setup
-
+        """Run an altered saccades task that changes the screen color and plays a tone at every transition."""
         self.target.pos = self.target_positions[0]
         self.target.size = self.pointer_size_pixel
-        # self.target.draw()
-        # self.win.flip()
-        # self.doDriftCorrect([int(0 + self.mon_size[0] / 2.0),
-        #                        int(self.mon_size[1] / 2.0 - 0), 0, 1])
         self.win.color = self.color_sequence[0]
         self.win.flip()
-
-        # self.sendMessage("TRIALID")
-        # Start recording
-        # self.startRecording()
-
-        # Wait for 100 ms to cache some samples
-        # pylink.msecDelay(100)
-        mySound = sound.Sound(1000, 0.1, stereo=True)
 
         # Send a message to mark movement onset
         self.sendMessage(self.marker_task_start)
@@ -89,7 +73,7 @@ class Saccade_synch(Task_Eyetracker):
                 self.win.color = color
                 self.win.flip()
                 if ix >= n_nosound:
-                    mySound.play(when=self.win.getFutureFlipTime(clock="ptb"))
+                    self.tone.play(when=self.win.getFutureFlipTime(clock="ptb"))
                 self.target.pos = tgt_pos
                 self.target.draw()
                 self.win.flip()
@@ -117,6 +101,5 @@ class Saccade_synch(Task_Eyetracker):
 
 
 if __name__ == "__main__":
-
     task = Saccade_synch()
     task.run(prompt=False)
