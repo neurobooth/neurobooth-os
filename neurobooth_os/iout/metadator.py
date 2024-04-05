@@ -251,10 +251,7 @@ def read_sensors() -> Dict[str, SensorArgs]:
     return _parse_files(folder)
 
 
-def _dynamic_parse(file: str, param_type: str) -> BaseModel:
-
-    # TODO(larry): Move this upstream so it doesn't get called on every file parse
-    env_dict = stim_param_reader.get_param_dictionary("environment.yml", "")
+def _dynamic_parse(file: str, param_type: str, env_dict: Dict[str, Any]) -> BaseModel:
 
     param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, param_type)
     param_dict.update(env_dict)
@@ -264,12 +261,14 @@ def _dynamic_parse(file: str, param_type: str) -> BaseModel:
 
 
 def _parse_files(folder):
+    env_dict = stim_param_reader.get_param_dictionary("environment.yml", "")
     directory: str = get_cfg_path(folder)
     result_dict = {}
     for file in os.listdir(directory):
         file_name = os.fsdecode(file).split(".")[0]
-        result_dict[file_name] = _dynamic_parse(file, folder)
+        result_dict[file_name] = _dynamic_parse(file, folder, env_dict)
     return result_dict
+
 
 def read_devices() -> Dict[str, DeviceArgs]:
     """Return dictionary of device_id to DeviceArgs for all yaml device parameter files."""
