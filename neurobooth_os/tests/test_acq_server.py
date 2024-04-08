@@ -23,7 +23,8 @@ class TestTaskParamReader(unittest.TestCase):
 
     def test_get_dev_kwargs(self):
         collection_id = 'testing'
-        devkwargs = DeviceManager._get_unique_devices(collection_id)
+        task_params = meta.build_tasks_for_collection(collection_id)
+        devkwargs = DeviceManager._get_unique_devices(collection_id, task_params)
         print(devkwargs)
 
     def test_start_flir(self):
