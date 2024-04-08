@@ -30,5 +30,5 @@ class TestTaskParamReader(unittest.TestCase):
     def test_start_flir(self):
         d = DeviceManager("acquisition")
         fname = "foo"
-
-        d.start_cameras(foo)
+        devices = list(meta.read_devices().values())
+        d.start_cameras(filename=fname, task_devices=devices)
