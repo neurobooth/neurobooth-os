@@ -103,9 +103,12 @@ class MicYetiDeviceArgs(DeviceArgs):
     sensor_array: List[MicYetiSensorArgs] = []
 
     def __init__(self, **kwargs):
+
+        # pull-in environment specific parameter "microphone_name", updating the kwargs with the appropriate value
         my_id = kwargs.get('device_id')
         mic_nm = kwargs['ENV_devices'][my_id]['microphone_name']
         kwargs['microphone_name'] = mic_nm
+
         super().__init__(**kwargs)
 
 
@@ -133,14 +136,12 @@ class FlirDeviceArgs(DeviceArgs):
     """
     sensor_array: List[FlirSensorArgs] = []
 
-    @classmethod
-    @model_validator(mode='before')
-    def validate_mac(self, values) -> str:
-        my_id = values.get('device_id')
-        sn = values['ENV_devices'][my_id]['device_sn']
-        values['device_sn'] = sn
-        return values
-
+    def __init__(self, **kwargs):
+        # pull-in environment specific param "device_sn", updating the kwargs with the appropriate value
+        my_id = kwargs.get('device_id')
+        sn = kwargs['ENV_devices'][my_id]['device_sn']
+        kwargs['device_sn'] = sn
+        super().__init__(**kwargs)
 
     def sample_rate(self):
         return self.sensor_array[0].sample_rate
@@ -209,9 +210,11 @@ class MbientDeviceArgs(DeviceArgs):
     mac: str
 
     def __init__(self, **kwargs):
+        # pull-in environment specific param "mac", updating the kwargs with the appropriate value
         my_id = kwargs.get('device_id')
         mac_1 = kwargs['ENV_devices'][my_id]['mac']
         kwargs['mac'] = mac_1
+
         super().__init__(**kwargs)
         self.device_name = self.device_id.split("_")[1]
 
