@@ -1,6 +1,7 @@
 from os import environ, path
 
-from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveFloat, PositiveInt
+from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, \
+    SerializeAsAny, model_validator
 from typing import Optional, List, Callable, Tuple
 import os
 import yaml
@@ -83,8 +84,8 @@ class DeviceArgs(BaseModel):
     device_make: Optional[str] = None
     device_model: Optional[str] = None
     device_firmware: Optional[str] = None
-    sensor_ids: List[str]
-    sensor_array: List[SensorArgs] = []
+    sensor_ids: Optional[List[str]]
+    sensor_array: List[SerializeAsAny[SensorArgs]] = []
     arg_parser: str
 
 
@@ -96,10 +97,10 @@ class MicYetiDeviceArgs(DeviceArgs):
 class EyelinkDeviceArgs(DeviceArgs):
     """
     Eyelink device arguments
-    The eyelink should only one sensor, represented by an instance
+    The eyelink should have only one sensor, represented by an instance
     of type EyelinkSensorArgs
     """
-    ip: Optional[str] = None
+    ip: str
     sensor_array: List[EyelinkSensorArgs] = []
 
     def sample_rate(self):
@@ -116,6 +117,15 @@ class FlirDeviceArgs(DeviceArgs):
     of type FlirSensorArgs
     """
     sensor_array: List[FlirSensorArgs] = []
+
+    @classmethod
+    @model_validator(mode='before')
+    def validate_mac(self, values) -> str:
+        my_id = values.get('device_id')
+        sn = values['_devices'][my_id]['device_sn']
+        values['device_sn'] = sn
+        return values
+
 
     def sample_rate(self):
         return self.sensor_array[0].sample_rate
@@ -187,6 +197,14 @@ class MbientDeviceArgs(DeviceArgs):
         super().__init__(**kwargs)
         self.device_name = self.device_id.split("_")[1]
 
+    @classmethod
+    @model_validator(mode='before')
+    def validate_mac(self, values) -> str:
+        my_id = values.get('device_id')
+        mac_1 = values['_devices'][my_id]['mac']
+        values['mac'] = mac_1
+        return values
+
 
 class InstructionArgs(BaseModel):
     """
@@ -221,15 +239,42 @@ class TaskArgs(BaseModel):
     """
     task_id: str = Field(min_length=1, max_length=255)
     task_constructor_callable: Callable  # callable of constructor for a Task
-    stim_args: StimulusArgs
-    instr_args: Optional[InstructionArgs] = None
+    stim_args: SerializeAsAny[StimulusArgs]
+    instr_args: Optional[SerializeAsAny[InstructionArgs]] = None
 
     # task_instance is a Task, but using Optional[Task] as the type causes circular import problems
     task_instance: Optional[object] = None  # created by client code from above callable
-    device_args: List[DeviceArgs] = []
+    device_args: List[SerializeAsAny[DeviceArgs]] = []
+
     class Config:
         arbitrary_types_allowed = True
 
+    def dump_filtered(self) -> dict:
+        """
+
+        Returns a dictionary containing the components of this model.  All entries containing None are excluded, and
+        a number of items not essential for documenting the session are also excluded
+        -------
+
+        """
+
+        key_list = ['task_instance', 'arg_parser', 'sensor_ids']
+        dictionary = self.model_dump(exclude_none=True)
+
+        def delete_keys_from_dict(dict_del, lst_keys):
+            dict_keys = list(dict_del.keys())  # Used as iterator to avoid the 'DictionaryHasChanged' error
+            for key in dict_keys:
+                if key in lst_keys:
+                    del dict_del[key]
+                elif key in dict_del and type(dict_del[key]) == dict:
+                    delete_keys_from_dict(dict_del[key], lst_keys)
+                elif key in dict_del and type(dict_del[key]) == list:
+                    for item in dict_del[key]:
+                        delete_keys_from_dict(item, key_list)
+
+        delete_keys_from_dict(dictionary, key_list)
+
+        return dictionary
 
 class EyeTrackerStimArgs(StimulusArgs):
     target_size: NonNegativeFloat = 7
