@@ -3,7 +3,7 @@
 # should be migrated here when they are introduced
 # The format of this file is device_id (which must match the device_id in the device yaml)
 # followed by a dictionary of the variable and its device-specific value
-_devices:
+ENV_devices:
   FLIR_blackfly_1:
     device_sn: '22348141'
   Mbient_BK_1:
