@@ -16,7 +16,7 @@ task_ids:
 - intro_speech_obs_1
 - passage_obs_1
 - timing_test_obs
-- clapping_test
+- clapping_test_obs
 - ahh_obs_1
 - gogogo_obs_1
 - lalala_obs_1

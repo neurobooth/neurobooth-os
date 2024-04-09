@@ -1,0 +1,21 @@
+# Holds environment-specific variables so that all MGH environments can have identical
+# yaml config files aside from this single file. Any new environment specific variables
+# should be migrated here when they are introduced
+# The format of this file is device_id (which must match the device_id in the device yaml)
+# followed by a dictionary of the variable and its device-specific value
+_devices:
+  FLIR_blackfly_1:
+    device_sn: '22348141'
+  Mbient_BK_1:
+    mac: FE:AB:CF:19:7A:CB
+  Mbient_LF_2:
+    mac: D3:3E:01:B7:A4:C3
+  Mbient_LH_2:
+    mac: CC:EF:F3:CC:94:30
+  Mbient_RF_2:
+    mac: F0:2C:D6:8D:9D:DF
+  Mbient_RH_2:
+    mac: C7:94:07:76:8D:6B
+  Mic_Yeti_dev_1:
+    microphone_name: Yeti
+

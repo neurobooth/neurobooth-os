@@ -1,5 +1,4 @@
 device_id: FLIR_blackfly_1
-device_sn: '22348141'
 device_name: FLIR Blackfly S BFS-U3-17S7C
 device_location: '50_50_180'
 wearable_bool: false

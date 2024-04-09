@@ -39,6 +39,17 @@ class TestTask(unittest.TestCase):
         test_task = Calibrate(**param_dict)
         self.assertIsNotNone(test_task)
 
+    # Integration Test (uses psychopy windows to construct Task
+    def test_validate_device(self):
+        folder = path.join(environ.get("NB_CONFIG"), "devices")
+        folder2 = path.join(environ.get("NB_CONFIG"), '')
+        env_dict = _get_param_dictionary('environment.yml', folder2)
+        param_dict = _get_param_dictionary("Mbient_BK_1.yml", folder)
+        param_dict.update(env_dict)
+        test_device = reader.MbientDeviceArgs(**param_dict)
+        self.assertIsNotNone(test_device)
+        print(test_device)
+
     # Integration Test (uses local file system)
     def test_stimulus_arg_validation(self):
 
@@ -57,6 +68,12 @@ class TestTask(unittest.TestCase):
         entries = reader.get_param_dictionary("calibration_task_1.yml", 'tasks')
         task_args2 = StimulusArgs(**entries)
         self.assertIsNotNone(task_args2)
+
+    def test_read_env_file(self):
+        file_name = "environment.yml"
+        folder_name = ""
+        d = reader.get_param_dictionary(file_name, folder_name)
+        print(d)
 
     def test_instruction_args_when_no_instructions(self):
         log_path = r"C:\neurobooth\test_data\test_logs"
