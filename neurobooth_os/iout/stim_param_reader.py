@@ -121,6 +121,15 @@ class EyelinkDeviceArgs(DeviceArgs):
     ip: str
     sensor_array: List[EyelinkSensorArgs] = []
 
+    def __init__(self, **kwargs):
+        # pull-in environment specific parameter "microphone_name", updating the kwargs with the appropriate value
+        my_id = kwargs.get('device_id')
+        mic_nm = kwargs['ENV_devices'][my_id]['ip']
+        kwargs['ip'] = mic_nm
+
+        super().__init__(**kwargs)
+
+
     def sample_rate(self):
         return self.sensor_array[0].sample_rate
 

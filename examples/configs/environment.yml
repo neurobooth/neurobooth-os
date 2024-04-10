@@ -18,4 +18,6 @@ ENV_devices:
     mac: C7:94:07:76:8D:6B
   Mic_Yeti_dev_1:
     microphone_name: Yeti
+  Eyelink_1:
+    ip: 192.168.100.15
 
