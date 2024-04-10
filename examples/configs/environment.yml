@@ -20,4 +20,11 @@ ENV_devices:
     microphone_name: Yeti
   Eyelink_1:
     ip: 192.168.100.15
+  Intel_D455_1:
+    device_sn: '037522250727'
+  Intel_D455_2:
+    device_sn: '036322250240'
+  Intel_D455_3:
+    device_sn: '037322251461'
+
 

@@ -97,6 +97,16 @@ class DeviceArgs(EnvArgs):
     sensor_array: List[SerializeAsAny[SensorArgs]] = []
     arg_parser: str
 
+    def __init__(self, **kwargs):
+        # pull-in environment specific parameter "ip", updating the kwargs with the appropriate value
+        my_id = kwargs.get('device_id')
+        if my_id in kwargs['ENV_devices']:
+            my_dict = kwargs['ENV_devices'][my_id]
+            if 'device_sn' in my_dict:
+                sn = my_dict['device_sn']
+                kwargs['device_sn'] = sn
+        super().__init__(**kwargs)
+
 
 class MicYetiDeviceArgs(DeviceArgs):
     microphone_name: str
@@ -108,7 +118,6 @@ class MicYetiDeviceArgs(DeviceArgs):
         my_id = kwargs.get('device_id')
         mic_nm = kwargs['ENV_devices'][my_id]['microphone_name']
         kwargs['microphone_name'] = mic_nm
-
         super().__init__(**kwargs)
 
 
@@ -122,10 +131,10 @@ class EyelinkDeviceArgs(DeviceArgs):
     sensor_array: List[EyelinkSensorArgs] = []
 
     def __init__(self, **kwargs):
-        # pull-in environment specific parameter "microphone_name", updating the kwargs with the appropriate value
+        # pull-in environment specific parameter "ip", updating the kwargs with the appropriate value
         my_id = kwargs.get('device_id')
-        mic_nm = kwargs['ENV_devices'][my_id]['ip']
-        kwargs['ip'] = mic_nm
+        ip_addr = kwargs['ENV_devices'][my_id]['ip']
+        kwargs['ip'] = ip_addr
 
         super().__init__(**kwargs)
 
