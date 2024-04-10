@@ -98,7 +98,7 @@ class DeviceArgs(EnvArgs):
     arg_parser: str
 
     def __init__(self, **kwargs):
-        # pull-in environment specific parameter "ip", updating the kwargs with the appropriate value
+        # pull-in environment specific parameter "device_sn", updating the kwargs with the appropriate value
         my_id = kwargs.get('device_id')
         if my_id in kwargs['ENV_devices']:
             my_dict = kwargs['ENV_devices'][my_id]
