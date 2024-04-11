@@ -50,8 +50,8 @@ class MOT(Task_Eyetracker):
 
     def __init__(
         self,
-        path: str = '',
-        subj_id: str = 'test',
+        path: str,
+        subj_id: str,
         task_name: str = 'MOT',
         continue_message: str = 'continue.png',
         chunk_timeout_sec: float = 120,
@@ -141,8 +141,7 @@ class MOT(Task_Eyetracker):
         self.practice_chunks = [self._create_chunk(chunk) for chunk in practice_chunks]
         self.test_chunks = [self._create_chunk(chunk) for chunk in test_chunks]
 
-    def run(self, prompt=True, last_task=False, subj_id="test", **kwargs):
-        self.subject_id = subj_id
+    def run(self, prompt=True, last_task=False, **kwargs):
         if self.n_repetitions > 0:
             self._init_frame_sequence(*self.stimulus_params)  # Create new frames for repeats to flush old data
 
