@@ -1,15 +1,12 @@
 import os.path as op
-import time
 import uuid
 import threading
 import subprocess
 import logging
-import numpy as np
 
 import pylink
 from psychopy import visual, monitors
 from pylsl import StreamInfo, StreamOutlet, local_clock
-from psychopy import core
 
 from neurobooth_os.iout.stim_param_reader import EyelinkDeviceArgs
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
@@ -26,7 +23,6 @@ class EyeTracker:
         win=None,
         with_lsl=True,
     ):
-
         self.IP = device_args.ip
         self.sample_rate = device_args.sample_rate()
         self.device_id = device_args.device_id
@@ -34,7 +30,7 @@ class EyeTracker:
         self.streamName = "EyeLink"
         self.with_lsl = with_lsl
         mon = monitors.getAllMonitors()[0]
-        self.mon_size = monitors.Monitor(mon).getSizePix()
+        self.monitor_width, self.monitor_height = monitors.Monitor(mon).getSizePix()
         self.calibration_type = device_args.calibration_type()
 
         if win is None:
@@ -42,7 +38,7 @@ class EyeTracker:
                 "demoMon", width=55, distance=60
             )  # distance subject to screen specified in task/utils:make_win() here just for testing
             self.win = visual.Window(
-                self.mon_size, fullscr=False, monitor=customMon, units="pix"
+                (self.monitor_width, self.monitor_height), fullscr=False, monitor=customMon, units="pix"
             )
             self.win_temp = True
         else:
@@ -52,7 +48,9 @@ class EyeTracker:
         # Setup outlet stream info
         self.oulet_id = str(uuid.uuid4())
         self.stream_info = set_stream_description(
-            stream_info=StreamInfo("EyeLink", "Gaze", 13, self.sample_rate, "double64", self.oulet_id),
+            stream_info=StreamInfo(
+                "EyeLink", "Gaze", 13, self.sample_rate, "double64", self.oulet_id
+            ),
             device_id=self.device_id,
             sensor_ids=self.sensor_ids,
             data_version=DataVersion(1, 1),
@@ -85,12 +83,12 @@ class EyeTracker:
         self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(f'EyeLink: sample_rate={str(self.sample_rate)}')
 
-        print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
         self.streaming = False
         self.calibrated = True
         self.recording = False
         self.paused = True
         self.connect_tracker()
+        print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
 
     def connect_tracker(self):
         try:
@@ -101,8 +99,7 @@ class EyeTracker:
             print(msg_text)
             self.logger.error(msg_text)
 
-        if self.IP is not None:
-            self.tk.setAddress(self.IP)
+        self.tk.setAddress(self.IP)
         # # Open an EDF data file on the Host PC
         # self.tk.openDataFile('ev_test.edf')
 
@@ -133,16 +130,16 @@ class EyeTracker:
 
         # Pass screen resolution  to the tracker
         self.tk.sendCommand(
-            f"screen_pixel_coords = 0 0 {self.mon_size[0]-1} {self.mon_size[1]-1}"
+            f"screen_pixel_coords = 0 0 {self.monitor_width-1} {self.monitor_height-1}"
         )
 
         # Send a DISPLAY_COORDS message so Data Viewer knows the correct screen size
         self.tk.sendMessage(
-            f"DISPLAY_COORDS = 0 0 {self.mon_size[0]-1} {self.mon_size[1]-1}"
+            f"DISPLAY_COORDS = 0 0 {self.monitor_width-1} {self.monitor_height-1}"
         )
 
         # Choose a calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical)
-        self.tk.sendCommand(f"calibration_type = {self.calibration_type }")
+        self.tk.sendCommand(f"calibration_type = {self.calibration_type}")
 
         self.tk.sendCommand("calibration_area_proportion = 0.80 0.78")
         self.tk.sendCommand("validation_area_proportion = 0.80 0.78")
