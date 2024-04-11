@@ -16,11 +16,6 @@ from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 
 
-class EyeTrackerException(Exception):
-    """Reflects errors related to the eye tracker."""
-    pass
-
-
 class EyeTracker:
     def __init__(
         self,
@@ -104,8 +99,6 @@ class EyeTracker:
             print(msg_text)
             self.logger.error(msg_text)
 
-        if self.IP is None:
-            raise EyeTrackerException('No IP provided for eye tracker.')
         self.tk.setAddress(self.IP)
         # # Open an EDF data file on the Host PC
         # self.tk.openDataFile('ev_test.edf')
