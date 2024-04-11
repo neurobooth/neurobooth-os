@@ -55,17 +55,53 @@ class CircleAnimator(ABC):
         self.circle_radius = circle_radius
         self.circles = [CircleModel(circle_radius, paper_size) for _ in range(n_circles)]
 
-    @abstractmethod
+        # Values related to circle speed tracking
+        self._last_time: float = np.nan
+        self._speed_history: List[np.ndarray] = []
+
     def initial_placement(self) -> None:
-        raise NotImplementedError()
+        """Place circles in their initial positions and reset speed history."""
+        self._initial_placement()
+
+        # Reset speed tracking state
+        self._last_time = np.nan
+        self._speed_history = []
 
     @abstractmethod
+    def _initial_placement(self) -> None:
+        raise NotImplementedError()
+
     def step(self, elapsed_time: float) -> None:
-        raise NotImplementedError()
+        """
+        Advance the simulation to update circle positions. Update circle speed history.
+        :param elapsed_time: Seconds elapsed since animation start.
+        """
+        prior_positions = np.array([(c.x, c.y) for c in self.circles], dtype='float64')
+        self._step(elapsed_time)  # Perform the position update
+        current_positions = np.array([(c.x, c.y) for c in self.circles], dtype='float64')
+
+        delta_t = elapsed_time - self._last_time
+        self._last_time = elapsed_time
+        if np.isnan(delta_t):  # Do not try to track the first speed
+            return
+
+        delta_pos = np.linalg.norm(current_positions - prior_positions, axis=1)
+        self._speed_history.append(delta_pos / delta_t)
 
     @abstractmethod
-    def get_circle_speed(self) -> float:
+    def _step(self, elapsed_time: float) -> None:
         raise NotImplementedError()
+
+    def get_circle_speeds(self) -> np.ndarray:
+        """
+        Calculate the mean observed speed of each circle (px/s).
+        -1 is used as a sentinel value if there is no speed history.
+        :return: An array containing the mean observed speed of each circle (px/s).
+        """
+        if self._speed_history:
+            return np.mean(self._speed_history, axis=0)
+        else:
+            return np.full(len(self.circles), -1, dtype='float64')
 
 
 class StepwiseAnimator(CircleAnimator):
@@ -95,7 +131,7 @@ class StepwiseAnimator(CircleAnimator):
         self.circle_repulsion = circle_radius * 5
         self.random_seed = random_seed
 
-    def initial_placement(self) -> None:
+    def _initial_placement(self) -> None:
         """Initialize circles to have random positions and directions."""
         random.seed(self.random_seed)
         for circle in self.circles:
@@ -110,7 +146,7 @@ class StepwiseAnimator(CircleAnimator):
             ]):
                 circle.random_reposition()
 
-    def step(self, elapsed_time: float = 0) -> None:
+    def _step(self, elapsed_time: float = 0) -> None:
         """
         Move the circles one step in the animation.
         - Add noise to the velocity vector
@@ -159,10 +195,6 @@ class StepwiseAnimator(CircleAnimator):
             # Compute final direction and update
             circle.direction = math.atan2(vel_y, vel_x)  # Use atan2 (not atan)!
 
-    def get_circle_speed(self) -> float:
-        """:return: the circle speed in px per animation update."""
-        return self.circle_speed
-
 
 class ReplayAnimator(CircleAnimator):
     """Replays a precomputed animation to allow for consistent/known speeds and trajectories"""
@@ -187,11 +219,11 @@ class ReplayAnimator(CircleAnimator):
             circle.x = self.trajectories[step, i, 0]
             circle.y = self.trajectories[step, i, 1]
 
-    def initial_placement(self) -> None:
+    def _initial_placement(self) -> None:
         """Place circles in the first step of the replayed animation"""
         self._update_to_step(0)
 
-    def step(self, elapsed_time: float) -> None:
+    def _step(self, elapsed_time: float) -> None:
         """
         Place circles in their respective locations depending on the elapsed time.
         :param elapsed_time: Seconds elapsed since animation start.
@@ -199,20 +231,6 @@ class ReplayAnimator(CircleAnimator):
         step = int(np.rint(elapsed_time * self.update_freq))
         step = min(step, self.trajectories.shape[0]-1)  # Don't go past the end of the array
         self._update_to_step(step)
-
-    def get_circle_speed(self, per_circle: bool = False) -> Union[float, List[float]]:
-        """
-        Calculate the mean circle speed based on the saved animation trajectory.
-        :param: If True, return speeds calculated individually for each circle. Otherwise, take the mean of the speeds.
-        :return: The mean circle speed in px/s
-        """
-        velocity = np.gradient(self.trajectories, 1/self.update_freq, axis=2)  # Per-axis velocity
-        speed = np.linalg.norm(velocity, axis=2)  # Velocity vector magnitude
-        mean_speed = np.mean(speed, axis=0)  # Average speed over all animation steps
-        if per_circle:
-            return mean_speed.tolist()
-        else:
-            return np.mean(mean_speed)  # Average circle speed
 
 
 class UninitializedAnimationException(Exception):

@@ -226,7 +226,7 @@ class TrialFrame(MOTFrame):
         self.circle_base_color = trial_param.circle_base_color
         self.circle_flash_color = trial_param.circle_flash_color
         self.circle_correct_color = trial_param.circle_correct_color
-        self.circle_incorrect_color= trial_param.circle_incorrect_color
+        self.circle_incorrect_color = trial_param.circle_incorrect_color
         self.circles = [CircleStimulus(c, self.window, self.circle_base_color) for c in self.animation.circles]
         self.background = visual.Rect(
             self.window,
@@ -455,7 +455,7 @@ class TrialFrame(MOTFrame):
             n_circles=len(self.circles),
             n_targets=self.n_targets,
             n_correct=sum([c.correct for c in self.click_info]),
-            circle_speed=self.animation.get_circle_speed(),
+            circle_speed=self.animation.get_circle_speeds().mean(),
             animation_duration=self.actual_animation_duration,
             click_duration=max([0, *[c.time for c in self.click_info]]),
             state='aborted' if not self.completed else self.result_status,
