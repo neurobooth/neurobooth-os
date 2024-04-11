@@ -411,8 +411,8 @@ class TrialFrame(MOTFrame):
 
         n_clicks = 0
         prev_button_state = None
+        mouse.clickReset()
         while n_clicks < self.n_targets:
-            mouse.clickReset()
             buttons, click_time = mouse.getPressed(getTime=True)
 
             if sum(buttons) > 0 and buttons != prev_button_state:
@@ -434,8 +434,8 @@ class TrialFrame(MOTFrame):
                     self.task.sendMessage(self.task.marker_response_start)
                     self.click_info.append(ClickInfo(circle_idx=i, x=x, y=y, time=min(click_time), correct=is_correct))
 
-                    mouse.mouseClock = Clock()
                     self.present_circles(send_location=False)
+                    mouse.clickReset()  # Reset click timer
                     break
 
             prev_button_state = buttons
