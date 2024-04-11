@@ -8,6 +8,8 @@ This module handles task-level aspects and organization, such as:
    5. Saving performance reports
 """
 
+# TODO: Fix click durations always being 0
+# TODO: Fix crash from malformed SQL when logging task output files at end of session
 # TODO: Update CSV files with one-time v2 updator script as described in Slack/shortcut
 
 import os.path as op
