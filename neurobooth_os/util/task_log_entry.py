@@ -21,16 +21,16 @@ def convert_to_array_literal(string_list):
     # TODO(larry): Cleanup
     """Converts the provided list of strings to a postgres array literal"""
     if string_list and isinstance(string_list, List):
-        result: str = "{"
+        result: str = '{'
         size = len(string_list)
         i = 1
 
         for s in string_list:
-            result += f"'{s}'"
+            result += f'"{s}"'
             if i < size:
                 result += ', '
                 i += 1
-        result += '}'
+        result += "}"
     elif string_list and isinstance(string_list, str):
         result = string_list
     else:

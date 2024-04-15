@@ -1,6 +1,7 @@
 import unittest
 
 from neurobooth_os.iout import metadator as meta
+from neurobooth_os.util.task_log_entry import TaskLogEntry
 
 
 class TestMetadator(unittest.TestCase):
@@ -61,17 +62,28 @@ class TestMetadator(unittest.TestCase):
         self.assertIsNotNone(meta.get_task_ids_for_collection("testing"))
 
     def test_task_addition( self):
-        conn = meta.get_database_connection()
-        subj_id = "Test"
+        conn = meta.get_database_connection(database='mock_neurobooth_1', validate_config_paths=False)
+        subj_id = "100057"
         task_id = meta.make_new_task_row(conn, subj_id)
+        if task_id is None:
+            task_id = '1071'
 
         vals_dict = meta._new_tech_log_dict()
         vals_dict["subject_id"] = subj_id
+        vals_dict["log_session_id"] = 1071
         vals_dict["study_id"] = "mock_study"
+        vals_dict["subject_id_date"] = f"{subj_id}-2021-12-21"
         vals_dict["task_id"] = "mock_obs_1"
         vals_dict["staff_id"] = "mocker"
-        vals_dict["event_array"] = "event:datestamp"
+        vals_dict["event_array"] = ['event:datestamp']
         vals_dict["collection_id"] = "mock_collection"
         vals_dict["site_id"] = "mock_site"
+        vals_dict["task_output_files"] = ['000000_2024-04-11_MOT_results_v2.csv',
+                                          '000000_2024-04-11_MOT_outcomes_v2.csv',
+                                          '000000_2024-04-11_MOT_results_v2_rep-1.csv',
+                                          '000000_2024-04-11_MOT_outcomes_v2_rep-1.csv']
+        vals_dict['log_task_id'] = task_id
 
-        meta.fill_task_row(task_id, vals_dict, conn)
+        entry = TaskLogEntry(**vals_dict)
+
+        meta.fill_task_row(entry, conn)

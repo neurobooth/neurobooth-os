@@ -170,7 +170,7 @@ def _make_session_id(conn: connection, session_log):
     return session_id
 
 
-def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn: connection) -> None:
+def fill_task_row(task_log_entry: TaskLogEntry, conn: connection) -> None:
     """
     Updates a row in log_task.
 
@@ -178,7 +178,6 @@ def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn: connecti
 
     Parameters
     ----------
-    log_task_id
     task_log_entry
     conn
 
@@ -192,9 +191,10 @@ def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn: connecti
     # delete subj_date as not present in DB
     del dict_vals["subject_id_date"]
     # convert list of strings to postgres array literal format
+    dict_vals['event_array'] = convert_to_array_literal((dict_vals['event_array']))
     dict_vals['task_output_files'] = convert_to_array_literal(dict_vals['task_output_files'])
     vals = list(dict_vals.values())
-    table.update_row(log_task_id, tuple(vals), cols=list(dict_vals))
+    table.update_row(dict_vals['log_task_id'], tuple(vals), cols=list(dict_vals))
 
 
 def get_stimulus_id(task_id: str) -> str:
