@@ -57,11 +57,7 @@ class StmSession(BaseModel):
 
     @staticmethod
     def init_window():
-        if config.neurobooth_config.fullscreen == "false":
-            win = utl.make_win(full_screen=False)
-        else:
-            win = utl.make_win(full_screen=True)
-        return win
+        return utl.make_win(full_screen=config.neurobooth_config.fullscreen)
 
     def init_device_manager(self) -> DeviceManager:
         device_manager = DeviceManager(node_name='presentation')
