@@ -7,7 +7,7 @@ class TestTaskParamReader(unittest.TestCase):
     def test_convert_array(self):
         mylist = ["a", "b", "c"]
         print(convert_to_array_literal(mylist))
-        self.assertEquals("{'a', 'b', 'c'}", convert_to_array_literal(mylist))
+        self.assertEquals('{"a", "b", "c"}', convert_to_array_literal(mylist))
 
     def test_convert_array_2(self):
         mylist = []

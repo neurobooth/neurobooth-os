@@ -191,8 +191,9 @@ def fill_task_row(task_log_entry: TaskLogEntry, conn: connection) -> None:
     # delete subj_date as not present in DB
     del dict_vals["subject_id_date"]
     # convert list of strings to postgres array literal format
-    dict_vals['event_array'] = convert_to_array_literal((dict_vals['event_array']))
+    dict_vals['event_array'] = convert_to_array_literal((dict_vals['event_array']), '[', ']')
     dict_vals['task_output_files'] = convert_to_array_literal(dict_vals['task_output_files'])
+    print(dict_vals['task_output_files'])
     vals = list(dict_vals.values())
     table.update_row(dict_vals['log_task_id'], tuple(vals), cols=list(dict_vals))
 
