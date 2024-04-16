@@ -40,7 +40,7 @@ class TestMetadator(unittest.TestCase):
         task_dict = meta.build_tasks_for_collection(collection_id)
         self.assertIsNotNone(task_dict)
         pursuit = task_dict['pursuit_obs']
-        pprint.pp(pursuit.filter())
+        pprint.pp(pursuit.dump_filtered())
 
     def test_read_studies(self):
         self.assertIsNotNone(meta.read_studies())

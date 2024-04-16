@@ -67,6 +67,7 @@ class NeuroboothConfig(BaseModel):
     presentation: ServerSpec
     control: ServerSpec
     database: DatabaseSpec
+    fullscreen: bool
 
     def current_server(self) -> ServerSpec:
         server_name = get_server_name_from_env()

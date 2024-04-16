@@ -2,7 +2,7 @@ from os import environ, path
 
 from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, \
     SerializeAsAny, model_validator
-from typing import Optional, List, Callable, Tuple
+from typing import Optional, List, Callable, Tuple, Dict
 import os
 import yaml
 
@@ -20,7 +20,15 @@ Parsers for all the standard stimulus yaml files are found in this module.
 """
 
 
-class StudyArgs(BaseModel):
+class EnvArgs(BaseModel):
+    """
+    Standard superclass for any param type that might include environment-specific variables.
+    These variables can and should be ignored where they're not needed.
+    """
+    ENV_devices: Optional[Dict]
+
+
+class StudyArgs(EnvArgs):
     study_id: str = Field(min_length=1, max_length=255)
     study_title: str = Field(min_length=1, max_length=512)
     collection_ids: List[str]
@@ -29,14 +37,14 @@ class StudyArgs(BaseModel):
     arg_parser: str
 
 
-class CollectionArgs(BaseModel):
+class CollectionArgs(EnvArgs):
     collection_id: str = Field(min_length=1, max_length=255)
     is_active: bool
     task_ids: List[str]
     arg_parser: str
 
 
-class SensorArgs(BaseModel):
+class SensorArgs(EnvArgs):
     sensor_id: str = Field(min_length=1, max_length=255)
     file_type: str
     arg_parser: str
@@ -75,7 +83,8 @@ class EyelinkSensorArgs(SensorArgs):
     calibration_type: str
 
 
-class DeviceArgs(BaseModel):
+class DeviceArgs(EnvArgs):
+    ENV_devices: Dict
     device_id: str
     device_sn: Optional[str] = None
     device_name: str
@@ -88,10 +97,28 @@ class DeviceArgs(BaseModel):
     sensor_array: List[SerializeAsAny[SensorArgs]] = []
     arg_parser: str
 
+    def __init__(self, **kwargs):
+        # pull-in environment specific parameter "device_sn", updating the kwargs with the appropriate value
+        my_id = kwargs.get('device_id')
+        if my_id in kwargs['ENV_devices']:
+            my_dict = kwargs['ENV_devices'][my_id]
+            if 'device_sn' in my_dict:
+                sn = my_dict['device_sn']
+                kwargs['device_sn'] = sn
+        super().__init__(**kwargs)
+
 
 class MicYetiDeviceArgs(DeviceArgs):
     microphone_name: str
     sensor_array: List[MicYetiSensorArgs] = []
+
+    def __init__(self, **kwargs):
+
+        # pull-in environment specific parameter "microphone_name", updating the kwargs with the appropriate value
+        my_id = kwargs.get('device_id')
+        mic_nm = kwargs['ENV_devices'][my_id]['microphone_name']
+        kwargs['microphone_name'] = mic_nm
+        super().__init__(**kwargs)
 
 
 class EyelinkDeviceArgs(DeviceArgs):
@@ -102,6 +129,15 @@ class EyelinkDeviceArgs(DeviceArgs):
     """
     ip: str
     sensor_array: List[EyelinkSensorArgs] = []
+
+    def __init__(self, **kwargs):
+        # pull-in environment specific parameter "ip", updating the kwargs with the appropriate value
+        my_id = kwargs.get('device_id')
+        ip_addr = kwargs['ENV_devices'][my_id]['ip']
+        kwargs['ip'] = ip_addr
+
+        super().__init__(**kwargs)
+
 
     def sample_rate(self):
         return self.sensor_array[0].sample_rate
@@ -118,14 +154,12 @@ class FlirDeviceArgs(DeviceArgs):
     """
     sensor_array: List[FlirSensorArgs] = []
 
-    @classmethod
-    @model_validator(mode='before')
-    def validate_mac(self, values) -> str:
-        my_id = values.get('device_id')
-        sn = values['_devices'][my_id]['device_sn']
-        values['device_sn'] = sn
-        return values
-
+    def __init__(self, **kwargs):
+        # pull-in environment specific param "device_sn", updating the kwargs with the appropriate value
+        my_id = kwargs.get('device_id')
+        sn = kwargs['ENV_devices'][my_id]['device_sn']
+        kwargs['device_sn'] = sn
+        super().__init__(**kwargs)
 
     def sample_rate(self):
         return self.sensor_array[0].sample_rate
@@ -194,19 +228,16 @@ class MbientDeviceArgs(DeviceArgs):
     mac: str
 
     def __init__(self, **kwargs):
+        # pull-in environment specific param "mac", updating the kwargs with the appropriate value
+        my_id = kwargs.get('device_id')
+        mac_1 = kwargs['ENV_devices'][my_id]['mac']
+        kwargs['mac'] = mac_1
+
         super().__init__(**kwargs)
         self.device_name = self.device_id.split("_")[1]
 
-    @classmethod
-    @model_validator(mode='before')
-    def validate_mac(self, values) -> str:
-        my_id = values.get('device_id')
-        mac_1 = values['_devices'][my_id]['mac']
-        values['mac'] = mac_1
-        return values
 
-
-class InstructionArgs(BaseModel):
+class InstructionArgs(EnvArgs):
     """
         Arguments controlling psychopy instructions
     """
@@ -215,7 +246,7 @@ class InstructionArgs(BaseModel):
     instruction_file: Optional[str] = None
 
 
-class StimulusArgs(BaseModel):
+class StimulusArgs(EnvArgs):
     """
     Stimulus arguments common to all Psychopy tasks
     """
@@ -227,7 +258,6 @@ class StimulusArgs(BaseModel):
     duration: Optional[NonNegativeFloat] = None
     stimulus_file_type: str = Field(min_length=1, max_length=255)
     stimulus_file: str = Field(min_length=1, max_length=255)
-
     task_repeatable_by_subject: Optional[bool] = True
 
     model_config = ConfigDict(extra='forbid', frozen=True)
@@ -275,6 +305,7 @@ class TaskArgs(BaseModel):
         delete_keys_from_dict(dictionary, key_list)
 
         return dictionary
+
 
 class EyeTrackerStimArgs(StimulusArgs):
     target_size: NonNegativeFloat = 7
@@ -384,7 +415,7 @@ def _get_param_dictionary(task_param_file_name: str, conf_folder_name: str) -> d
         return param_dict
 
 
-class RawTaskParams(BaseModel):
+class RawTaskParams(EnvArgs):
     """
         Raw (un-reified) Task params (ie., instead of a list of DeviceArgs,
         it has a list of strings representing device ids
