@@ -1,5 +1,4 @@
 device_id: Eyelink_1
-ip: 192.168.100.15
 device_name: EYELINK Portable Duo
 device_location: '25_19_36'
 wearable_bool: false

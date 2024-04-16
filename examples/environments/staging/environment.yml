@@ -3,7 +3,7 @@
 # should be migrated here when they are introduced
 # The format of this file is device_id (which must match the device_id in the device yaml)
 # followed by a dictionary of the variable and its device-specific value
-_devices:
+ENV_devices:
   FLIR_blackfly_1:
     device_sn: '22348141'
   Mbient_BK_1:
@@ -18,4 +18,13 @@ _devices:
     mac: C7:94:07:76:8D:6B
   Mic_Yeti_dev_1:
     microphone_name: Yeti
+  Eyelink_1:
+    ip: 192.168.100.15
+  Intel_D455_1:
+    device_sn: '037522250727'
+  Intel_D455_2:
+    device_sn: '036322250240'
+  Intel_D455_3:
+    device_sn: '037322251461'
+
 

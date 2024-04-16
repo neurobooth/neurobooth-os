@@ -1,0 +1,39 @@
+{
+    "remote_data_dir": "Z:/data/",
+    "video_task_dir": "C:/Users/STM/Dropbox (Partners HealthCare)/Neurobooth Videos for tasks/Videos_to_present",
+    "cam_inx_lowfeed": 0,
+    "default_log_path": "D:/neurobooth/neurobooth_logs",
+    "fullscreen": false,
+    "acquisition": {
+        "name": "acq-staging",
+        "user": "ACQ",
+        "password": "5519",
+        "port": 12347,
+        "local_data_dir": "D:/neurobooth/neurobooth_data/",
+        "bat": "%NB_INSTALL%/neurobooth_os/server_acq.bat"
+    },
+    "presentation": {
+        "name": "stm-staging",
+        "user": "STM",
+        "password": "5519",
+	    "port": 12347,
+        "local_data_dir": "C:/neurobooth/neurobooth_data/",
+        "bat": "%NB_INSTALL%/neurobooth_os/server_stm.bat"
+    },
+    "control": {
+        "name": "ctr-staging",
+        "user": "CTR",
+        "password": "5519",
+	    "port": 12347,
+        "local_data_dir": "C:/neurobooth/neurobooth_data/"
+    },
+    "database": {
+        "dbname": "mock_neurobooth_1",
+        "user": "neuroboother",
+        "password": "neuroboothrocks",
+        "host": "192.168.100.1",
+        "port": 5432,
+        "remote_user": "sp1022",
+        "remote_host": "neurodoor.nmr.mgh.harvard.edu"
+    }
+}
