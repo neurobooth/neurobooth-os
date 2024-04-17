@@ -42,6 +42,8 @@ class TestMetadator(unittest.TestCase):
         pursuit = task_dict['pursuit_obs']
         pprint.pp(pursuit.dump_filtered())
 
+        meta.log_task_params(task_dict)
+
     def test_read_studies(self):
         self.assertIsNotNone(meta.read_studies())
 
@@ -75,3 +77,13 @@ class TestMetadator(unittest.TestCase):
         vals_dict["site_id"] = "mock_site"
 
         meta.fill_task_row(task_id, vals_dict, conn)
+
+    def test_fill_device_rows(self):
+        conn = meta.get_database_connection("mock_neurobooth_1", False)
+        collection_id = 'mvp_030'
+        task_dict = meta.build_tasks_for_collection(collection_id)
+        self.assertIsNotNone(task_dict)
+        pursuit = task_dict['pursuit_obs']
+        log_task_id = "tech_log_885"
+        for device in pursuit.device_args:
+            meta._fill_device_param_row(conn, log_task_id, device)

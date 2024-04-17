@@ -207,6 +207,51 @@ def get_device_ids(task_id: str) -> List[str]:
     return task.device_id_array
 
 
+def _fill_device_param_row(conn: connection, log_task_id: str, device: DeviceArgs):
+    table = Table("log_device_param", conn=conn)
+    dict_vals = device.model_dump()
+
+    import pprint
+    #    del sensor['ENV_devices']
+
+    log_device = OrderedDict()
+    log_device["log_task_id"] = log_task_id
+    log_device["device_id"] = dict_vals['device_id']
+    # log_device["sensors"] = dict_vals['sensor_array']
+    log_device["sensors"] = None
+    log_device["device_name"] = dict_vals['device_name']
+    if 'device_sn' in dict_vals:
+        log_device["device_sn"] = dict_vals['device_sn']
+    log_device["wearable"] = dict_vals['wearable_bool']
+    log_device["arg_parser"] = dict_vals['arg_parser']
+    log_device['additional_data'] = '{}'
+
+    pprint.pp(log_device)
+    t = tuple(list(log_device.values()))
+    print(t)
+    print(type(t))
+    print(len(t))
+    print(len(log_device.keys()))
+    table.insert_rows([t], cols=list(log_device.keys()))
+
+
+def _log_device_params(conn: connection, devices):
+    for device in devices:
+        _fill_device_param_row(conn, device)
+
+
+def log_task_params_all(conn: connection, task_param_dict: Dict[str, TaskArgs]):
+    # TODO: Start transaction
+    for task_arg in task_param_dict.values():
+        pass
+        # log devices (and sensors) for the task
+        devices = task_arg.device_args
+        _log_device_params(conn, devices)
+        # log the task itself (excluding the devices
+
+    # TODO: Commit transaction
+
+
 def log_task_params(conn: connection, stimulus_id: str, log_task_id: str, task_param_dictionary: Dict[str, Any]):
     """
     Logs task parameters (specifically, the stimulus params and instruction params) to the database.
