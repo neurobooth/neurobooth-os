@@ -212,26 +212,22 @@ def _fill_device_param_row(conn: connection, log_task_id: str, device: DeviceArg
     dict_vals = device.model_dump()
 
     import pprint
-    #    del sensor['ENV_devices']
+
+    # remove unwanted element from each sensor
+    for sensor in dict_vals['sensor_array']:
+        del sensor['ENV_devices']
 
     log_device = OrderedDict()
     log_device["log_task_id"] = log_task_id
     log_device["device_id"] = dict_vals['device_id']
-    # log_device["sensors"] = dict_vals['sensor_array']
-    log_device["sensors"] = None
+    log_device["sensors"] = json.dumps(dict_vals['sensor_array'])
     log_device["device_name"] = dict_vals['device_name']
     if 'device_sn' in dict_vals:
         log_device["device_sn"] = dict_vals['device_sn']
     log_device["wearable"] = dict_vals['wearable_bool']
     log_device["arg_parser"] = dict_vals['arg_parser']
     log_device['additional_data'] = '{}'
-
-    pprint.pp(log_device)
     t = tuple(list(log_device.values()))
-    print(t)
-    print(type(t))
-    print(len(t))
-    print(len(log_device.keys()))
     table.insert_rows([t], cols=list(log_device.keys()))
 
 
