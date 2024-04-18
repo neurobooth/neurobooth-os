@@ -156,7 +156,7 @@ class MOT(Task_Eyetracker):
             for chunk in self.test_chunks:
                 self.run_chunk(chunk)
                 # Check early stopping criterion and stop if met
-                total_click_duration = sum([c.results().click_duration for c in chunk if isinstance(c, TrialFrame)])
+                total_click_duration = MOT.chunk_click_duration(chunk)
                 if total_click_duration > self.chunk_timeout_sec:
                     print(f'MOT timed out: total_click_duration={total_click_duration} s')
                     break
@@ -184,6 +184,19 @@ class MOT(Task_Eyetracker):
     def run_chunk(chunk: List[MOTFrame]) -> None:
         for frame in chunk:
             frame.run()
+
+    @staticmethod
+    def chunk_click_duration(chunk: List[MOTFrame]) -> float:
+        """Compute the total time spent during clicks for a chunk. Timeouts are only penalized once."""
+        total_duration = 0
+        for c in chunk:
+            if not isinstance(c, TrialFrame):
+                continue
+            results = c.results()
+            total_duration += results.click_duration
+            if results.state == 'timeout':
+                total_duration += c.click_timeout
+        return total_duration
 
     def save_csv(self, data: pd.DataFrame, name: str) -> None:
         """
