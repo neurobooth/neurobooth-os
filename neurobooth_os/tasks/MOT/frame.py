@@ -182,7 +182,8 @@ class TrialResult(NamedTuple):
     n_targets: int
     n_correct: int
     click_duration: float
-    circle_speed: float
+    circle_mean_speed: float
+    circle_std_speed: float
     animation_duration: float
     state: str
 
@@ -455,11 +456,14 @@ class TrialFrame(MOTFrame):
         """
         :return: Results of the trial to be saved in the results CSV
         """
+        mean_speed, std_speed = self.animation.get_circle_speeds()
+        mean_speed, std_speed = mean_speed.mean(), std_speed.mean()  # Avg. across circles
         return TrialResult(
             n_circles=len(self.circles),
             n_targets=self.n_targets,
             n_correct=sum([c.correct for c in self.click_info]),
-            circle_speed=self.animation.get_circle_speeds().mean(),
+            circle_mean_speed=mean_speed,
+            circle_std_speed=std_speed,
             animation_duration=self.actual_animation_duration,
             click_duration=max([0, *[c.time for c in self.click_info]]),
             state='aborted' if not self.completed else self.result_status,

@@ -92,16 +92,17 @@ class CircleAnimator(ABC):
     def _step(self, elapsed_time: float) -> None:
         raise NotImplementedError()
 
-    def get_circle_speeds(self) -> np.ndarray:
+    def get_circle_speeds(self) -> (np.ndarray, np.ndarray):
         """
-        Calculate the mean observed speed of each circle (px/s).
+        Calculate the mean and std of observed speed of each circle (px/s).
         -1 is used as a sentinel value if there is no speed history.
-        :return: An array containing the mean observed speed of each circle (px/s).
+        :return: (mean, std) Array containing the mean and std of the observed speed of each circle (px/s).
         """
         if self._speed_history:
-            return np.mean(self._speed_history, axis=0)
+            return np.mean(self._speed_history, axis=0), np.std(self._speed_history, axis=0)
         else:
-            return np.full(len(self.circles), -1, dtype='float64')
+            sentinel = np.full(len(self.circles), -1, dtype='float64')
+            return sentinel, sentinel
 
 
 class StepwiseAnimator(CircleAnimator):
