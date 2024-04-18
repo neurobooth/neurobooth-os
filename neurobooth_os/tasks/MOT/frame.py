@@ -261,6 +261,7 @@ class TrialFrame(MOTFrame):
 
         # Present moving circles
         clock = Clock()
+        self.task.Mouse.setVisible(0)  # Hide mouse
         self.initial_placement()
         self.flash_targets()
         self.show_moving_circles()
@@ -413,9 +414,10 @@ class TrialFrame(MOTFrame):
         prev_button_state = None
         mouse.clickReset()
         while n_clicks < self.n_targets:
-            buttons, click_time = mouse.getPressed(getTime=True)
+            buttons, click_times = mouse.getPressed(getTime=True)
+            left_button_click, left_button_click_time = buttons[0] > 0, click_times[0]
 
-            if sum(buttons) > 0 and buttons != prev_button_state:
+            if left_button_click and buttons != prev_button_state:
                 for i, circle in enumerate(self.circles):
                     if not mouse.isPressedIn(circle.stimulus):
                         continue
@@ -432,7 +434,9 @@ class TrialFrame(MOTFrame):
 
                     x, y = mouse.getPos()
                     self.task.sendMessage(self.task.marker_response_start)
-                    self.click_info.append(ClickInfo(circle_idx=i, x=x, y=y, time=min(click_time), correct=is_correct))
+                    self.click_info.append(
+                        ClickInfo(circle_idx=i, x=x, y=y, time=left_button_click_time, correct=is_correct)
+                    )
 
                     self.present_circles(send_location=False)
                     mouse.clickReset()  # Reset click timer
