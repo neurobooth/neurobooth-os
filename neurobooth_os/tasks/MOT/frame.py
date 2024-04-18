@@ -400,6 +400,7 @@ class TrialFrame(MOTFrame):
             self.present_circles()
             self.task.check_if_aborted()
         self.animation.step(self.movement_duration)  # Ensure consistent endpoint for precomputed trajectory
+        self.present_circles()
 
     def handle_clicks(self) -> None:
         """
