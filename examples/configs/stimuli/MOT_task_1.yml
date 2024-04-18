@@ -114,5 +114,5 @@ test_chunks:  # Test parameters
         n_targets: 5
 
       - trial_type: test
-        animation_path: trial_20_5tgt.npz
+        animation_path: trial_20_5tgt_corrected.npz
         n_targets: 5
