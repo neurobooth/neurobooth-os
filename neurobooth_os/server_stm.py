@@ -75,9 +75,6 @@ def run_stm(logger):
             tasks, subj_id, session_id = data.split(":")[1:]
             task_log_entry.log_session_id = session_id
 
-            if presented:
-                session.task_func_dict = meta.build_tasks_for_collection(session.collection_id)
-
             # Preload tasks media
             t0 = time()
 
@@ -192,7 +189,6 @@ def run_stm(logger):
 
             session.logger.debug('FINISH SCREEN')
             finish_screen(session.win)
-            presented = True
 
         elif "shutdown" in data:
             if session is not None:

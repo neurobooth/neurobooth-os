@@ -51,7 +51,6 @@ class StmSession(BaseModel):
         # TODO(larry): This was set to true in 'present' phase, but get from stimulus obj?
         self.prompt = True
 
-        # TODO(larry) Comment/Uncomment for stage/prod environment usage:
         self.device_manager = self.init_device_manager()
         self.eye_tracker = self.device_manager.get_eyelink_stream()
 
@@ -65,7 +64,7 @@ class StmSession(BaseModel):
             print("Checking prepared devices")
             device_manager.reconnect_streams()
         else:
-            device_manager.create_streams(collection_id=self.collection_id, win=self.win)
+            device_manager.create_streams(collection_id=self.collection_id, win=self.win, task_params=self.task_func_dict)
         return device_manager
 
     @staticmethod

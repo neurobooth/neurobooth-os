@@ -137,13 +137,13 @@ class DeviceManager:
 
         self.marker_stream = node_name in ['presentation', 'dummy_stm']
 
-    def create_streams(self, collection_id: str = "mvp_030", win=None) -> None:
+    def create_streams(self, collection_id: str = "mvp_030", win=None, task_params=None) -> None:
         """
         Initialize devices and LSL streams.
 
         :param collection_id: Name of study collection in the database.
         :param win: PsychoPy window
-        :param conn: Connection to the database
+        :param task_params: task configuration parameters
         """
         if self.marker_stream:  # TODO: Handle the marker stream better
             from neurobooth_os.iout import marker_stream
@@ -165,7 +165,7 @@ class DeviceManager:
 
         with ThreadPoolExecutor(max_workers=N_ASYNC_THREADS) as executor:
             futures = []
-            kwargs: Dict[str, DeviceArgs] = DeviceManager._get_unique_devices(collection_id)
+            kwargs: Dict[str, DeviceArgs] = DeviceManager._get_unique_devices(collection_id, task_params)
             for device_key, device_args in kwargs.items():
                 if device_key not in self.assigned_devices:
                     continue
@@ -180,14 +180,14 @@ class DeviceManager:
         self.logger.info(f'LOADED DEVICES: {list(self.streams.keys())}')
 
     @staticmethod
-    def _get_unique_devices(collection_id: str) -> Dict[str, DeviceArgs]:
+    def _get_unique_devices(collection_id: str, task_params: Dict) -> Dict[str, DeviceArgs]:
         """
         Fetch the DeviceArgs for each device used in the collection, eliminating any duplicates
 
         :param collection_id: Name of study collection.
         """
         # Get all tasks in collection
-        kwarg_devs: Dict[str, TaskArgs] = meta.build_tasks_for_collection(collection_id)
+        kwarg_devs: Dict[str, TaskArgs] = task_params
         # Aggregate the devices used by the tasks
         devices = {}
         for task in kwarg_devs.values():
