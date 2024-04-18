@@ -275,6 +275,7 @@ class TaskArgs(BaseModel):
     # task_instance is a Task, but using Optional[Task] as the type causes circular import problems
     task_instance: Optional[object] = None  # created by client code from above callable
     device_args: List[SerializeAsAny[DeviceArgs]] = []
+    arg_parser: str
 
     class Config:
         arbitrary_types_allowed = True
@@ -426,3 +427,4 @@ class RawTaskParams(EnvArgs):
     stimulus_id: str
     instruction_id: Optional[str]
     device_id_array: List[str]
+    arg_parser: str

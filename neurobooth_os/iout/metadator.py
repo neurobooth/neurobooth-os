@@ -170,7 +170,7 @@ def _make_session_id(conn: connection, session_log):
     return session_id
 
 
-def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn: connection) -> None:
+def fill_task_row(task_log_entry: TaskLogEntry, conn: connection) -> None:
     """
     Updates a row in log_task.
 
@@ -178,7 +178,6 @@ def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn: connecti
 
     Parameters
     ----------
-    log_task_id
     task_log_entry
     conn
 
@@ -194,7 +193,7 @@ def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn: connecti
     # convert list of strings to postgres array literal format
     dict_vals['task_output_files'] = convert_to_array_literal(dict_vals['task_output_files'])
     vals = list(dict_vals.values())
-    table.update_row(log_task_id, tuple(vals), cols=list(dict_vals))
+    table.update_row(task_log_entry.log_task_id, tuple(vals), cols=list(dict_vals))
 
 
 def get_stimulus_id(task_id: str) -> str:
@@ -210,8 +209,6 @@ def get_device_ids(task_id: str) -> List[str]:
 def _fill_device_param_row(conn: connection, log_task_id: str, device: DeviceArgs):
     table = Table("log_device_param", conn=conn)
     dict_vals = device.model_dump()
-
-    import pprint
 
     # remove unwanted element from each sensor
     for sensor in dict_vals['sensor_array']:
@@ -231,51 +228,72 @@ def _fill_device_param_row(conn: connection, log_task_id: str, device: DeviceArg
     table.insert_rows([t], cols=list(log_device.keys()))
 
 
-def _log_device_params(conn: connection, devices):
+def _log_device_params(conn: connection, log_task_id: str, devices: List[DeviceArgs]):
     for device in devices:
-        _fill_device_param_row(conn, device)
+        _fill_device_param_row(conn, log_task_id, device)
 
 
-def log_task_params_all(conn: connection, task_param_dict: Dict[str, TaskArgs]):
+def log_task_params_all(conn: connection, log_task_id: str, task_args: TaskArgs):
+    """
+    Logs all parameters for a task
+    Parameters
+    ----------
+    conn
+    log_task_id
+    task_args
+
+    Returns
+    -------
+
+    """
     # TODO: Start transaction
-    for task_arg in task_param_dict.values():
-        pass
-        # log devices (and sensors) for the task
-        devices = task_arg.device_args
-        _log_device_params(conn, devices)
-        # log the task itself (excluding the devices
+
+    # log devices (and sensors) for the task
+    devices = task_args.device_args
+    _log_device_params(conn, log_task_id, devices)
+
+    # log the task itself (excluding the devices
+    log_task_params(conn, log_task_id, task_args)
 
     # TODO: Commit transaction
 
 
-def log_task_params(conn: connection, stimulus_id: str, log_task_id: str, task_param_dictionary: Dict[str, Any]):
+def log_task_params(conn: connection, log_task_id: str, task_args: TaskArgs):
     """
     Logs task parameters (specifically, the stimulus params and instruction params) to the database.
     @param conn: postgres database connection
-    @param stimulus_id: primary key from the nb_stimulus table. Identifies the current stimulus
     @param log_task_id: primary key from the log_task table for the current task and session
-    @param task_param_dictionary: dictionary of string keys and values containing the data to be logged
+    @param task_args: Hierarchical Pydantic model of the data to be logged
     @return: None
     """
-    for key, value in task_param_dictionary.items():
-        if isinstance(value, (list, dict, tuple)):
-            value_type = 'JSON'
-            value = json.dumps(value)
-        elif isinstance(value, BaseModel):
-            value_type = 'JSON'
-            value = value.model_dump_json()
-        else:
-            value_type = str(type(value))
 
-        args = {
-            "log_task_id": log_task_id,
-            "stimulus_id": stimulus_id,
-            "key": key,
-            "value": value,
-            "value_type": value_type,
-        }
-        _log_task_parameter(conn, args)
-    conn.commit()
+    table = Table("log_task_params", conn=conn)
+    dict_vals = task_args.model_dump()
+
+    if 'ENV_devices' in dict_vals:
+        del dict_vals['ENV_devices']
+
+    log_task = OrderedDict()
+    log_task["log_task_id"] = log_task_id
+    log_task["task_id"] = dict_vals['task_id']
+    log_task["device_ids"] = convert_to_array_literal([d['device_id'] for d in dict_vals["device_args"]])
+    if 'instr_args' in dict_vals:
+        if 'ENV_devices' in dict_vals['instr_args']:
+            del dict_vals['instr_args']['ENV_devices']
+        log_task["instructions"] = json.dumps(dict_vals['instr_args'])
+
+    if 'ENV_devices' in dict_vals['stim_args']:
+        del dict_vals['stim_args']['ENV_devices']
+    log_task["stimulus"] = json.dumps(dict_vals['stim_args'])
+    log_task["arg_parser"] = str(dict_vals['arg_parser'])
+    log_task["task_constructor"] = str(dict_vals['task_constructor_callable'])
+    log_task['additional_data'] = '{}'
+
+    # pprint.pp(log_task)
+
+    t = tuple(list(log_task.values()))
+    table.insert_rows([t], cols=list(log_task.keys()))
+
 
 
 def _log_task_parameter(conn: connection, value_dict: Dict[str, Any]):
@@ -403,6 +421,7 @@ def build_task(param_dictionary, task_id:str) -> TaskArgs:
     stim_args: StimulusArgs = param_dictionary["stimuli"][raw_task_args.stimulus_id]
     task_constructor = stim_args.stimulus_file
     instr_args: Optional[InstructionArgs] = None
+    arg_parser: str = raw_task_args.arg_parser
     if raw_task_args.instruction_id:
         instr_args = param_dictionary["instructions"][raw_task_args.instruction_id]
     device_ids = raw_task_args.device_id_array
@@ -421,7 +440,8 @@ def build_task(param_dictionary, task_id:str) -> TaskArgs:
         task_constructor_callable=task_constructor_callable,
         stim_args=stim_args,
         instr_args=instr_args,
-        device_args=device_args
+        device_args=device_args,
+        arg_parser=arg_parser
     )
     return task_args
 

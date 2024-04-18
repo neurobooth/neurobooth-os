@@ -52,31 +52,31 @@ class TestLogging(unittest.TestCase):
         assert df.iloc[0]["value"] == value
         assert df.iloc[0]["value_type"] == value_type
 
-    def test_task_logging2(self):
-        """Tests logging to database using make_db_logger with session and subject set"""
-
-        param_dict = {"foo": "bar", "fizz": "buzz"}
-        task_func_dict = meta.build_tasks_for_collection('testing')
-
-        meta.log_task_params(db_test_utils.TEST_CONNECTION, stimulus_id, log_task_id,
-                             dict(task_func_dict[task_id].stim_args))
-
-        meta.log_task_params(db_test_utils.TEST_CONNECTION,
-                             stimulus_id=stimulus_id,
-                             log_task_id=log_task_id,
-                             task_param_dictionary=param_dict)
-        df = get_records(table_name)
-        assert df.iloc[0]["stimulus_id"] == stimulus_id
-        assert df.iloc[0]["log_task_id"] == log_task_id
-        assert df.iloc[0]["key"] == "foo"
-        assert df.iloc[0]["value"] == "bar"
-        assert df.iloc[0]["value_type"] == str(type(param_dict["foo"]))
-
-        assert df.iloc[1]["stimulus_id"] == stimulus_id
-        assert df.iloc[1]["log_task_id"] == log_task_id
-        assert df.iloc[1]["key"] == "fizz"
-        assert df.iloc[1]["value"] == param_dict["fizz"]
-        assert df.iloc[1]["value_type"] == str(type(param_dict["fizz"]))
+    # def test_task_logging2(self):
+    #     """Tests logging to database using make_db_logger with session and subject set"""
+    #
+    #     param_dict = {"foo": "bar", "fizz": "buzz"}
+    #     task_func_dict = meta.build_tasks_for_collection('testing')
+    #
+    #     meta.log_task_params(db_test_utils.TEST_CONNECTION, stimulus_id, log_task_id,
+    #                          dict(task_func_dict[task_id].stim_args))
+    #
+    #     meta.log_task_params(db_test_utils.TEST_CONNECTION,
+    #                          stimulus_id=stimulus_id,
+    #                          log_task_id=log_task_id,
+    #                          task_param_dictionary=param_dict)
+    #     df = get_records(table_name)
+    #     assert df.iloc[0]["stimulus_id"] == stimulus_id
+    #     assert df.iloc[0]["log_task_id"] == log_task_id
+    #     assert df.iloc[0]["key"] == "foo"
+    #     assert df.iloc[0]["value"] == "bar"
+    #     assert df.iloc[0]["value_type"] == str(type(param_dict["foo"]))
+    #
+    #     assert df.iloc[1]["stimulus_id"] == stimulus_id
+    #     assert df.iloc[1]["log_task_id"] == log_task_id
+    #     assert df.iloc[1]["key"] == "fizz"
+    #     assert df.iloc[1]["value"] == param_dict["fizz"]
+    #     assert df.iloc[1]["value_type"] == str(type(param_dict["fizz"]))
 
 
 if __name__ == '__main__':

@@ -124,9 +124,10 @@ def run_stm(logger):
                         task.run(**this_task_kwargs)
                     else:
                         log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
-                        meta.log_task_params(
-                            session.db_conn, task_id, log_task_id,
-                            session.task_func_dict[task_id].stim_args.model_dump()
+                        meta.log_task_params_all(
+                            session.db_conn,
+                            log_task_id,
+                            session.task_func_dict[task_id]
                         )
                         task_log_entry.date_times = (
                                 "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","
@@ -321,7 +322,7 @@ def log_task(events: List,
     task_log_entry.task_notes_file = f"{stm_session.session_name}-{stimulus_id}-notes.txt"
     if task.task_files is not None:
         task_log_entry.task_output_files = task.task_files
-    meta.fill_task_row(task_log_entry.log_task_id, task_log_entry, stm_session.db_conn)
+    meta.fill_task_row(task_log_entry, stm_session.db_conn)
 
 
 def reset_stdout():
