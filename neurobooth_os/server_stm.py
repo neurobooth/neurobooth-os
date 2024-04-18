@@ -321,7 +321,7 @@ def log_task(events: List,
     task_log_entry.task_notes_file = f"{stm_session.session_name}-{stimulus_id}-notes.txt"
     if task.task_files is not None:
         task_log_entry.task_output_files = task.task_files
-    meta.fill_task_row(task_log_entry.log_task_id, task_log_entry, stm_session.db_conn)
+    meta.fill_task_row(task_log_entry, stm_session.db_conn)
 
 
 def reset_stdout():

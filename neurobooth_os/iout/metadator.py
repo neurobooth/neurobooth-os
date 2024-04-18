@@ -170,7 +170,7 @@ def _make_session_id(conn: connection, session_log):
     return session_id
 
 
-def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn: connection) -> None:
+def fill_task_row(task_log_entry: TaskLogEntry, conn: connection) -> None:
     """
     Updates a row in log_task.
 
@@ -178,7 +178,6 @@ def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn: connecti
 
     Parameters
     ----------
-    log_task_id
     task_log_entry
     conn
 
@@ -192,9 +191,11 @@ def fill_task_row(log_task_id: str, task_log_entry: TaskLogEntry, conn: connecti
     # delete subj_date as not present in DB
     del dict_vals["subject_id_date"]
     # convert list of strings to postgres array literal format
+    dict_vals['event_array'] = convert_to_array_literal((dict_vals['event_array']), '[', ']')
     dict_vals['task_output_files'] = convert_to_array_literal(dict_vals['task_output_files'])
+    print(dict_vals['task_output_files'])
     vals = list(dict_vals.values())
-    table.update_row(log_task_id, tuple(vals), cols=list(dict_vals))
+    table.update_row(dict_vals['log_task_id'], tuple(vals), cols=list(dict_vals))
 
 
 def get_stimulus_id(task_id: str) -> str:
@@ -260,20 +261,24 @@ def read_sensors() -> Dict[str, SensorArgs]:
     return _parse_files(folder)
 
 
-def _dynamic_parse(file: str, param_type: str) -> BaseModel:
+def _dynamic_parse(file: str, param_type: str, env_dict: Dict[str, Any]) -> BaseModel:
+
     param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, param_type)
+    param_dict.update(env_dict)
     param_parser: str = param_dict['arg_parser']
     parser_func = str_fileid_to_eval(param_parser)
     return parser_func(**param_dict)
 
 
 def _parse_files(folder):
+    env_dict = stim_param_reader.get_param_dictionary("environment.yml", "")
     directory: str = get_cfg_path(folder)
     result_dict = {}
     for file in os.listdir(directory):
         file_name = os.fsdecode(file).split(".")[0]
-        result_dict[file_name] = _dynamic_parse(file, folder)
+        result_dict[file_name] = _dynamic_parse(file, folder, env_dict)
     return result_dict
+
 
 def read_devices() -> Dict[str, DeviceArgs]:
     """Return dictionary of device_id to DeviceArgs for all yaml device parameter files."""
@@ -339,8 +344,6 @@ def build_tasks_for_collection(collection_id: str) -> Dict[str, TaskArgs]:
     ----------
     collection_id str
         The unique identifier for the collection
-    conn object
-        A database connection
 
     Returns
     -------
@@ -371,6 +374,7 @@ def build_task(param_dictionary, task_id:str) -> TaskArgs:
             sensor_args.append(param_dictionary["sensors"][sens_id])
         dev_args.sensor_array = sensor_args
         device_args.append(dev_args)
+
     task_constructor_callable = str_fileid_to_eval(task_constructor)
     task_args: TaskArgs = TaskArgs(
         task_id=task_id,

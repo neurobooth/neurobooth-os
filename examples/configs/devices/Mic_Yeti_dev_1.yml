@@ -9,4 +9,3 @@ device_firmware: None
 sensor_ids:
 - Mic_Yeti_sens_1
 arg_parser: iout.stim_param_reader.py::MicYetiDeviceArgs()
-microphone_name: Yeti

@@ -57,7 +57,7 @@ class StmSession(BaseModel):
 
     @staticmethod
     def init_window():
-        if os.getenv("NB_FULLSCREEN") == "false":
+        if config.neurobooth_config.fullscreen == "false":
             win = utl.make_win(full_screen=False)
         else:
             win = utl.make_win(full_screen=True)
