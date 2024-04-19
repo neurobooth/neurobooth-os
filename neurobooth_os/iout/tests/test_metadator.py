@@ -34,9 +34,13 @@ class TestMetadator(unittest.TestCase):
         print(a_dict["sensors"])
 
     def test_build_tasks_for_collection(self):
+        import pprint
+
         collection_id = 'mvp_030'
         task_dict = meta.build_tasks_for_collection(collection_id)
         self.assertIsNotNone(task_dict)
+        pursuit = task_dict['pursuit_obs']
+        pprint.pp(pursuit.dump_filtered())
 
     def test_read_studies(self):
         self.assertIsNotNone(meta.read_studies())
