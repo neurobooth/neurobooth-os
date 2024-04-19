@@ -94,14 +94,13 @@ def run_acq(logger):
                 system_resource_logger = SystemResourceLogger(ses_folder, 'ACQ')
                 system_resource_logger.start()
 
-            # task_devs_kw = meta.get_device_kwargs_by_task(collection_id, conn)
-            task_args: Dict[str, TaskArgs] = meta.build_tasks_for_collection(collection_id)
-
+            task_args = meta.build_tasks_for_collection(collection_id)
+            
             device_manager = DeviceManager(node_name='acquisition')
             if device_manager.streams:
                 device_manager.reconnect_streams()
             else:
-                device_manager.create_streams(collection_id=collection_id)
+                device_manager.create_streams(collection_id=collection_id, task_params=task_args)
             print("UPDATOR:-Connect-")
 
         elif "frame_preview" in data and not recording:
