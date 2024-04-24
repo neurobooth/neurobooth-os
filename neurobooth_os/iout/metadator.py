@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import copy
 import importlib
 import json
 import logging
@@ -280,6 +279,8 @@ def _log_task_params(conn: connection, log_task_id: str, task_args: TaskArgs):
 
     if 'ENV_devices' in dict_vals:
         del dict_vals['ENV_devices']
+    if 'task_instance' in dict_vals:
+        del dict_vals['task_instance']
 
     log_task = OrderedDict()
     log_task["log_task_id"] = log_task_id
@@ -306,8 +307,6 @@ def _log_task_params(conn: connection, log_task_id: str, task_args: TaskArgs):
             del dict_vals[key]
     json_string = json.dumps(dict_vals)
     log_task['additional_data'] = json_string
-
-    # pprint.pp(log_task)
 
     t = tuple(list(log_task.values()))
     table.insert_rows([t], cols=list(log_task.keys()))
