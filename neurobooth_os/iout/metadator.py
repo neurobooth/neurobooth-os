@@ -239,11 +239,6 @@ def _fill_device_param_row(conn: connection, log_task_id: str, device: DeviceArg
     table.insert_rows([t], cols=list(log_device.keys()))
 
 
-def _log_device_params(conn: connection, log_task_id: str, devices: List[DeviceArgs]):
-    for device in devices:
-        _fill_device_param_row(conn, log_task_id, device)
-
-
 def log_task_params_all(conn: connection, log_task_id: str, task_args: TaskArgs):
     """
     Logs all parameters for a task
@@ -290,17 +285,27 @@ def _log_task_params(conn: connection, log_task_id: str, task_args: TaskArgs):
     log_task["log_task_id"] = log_task_id
     log_task["task_id"] = dict_vals['task_id']
     log_task["device_ids"] = convert_to_array_literal([d['device_id'] for d in dict_vals["device_args"]])
+    del dict_vals['device_args']
+
     if 'instr_args' in dict_vals:
         if 'ENV_devices' in dict_vals['instr_args']:
             del dict_vals['instr_args']['ENV_devices']
-        log_task["instructions"] = json.dumps(dict_vals['instr_args'])
+        log_task["instr_args"] = json.dumps(dict_vals['instr_args'])
 
     if 'ENV_devices' in dict_vals['stim_args']:
         del dict_vals['stim_args']['ENV_devices']
-    log_task["stimulus"] = json.dumps(dict_vals['stim_args'])
+    log_task["stim_args"] = json.dumps(dict_vals['stim_args'])
     log_task["arg_parser"] = str(dict_vals['arg_parser'])
-    log_task["task_constructor"] = str(dict_vals['task_constructor_callable'])
-    log_task['additional_data'] = '{}'
+    log_task["task_constructor_callable"] = str(dict_vals['task_constructor_callable'])
+
+    # log the remaining data, skipping anything that already gets its own column
+    # Note: The dictionary key in dict_val must match the database column name.
+    handled_keys = list (log_task.keys())
+    for key in handled_keys:
+        if key in dict_vals:
+            del dict_vals[key]
+    json_string = json.dumps(dict_vals)
+    log_task['additional_data'] = json_string
 
     # pprint.pp(log_task)
 
