@@ -87,7 +87,8 @@ class TestMetadator(unittest.TestCase):
         self.assertIsNotNone(task_dict)
         pursuit = task_dict['pursuit_obs']
         log_task_id = "tech_log_885"
-        meta._log_device_params(conn, log_task_id, pursuit.device_args)
+        for device in pursuit.device_args:
+            meta._fill_device_param_row(conn, log_task_id, device)
 
     def test_log_task_params_all(self):
         conn = meta.get_database_connection("mock_neurobooth_1", False)

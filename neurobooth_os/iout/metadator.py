@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import copy
 import importlib
 import json
 import logging
@@ -217,13 +218,23 @@ def _fill_device_param_row(conn: connection, log_task_id: str, device: DeviceArg
     log_device = OrderedDict()
     log_device["log_task_id"] = log_task_id
     log_device["device_id"] = dict_vals['device_id']
-    log_device["sensors"] = json.dumps(dict_vals['sensor_array'])
+    log_device["sensor_array"] = json.dumps(dict_vals['sensor_array'])
     log_device["device_name"] = dict_vals['device_name']
     if 'device_sn' in dict_vals:
         log_device["device_sn"] = dict_vals['device_sn']
-    log_device["wearable"] = dict_vals['wearable_bool']
+    log_device["wearable_bool"] = dict_vals['wearable_bool']
     log_device["arg_parser"] = dict_vals['arg_parser']
-    log_device['additional_data'] = '{}'
+
+    # log the remaining data, skipping anything that already gets its own column
+    # Note: The dictionary key in dict_val must match the database column name,
+    # so we're stuck with names like "wearable_bool"
+    handled_keys = list (log_device.keys())
+    for key in handled_keys:
+        if key in dict_vals:
+            del dict_vals[key]
+    json_string = json.dumps(dict_vals)
+    log_device['additional_data'] = json_string
+
     t = tuple(list(log_device.values()))
     table.insert_rows([t], cols=list(log_device.keys()))
 
@@ -250,15 +261,17 @@ def log_task_params_all(conn: connection, log_task_id: str, task_args: TaskArgs)
 
     # log devices (and sensors) for the task
     devices = task_args.device_args
-    _log_device_params(conn, log_task_id, devices)
+    for device in devices:
+        _fill_device_param_row(conn, log_task_id, device)
+
 
     # log the task itself (excluding the devices
-    log_task_params(conn, log_task_id, task_args)
+    _log_task_params(conn, log_task_id, task_args)
 
     # TODO: Commit transaction
 
 
-def log_task_params(conn: connection, log_task_id: str, task_args: TaskArgs):
+def _log_task_params(conn: connection, log_task_id: str, task_args: TaskArgs):
     """
     Logs task parameters (specifically, the stimulus params and instruction params) to the database.
     @param conn: postgres database connection
@@ -293,17 +306,6 @@ def log_task_params(conn: connection, log_task_id: str, task_args: TaskArgs):
 
     t = tuple(list(log_task.values()))
     table.insert_rows([t], cols=list(log_task.keys()))
-
-
-
-def _log_task_parameter(conn: connection, value_dict: Dict[str, Any]):
-    query = "INSERT INTO log_task_param " \
-            "(log_task_id, stimulus_id, key, value, value_type)  " \
-            " VALUES " \
-            " (%(log_task_id)s, %(stimulus_id)s, %(key)s, %(value)s, %(value_type)s)"
-
-    cursor = conn.cursor()
-    cursor.execute(query, value_dict)
 
 
 def _get_sensor(sens_id) -> SensorArgs:
