@@ -206,7 +206,7 @@ def get_device_ids(task_id: str) -> List[str]:
     return task.device_id_array
 
 
-def _fill_device_param_row(conn: connection, log_task_id: str, device: DeviceArgs):
+def _fill_device_param_row(conn: connection, device: DeviceArgs) -> Optional[str]:
     table = Table("log_device_param", conn=conn)
     dict_vals = device.model_dump()
 
@@ -215,7 +215,6 @@ def _fill_device_param_row(conn: connection, log_task_id: str, device: DeviceArg
         del sensor['ENV_devices']
 
     log_device = OrderedDict()
-    log_device["log_task_id"] = log_task_id
     log_device["device_id"] = dict_vals['device_id']
     log_device["sensor_array"] = json.dumps(dict_vals['sensor_array'])
     log_device["device_name"] = dict_vals['device_name']
@@ -235,37 +234,35 @@ def _fill_device_param_row(conn: connection, log_task_id: str, device: DeviceArg
     log_device['additional_data'] = json_string
 
     t = tuple(list(log_device.values()))
-    table.insert_rows([t], cols=list(log_device.keys()))
+    pkey = table.insert_rows([t], cols=list(log_device.keys()))
+    print(f"Primary key is {pkey}")
+    return pkey
 
 
-def log_task_params_all(conn: connection, log_task_id: str, task_args: TaskArgs):
+def log_devices(conn: connection, task_args_list: List[TaskArgs]) -> Dict[str, str]:
     """
-    Logs all parameters for a task
+    Logs all the devices used in a session so that they can be shared in the db across the tasks that use them
     Parameters
+    Returns a dictionary of device_id to log_device_param table primary key
     ----------
     conn
-    log_task_id
-    task_args
+    task_args_list
 
     Returns
     -------
 
     """
-    # TODO: Start transaction
-
-    # log devices (and sensors) for the task
-    devices = task_args.device_args
-    for device in devices:
-        _fill_device_param_row(conn, log_task_id, device)
-
-
-    # log the task itself (excluding the devices
-    _log_task_params(conn, log_task_id, task_args)
-
-    # TODO: Commit transaction
+    device_pkey_dict = {}
+    for task in task_args_list:
+        for device in task.device_args:
+            primary_key = _fill_device_param_row(conn, device)
+            device_pkey_dict[device.device_id] = primary_key
+    import pprint
+    pprint.pp(device_pkey_dict)
+    return device_pkey_dict
 
 
-def _log_task_params(conn: connection, log_task_id: str, task_args: TaskArgs):
+def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict, task_args: TaskArgs):
     """
     Logs task parameters (specifically, the stimulus params and instruction params) to the database.
     @param conn: postgres database connection
@@ -285,7 +282,12 @@ def _log_task_params(conn: connection, log_task_id: str, task_args: TaskArgs):
     log_task = OrderedDict()
     log_task["log_task_id"] = log_task_id
     log_task["task_id"] = dict_vals['task_id']
-    log_task["device_ids"] = convert_to_array_literal([d['device_id'] for d in dict_vals["device_args"]])
+
+    # remap device entries to their log_device_param keys
+    device_id_list = []
+    for d in dict_vals["device_args"]:
+        device_id_list.append(device_log_entry_dict[d['device_id']])
+    log_task['device_ids'] = device_id_list
     del dict_vals['device_args']
 
     if 'instr_args' in dict_vals:

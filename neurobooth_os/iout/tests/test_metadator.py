@@ -86,11 +86,10 @@ class TestMetadator(unittest.TestCase):
         task_dict = meta.build_tasks_for_collection(collection_id)
         self.assertIsNotNone(task_dict)
         pursuit = task_dict['pursuit_obs']
-        log_task_id = "tech_log_885"
         for device in pursuit.device_args:
-            meta._fill_device_param_row(conn, log_task_id, device)
+            meta._fill_device_param_row(conn, device)
 
-    def test_log_task_params_all(self):
+    def test_log_task_params(self):
         conn = meta.get_database_connection("mock_neurobooth_1", False)
         collection_id = 'mvp_030'
         task_dict = meta.build_tasks_for_collection(collection_id)
@@ -98,5 +97,6 @@ class TestMetadator(unittest.TestCase):
         pursuit = task_dict['pursuit_obs']
         finger_nose = task_dict['finger_nose_obs_1']
         log_task_id = "tech_log_885"
-        meta.log_task_params_all(conn, log_task_id, pursuit)
-        meta.log_task_params_all(conn, log_task_id, finger_nose)
+        log_entry_dict = meta.log_devices(conn, [pursuit, finger_nose])
+        meta.log_task_params(conn, log_task_id, log_entry_dict, pursuit)
+        meta.log_task_params(conn, log_task_id, log_entry_dict, finger_nose)
