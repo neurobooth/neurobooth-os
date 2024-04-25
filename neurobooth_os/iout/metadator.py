@@ -235,7 +235,6 @@ def _fill_device_param_row(conn: connection, device: DeviceArgs) -> Optional[str
 
     t = tuple(list(log_device.values()))
     pkey = table.insert_rows([t], cols=list(log_device.keys()))
-    print(f"Primary key is {pkey}")
     return pkey
 
 
@@ -252,13 +251,14 @@ def log_devices(conn: connection, task_args_list: List[TaskArgs]) -> Dict[str, s
     -------
 
     """
+    device_id_dict = {}
     device_pkey_dict = {}
     for task in task_args_list:
         for device in task.device_args:
-            primary_key = _fill_device_param_row(conn, device)
-            device_pkey_dict[device.device_id] = primary_key
-    import pprint
-    pprint.pp(device_pkey_dict)
+            device_id_dict[device.device_id] = device
+    for device in list(device_id_dict.values()):
+        primary_key = _fill_device_param_row(conn, device)
+        device_pkey_dict[device.device_id] = primary_key
     return device_pkey_dict
 
 
