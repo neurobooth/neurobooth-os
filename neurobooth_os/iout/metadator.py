@@ -303,7 +303,7 @@ def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict, t
     # log the remaining data, skipping anything that already gets its own column
     # Note: The dictionary key in dict_val must match the database column name.
     handled_keys = list (log_task.keys())
-    for key in dict_vals:
+    for key in list(dict_vals.keys()):
         if key in handled_keys:
             del dict_vals[key]
     json_string = json.dumps(dict_vals)
