@@ -10,8 +10,9 @@ This module handles task-level aspects and organization, such as:
 
 # TODO: Update CSV files with one-time v2 updator script as described in Slack/shortcut
 
+import os
 import os.path as op
-from typing import List
+from typing import List, Union
 from itertools import chain
 import pandas as pd
 from psychopy import visual
@@ -85,13 +86,13 @@ class MOT(Task_Eyetracker):
         self._init_frame_sequence(*self.stimulus_params)
 
     @classmethod
-    def asset_path(cls, asset: str) -> str:
+    def asset_path(cls, asset: Union[str, os.PathLike]) -> str:
         """
         Get the path to the specified asset.
         :param asset: The name of the asset/file.
-        :return: The file system path to the asset.
+        :return: The file system path to the asset in the config folder.
         """
-        return op.join(cls.root_dir, 'assets', asset)
+        return op.join(get_cfg_path('assets'), 'MOT', asset)
 
     @staticmethod
     def animation_path(animation_file: str) -> str:
@@ -100,7 +101,7 @@ class MOT(Task_Eyetracker):
         :param animation_file: The name of the animation file (extension included).
         :return: The path to the file in the config folder.
         """
-        return op.join(get_cfg_path('assets'), 'mot_animations', animation_file)
+        return MOT.asset_path(op.join('animations', animation_file))
 
     def _create_frame(self, params: FrameParameters) -> MOTFrame:
         if isinstance(params, TrialFrameParameters):
