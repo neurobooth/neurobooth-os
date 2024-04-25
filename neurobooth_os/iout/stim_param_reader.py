@@ -271,6 +271,7 @@ class TaskArgs(BaseModel):
     task_constructor_callable: Callable  # callable of constructor for a Task
     stim_args: SerializeAsAny[StimulusArgs]
     instr_args: Optional[SerializeAsAny[InstructionArgs]] = None
+    feature_of_interest: str
 
     # task_instance is a Task, but using Optional[Task] as the type causes circular import problems
     task_instance: Optional[object] = None  # created by client code from above callable

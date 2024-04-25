@@ -429,6 +429,7 @@ def build_task(param_dictionary, task_id:str) -> TaskArgs:
     task_constructor = stim_args.stimulus_file
     instr_args: Optional[InstructionArgs] = None
     arg_parser: str = raw_task_args.arg_parser
+    feature_of_interest: str = raw_task_args.feature_of_interest
     if raw_task_args.instruction_id:
         instr_args = param_dictionary["instructions"][raw_task_args.instruction_id]
     device_ids = raw_task_args.device_id_array
@@ -448,7 +449,8 @@ def build_task(param_dictionary, task_id:str) -> TaskArgs:
         stim_args=stim_args,
         instr_args=instr_args,
         device_args=device_args,
-        arg_parser=arg_parser
+        arg_parser=arg_parser,
+        feature_of_interest= feature_of_interest
     )
     return task_args
 
