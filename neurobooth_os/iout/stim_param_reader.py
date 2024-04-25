@@ -418,7 +418,7 @@ def _get_param_dictionary(task_param_file_name: str, conf_folder_name: str) -> d
 
 class RawTaskParams(EnvArgs):
     """
-        Raw (un-reified) Task params (ie., instead of a list of DeviceArgs,
+        Raw (un-reified) Task params (i.e., instead of a list of DeviceArgs,
         it has a list of strings representing device ids
     """
 

@@ -273,7 +273,9 @@ def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict, t
 
     table = Table("log_task_params", conn=conn)
     dict_vals = task_args.model_dump()
-
+    import pprint
+    pprint.pp(task_args)
+    pprint.pp(dict_vals)
     if 'ENV_devices' in dict_vals:
         del dict_vals['ENV_devices']
     if 'task_instance' in dict_vals:
@@ -304,8 +306,8 @@ def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict, t
     # log the remaining data, skipping anything that already gets its own column
     # Note: The dictionary key in dict_val must match the database column name.
     handled_keys = list (log_task.keys())
-    for key in handled_keys:
-        if key in dict_vals:
+    for key in dict_vals:
+        if key in handled_keys:
             del dict_vals[key]
     json_string = json.dumps(dict_vals)
     log_task['additional_data'] = json_string
