@@ -273,9 +273,6 @@ def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict, t
 
     table = Table("log_task_params", conn=conn)
     dict_vals = task_args.model_dump()
-    import pprint
-    pprint.pp(task_args)
-    pprint.pp(dict_vals)
     if 'ENV_devices' in dict_vals:
         del dict_vals['ENV_devices']
     if 'task_instance' in dict_vals:
