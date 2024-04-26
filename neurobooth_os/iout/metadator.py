@@ -210,6 +210,10 @@ def _fill_device_param_row(conn: connection, device: DeviceArgs) -> Optional[str
     table = Table("log_device_param", conn=conn)
     dict_vals = device.model_dump()
 
+    # remove redundant data from device before saving
+    if 'ENV_devices' in dict_vals:
+        del dict_vals['ENV_devices']
+
     # remove unwanted element from each sensor
     for sensor in dict_vals['sensor_array']:
         del sensor['ENV_devices']
@@ -249,7 +253,7 @@ def log_devices(conn: connection, task_args_list: List[TaskArgs]) -> Dict[str, s
 
     Returns
     -------
-
+    a dictionary of device_id to the primary key for the log_device_param table
     """
     device_id_dict = {}
     device_pkey_dict = {}
@@ -262,13 +266,20 @@ def log_devices(conn: connection, task_args_list: List[TaskArgs]) -> Dict[str, s
     return device_pkey_dict
 
 
-def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict, task_args: TaskArgs):
+def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict: Dict[str, int], task_args: TaskArgs):
     """
     Logs task parameters (specifically, the stimulus params and instruction params) to the database.
     @param conn: postgres database connection
     @param log_task_id: primary key from the log_task table for the current task and session
     @param task_args: Hierarchical Pydantic model of the data to be logged
     @return: None
+
+    Parameters
+    ----------
+    conn: database connection
+    log_task_id: the id assigned to the combination of task and session in the log_task table
+    device_log_entry_dict: a dictionary of device_id to the primary key for the log_device_param table
+    task_args: The TaskArgs object to log
     """
 
     table = Table("log_task_params", conn=conn)
@@ -286,7 +297,7 @@ def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict, t
     device_id_list = []
     for d in dict_vals["device_args"]:
         device_id_list.append(device_log_entry_dict[d['device_id']])
-    log_task['device_ids'] = device_id_list
+    log_task['log_device_ids'] = device_id_list
     del dict_vals['device_args']
 
     if 'instr_args' in dict_vals:
