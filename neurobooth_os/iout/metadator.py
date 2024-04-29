@@ -301,9 +301,9 @@ def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict: D
     del dict_vals['device_args']
 
     if 'instr_args' in dict_vals:
-        if 'ENV_devices' in dict_vals['instr_args']:
+        if dict_vals['instr_args'] is not None and 'ENV_devices' in dict_vals['instr_args']:
             del dict_vals['instr_args']['ENV_devices']
-        log_task["instr_args"] = json.dumps(dict_vals['instr_args'])
+            log_task["instr_args"] = json.dumps(dict_vals['instr_args'])
 
     if 'ENV_devices' in dict_vals['stim_args']:
         del dict_vals['stim_args']['ENV_devices']
