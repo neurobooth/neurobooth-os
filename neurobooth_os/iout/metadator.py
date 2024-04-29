@@ -282,7 +282,7 @@ def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict: D
     task_args: The TaskArgs object to log
     """
 
-    table = Table("log_task_params", conn=conn)
+    table = Table("log_task_param", conn=conn)
     dict_vals = task_args.model_dump()
     if 'ENV_devices' in dict_vals:
         del dict_vals['ENV_devices']
