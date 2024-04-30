@@ -80,9 +80,11 @@ def run_stm(logger):
 
             # split into a list of task_id strings
             tasks = tasks.split("-")
+            task_list: List[TaskArgs] = []
             for task_id in tasks:
                 if task_id in session.tasks():
                     task_args: TaskArgs = _get_task_args(session, task_id)
+                    task_list.append(task_args)
                     logger.info(task_args)
                     tsk_fun_obj: Callable = copy.copy(
                         task_args.task_constructor_callable)  # callable for Task constructor
@@ -91,6 +93,7 @@ def run_stm(logger):
                     logger.info(this_task_kwargs)
                     task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
                     logger.info(task_args.task_instance)
+            device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
             session.logger.info(f'Task media took {time() - t0:.2f}')
             session.win = welcome_screen(win=session.win)
             reset_stdout()
@@ -122,8 +125,10 @@ def run_stm(logger):
                     else:
                         log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
                         meta.log_task_params(
-                            session.db_conn, task_id, log_task_id,
-                            session.task_func_dict[task_id].stim_args.model_dump()
+                            session.db_conn,
+                            log_task_id,
+                            device_log_entry_dict,
+                            session.task_func_dict[task_id]
                         )
                         task_log_entry.date_times = (
                                 "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","
@@ -317,7 +322,7 @@ def log_task(events: List,
     task_log_entry.task_notes_file = f"{stm_session.session_name}-{stimulus_id}-notes.txt"
     if task.task_files is not None:
         task_log_entry.task_output_files = task.task_files
-    meta.fill_task_row(task_log_entry.log_task_id, task_log_entry, stm_session.db_conn)
+    meta.fill_task_row(task_log_entry, stm_session.db_conn)
 
 
 def reset_stdout():

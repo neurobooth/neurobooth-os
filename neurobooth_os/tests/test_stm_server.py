@@ -37,8 +37,8 @@ class TestTaskParamReader(unittest.TestCase):
         log_task_entry.task_output_files = {}
         conn = meta.get_database_connection(database_name, False)
         log_task_id = meta.make_new_task_row(conn, log_task_entry.subject_id)
-        print(log_task_id)
-        meta.fill_task_row(log_task_id, log_task_entry, conn)
+        log_task_entry['log_task_id'] = log_task_id
+        meta.fill_task_row(log_task_entry, conn)
 
     # Integration Test (devices, uses database, file system, win ui)
     # Can't run this because of Eyetracker dependency in code
