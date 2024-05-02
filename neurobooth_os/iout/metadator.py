@@ -82,9 +82,11 @@ def get_study_ids() -> List[str]:
 
 
 def get_subject_ids(conn: connection, first_name, last_name):
+    f_name = first_name.strip()
+    l_name = last_name.strip()
     table_subject = Table("subject", conn=conn)
     subject_df = table_subject.query(
-        where=f"LOWER(first_name_birth)=LOWER('{first_name}') AND LOWER(last_name_birth)=LOWER('{last_name}')"
+        where=f"LOWER(first_name_birth)=LOWER('{f_name}') AND LOWER(last_name_birth)=LOWER('{l_name}')"
     )
     return subject_df
 
