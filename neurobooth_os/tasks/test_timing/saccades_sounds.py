@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Nov 03 08:00:23 2021
-
-@author: Sheraz Khan: sheraz@khansheraz.com
-"""
 from psychopy import prefs
 
 prefs.hardware["audioLib"] = ["PTB"]
@@ -44,13 +39,15 @@ class Saccade_synch(Task_Eyetracker):
             self.pointer_size_deg, self.subj_screendist_cm, self.pixpercm
         )
 
+        self.tone_freq = tone_freq
+        self.tone_duration = tone_duration
+
         if monochrome:
             self.color_sequence = ["black", "white", "black", "white"]
         else:
             self.color_sequence = ["green", "red", "green", "blue"]
 
         self.target_positions = [(0, 0), (-480, 0), (0, 0), (480, 0)]
-        self.tone = sound.Sound(tone_freq, tone_duration, stereo=True)
 
     def run(self, prompt=True, last_task=False, **kwarg):
         self.present_instructions(prompt)
@@ -60,9 +57,9 @@ class Saccade_synch(Task_Eyetracker):
 
     def run_trials(self, prompt=True):
         """Run an altered saccades task that changes the screen color and plays a tone at every transition."""
-        self.target.pos = self.target_positions[0]
         self.target.size = self.pointer_size_pixel
-        self.win.color = self.color_sequence[0]
+        self.target.pos = self.target_positions[-1]
+        self.win.color = self.color_sequence[-1]
         self.win.flip()
 
         # Send a message to mark movement onset
@@ -72,7 +69,8 @@ class Saccade_synch(Task_Eyetracker):
                 self.win.color = color
                 self.target.pos = tgt_pos
                 self.target.draw()
-                self.tone.play(when=self.win.getFutureFlipTime(clock="ptb"))
+                tone = sound.Sound(self.tone_freq, self.tone_duration, stereo=True)
+                tone.play(when=self.win.getFutureFlipTime(clock="ptb"))
                 self.win.flip()
                 self.sendMessage(self.marker_trial_start)
                 self.send_target_loc(self.target.pos)
