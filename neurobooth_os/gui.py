@@ -490,6 +490,7 @@ def gui():
 
         # Save notes to a txt
         elif event == "_save_notes_":
+            logging.warning('saving notes after button press')
             if values["_notes_taskname_"] != "":
                 _save_session_notes(sess_info, values, window)
             else:
@@ -587,7 +588,10 @@ def gui():
 
 
 def _save_session_notes(sess_info, values, window):
-    if values["_notes_taskname_"] == "":
+    logging.warning(sess_info)
+    logging.warning(values)
+    if not values["_notes_taskname_"]:
+        logging.warning("taskname is not set. returning without writing notes")
         return
     _make_session_folder(sess_info)
     if values["_notes_taskname_"] == "All tasks":
