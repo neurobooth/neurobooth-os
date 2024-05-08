@@ -95,7 +95,7 @@ def get_subject_ids(conn: connection, first_name, last_name):
 def _escape_name_string(name: str) -> str:
     """ Escapes a single quote in the name (as in, e.g. "O'neil"), if one exists."""
     if "'" in name:
-        return f"""{name}"""
+        return f'''{name}'''
     else:
         return name
 
