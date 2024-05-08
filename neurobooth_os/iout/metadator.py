@@ -83,10 +83,21 @@ def get_study_ids() -> List[str]:
 
 def get_subject_ids(conn: connection, first_name, last_name):
     table_subject = Table("subject", conn=conn)
+    first_name = _escape_name_string(first_name)
+    last_name = _escape_name_string(last_name)
+
     subject_df = table_subject.query(
         where=f"LOWER(first_name_birth)=LOWER('{first_name}') AND LOWER(last_name_birth)=LOWER('{last_name}')"
     )
     return subject_df
+
+
+def _escape_name_string(name: str) -> str:
+    """ Escapes a single quote in the name (as in, e.g. "O'neil"), if one exists."""
+    if "'" in name:
+        return f'''{name.replace("'", "''")}'''
+    else:
+        return name
 
 
 def get_collection_ids(study_id) -> List[str]:
