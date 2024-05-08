@@ -501,18 +501,15 @@ def gui():
         # Shut down the other servers and stops plotting
         elif event == "Shut Down" or event == sg.WINDOW_CLOSED:
             if values['notes'] and not values["_notes_taskname_"]:
-                _save_session_notes(sess_info, values, window)
                 sg.PopupError(
                     "Unsaved notes without task. Select one in the dropdown list before exiting, or delete the note "
                 )
                 continue
-
             else:
-
-            _save_session_notes(sess_info, values, window)
-            plttr.stop()
-            ctr_rec.shut_all(nodes=nodes[::-1])
-            break
+                _save_session_notes(sess_info, values, window)
+                plttr.stop()
+                ctr_rec.shut_all(nodes=nodes[::-1])
+                break
 
         ##################################################################################
         # Thread events from process_received_data -> received messages from other servers
