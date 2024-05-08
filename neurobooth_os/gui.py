@@ -490,40 +490,27 @@ def gui():
 
         # Save notes to a txt
         elif event == "_save_notes_":
-            if values["_notes_taskname_"] == "":
+            if values["_notes_taskname_"] != "":
+                _save_session_notes(sess_info, values, window)
+            else:
                 sg.PopupError(
-                    "Pressed saving notes without task, select one in the dropdown list"
+                    "Pressed save notes without task, select one in the dropdown list"
                 )
                 continue
 
-            session_dir = op.join(cfg.neurobooth_config.control.local_data_dir, sess_info['subject_id_date'])
-            if not op.exists(session_dir):
-                os.mkdir(session_dir)
-
-            if values["_notes_taskname_"] == "All tasks":
-                for task in sess_info["tasks"].split(", "):
-                    if not any([i in task for i in ["intro", "pause"]]):
-                        write_task_notes(
-                            sess_info["subject_id_date"],
-                            sess_info["staff_id"],
-                            task,
-                            values["notes"],
-                        )
-            else:
-                write_task_notes(
-                    sess_info["subject_id_date"],
-                    sess_info["staff_id"],
-                    values["_notes_taskname_"],
-                    values["notes"],
-                )
-
-            window["notes"].Update("")
-
         # Shut down the other servers and stops plotting
         elif event == "Shut Down" or event == sg.WINDOW_CLOSED:
-            plttr.stop()
-            ctr_rec.shut_all(nodes=nodes[::-1])
-            break
+            if values['notes'] and not values["_notes_taskname_"]:
+                sg.PopupError(
+                    "Unsaved notes without task. Before exiting, "
+                    "select a task in the dropdown list or delete the note text."
+                )
+                continue
+            else:
+                _save_session_notes(sess_info, values, window)
+                plttr.stop()
+                ctr_rec.shut_all(nodes=nodes[::-1])
+                break
 
         ##################################################################################
         # Thread events from process_received_data -> received messages from other servers
@@ -606,6 +593,35 @@ def gui():
     print("Session terminated")
 
 
+def _save_session_notes(sess_info, values, window):
+    if not values["_notes_taskname_"]:
+        return
+    _make_session_folder(sess_info)
+    if values["_notes_taskname_"] == "All tasks":
+        for task in sess_info["tasks"].split(", "):
+            if not any([i in task for i in ["intro", "pause"]]):
+                write_task_notes(
+                    sess_info["subject_id_date"],
+                    sess_info["staff_id"],
+                    task,
+                    values["notes"],
+                )
+    else:
+        write_task_notes(
+            sess_info["subject_id_date"],
+            sess_info["staff_id"],
+            values["_notes_taskname_"],
+            values["notes"],
+        )
+    window["notes"].Update("")
+
+
+def _make_session_folder(sess_info):
+    session_dir = op.join(cfg.neurobooth_config.control.local_data_dir, sess_info['subject_id_date'])
+    if not op.exists(session_dir):
+        os.mkdir(session_dir)
+
+
 def main():
     """The starting point of Neurobooth"""
 
@@ -622,6 +638,7 @@ def main():
 
     finally:
         logging.shutdown()
+
 
 if __name__ == "__main__":
     main()
