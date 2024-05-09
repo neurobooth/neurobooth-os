@@ -336,13 +336,12 @@ class DSC(Task_Eyetracker):
             self.sendMessage(self.marker_trial_start)
         self.sendMessage("TRIALID", to_marker=False)
 
-        countDown = core.CountdownTimer()
-        countDown.add(self.tmbUI["timeout"])
 
         kpos = [-4.2, 0, 4.2]
-        trialClock = core.Clock()
-        timed_out = True
-        while countDown.getTime() > 0:
+        count_down = core.CountdownTimer(self.tmbUI["timeout"])
+        trial_clock = core.Clock()
+        timed_out: bool = True
+        while count_down.getTime() > 0:
             key = event.getKeys(keyList=["1", "2", "3", "q"], timeStamped=True)
             if key:
                 kvl = key[0][0]
@@ -352,7 +351,7 @@ class DSC(Task_Eyetracker):
                     break
 
                 self.sendMessage(self.marker_response_start)
-                self.tmbUI["rt"] = trialClock.getTime()
+                self.tmbUI["rt"] = trial_clock.getTime()
                 self.tmbUI["response"] = ["key", key[0][0]]
                 self.tmbUI["downTimestamp"] = key[0][1]
                 self.tmbUI["status"] = "Ontime"
