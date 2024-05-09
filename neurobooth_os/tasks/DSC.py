@@ -249,110 +249,17 @@ class DSC(Task_Eyetracker):
                 self.frameSequence.append(FrameDef(type='test', symbol=symbol))
 
     def nextTrial(self):
-        # take next frame sequence
+        # Keep presenting frames while there are still frames in the sequence
         while len(self.frameSequence):
-            # read the frame sequence one frame at a time
             frame: FrameDef = self.frameSequence.pop(0)
-
-            # check if it's the startup frame
-            if frame.type in ["begin", "message"]:
+            if frame.type in ["begin", "message"]:  # Check if it is an image frame
                 present_msg([frame.message], self.win)
-
-            # deal with practice and test frames
-            else:
-                stim = [
-                    self.load_image(frame.source, pos=(0, 10)),
-                    self.load_image('key/key.png'),
-                ]
-
-                # set response timeout:
-                # - for practice trials -> a fixed interval
-                # - for test trials -> what's left of self.duration seconds since start, with a minimum of 150 ms
-                if frame.type == "practice":
-                    self.tmbUI["timeout"] = 50
-                else:
-                    if self.testStart == 0:
-                        self.testStart = time.time()
-
-                    self.tmbUI["timeout"] = self.tot_time - (
-                        time.time() - self.testStart
-                    )
-                    if self.tmbUI["timeout"] < 0.150:
-                        self.tmbUI["timeout"] = 0.150
-
-                for s in stim:
-                    s.draw()
-                self.win.flip()
-
-                if frame.type == "practice":
-                    self.sendMessage(self.marker_practice_trial_start)
-                else:
-                    self.sendMessage(self.marker_trial_start)
-                self.sendMessage("TRIALID", to_marker=False)
-
-                trialClock = core.Clock()
-                countDown = core.CountdownTimer().add(self.tmbUI["timeout"])
-
-                countDown = core.CountdownTimer()
-                countDown.add(self.tmbUI["timeout"])
-
-                kpos = [-4.2, 0, 4.2]
-                trialClock = core.Clock()
-                timed_out = True
-                while countDown.getTime() > 0:
-                    key = event.getKeys(keyList=["1", "2", "3", "q"], timeStamped=True)
-                    if key:
-                        kvl = key[0][0]
-                        if kvl == "q":
-                            print("DSC Task aborted")
-                            self.frameSequence = []
-                            break
-
-                        self.sendMessage(self.marker_response_start)
-                        self.tmbUI["rt"] = trialClock.getTime()
-                        self.tmbUI["response"] = ["key", key[0][0]]
-                        self.tmbUI["downTimestamp"] = key[0][1]
-                        self.tmbUI["status"] = "Ontime"
-                        timed_out = False
-
-                        rec_xpos = [kpos[int(key[0][0]) - 1], -4.5]
-                        self.send_target_loc(rec_xpos, "target_box")
-
-                        stim.append(
-                            visual.Rect(
-                                self.win,
-                                units="deg",
-                                lineColor="red",
-                                pos=rec_xpos,
-                                size=(3.5, 3.5),
-                                lineWidth=4,
-                            )
-                        )
-
-                        _ = self.keyboard.getReleases()
-                        for ss in stim:
-                            ss.draw()
-                        self.win.flip()
-                        response_events = self.wait_release()
-                        self.sendMessage(self.marker_response_end)
-                        break
-                    utils.countdown(0.001)
-
-                if timed_out:
-                    print("timed out")
-                    self.tmbUI["status"] = "timeout"
-                    self.tmbUI["response"] = ["key", ""]
-
-                if frame.type == "practice":
-                    self.sendMessage(self.marker_practice_trial_end)
-                else:
-                    self.sendMessage(self.marker_trial_end)
-                self.onreadyUI(frame)
+            else:  # Handle practice and test frames
+                self.execute_frame(frame)
 
         # all test trials (excluding practice and timeouts)
         tmp1 = [
-            r
-            for r in self.results
+            r for r in self.results
             if r["type"] != "practice" and r["state"] != "timeout"
         ]
 
@@ -397,6 +304,92 @@ class DSC(Task_Eyetracker):
         # Close win if just created for the task
         if self.win_temp:
             self.win.close()
+
+    def execute_frame(self, frame: FrameDef) -> None:
+        stim = [
+            self.load_image(frame.source, pos=(0, 10)),
+            self.load_image('key/key.png'),
+        ]
+
+        # set response timeout:
+        # - for practice trials -> a fixed interval
+        if frame.type == "practice":
+            self.tmbUI["timeout"] = 50
+        # - for test trials -> what's left of self.duration seconds since start, with a minimum of 150 ms
+        else:
+            if self.testStart == 0:
+                self.testStart = time.time()
+            self.tmbUI["timeout"] = self.tot_time - (time.time() - self.testStart)
+            if self.tmbUI["timeout"] < 0.150:
+                self.tmbUI["timeout"] = 0.150
+
+        for s in stim:
+            s.draw()
+        self.win.flip()
+
+        if frame.type == "practice":
+            self.sendMessage(self.marker_practice_trial_start)
+        else:
+            self.sendMessage(self.marker_trial_start)
+        self.sendMessage("TRIALID", to_marker=False)
+
+        countDown = core.CountdownTimer().add(self.tmbUI["timeout"])
+
+        countDown = core.CountdownTimer()
+        countDown.add(self.tmbUI["timeout"])
+
+        kpos = [-4.2, 0, 4.2]
+        trialClock = core.Clock()
+        timed_out = True
+        while countDown.getTime() > 0:
+            key = event.getKeys(keyList=["1", "2", "3", "q"], timeStamped=True)
+            if key:
+                kvl = key[0][0]
+                if kvl == "q":
+                    print("DSC Task aborted")
+                    self.frameSequence = []
+                    break
+
+                self.sendMessage(self.marker_response_start)
+                self.tmbUI["rt"] = trialClock.getTime()
+                self.tmbUI["response"] = ["key", key[0][0]]
+                self.tmbUI["downTimestamp"] = key[0][1]
+                self.tmbUI["status"] = "Ontime"
+                timed_out = False
+
+                rec_xpos = [kpos[int(key[0][0]) - 1], -4.5]
+                self.send_target_loc(rec_xpos, "target_box")
+
+                stim.append(
+                    visual.Rect(
+                        self.win,
+                        units="deg",
+                        lineColor="red",
+                        pos=rec_xpos,
+                        size=(3.5, 3.5),
+                        lineWidth=4,
+                    )
+                )
+
+                _ = self.keyboard.getReleases()
+                for ss in stim:
+                    ss.draw()
+                self.win.flip()
+                response_events = self.wait_release()
+                self.sendMessage(self.marker_response_end)
+                break
+            utils.countdown(0.001)
+
+            if timed_out:
+                print("timed out")
+                self.tmbUI["status"] = "timeout"
+                self.tmbUI["response"] = ["key", ""]
+
+            if frame.type == "practice":
+                self.sendMessage(self.marker_practice_trial_end)
+            else:
+                self.sendMessage(self.marker_trial_end)
+            self.onreadyUI(frame)
 
     def setFrameSequence(self):
         # Start with intro and instructions
