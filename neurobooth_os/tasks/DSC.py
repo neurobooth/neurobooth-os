@@ -398,10 +398,6 @@ class DSC(Task_Eyetracker):
         # Close win if just created for the task
         if self.win_temp:
             self.win.close()
-        else:
-            stim = self.load_image('frames/task_complete.png')
-            stim.draw()
-            self.win.flip()
 
     def setFrameSequence(self):
         # Start with intro and instructions
