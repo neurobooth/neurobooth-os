@@ -241,10 +241,9 @@ class DSC(Task_Eyetracker):
 
         elif frame.type == "test":
             if self.tmbUI["status"] != "timeout":
-                while True:  # Choose a symbol randomly, but avoid 1-back repetitions
-                    symbol = random.randint(1, 6)
-                    if symbol != frame.symbol:
-                        break
+                # Choose a symbol randomly, but avoid 1-back repetitions
+                choices = [i for i in range(1, 6+1) if i != frame.symbol]
+                symbol = random.choice(choices)
 
                 # set up the next frame
                 self.frameSequence.append(FrameDef(type='test', symbol=symbol))
