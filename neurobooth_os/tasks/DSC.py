@@ -89,7 +89,7 @@ class DSC(Task_Eyetracker):
 
         self.results = []  # array to store trials details and responses
         self.outcomes = {}  # object containing outcome variables
-        self.testStart = 0  # start timestamp of the test
+        self.test_start_time = 0  # Sentinel value; test start time gets populated when running test frames.
         self.rootdir = op.join(neurobooth_os.__path__[0], "tasks", "DSC")
         self.tot_time = duration
         self.showresults = False
@@ -134,7 +134,7 @@ class DSC(Task_Eyetracker):
 
         self.results = []  # array to store trials details and responses
         self.outcomes = {}  # object containing outcome variables
-        self.testStart = 0
+        self.test_start_time = 0
 
         # Check if run previously, create framesequence again
         if len(self.frameSequence) == 0:
@@ -198,7 +198,7 @@ class DSC(Task_Eyetracker):
         # create the trials chain
         self.setFrameSequence()
 
-    def onreadyUI(self, frame: FrameDef):
+    def onreadyUI(self, frame: FrameDef, allow_next_frame: bool):
 
         # is the response correct?
         correct = self.tmbUI["response"][-1] == str(frame.digit)
@@ -221,7 +221,6 @@ class DSC(Task_Eyetracker):
             )
 
         if frame.type == "practice":
-
             # on practice trials, stop sequence and advise participant if input timeout or not correct
             if self.tmbUI["status"] == "timeout" or not correct:
                 # rewind frame sequence by one frame, so same frame is displayed again
@@ -240,7 +239,7 @@ class DSC(Task_Eyetracker):
                 present_msg(message, self.win)
 
         elif frame.type == "test":
-            if self.tmbUI["status"] != "timeout":
+            if allow_next_frame and self.tmbUI["status"] != "timeout":
                 # Choose a symbol randomly, but avoid 1-back repetitions
                 choices = [i for i in range(1, 6+1) if i != frame.symbol]
                 symbol = random.choice(choices)
@@ -305,6 +304,11 @@ class DSC(Task_Eyetracker):
         if self.win_temp:
             self.win.close()
 
+    def elapsed_time(self) -> float:
+        if self.test_start_time == 0:  # Set the test start on the first time this method is called.
+            self.test_start_time = time.time()
+        return time.time() - self.test_start_time
+
     def execute_frame(self, frame: FrameDef) -> None:
         stim = [
             self.load_image(frame.source, pos=(0, 10)),
@@ -315,13 +319,12 @@ class DSC(Task_Eyetracker):
         # - for practice trials -> a fixed interval
         if frame.type == "practice":
             self.tmbUI["timeout"] = 50
+            allow_next_frame = True
         # - for test trials -> what's left of self.duration seconds since start, with a minimum of 150 ms
         else:
-            if self.testStart == 0:
-                self.testStart = time.time()
-            self.tmbUI["timeout"] = self.tot_time - (time.time() - self.testStart)
-            if self.tmbUI["timeout"] < 0.150:
-                self.tmbUI["timeout"] = 0.150
+            time_remaining = self.tot_time - self.elapsed_time()
+            self.tmbUI["timeout"] = max(time_remaining, 0.150)
+            allow_next_frame = time_remaining > 0
 
         for s in stim:
             s.draw()
@@ -332,8 +335,6 @@ class DSC(Task_Eyetracker):
         else:
             self.sendMessage(self.marker_trial_start)
         self.sendMessage("TRIALID", to_marker=False)
-
-        countDown = core.CountdownTimer().add(self.tmbUI["timeout"])
 
         countDown = core.CountdownTimer()
         countDown.add(self.tmbUI["timeout"])
@@ -389,7 +390,8 @@ class DSC(Task_Eyetracker):
                 self.sendMessage(self.marker_practice_trial_end)
             else:
                 self.sendMessage(self.marker_trial_end)
-            self.onreadyUI(frame)
+
+            self.onreadyUI(frame, allow_next_frame)
 
     def setFrameSequence(self):
         # Start with intro and instructions
