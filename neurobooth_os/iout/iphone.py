@@ -916,6 +916,7 @@ def script_parse_args() -> argparse.Namespace:
 
 def script_capture_data(subject_id: str, recording_folder: str, capture_duration: int) -> None:
     dev_args = DeviceArgs(
+        ENV_devices={'IPhone_dev_1': {}},
         device_id='IPhone_dev_1',
         device_name='IPhone',
         wearable_bool=False,
