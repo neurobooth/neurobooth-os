@@ -22,12 +22,12 @@ def countdown(period):
 class Saccade_synch(Task_Eyetracker):
     def __init__(
             self,
-            wait_center: float = 1,
-            target_size: float = 0.7,
-            num_iterations: int = 10,
-            monochrome: bool = True,
-            tone_freq: int = 1000,
-            tone_duration: float = 0.1,
+            wait_center: float,
+            target_size: float,
+            num_iterations: int,
+            monochrome: bool,
+            tone_freq: int,
+            tone_duration: float,
             **kwargs
     ):
 
@@ -95,6 +95,12 @@ class Saccade_synch(Task_Eyetracker):
             )
 
 
-if __name__ == "__main__":
-    task = Saccade_synch()
+def test_script() -> None:
+    from neurobooth_os.iout.metadator import read_stimuli
+    kwargs = read_stimuli()['timing_test_task_1'].model_dump()
+    task = Saccade_synch(**kwargs)
     task.run(prompt=False)
+
+
+if __name__ == "__main__":
+    test_script()
