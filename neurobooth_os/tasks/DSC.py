@@ -380,17 +380,17 @@ class DSC(Task_Eyetracker):
                 break
             utils.countdown(0.001)
 
-            if timed_out:
-                print("timed out")
-                self.tmbUI["status"] = "timeout"
-                self.tmbUI["response"] = ["key", ""]
+        if timed_out:
+            print("timed out")
+            self.tmbUI["status"] = "timeout"
+            self.tmbUI["response"] = ["key", ""]
 
-            if frame.type == "practice":
-                self.sendMessage(self.marker_practice_trial_end)
-            else:
-                self.sendMessage(self.marker_trial_end)
+        if frame.type == "practice":
+            self.sendMessage(self.marker_practice_trial_end)
+        else:
+            self.sendMessage(self.marker_trial_end)
 
-            self.onreadyUI(frame, allow_next_frame)
+        self.onreadyUI(frame, allow_next_frame)
 
     def setFrameSequence(self):
         # Start with intro and instructions
