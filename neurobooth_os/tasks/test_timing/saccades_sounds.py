@@ -1,23 +1,13 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Nov 03 08:00:23 2021
-
-@author: Sheraz Khan: sheraz@khansheraz.com
-"""
 from psychopy import prefs
 
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
 
-from math import sin, pi
-import os.path as op
-import numpy as np
 from pylsl import local_clock
-from psychopy import core, sound
-import pylink
+from psychopy import sound
 
-import neurobooth_os
-from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
+from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 from neurobooth_os.tasks.task import Task_Eyetracker
 
 
@@ -30,15 +20,27 @@ def countdown(period):
 
 
 class Saccade_synch(Task_Eyetracker):
-    def __init__(self, wait_center=1, target_size=0.7, num_iterations=10, monochrome=True, **kwargs):
+    def __init__(
+            self,
+            wait_center: float,
+            target_size: float,
+            num_iterations: int,
+            monochrome: bool,
+            tone_freq: int,
+            tone_duration: float,
+            **kwargs
+    ):
 
         super().__init__(**kwargs)
-        self.ntrials = int(num_iterations)
+        self.n_trials = int(num_iterations)
         self.wait_center = wait_center
         self.pointer_size_deg = target_size
         self.pointer_size_pixel = deg2pix(
             self.pointer_size_deg, self.subj_screendist_cm, self.pixpercm
         )
+
+        self.tone_freq = tone_freq
+        self.tone_duration = tone_duration
 
         if monochrome:
             self.color_sequence = ["black", "white", "black", "white"]
@@ -54,44 +56,21 @@ class Saccade_synch(Task_Eyetracker):
         return self.events
 
     def run_trials(self, prompt=True):
-        """Run a smooth pursuit trial"""
-
-        # Take the tracker offline
-        # self.setOfflineMode()
-
-        # Record_status_message : show some info on the Host PC
-        # self.sendCommand("record_status_message 'Pursuit task'")
-
-        # Drift check/correction, params, x, y, draw_target, allow_setup
-
-        self.target.pos = self.target_positions[0]
+        """Run an altered saccades task that changes the screen color and plays a tone at every transition."""
         self.target.size = self.pointer_size_pixel
-        # self.target.draw()
-        # self.win.flip()
-        # self.doDriftCorrect([int(0 + self.mon_size[0] / 2.0),
-        #                        int(self.mon_size[1] / 2.0 - 0), 0, 1])
-        self.win.color = self.color_sequence[0]
+        self.target.pos = self.target_positions[-1]
+        self.win.color = self.color_sequence[-1]
         self.win.flip()
-
-        # self.sendMessage("TRIALID")
-        # Start recording
-        # self.startRecording()
-
-        # Wait for 100 ms to cache some samples
-        # pylink.msecDelay(100)
-        mySound = sound.Sound(1000, 0.1, stereo=True)
 
         # Send a message to mark movement onset
         self.sendMessage(self.marker_task_start)
-        n_nosound = 0
-        for ix in range(self.ntrials):
+        for _ in range(self.n_trials):
             for tgt_pos, color in zip(self.target_positions, self.color_sequence):
                 self.win.color = color
-                self.win.flip()
-                if ix >= n_nosound:
-                    mySound.play(when=self.win.getFutureFlipTime(clock="ptb"))
                 self.target.pos = tgt_pos
                 self.target.draw()
+                tone = sound.Sound(self.tone_freq, self.tone_duration, stereo=True)
+                tone.play(when=self.win.getFutureFlipTime(clock="ptb"))
                 self.win.flip()
                 self.sendMessage(self.marker_trial_start)
                 self.send_target_loc(self.target.pos)
@@ -116,7 +95,12 @@ class Saccade_synch(Task_Eyetracker):
             )
 
 
-if __name__ == "__main__":
-
-    task = Saccade_synch()
+def test_script() -> None:
+    from neurobooth_os.iout.metadator import read_stimuli
+    kwargs = read_stimuli()['timing_test_task_1'].model_dump()
+    task = Saccade_synch(**kwargs)
     task.run(prompt=False)
+
+
+if __name__ == "__main__":
+    test_script()

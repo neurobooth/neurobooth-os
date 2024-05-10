@@ -391,6 +391,14 @@ class FootTappingStimArgs(EyeTrackerStimArgs):
     trial_intruct: List[str]
 
 
+class TimingTestStimArgs(EyeTrackerStimArgs):
+    monochrome: bool
+    tone_freq: NonNegativeInt
+    tone_duration: NonNegativeFloat
+    wait_center: NonNegativeFloat
+    num_iterations: NonNegativeInt
+
+
 def get_cfg_path(folder_name: str) -> str:
     folder = path.join(environ.get("NB_CONFIG"), folder_name)
     return _get_cfg_path(folder)
