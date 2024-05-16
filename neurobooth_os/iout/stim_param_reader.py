@@ -271,10 +271,12 @@ class TaskArgs(BaseModel):
     task_constructor_callable: Callable  # callable of constructor for a Task
     stim_args: SerializeAsAny[StimulusArgs]
     instr_args: Optional[SerializeAsAny[InstructionArgs]] = None
+    feature_of_interest: str
 
     # task_instance is a Task, but using Optional[Task] as the type causes circular import problems
     task_instance: Optional[object] = None  # created by client code from above callable
     device_args: List[SerializeAsAny[DeviceArgs]] = []
+    arg_parser: str
 
     class Config:
         arbitrary_types_allowed = True
@@ -381,6 +383,14 @@ class FootTappingStimArgs(EyeTrackerStimArgs):
     trial_intruct: List[str]
 
 
+class TimingTestStimArgs(EyeTrackerStimArgs):
+    monochrome: bool
+    tone_freq: NonNegativeInt
+    tone_duration: NonNegativeFloat
+    wait_center: NonNegativeFloat
+    num_iterations: NonNegativeInt
+
+
 def get_cfg_path(folder_name: str) -> str:
     folder = path.join(environ.get("NB_CONFIG"), folder_name)
     return _get_cfg_path(folder)
@@ -409,7 +419,7 @@ def _get_param_dictionary(task_param_file_name: str, conf_folder_name: str) -> d
 
 class RawTaskParams(EnvArgs):
     """
-        Raw (un-reified) Task params (ie., instead of a list of DeviceArgs,
+        Raw (un-reified) Task params (i.e., instead of a list of DeviceArgs,
         it has a list of strings representing device ids
     """
 
@@ -418,3 +428,4 @@ class RawTaskParams(EnvArgs):
     stimulus_id: str
     instruction_id: Optional[str]
     device_id_array: List[str]
+    arg_parser: str

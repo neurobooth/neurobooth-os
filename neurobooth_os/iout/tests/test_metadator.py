@@ -1,7 +1,6 @@
 import unittest
 
 from neurobooth_os.iout import metadator as meta
-from neurobooth_os.util.task_log_entry import TaskLogEntry
 
 
 class TestMetadator(unittest.TestCase):
@@ -42,6 +41,9 @@ class TestMetadator(unittest.TestCase):
         self.assertIsNotNone(task_dict)
         pursuit = task_dict['pursuit_obs']
         pprint.pp(pursuit.dump_filtered())
+        log_task_id = "tech_log_885"
+
+        meta.log_task_params_all(meta.get_database_connection(), log_task_id, pursuit)
 
     def test_read_studies(self):
         self.assertIsNotNone(meta.read_studies())
@@ -61,53 +63,40 @@ class TestMetadator(unittest.TestCase):
         print(meta.get_task_ids_for_collection("testing"))
         self.assertIsNotNone(meta.get_task_ids_for_collection("testing"))
 
-    def test_task_addition(self):
-        conn = meta.get_database_connection(database='mock_neurobooth_1', validate_config_paths=False)
-        subj_id = "100057"
+    def test_task_addition( self):
+        conn = meta.get_database_connection()
+        subj_id = "Test"
         task_id = meta.make_new_task_row(conn, subj_id)
-        if task_id is None:
-            task_id = '1071'
 
         vals_dict = meta._new_tech_log_dict()
         vals_dict["subject_id"] = subj_id
-        vals_dict["log_session_id"] = 1071
         vals_dict["study_id"] = "mock_study"
-        vals_dict["subject_id_date"] = f"{subj_id}-2021-12-21"
         vals_dict["task_id"] = "mock_obs_1"
         vals_dict["staff_id"] = "mocker"
-        vals_dict["event_array"] = ['event:datestamp']
+        vals_dict["event_array"] = "event:datestamp"
         vals_dict["collection_id"] = "mock_collection"
         vals_dict["site_id"] = "mock_site"
-        vals_dict["task_output_files"] = ['000000_2024-04-11_MOT_results_v2.csv',
-                                          '000000_2024-04-11_MOT_outcomes_v2.csv',
-                                          '000000_2024-04-11_MOT_results_v2_rep-1.csv',
-                                          '000000_2024-04-11_MOT_outcomes_v2_rep-1.csv']
         vals_dict['log_task_id'] = task_id
 
-        entry = TaskLogEntry(**vals_dict)
+        meta.fill_task_row(vals_dict, conn)
 
-        meta.fill_task_row(entry, conn)
+    def test_fill_device_rows(self):
+        conn = meta.get_database_connection("mock_neurobooth_1", False)
+        collection_id = 'mvp_030'
+        task_dict = meta.build_tasks_for_collection(collection_id)
+        self.assertIsNotNone(task_dict)
+        pursuit = task_dict['pursuit_obs']
+        for device in pursuit.device_args:
+            meta._fill_device_param_row(conn, device)
 
-    def test_task_addition2(self):
-        conn = meta.get_database_connection(database='mock_neurobooth_1', validate_config_paths=False)
-        subj_id = "100057"
-        task_id = meta.make_new_task_row(conn, subj_id)
-        if task_id is None:
-            task_id = '1071'
-
-        vals_dict = meta._new_tech_log_dict()
-        vals_dict["subject_id"] = subj_id
-        vals_dict["log_session_id"] = 1071
-        vals_dict["study_id"] = "mock_study"
-        vals_dict["subject_id_date"] = f"{subj_id}-2021-12-21"
-        vals_dict["task_id"] = "mock_obs_1"
-        vals_dict["staff_id"] = "mocker"
-        vals_dict["event_array"] = []
-        vals_dict["collection_id"] = "mock_collection"
-        vals_dict["site_id"] = "mock_site"
-        vals_dict["task_output_files"] = []
-        vals_dict['log_task_id'] = task_id
-
-        entry = TaskLogEntry(**vals_dict)
-
-        meta.fill_task_row(entry, conn)
+    def test_log_task_params(self):
+        conn = meta.get_database_connection("mock_neurobooth_1", False)
+        collection_id = 'mvp_030'
+        task_dict = meta.build_tasks_for_collection(collection_id)
+        self.assertIsNotNone(task_dict)
+        pursuit = task_dict['pursuit_obs']
+        finger_nose = task_dict['finger_nose_obs_1']
+        log_task_id = "tech_log_885"
+        log_entry_dict = meta.log_devices(conn, [pursuit, finger_nose])
+        meta.log_task_params(conn, log_task_id, log_entry_dict, pursuit)
+        meta.log_task_params(conn, log_task_id, log_entry_dict, finger_nose)
