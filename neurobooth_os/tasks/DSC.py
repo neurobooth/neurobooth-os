@@ -295,10 +295,7 @@ class DSC(Task_Eyetracker):
         out_fname = f"{self.subj_id}_{self.task_name}_outcomes{self.rep}.csv"
         df_res.to_csv(op.join(self.path_out, res_fname))
         df_out.to_csv(op.join(self.path_out, out_fname))
-        if len(self.task_files) >= 1:
-            self.task_files = self.task_files.replace("}", "") + f", {res_fname}, {out_fname}" + "}"
-        else:
-            self.task_files += "{" + f"{res_fname}, {out_fname}" + "}"
+        self.task_files.extend([res_fname, out_fname])
 
         # Close win if just created for the task
         if self.win_temp:
