@@ -5,7 +5,9 @@ Created on Tue Nov 16 14:07:20 2021
 @author: Adonay Nunes
 """
 
+import os
 import os.path as op
+from typing import Union, Tuple, NamedTuple, List, Optional
 import random
 import time
 from datetime import datetime
@@ -19,6 +21,7 @@ from psychopy.visual.textbox2 import TextBox2
 import neurobooth_os
 from neurobooth_os.tasks import utils
 from neurobooth_os.tasks import Task_Eyetracker
+from neurobooth_os.iout.stim_param_reader import get_cfg_path
 
 
 def my_textbox2(win, text, pos=(0, 0), size=(None, None)):
@@ -47,6 +50,22 @@ def present_msg(elems, win, key_resp="space"):
     utils.get_keys(keyList=[key_resp])
 
 
+class FrameDef(NamedTuple):
+    type: str
+    message: Optional[visual.ImageStim] = None
+    symbol: int = 0
+
+    @property
+    def digit(self) -> int:
+        if self.symbol == 0:
+            return 0
+        return 3 if self.symbol % 3 == 0 else self.symbol % 3
+
+    @property
+    def source(self) -> str:
+        return f'key/{self.symbol}.gif'
+
+
 class DSC(Task_Eyetracker):
     def __init__(self, path="", subj_id="test", task_name="DSC", duration=60, **kwargs):
         super().__init__(**kwargs)
@@ -55,7 +74,7 @@ class DSC(Task_Eyetracker):
         self.task_name = task_name
         self.path_out = path
         self.subj_id = subj_id
-        self.frameSequence = []
+        self.frameSequence: List[FrameDef] = []
         self.tmbUI = dict.fromkeys(
             [
                 "response",
@@ -70,7 +89,7 @@ class DSC(Task_Eyetracker):
 
         self.results = []  # array to store trials details and responses
         self.outcomes = {}  # object containing outcome variables
-        self.testStart = 0  # start timestamp of the test
+        self.test_start_time = 0  # Sentinel value; test start time gets populated when running test frames.
         self.rootdir = op.join(neurobooth_os.__path__[0], "tasks", "DSC")
         self.tot_time = duration
         self.showresults = False
@@ -88,11 +107,34 @@ class DSC(Task_Eyetracker):
 
         self.setup(self.win)
 
+    @classmethod
+    def asset_path(cls, asset: Union[str, os.PathLike]) -> str:
+        """
+        Get the path to the specified asset.
+        :param asset: The name of the asset/file.
+        :return: The file system path to the asset in the config folder.
+        """
+        return op.join(get_cfg_path('assets'), 'DSC', asset)
+
+    def load_image(self, asset: Union[str, os.PathLike], pos: Tuple[float, float] = (0, 0)) -> visual.ImageStim:
+        """
+        Locate the specified image  and create an image stimulus.
+        :param asset: The name/path of the asset.
+        :param pos: Override the default position of the stimulus on the screen.
+        :return: An image stimulus containing of the requested image.
+        """
+        return visual.ImageStim(
+            self.win,
+            image=DSC.asset_path(asset),
+            pos=pos,
+            units="deg",
+        )
+
     def run(self, prompt=True, last_task=False, subj_id="test", **kwarg):
 
         self.results = []  # array to store trials details and responses
         self.outcomes = {}  # object containing outcome variables
-        self.testStart = 0
+        self.test_start_time = 0
 
         # Check if run previously, create framesequence again
         if len(self.frameSequence) == 0:
@@ -156,20 +198,20 @@ class DSC(Task_Eyetracker):
         # create the trials chain
         self.setFrameSequence()
 
-    def onreadyUI(self, frame):
+    def onreadyUI(self, frame: FrameDef, allow_next_frame: bool):
 
         # is the response correct?
-        correct = self.tmbUI["response"][-1] == str(frame["digit"])
+        correct = self.tmbUI["response"][-1] == str(frame.digit)
 
         # store the results
-        if frame["type"] == "practice" or (
-            frame["type"] == "test" and self.tmbUI["status"] != "timeout"
+        if frame.type == "practice" or (
+            frame.type == "test" and self.tmbUI["status"] != "timeout"
         ):
             self.results.append(
                 {
-                    "type": frame["type"],  # one of practice or test
-                    "symbol": frame["symbol"],  # symbol index
-                    "digit": frame["digit"],  # symbol digit
+                    "type": frame.type,  # one of practice or test
+                    "symbol": frame.symbol,  # symbol index
+                    "digit": frame.digit,  # symbol digit
                     "response": self.tmbUI["response"][1],  # the key or element chosen
                     "correct": correct,  # boolean correct
                     "rt": self.tmbUI["rt"],  # response time
@@ -178,173 +220,45 @@ class DSC(Task_Eyetracker):
                 }
             )
 
-        if frame["type"] == "practice":
-
+        if frame.type == "practice":
             # on practice trials, stop sequence and advise participant if input timeout or not correct
             if self.tmbUI["status"] == "timeout" or not correct:
                 # rewind frame sequence by one frame, so same frame is displayed again
                 self.frameSequence.insert(0, frame)
 
                 message = [
-                    visual.ImageStim(
-                        self.win, image=frame["source"], pos=(0, 10), units="deg"
-                    ),
-                    visual.ImageStim(
-                        self.win,
-                        image=op.join(self.rootdir, "images/key.png"),
-                        pos=(0, 0),
-                        units="deg",
-                    ),
+                    self.load_image(frame.source, pos=(0, 10)),
+                    self.load_image('key/key.png'),
                     self.my_textbox2(
-                        f"You should press {frame['digit']} on the keyboard when you see this symbol",
+                        f"You should press {frame.digit} on the keyboard when you see this symbol",
                         (0, -8),
                     ),
-                    visual.ImageStim(
-                        self.win,
-                        image=op.join(self.rootdir, "continue.png"),
-                        pos=(0, -1),
-                        units="deg",
-                    ),
+                    self.load_image('frames/continue.png', pos=(0, -1)),
                 ]
 
                 present_msg(message, self.win)
 
-        elif frame["type"] == "test":
-
-            if self.tmbUI["status"] != "timeout":
-                # choose a symbol randomly, but avoid 1-back repetitions
-                while True:
-                    symbol = random.randint(1, 6)
-                    if symbol != frame["symbol"]:
-                        break
-
-                digit = 3 if symbol % 3 == 0 else symbol % 3
+        elif frame.type == "test":
+            if allow_next_frame and self.tmbUI["status"] != "timeout":
+                # Choose a symbol randomly, but avoid 1-back repetitions
+                choices = [i for i in range(1, 6+1) if i != frame.symbol]
+                symbol = random.choice(choices)
 
                 # set up the next frame
-                self.frameSequence.append(
-                    {
-                        "type": "test",
-                        "message": "",
-                        "symbol": symbol,
-                        "digit": digit,
-                        "source": op.join(self.rootdir, f"images/{symbol}.gif"),
-                    }
-                )
+                self.frameSequence.append(FrameDef(type='test', symbol=symbol))
 
     def nextTrial(self):
-
-        # take next frame sequence
+        # Keep presenting frames while there are still frames in the sequence
         while len(self.frameSequence):
-            # read the frame sequence one frame at a time
-            frame = self.frameSequence.pop(0)
-
-            # check if it's the startup frame
-            if frame["type"] in ["begin", "message"]:
-                present_msg(frame["message"], self.win)
-
-            # deal with practice and test frames
-            else:
-
-                stim = [
-                    visual.ImageStim(
-                        self.win, image=frame["source"], pos=(0, 10), units="deg"
-                    ),
-                    visual.ImageStim(
-                        self.win,
-                        image=op.join(self.rootdir, "images/key.png"),
-                        pos=(0, 0),
-                        units="deg",
-                    ),
-                ]
-
-                # set response timeout:
-                # - for practice trials -> a fixed interval
-                # - for test trials -> what's left of self.duration seconds since start, with a minimum of 150 ms
-                if frame["type"] == "practice":
-                    self.tmbUI["timeout"] = 50
-                else:
-                    if self.testStart == 0:
-                        self.testStart = time.time()
-
-                    self.tmbUI["timeout"] = self.tot_time - (
-                        time.time() - self.testStart
-                    )
-                    if self.tmbUI["timeout"] < 0.150:
-                        self.tmbUI["timeout"] = 0.150
-
-                for s in stim:
-                    s.draw()
-                self.win.flip()
-
-                if frame["type"] == "practice":
-                    self.sendMessage(self.marker_practice_trial_start)
-                else:
-                    self.sendMessage(self.marker_trial_start)
-                self.sendMessage("TRIALID", to_marker=False)
-
-                trialClock = core.Clock()
-                countDown = core.CountdownTimer().add(self.tmbUI["timeout"])
-
-                countDown = core.CountdownTimer()
-                countDown.add(self.tmbUI["timeout"])
-
-                kpos = [-4.2, 0, 4.2]
-                trialClock = core.Clock()
-                timed_out = True
-                while countDown.getTime() > 0:
-                    key = event.getKeys(keyList=["1", "2", "3", "q"], timeStamped=True)
-                    if key:
-                        kvl = key[0][0]
-                        if kvl == "q":
-                            print("DSC Task aborted")
-                            self.frameSequence = []
-                            break
-
-                        self.sendMessage(self.marker_response_start)
-                        self.tmbUI["rt"] = trialClock.getTime()
-                        self.tmbUI["response"] = ["key", key[0][0]]
-                        self.tmbUI["downTimestamp"] = key[0][1]
-                        self.tmbUI["status"] = "Ontime"
-                        timed_out = False
-
-                        rec_xpos = [kpos[int(key[0][0]) - 1], -4.5]
-                        self.send_target_loc(rec_xpos, "target_box")
-
-                        stim.append(
-                            visual.Rect(
-                                self.win,
-                                units="deg",
-                                lineColor="red",
-                                pos=rec_xpos,
-                                size=(3.5, 3.5),
-                                lineWidth=4,
-                            )
-                        )
-
-                        _ = self.keyboard.getReleases()
-                        for ss in stim:
-                            ss.draw()
-                        self.win.flip()
-                        response_events = self.wait_release()
-                        self.sendMessage(self.marker_response_end)
-                        break
-                    utils.countdown(0.001)
-
-                if timed_out:
-                    print("timed out")
-                    self.tmbUI["status"] = "timeout"
-                    self.tmbUI["response"] = ["key", ""]
-
-                if frame["type"] == "practice":
-                    self.sendMessage(self.marker_practice_trial_end)
-                else:
-                    self.sendMessage(self.marker_trial_end)
-                self.onreadyUI(frame)
+            frame: FrameDef = self.frameSequence.pop(0)
+            if frame.type in ["begin", "message"]:  # Check if it is an image frame
+                present_msg([frame.message], self.win)
+            else:  # Handle practice and test frames
+                self.execute_frame(frame)
 
         # all test trials (excluding practice and timeouts)
         tmp1 = [
-            r
-            for r in self.results
+            r for r in self.results
             if r["type"] != "practice" and r["state"] != "timeout"
         ]
 
@@ -368,12 +282,7 @@ class DSC(Task_Eyetracker):
                     + "over. \nThank you for participating!",
                     (0, 2),
                 ),
-                visual.ImageStim(
-                    self.win,
-                    image=op.join(self.rootdir, "continue.png"),
-                    pos=(0, 0),
-                    units="deg",
-                ),
+                self.load_image('frames/continue.png'),
             ]
 
             present_msg(mes, self.win, key_resp="space")
@@ -394,105 +303,112 @@ class DSC(Task_Eyetracker):
         # Close win if just created for the task
         if self.win_temp:
             self.win.close()
+
+    def elapsed_time(self) -> float:
+        if self.test_start_time == 0:  # Set the test start on the first time this method is called.
+            self.test_start_time = time.time()
+        return time.time() - self.test_start_time
+
+    def execute_frame(self, frame: FrameDef) -> None:
+        stim = [
+            self.load_image(frame.source, pos=(0, 10)),
+            self.load_image('key/key.png'),
+        ]
+
+        # set response timeout:
+        # - for practice trials -> a fixed interval
+        if frame.type == "practice":
+            self.tmbUI["timeout"] = 50
+            allow_next_frame = True
+        # - for test trials -> what's left of self.duration seconds since start, with a minimum of 150 ms
         else:
-            stim = visual.ImageStim(
-                self.win,
-                image=op.join(self.rootdir, "task_complete.png"),
-                pos=(0, 0),
-                units="deg",
-            )
-            stim.draw()
-            self.win.flip()
+            time_remaining = self.tot_time - self.elapsed_time()
+            self.tmbUI["timeout"] = max(time_remaining, 0.150)
+            allow_next_frame = time_remaining > 0
+
+        for s in stim:
+            s.draw()
+        self.win.flip()
+
+        if frame.type == "practice":
+            self.sendMessage(self.marker_practice_trial_start)
+        else:
+            self.sendMessage(self.marker_trial_start)
+        self.sendMessage("TRIALID", to_marker=False)
+
+
+        kpos = [-4.2, 0, 4.2]
+        count_down = core.CountdownTimer(self.tmbUI["timeout"])
+        trial_clock = core.Clock()
+        timed_out: bool = True
+        while count_down.getTime() > 0:
+            key = event.getKeys(keyList=["1", "2", "3", "q"], timeStamped=True)
+            if key:
+                kvl = key[0][0]
+                if kvl == "q":
+                    print("DSC Task aborted")
+                    self.frameSequence = []
+                    break
+
+                self.sendMessage(self.marker_response_start)
+                self.tmbUI["rt"] = trial_clock.getTime()
+                self.tmbUI["response"] = ["key", key[0][0]]
+                self.tmbUI["downTimestamp"] = key[0][1]
+                self.tmbUI["status"] = "Ontime"
+                timed_out = False
+
+                rec_xpos = [kpos[int(key[0][0]) - 1], -4.5]
+                self.send_target_loc(rec_xpos, "target_box")
+
+                stim.append(
+                    visual.Rect(
+                        self.win,
+                        units="deg",
+                        lineColor="red",
+                        pos=rec_xpos,
+                        size=(3.5, 3.5),
+                        lineWidth=4,
+                    )
+                )
+
+                _ = self.keyboard.getReleases()
+                for ss in stim:
+                    ss.draw()
+                self.win.flip()
+                response_events = self.wait_release()
+                self.sendMessage(self.marker_response_end)
+                break
+            utils.countdown(0.001)
+
+        if timed_out:
+            print("timed out")
+            self.tmbUI["status"] = "timeout"
+            self.tmbUI["response"] = ["key", ""]
+
+        if frame.type == "practice":
+            self.sendMessage(self.marker_practice_trial_end)
+        else:
+            self.sendMessage(self.marker_trial_end)
+
+        self.onreadyUI(frame, allow_next_frame)
 
     def setFrameSequence(self):
-        testMessage = {
-            "begin": [
-                visual.ImageStim(
-                    self.win,
-                    image=op.join(self.rootdir, "intro.png"),
-                    pos=(0, 0),
-                    units="deg",
-                )
-            ],
-            "practice": [
-                [
-                    visual.ImageStim(
-                        self.win,
-                        image=op.join(self.rootdir, "intruct_1.png"),
-                        pos=(0, 0),
-                        units="deg",
-                    )
-                ],
-                [
-                    visual.ImageStim(
-                        self.win,
-                        image=op.join(self.rootdir, "intruct_2.png"),
-                        pos=(0, 0),
-                        units="deg",
-                    ),
-                ],
-                [
-                    visual.ImageStim(
-                        self.win,
-                        image=op.join(self.rootdir, "intruct_3.png"),
-                        pos=(0, 0),
-                        units="deg",
-                    ),
-                ],
-            ],
-            "test": [
-                visual.ImageStim(
-                    self.win,
-                    image=op.join(self.rootdir, "practice_end.png"),
-                    pos=(0, 0),
-                    units="deg",
-                ),
-            ],
-        }
+        # Start with intro and instructions
+        self.frameSequence.append(FrameDef(type='begin', message=self.load_image('frames/intro.png')))
+        N_INSTR_FRAME = 8
+        for i in range(N_INSTR_FRAME):
+            self.frameSequence.append(FrameDef(type='message', message=self.load_image(f'frames/instruct_{i+1}.png')))
 
-        # type of frame to display
-        frameType = [
-            "begin",
-            "message",
-            "message",
-            "message",
-            "practice",
-            "practice",
-            "practice",
-            "message",
-            "test",
-        ]
+        # Three practice trials
+        self.frameSequence.append(FrameDef(type='practice', symbol=1))
+        self.frameSequence.append(FrameDef(type='practice', symbol=3))
+        self.frameSequence.append(FrameDef(type='practice', symbol=5))
 
-        # message to display
-        frameMessage = [
-            testMessage["begin"],
-            testMessage["practice"][0],
-            testMessage["practice"][1],
-            testMessage["practice"][2],
-            "",
-            "",
-            "",
-            testMessage["test"],
-            "",
-        ]
+        # End of practice message
+        self.frameSequence.append(FrameDef(type='message', message=self.load_image('frames/practice_end.png')))
 
-        # symbol to display
-        frameSymbol = [0, 0, 0, 0, 1, 3, 5, 0, 4]
-
-        # corresponding digit
-        frameDigit = [0, 0, 0, 0, 1, 3, 2, 0, 1]
-
-        # push all components into the frames chain
-        for i in range(len(frameType)):
-            self.frameSequence.append(
-                {
-                    "type": frameType[i],
-                    "message": frameMessage[i],
-                    "symbol": frameSymbol[i],
-                    "digit": frameDigit[i],
-                    "source": op.join(self.rootdir, f"images/{frameSymbol[i]}.gif"),
-                }
-            )
+        # Seed the task with one test trial
+        self.frameSequence.append(FrameDef(type='test', symbol=4))
 
 
 if __name__ == "__main__":
