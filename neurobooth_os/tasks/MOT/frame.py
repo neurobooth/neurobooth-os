@@ -525,6 +525,7 @@ class PracticeFrame(TrialFrame):
 
             n_correct = sum([c.correct for c in self.click_info])
             if (n_correct < self.n_targets) and (i < self.max_attempts-1):
+                self.result_status = 'repeat'
                 self.present_alert(
                     "Let's try again.\n"
                     f"When the movement stops, click the {self.n_targets} dots that flashed."
