@@ -3,7 +3,7 @@ import os
 import sys
 from time import time, sleep
 from collections import OrderedDict
-from typing import Dict
+from typing import Dict, List
 
 from pylsl import local_clock
 import logging
@@ -13,7 +13,7 @@ import neurobooth_os
 from neurobooth_os.iout.camera_brio import VidRec_Brio
 
 from neurobooth_os import config
-from neurobooth_os.iout.stim_param_reader import TaskArgs
+from neurobooth_os.iout.stim_param_reader import TaskArgs, DeviceArgs
 from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.lsl_streamer import DeviceManager
@@ -118,30 +118,25 @@ def run_acq(logger):
             t0 = time()
             fname, task = data.split("::")[1:]
             fname = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name, fname)
-            device_manager.start_cameras(fname, task_args[task].device_args)
-            device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
 
-            elapsed_time = time() - t0
-            print(f"Device start took {elapsed_time:.2f}")
+            elapsed_time = start_recording(device_manager, fname, task_args[task].device_args)
             logger.info(f'Device start took {elapsed_time:.2f}')
             msg = "ACQ_devices_ready"
             connx.send(msg.encode("ascii"))
             recording = True
 
         elif "record_stop" in data:
-            t0 = time()
-            device_manager.stop_cameras(task_args[task].device_args)
-            elapsed_time = time() - t0
-            print(f"Device stop took {elapsed_time:.2f}")
+            elapsed_time = stop_recording(device_manager, task_args[task].device_args)
             logger.info(f'Device stop took {elapsed_time:.2f}')
             msg = "ACQ_devices_stopped"
             connx.send(msg.encode("ascii"))
             recording = False
 
         elif "shutdown" in data:
-            if system_resource_logger is not None:
-                system_resource_logger.stop()
-            logging.shutdown()
+            if recording:
+                elapsed_time = stop_recording(device_manager, task_args[task].device_args)
+                logger.info(f'Device stop took {elapsed_time:.2f}')
+                recording = False
 
             sys.stdout = sys.stdout.terminal
             s1.close()
@@ -153,6 +148,11 @@ def run_acq(logger):
                 lowFeed.close()
                 lowFeed_running = False
                 print("Closing RTD cam")
+
+            if system_resource_logger is not None:
+                system_resource_logger.stop()
+            logging.shutdown()
+
             break
 
         elif "time_test" in data:
@@ -174,6 +174,27 @@ def iphone_frame_preview(connx, device_manager, logger):
         frame = frame_prefix + frame
         connx.send(frame)
         logger.debug('Frame preview sent')
+
+
+def start_recording(device_manager: DeviceManager, fname: str, task_devices: List[DeviceArgs]) -> float:
+    print("Starting recording")
+
+    t0 = time()
+    device_manager.start_cameras(fname, task_devices)
+    device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
+    elapsed_time = time() - t0
+
+    print(f"Device start took {elapsed_time:.2f}")
+    return elapsed_time
+
+
+def stop_recording(device_manager: DeviceManager, task_devices: List[DeviceArgs]) -> float:
+    t0 = time()
+    device_manager.stop_cameras(task_devices)
+    elapsed_time = time() - t0
+
+    print(f"Device stop took {elapsed_time:.2f}")
+    return elapsed_time
 
 
 if __name__ == '__main__':
