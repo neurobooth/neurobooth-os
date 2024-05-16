@@ -465,24 +465,24 @@ class Eyelink_HostPC(Task_Eyetracker):
 
        The commands that are sent to the HostPC are in the form of strings,
        the list of commands and documentation is available in the
-       "COMMANDS.INI" file inside the HostPC (i.e. NUC) - this can be found 
+       "COMMANDS.INI" file inside the HostPC (i.e. NUC) - this can be found
        via the WebUI or by browsing the filesystem in the NUC and looking in
        /elcl/exe directory. Additional documentation is in the SR Research
        forums.
     '''
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     def draw_cross(self, x: int, y: int, colour: EyelinkColor) -> None:
         '''Draw a cross at the x,y position on the screen of the specified colour
-           x, y must be in the top-left centered coordinate space 
+           x, y must be in the top-left centered coordinate space
         '''
         self.sendCommand('draw_cross %d %d %d' % (x, y, colour.value))
 
     def draw_box(self, x: int, y: int, width: int, height: int, colour: EyelinkColor, filled: bool = False) -> None:
         '''
-           Draw a rectangle of size width by height (in pixels) around a point 
+           Draw a rectangle of size width by height (in pixels) around a point
            x,y on the screen. x, y must be in the top-left centered coordinate
            space.
 
@@ -579,7 +579,7 @@ class Eyelink_HostPC(Task_Eyetracker):
 
            This method starts with an '_'(underscore) because it is not meant to be
            called directly, and must be wrapped in a wrapper called 'render_image'
-           within the task script for the image to be rendered when called within 
+           within the task script for the image to be rendered when called within
            server_stm script.
         '''
         self.clear_screen()

@@ -347,14 +347,6 @@ class SaccadesStimArgs(EyeTrackerStimArgs):
     target_size: NonNegativeFloat
 
 
-class MotStimArgs(EyeTrackerStimArgs):
-    time_presentation: NonNegativeInt
-    trial_duration: NonNegativeInt
-    clickTimeout: NonNegativeInt
-    numCircles: NonNegativeInt
-    task_repeatable_by_subject: bool
-
-
 class PursuitStimArgs(EyeTrackerStimArgs):
     target_size: NonNegativeFloat
     peak_velocity_deg: float
