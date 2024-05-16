@@ -94,7 +94,6 @@ class DSC(Task_Eyetracker):
         self.tot_time = duration
         self.showresults = False
         self.rep = ""  # repeated task num to add to filename
-        self.task_files = ""
 
         try:
             self.io = launchHubServer()
