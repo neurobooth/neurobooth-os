@@ -73,7 +73,7 @@ class MOT(Task_Eyetracker):
 
         self.output_path = path
         self.task_name = task_name
-        self.subject_id = subj_id
+        self.subj_id = subj_id
 
         self.win.color = "white"
         self.win.flip()
@@ -206,7 +206,7 @@ class MOT(Task_Eyetracker):
         :param name: The type of data (e.g., outcomes, results, circle history)
         """
         repetition_str = f'_rep-{self.n_repetitions}' if self.n_repetitions > 0 else ''
-        fname = f"{self.subject_id}_{self.task_name}_{name}_v2{repetition_str}.csv"
+        fname = f"{self.subj_id}_{self.task_name}_{name}_v2{repetition_str}.csv"
         data.to_csv(op.join(self.output_path, fname))
         self.task_files.append(fname)
 
