@@ -8,6 +8,7 @@
         "name": "acq-staging",
         "user": "ACQ",
         "password": "5519",
+        "api_port": 8003,
         "port": 12347,
         "local_data_dir": "D:/neurobooth/neurobooth_data/",
         "bat": "%NB_INSTALL%/neurobooth_os/server_acq.bat"
@@ -16,6 +17,7 @@
         "name": "stm-staging",
         "user": "STM",
         "password": "5519",
+        "api_port": 8002,
 	    "port": 12347,
         "local_data_dir": "C:/neurobooth/neurobooth_data/",
         "bat": "%NB_INSTALL%/neurobooth_os/server_stm.bat"
@@ -24,6 +26,7 @@
         "name": "ctr-staging",
         "user": "CTR",
         "password": "5519",
+        "api_port": 8001,
 	    "port": 12347,
         "local_data_dir": "C:/neurobooth/neurobooth_data/"
     },

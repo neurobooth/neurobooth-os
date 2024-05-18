@@ -96,8 +96,8 @@ def _process_received_data(serv_data, window):
         elif "RuntimeError: Could not connect to tracker" in data_row:
             window.write_event_value(
                 "no_eyetracker",
-                "Eyetracker not found! \nServers will be "
-                + "terminated, wait utill are closed.\nThen, connect the eyetracker and start again",
+                "Eyetracker not found! \nServers will be terminated."
+                + " Wait until closed, then, connect the eyetracker and start again",
             )
 
         elif "-WARNING mbient-" in data_row:
@@ -393,7 +393,7 @@ def gui():
     database = cfg.neurobooth_config.database.dbname
     nodes, host_ctr, port_ctr = _get_ports()
 
-    # declare and intialize vars
+    # declare and initialize vars
     subject_id = None
     first_name = None
     last_name = None

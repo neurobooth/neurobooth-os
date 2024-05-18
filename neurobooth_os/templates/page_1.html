@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <title>Neurobooth</title>
+</head>
+<body>
+
+<div class="container-sm" id='main'>
+    <h1>Neurobooth</h1>
+    <div class="container" id="content-container">
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" placeholder="Subject ID" aria-label="Subject's ID"
+                   autofocus="autofocus"
+                   aria-describedby="basic-addon2">
+            <button type="button" class="btn btn-primary" id="subj-search-btn">Search</button>
+        </div>
+        <table class="table table-success">
+            <thead>
+            <tr>
+                <th scope="col">ID</th>
+                <th scope="col">First</th>
+                <th scope="col">Middle</th>
+                <th scope="col">Last</th>
+                <th scope="col">Date of Birth</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>101</td>
+                <td>James</td>
+                <td>Michael</td>
+                <td>Otto</td>
+                <td>12/21/50</td>
+            </tr>
+            </tbody>
+        </table>
+        <form>
+        <div class="mb-3">
+            <label for="staff_id_input" class="form-label">Staff ID</label>
+            <input type="text" class="form-control" id="staff_id_input" placeholder="Please enter your id" required>
+        </div>
+        <div class="mb-3">
+            <label for="study_select" class="form-label">Study</label>
+            <select class="form-select" id="study_select" aria-label="Default select example">
+                {% for study in studies %}
+                    <option value="{{study}}">{{study}}</option>
+                {% endfor %}
+            </select>
+
+        </div>
+        <div class="mb-3">
+            <label for="collection_select" class="form-label">Collection</label>
+            <select class="form-select" id="collection_select" aria-label="Default select example">
+                <option selected>Select a task collection</option>
+                <option value="1">One</option>
+                <option value="2">Two</option>
+                <option value="3">Three</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="tasks_label" class="form-label">Tasks</label>
+            <input type='text' class="form-control" id="tasks_label" readonly value={{name}}>
+        </div>
+        <button type="button" class="btn btn-primary">Save and continue</button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>

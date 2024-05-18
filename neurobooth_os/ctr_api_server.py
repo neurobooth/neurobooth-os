@@ -1,0 +1,359 @@
+import datetime
+import os
+import os.path as op
+import threading
+import time
+from datetime import datetime
+from typing import Dict
+import http.client
+import json
+
+from fastapi import FastAPI
+
+from neurobooth_os import config
+import neurobooth_os.iout.metadator as meta
+import neurobooth_os.main_control_rec as ctr_rec
+
+from neurobooth_os.netcomm import node_info, get_messages_to_ctr
+
+
+api_title = "Neurobooth CTR API"
+api_description = """
+The Neurobooth CTR API operates the control (CTR) process in Neurobooth, which, in turn, provides control over the 
+entire Neurobooth system. Using this API, 
+the developer can start and stop STM and ACQ processes, as well as control at the task level the delivery of task 
+stimuli and acquisition of task measurements. In normal operations, this API will be used by the Neurobooth operator UI
+(aka, the GUI). 
+"""
+
+tags_metadata = [
+    {
+        "name": "session setup",
+        "description": "Operations for creating a Neurobooth session.",
+    },
+    {
+        "name": "session operation",
+        "description": "Operations that manage the session, including delivery of task stimuli to subjects, "
+                       "and acquisition of measurement data.",
+    },
+    {
+        "name": "server operations",
+        "description": "Operations to manage the operations of servers in a Neurobooth system.",
+    },
+    {
+        "name": "monitoring",
+        "description": "Operations enabling Neurobooth users to monitor the state of a session.",
+    },
+]
+
+app = FastAPI(
+    title=api_title,
+    description=api_description,
+    summary="API for controlling the operation of the Neurobooth CTR (control) function.",
+    version="0.0.1",
+    tags_metadata=tags_metadata,
+)
+
+config.load_config(validate_paths=False)
+
+
+def _get_ports():
+    other_nodes = ("acquisition", "presentation")
+    host, port = node_info("control")
+    return other_nodes, host, port
+
+
+nodes, host_ctr, port_ctr = _get_ports()
+
+log_sess: Dict = {}
+
+
+@app.get("/get_studies", tags=['session setup'])
+async def get_all_studies():
+    studies = meta.get_study_ids()
+    return f"studies: {studies}"
+
+
+@app.get("/get_study/{study_id}", tags=['session setup'])
+async def get_study_by_id(study_id: str):
+    log_sess["study_id"] = study_id
+    collection_ids = _get_collections(study_id)
+    return f"study_id: {collection_ids}"
+
+
+@app.get("/get_collection/{collection_id}", tags=['session setup'])
+async def get_tasks_for_collection(collection_id: str):
+    log_sess["collection_id"] = collection_id
+    tasks = _get_tasks(collection_id)
+    log_sess["tasks"] = tasks
+    return json.dumps(log_sess)
+
+
+@app.get("/get_subjects/{last_name}/{first_name}", tags=['session setup'])
+async def get_subjects_by_name(last_name: str, first_name: str):
+    """Retrieve a list of subjects with the provided first and last names. The names should be those given to the
+    subject at birth"""
+    subject_df = _find_subject(first_name, last_name)
+    return f"subjects: {subject_df}"
+
+
+@app.get("/get_subject/{subject_id}", tags=['session setup'])
+async def get_subject_by_id(subject_id: int):
+    """Returns the subject record corresponding to the provided subject ID"""
+    log_sess["subject_id"] = subject_id
+    return json.dumps(log_sess)
+
+
+@app.post("/save_session", tags=['session setup'])
+async def save_session_data(staff_id: str):
+    log_sess['staff_id'] = staff_id
+    result = _init_session_save()
+    print(result)
+    return f"'message':  {result}"
+
+
+@app.post("/save_notes/{note_text}", tags=['session setup'])
+async def save_rc_notes(note_text: str, note_task):
+    result = _save_session_notes(log_sess, note_task, note_text)
+    return f"'message': {result}"
+
+
+@app.get("/start_servers", tags=['server operations'])
+async def start_servers():
+    """Start Neurobooth presentation and data acquisition servers """
+    # TODO: Start the STM and ACQ servers
+    return f"{'message': {_start_servers(nodes)}}"
+
+
+@app.get("/connect_devices", tags=['server operations'])
+async def connect_data_capture_devices():
+    """Connect devices for capturing sound, image, and position data streams"""
+    send_prepare_request(log_sess, database_name="mock_neurobooth_1")
+    # session = _start_lsl_session(window, inlets, folder_session)
+
+
+@app.get("/terminate_servers", tags=['server operations'])
+async def terminate_servers():
+    """Shut-down Neurobooth servers after the end of the current task (if any)"""
+    pass
+
+
+@app.get("/start_session", tags=['session operation'])
+async def start_session():
+    """Starts a Neurobooth session, and begin presentation of stimuli to subjects. """
+    pass
+
+
+@app.get("/pause_session", tags=['session operation'])
+async def pause_session():
+    """Pause an ongoing Neurobooth session at the end of the current task.
+    Once paused, the session can be continued or canceled, or a calibration task can be run"""
+    pass
+
+
+@app.get("/continue_session", tags=['session operation'])
+async def continue_session_after_pause():
+    """Continue a Neurobooth session that has been paused. Tasks presentation will re-start at this time."""
+    pass
+
+
+@app.get("/end_session", tags=['session operation'])
+async def end_session_during_pause():
+    """Ends the current Neurobooth session after the current task"""
+    pass
+
+
+@app.get("/run_calibration", tags=['session operation'])
+async def run_calibration_during_pause():
+    """Run calibration of devices while system is paused"""
+    pass
+
+
+@app.get("/iphone_preview", tags=['monitoring'])
+async def preview_image_from_iphone():
+    """Return an image from the iPhone camera if one is present and functioning properly"""
+    pass
+
+
+@app.get("/plot", tags=['monitoring'])
+async def plot_lsl_data_streams():
+    """Initiate plotting of LSL data streams"""
+    pass
+
+
+def _get_collections(study_id: str):
+    collection_ids = meta.get_collection_ids(study_id)
+    return collection_ids
+
+
+def _get_tasks(collection_id: str):
+    task_obs = meta.get_task_ids_for_collection(collection_id)
+    return task_obs
+
+
+def _select_subject(window, subject_df):
+    """Select subject from the DOB window"""
+    subject = subject_df.iloc[window["dob"].get_indexes()]
+    subject_id = subject.name
+    first_name = subject["first_name_birth"]
+    last_name = subject["last_name_birth"]
+
+    # Update GUI
+    window["dob"].update(values=[""])
+    window["select_subject"].update(f"Subject ID: {subject_id}")
+    return first_name, last_name, subject_id
+
+
+def _find_subject(first_name, last_name):
+    """Find subject from database"""
+    conn = meta.get_database_connection("mock_neurobooth_1", False)
+    # print('have connection')
+    subject_df = meta.get_subject_ids(conn, first_name.strip(), last_name.strip())
+    # print(str(subject_df))
+    # window["dob"].update(values=subject_df["date_of_birth_subject"])
+    return subject_df
+
+
+def _start_servers(nodes):
+    # TODO: implement
+    print("GUI starting servers")
+    # window["-init_servs-"].Update(button_color=("black", "red"))
+    ctr_rec.start_servers(nodes=nodes)
+    time.sleep(1)
+    print("GUI servers started")
+    # return event, values
+    return None
+
+
+def _init_session_save():
+    if not log_sess['tasks']:
+        return "No task combo"
+    elif log_sess['staff_id'] == "":
+        return "No staff ID"
+    else:
+        sess_info = _save_session()
+
+        # Open new layout with main window
+        # _start_ctr_server(host_ctr, port_ctr)
+        return sess_info
+
+
+def _start_ctr_server(window, host_ctr, port_ctr):
+    """Start threaded control server and new window."""
+
+    # Start a threaded socket CTR server once main window generated
+    callback_args = window
+    server_thread = threading.Thread(
+        target=get_messages_to_ctr,
+        args=(
+            _process_received_data,
+            host_ctr,
+            port_ctr,
+            callback_args,
+        ),
+        daemon=True,
+    )
+    server_thread.start()
+
+
+def _process_received_data(serv_data, window):
+    """Gets messages from other servers and create PySimpleGui window events."""
+    pass
+
+
+def _save_session():
+    """Save session."""
+    now = datetime.now().strftime("%Y-%m-%d")
+    log_sess["subject_id-date"] = f'{log_sess["subject_id"]}_{now}'
+    return log_sess
+
+
+def _prepare_devices(nodes, collection_id, log_task, database):
+    """Prepare devices"""
+    print("Connecting devices")
+
+    # vidf_mrkr = marker_stream("videofiles")
+    # Create event to capture outlet_id
+    # window.write_event_value(
+    #     "-OUTLETID-", f"['{vidf_mrkr.name}', '{vidf_mrkr.oulet_id}']"
+    # )
+
+    nodes = ctr_rec._get_nodes(nodes)
+    #for node in nodes:
+    #     socket_message(f"prepare:{collection_id}:{database}:{str(log_task)}", node)
+
+    #return vidf_mrkr, event, values
+    return None
+
+def send_prepare_request(log_sess, database_name):
+    server = '127.0.0.1'
+    port = 8004
+
+    collection_id = log_sess["collection_id"]
+    subject_id = log_sess["subject_id"]
+    session_id = log_sess["session_id"]
+    connection = http.client.HTTPSConnection(host=server, port=port)
+
+    headers = {'Content-type': 'application/json'}
+
+    connection.request('GET', f'/prepare/{collection_id}'
+                              f'?database_name={database_name}'
+                              f'&subject_id={subject_id}'
+                              f'&session_id={session_id}', "", headers)
+
+    response = connection.getresponse()
+    print(response.read().decode())
+
+
+def _save_session_notes(sess_info, notes_task, notes):
+    if not notes_task:
+        return
+    _make_session_folder(sess_info)
+    if notes_task == "All tasks":
+        for task in sess_info["tasks"]:
+            if not any([i in task for i in ["intro", "pause"]]):
+                write_task_notes(
+                    sess_info["subject_id-date"],
+                    sess_info["staff_id"],
+                    task,
+                    notes,
+                )
+    else:
+        write_task_notes(
+            sess_info["subject_id-date"],
+            sess_info["staff_id"],
+            notes_task,
+            notes,
+        )
+    return '{"message": "notes saved"}'
+
+
+def _make_session_folder(sess_info):
+    session_dir = op.join(config.neurobooth_config.control.local_data_dir, sess_info['subject_id-date'])
+    if not op.exists(session_dir):
+        os.mkdir(session_dir)
+
+
+def write_task_notes(subject_id, staff_id, task_name, task_notes):
+    """Write task notes.
+    Parameters
+    ----------
+    subject_id : str
+        The subject ID
+    staff_id : str
+        The RC ID
+    task_name : str
+        The task name.
+    task_notes : str
+        The task notes.
+    """
+
+    fname = op.join(config.neurobooth_config.control.local_data_dir, subject_id, f'{subject_id}-{task_name}-notes.txt')
+    task_txt = ""
+    if not op.exists(fname):
+        task_txt += f"{subject_id}, {staff_id}\n"
+
+    with open(fname, "a") as fp:
+        datestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        task_txt += f"[\t{datestamp}]: {task_notes}\n"
+        fp.write(task_txt)
