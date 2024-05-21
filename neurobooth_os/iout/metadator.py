@@ -82,11 +82,9 @@ def get_study_ids() -> List[str]:
 
 
 def get_subject_ids(conn: connection, first_name, last_name):
-    f_name = first_name.strip()
-    l_name = last_name.strip()
     table_subject = Table("subject", conn=conn)
-    first_name = _escape_name_string(first_name)
-    last_name = _escape_name_string(last_name)
+    f_name = _escape_name_string(first_name)
+    l_name = _escape_name_string(last_name)
 
     subject_df = table_subject.query(
         where=f"LOWER(first_name_birth)=LOWER('{f_name}') AND LOWER(last_name_birth)=LOWER('{l_name}')"
@@ -94,8 +92,33 @@ def get_subject_ids(conn: connection, first_name, last_name):
     return subject_df
 
 
+def get_subject_by_id(conn: connection, subject_id:str):
+
+    class Subject(BaseModel):
+        subject_id: str
+        first_name_birth: str
+        middle_name_birth: str
+        last_name_birth: str
+        date_of_birth: datetime
+
+    table_subject = Table("subject", conn=conn)
+    subject_df = table_subject.query(where=f"LOWER(subject_id)=LOWER('{subject_id}')")
+
+    if not subject_df.empty:
+        subj = Subject(
+            subject_id=subject_id,
+            first_name_birth=subject_df['first_name_birth'].iloc[0],
+            middle_name_birth=subject_df['middle_name_birth'].iloc[0],
+            last_name_birth=subject_df['last_name_birth'].iloc[0],
+            date_of_birth=subject_df['date_of_birth_subject'].iloc[0],
+        )
+        return subj.model_dump_json()
+    return None
+
+
 def _escape_name_string(name: str) -> str:
     """ Escapes a single quote in the name (as in, e.g. "O'neil"), if one exists."""
+    name = name.strip()
     if "'" in name:
         return f'''{name.replace("'", "''")}'''
     else:

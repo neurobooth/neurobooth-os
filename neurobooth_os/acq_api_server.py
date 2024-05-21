@@ -58,8 +58,6 @@ s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 try:
     logger.debug("Starting ACQ")
     os.chdir(neurobooth_os.__path__[0])
-    # sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
-    logger.debug("Stopping ACQ")
 
 except Exception as argument:
     logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
@@ -67,6 +65,7 @@ except Exception as argument:
     raise argument
 
 finally:
+    logger.debug("Stopping ACQ")
     logging.shutdown()
 
 app = FastAPI(
@@ -150,6 +149,7 @@ async def shut_down_server():
 
 @app.get("/reset_mbients", tags=['server operations'])
 async def reset_mbients():
+    """Reset mbients"""
     logger.info(f'MESSAGE RECEIVED: reset_mbients')
     reset_results = device_manager.mbient_reset()
     logger.debug('Sending reset results')
@@ -158,6 +158,7 @@ async def reset_mbients():
 
 @app.get("/time_test", tags=['testing'])
 async def test_response_time():
+    """No-op for calculating round-trip time"""
     logger.info(f'MESSAGE RECEIVED: time_test')
     return {}
 

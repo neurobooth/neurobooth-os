@@ -8,9 +8,11 @@ from typing import Dict
 import http.client
 import json
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from starlette.middleware.cors import CORSMiddleware
 
 from neurobooth_os import config
+from neurobooth_os.log_manager import make_db_logger
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.main_control_rec as ctr_rec
 
@@ -54,7 +56,27 @@ app = FastAPI(
     tags_metadata=tags_metadata,
 )
 
-config.load_config(validate_paths=False)
+# TODO: Replace with appropriate URLs
+origins = [
+    "http://127.0.0.1",
+    "http://127.0.0.1:8080",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# TODO: Fix db connection validate config paths arg
+db_validate_paths = False
+config.load_config(validate_paths=db_validate_paths)
+db_name = config.neurobooth_config.database.dbname
+conn = meta.get_database_connection(db_name, db_validate_paths)
+logger = make_db_logger()
+logger.debug("Starting CTR")
 
 
 def _get_ports():
@@ -66,54 +88,66 @@ def _get_ports():
 nodes, host_ctr, port_ctr = _get_ports()
 
 log_sess: Dict = {}
+connection = meta.get_database_connection()
 
 
 @app.get("/get_studies", tags=['session setup'])
 async def get_all_studies():
+    """Returns a list of all studies in the database"""
     studies = meta.get_study_ids()
     return f"studies: {studies}"
 
 
-@app.get("/get_study/{study_id}", tags=['session setup'])
-async def get_study_by_id(study_id: str):
+@app.get("/get_collections/{study_id}", tags=['session setup'])
+async def get_collections(study_id: str):
+    """Returns the collections associated with the given study_id"""
     log_sess["study_id"] = study_id
     collection_ids = _get_collections(study_id)
-    return f"study_id: {collection_ids}"
+    id_dict = {study_id: collection_ids}
+    return json.dumps(id_dict)
 
-
-@app.get("/get_collection/{collection_id}", tags=['session setup'])
-async def get_tasks_for_collection(collection_id: str):
+@app.get("/get_tasks/{collection_id}", tags=['session setup'])
+async def get_tasks(collection_id: str):
+    """Returns a list of the tasks associated with the given collection_id"""
     log_sess["collection_id"] = collection_id
     tasks = _get_tasks(collection_id)
     log_sess["tasks"] = tasks
-    return json.dumps(log_sess)
+    response = {collection_id: tasks}
+    return json.dumps(response)
 
 
-@app.get("/get_subjects/{last_name}/{first_name}", tags=['session setup'])
-async def get_subjects_by_name(last_name: str, first_name: str):
-    """Retrieve a list of subjects with the provided first and last names. The names should be those given to the
-    subject at birth"""
-    subject_df = _find_subject(first_name, last_name)
-    return f"subjects: {subject_df}"
-
+# @app.get("/get_subjects/{last_name}/{first_name}", tags=['session setup'])
+# async def get_subjects_by_name(last_name: str, first_name: str):
+#     """Retrieve a list of subjects with the provided first and last names. The names should be those given to the
+#     subject at birth"""
+#     subject_df = _find_subject(first_name, last_name)
+#     print("Testing")
+#     return f"subjects: {subject_df}"
+#
 
 @app.get("/get_subject/{subject_id}", tags=['session setup'])
-async def get_subject_by_id(subject_id: int):
+async def get_subject_by_id(subject_id: str):
     """Returns the subject record corresponding to the provided subject ID"""
     log_sess["subject_id"] = subject_id
-    return json.dumps(log_sess)
+    subject = meta.get_subject_by_id(conn, subject_id)
+    if subject is not None:
+        return subject
+    else:
+        raise HTTPException(status_code=404, detail="Subject not found")
 
 
 @app.post("/save_session", tags=['session setup'])
 async def save_session_data(staff_id: str):
+    """Saves the current session"""
     log_sess['staff_id'] = staff_id
     result = _init_session_save()
     print(result)
-    return f"'message':  {result}"
+    return f"'message': {result}"
 
 
 @app.post("/save_notes/{note_text}", tags=['session setup'])
 async def save_rc_notes(note_text: str, note_task):
+    """Save the current rc notes"""
     result = _save_session_notes(log_sess, note_task, note_text)
     return f"'message': {result}"
 
@@ -128,7 +162,7 @@ async def start_servers():
 @app.get("/connect_devices", tags=['server operations'])
 async def connect_data_capture_devices():
     """Connect devices for capturing sound, image, and position data streams"""
-    send_prepare_request(log_sess, database_name="mock_neurobooth_1")
+    send_prepare_request(log_sess, database_name=db_name)
     # session = _start_lsl_session(window, inlets, folder_session)
 
 
@@ -141,6 +175,13 @@ async def terminate_servers():
 @app.get("/start_session", tags=['session operation'])
 async def start_session():
     """Starts a Neurobooth session, and begin presentation of stimuli to subjects. """
+    # Run time test against STM and ACQ
+    time_0 = time.time()
+    # TODO: send requests
+    # Send request to ACQ to STM
+    time_1 = time.time()
+    elapsed_time = time_1 - time_0
+    logger.info(f'Round-trip time: {elapsed_time}')
     pass
 
 
@@ -206,11 +247,8 @@ def _select_subject(window, subject_df):
 
 def _find_subject(first_name, last_name):
     """Find subject from database"""
-    conn = meta.get_database_connection("mock_neurobooth_1", False)
-    # print('have connection')
     subject_df = meta.get_subject_ids(conn, first_name.strip(), last_name.strip())
-    # print(str(subject_df))
-    # window["dob"].update(values=subject_df["date_of_birth_subject"])
+    # TODO: Convert df to something easier to work with
     return subject_df
 
 
@@ -282,13 +320,13 @@ def _prepare_devices(nodes, collection_id, log_task, database):
     #for node in nodes:
     #     socket_message(f"prepare:{collection_id}:{database}:{str(log_task)}", node)
 
-    #return vidf_mrkr, event, values
+    # return vidf_mrkr, event, values
     return None
+
 
 def send_prepare_request(log_sess, database_name):
     server = '127.0.0.1'
-    port = 8004
-
+    port = 8084
     collection_id = log_sess["collection_id"]
     subject_id = log_sess["subject_id"]
     session_id = log_sess["session_id"]

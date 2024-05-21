@@ -217,11 +217,10 @@ async def shut_down_server():
 
 
 @app.get("/time_test", tags=['testing'])
-async def time_test_req():
-    current_time = time()
-    logger.info(f'MESSAGE RECEIVED: time_test at {current_time}')
-    msg = f"ping_{time()}"
-    return {"message": msg}
+async def test_response_time():
+    """No-op for calculating round-trip time"""
+    logger.info(f'MESSAGE RECEIVED: time_test')
+    return {}
 
 
 @app.get("/pause", tags=['session operation'])
