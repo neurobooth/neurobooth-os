@@ -103,8 +103,10 @@ async def get_collections(study_id: str):
     """Returns the collections associated with the given study_id"""
     log_sess["study_id"] = study_id
     collection_ids = _get_collections(study_id)
+    collection_ids.insert(0, "Select a collection")
     id_dict = {study_id: collection_ids}
     return json.dumps(id_dict)
+
 
 @app.get("/get_tasks/{collection_id}", tags=['session setup'])
 async def get_tasks(collection_id: str):

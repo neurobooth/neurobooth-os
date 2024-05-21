@@ -55,101 +55,126 @@
                 <label for="tasks_label" class="form-label">Tasks</label>
                 <input type='text' class="form-control" id="tasks_label" readonly tabindex="-1">
             </div>
-            <button type="button" class="btn btn-primary">Save and continue</button>
+            <button type="button" class="btn btn-primary" id="save_and_continue" disabled>Save and continue</button>
         </form>
     </div>
 </div>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script lang="javascript">
 
+    const $subj_table_body = $("#subject_table_body");
+    const $subj_id_input = $('#subj_id_input');
+    const $subj_search_btn = $('#subj-search-btn');
+    const $subj_table = $("#subject_table");
+    const $staff_id_input =$('#staff_id_input');
+    const $study_select = $('#study_select');
+    const $col_select = $("#collection_select");
+    const $tasks_input = $('#tasks_label');
+    const $save_and_cont= $('#save_and_continue');
+
+    $subj_table_body.empty();
+
+    function enable_save() {
+        if ($tasks_input.val()
+            && $staff_id_input.val()
+            && $('#subject_table tr').length > 1) {
+            $save_and_cont.prop("disabled", false);
+        } else {
+            $save_and_cont.prop("disabled", true);
+        }
+    }
     // On study option select event, populate and enable the collection list
-    $('#study_select').change(function() {
+    $study_select.change(function() {
         const selected_study = $(this).val()
-        const $cs = $("#collection_select");
         if (this.options[0].text == selected_study) {
-            col_sel = document.getElementById("collection_select")
-            col_sel.options[0].selected = 'selected'
-            $cs.prop("disabled", true);
-            $("#tasks_label").val("")
+            $col_select[0].selectedIndex = 0;
+            $col_select.prop("disabled", true);
+            $tasks_input.val("")
+            enable_save()
             return
         }
-        $cs.prop("disabled", false);
+        $col_select.prop("disabled", false);
         const col_url = 'http://127.0.0.1:8082/get_collections/'+selected_study;
         $.ajax({
         type: 'GET', url:col_url,
         error: function(xhr) {
+            enable_save()
             alert("An error occurred: " + xhr.status + " " + xhr.statusText);
         },
         success: function(response) {
             const resp_json = JSON.parse(response);
             const collections = resp_json[selected_study]
-            $cs.empty();
+            $col_select.empty();
             for (const c of collections) {
-                $cs.append(new Option(c, c));
+                $col_select.append(new Option(c, c));
             }
+            enable_save()
     }});})
 
+    // Handle change in staff id
+     $staff_id_input.change(function() {
+        enable_save();
+     })
+
     // On collection option select event, populate and enable the tasks input
-    $('#collection_select').change(function() {
+    $col_select.change(function() {
         const selected_col = $(this).val()
+        if (this.options[0].text == selected_col) {
+            $tasks_input.val("")
+            enable_save()
+            return
+        }
+
         const task_url = 'http://127.0.0.1:8082/get_tasks/'+selected_col;
     $.ajax({
         type: 'GET', url:task_url,
         error: function(xhr) {
+            enable_save()
             alert("An error occurred: " + xhr.status + " " + xhr.statusText);
         },
         success: function(response) {
-            const resp_json = JSON.parse(response);
-            const tasks = resp_json[selected_col]
-            const $tl = $("#tasks_label");
-            const task_list = tasks.join()
-            $tl.val(task_list);
-
+            const tasks = JSON.parse(response)[selected_col]
+            $tasks_input.val(tasks.join(", "));
+            enable_save();
     }});})
 
     // If user hits enter in subject input, click the search button
-    $('#subj_id_input').keypress(function(e) {
+    $subj_id_input.keypress(function(e) {
         if(e.which == 13) {
             jQuery(this).blur();
-            jQuery('#subj-search-btn').click();
+            $subj_search_btn.click();
             return false;
         }
     });
 
     // On subject search button click, search for the subject id and populate table
-    $('#subj-search-btn').click(function () {
-        const s_id = $('#subj_id_input').val();
+    $subj_search_btn.click(function () {
+        const s_id = $subj_id_input.val();
         const subj_url = 'http://127.0.0.1:8082/get_subject/'+s_id;
         $("#subject_table_body").empty();
     $.ajax({
         type: 'GET', url:subj_url,
         error: function(xhr) {
             if (xhr.status === 404) {
+                $subj_id_input.val('')
+                enable_save()
                 alert("Subject " + s_id + ' was not found.');
             } else
+                $save_and_cont.prop("disabled", false);
                 alert("An error occurred: " + xhr.status + " " + xhr.statusText);
         },
         success: function(response) {
             const json_response = JSON.parse(response);
-            $("#subject_table").find('tbody')
+            $subj_table.find('tbody')
             .append($('<tr>')
-                .append($('<td>')
-                    .text(json_response.subject_id)
-                )
-                .append($('<td>')
-                    .text(json_response.first_name_birth)
-                )
-                .append($('<td>')
-                    .text(json_response.middle_name_birth)
-                )
-                .append($('<td>')
-                    .text(json_response.last_name_birth)
-                )
-                .append($('<td>')
-                    .text(json_response.date_of_birth.split('T')[0])
-                )
+                .append($('<td>').text(json_response.subject_id))
+                .append($('<td>').text(json_response.first_name_birth))
+                .append($('<td>').text(json_response.middle_name_birth))
+                .append($('<td>').text(json_response.last_name_birth))
+                .append($('<td>').text(json_response.date_of_birth.split('T')[0]))
             );
-            $("#staff_id_input").focus()
+            $staff_id_input.focus()
+            enable_save();
         }
       })
     })
