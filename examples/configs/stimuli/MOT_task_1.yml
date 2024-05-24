@@ -24,16 +24,19 @@ practice_chunks:  # Task instructions and practice parameters
       - trial_type: example
         animation_path: example_trial_00_2tgt.npz
         n_targets: 2
+        movement_duration: 3
 
       - image_path: inst2.png
       - trial_type: practice
         animation_path: practice_trial_01_2tgt.npz
         n_targets: 2
+        movement_duration: 3
 
       - image_path: inst3.png
       - trial_type: practice
         animation_path: practice_trial_02_3tgt.npz
         n_targets: 3
+        movement_duration: 3
 
 test_chunks:  # Test parameters
   - chunk_name: 3-target
