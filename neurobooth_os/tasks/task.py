@@ -75,10 +75,13 @@ class Task:
         self.advance_keys: List[str] = ['space']
         self.abort_keys: List[str] = ['q']
         if task_repeatable_by_subject:
-            task_end_image = "tasks/assets/task_end.png"
+            task_end_image = 'tasks/assets/task_end.png'
+            inst_end_task_img = 'tasks/assets/inst_end_task.png'
             self.repeat_keys: List[str] = ['r', 'comma']
         else:
-            task_end_image = "tasks/assets/task_end_disabled.png"
+            # Note: By overriding repeat_keys, disabling a task repeats also disables instruction repeats!
+            task_end_image = 'tasks/assets/task_end_disabled.png'
+            inst_end_task_img = 'tasks/assets/inst_end_task_disabled.png'
             self.repeat_keys: List[str] = ['r']
 
         if marker_outlet is not None:
@@ -113,7 +116,7 @@ class Task:
 
         self.root_pckg = neurobooth_os.__path__[0]
 
-        inst_end_task_img = op.join(self.root_pckg, "tasks", "assets", "inst_end_task.png")
+        inst_end_task_img = op.join(self.root_pckg, inst_end_task_img)
         if not op.isfile(inst_end_task_img):
             raise IOError(f'Required image file {inst_end_task_img} does not exist')
         self.press_inst_screen = visual.ImageStim(
