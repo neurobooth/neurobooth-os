@@ -43,7 +43,6 @@
                     <option value="{{study}}">{{study}}</option>
                     {% endfor %}
                 </select>
-
             </div>
             <div class="mb-3">
                 <label for="collection_select" class="form-label">Collection</label>
@@ -52,8 +51,20 @@
                 </select>
             </div>
             <div class="mb-3">
-                <label for="tasks_label" class="form-label">Tasks</label>
-                <input type='text' class="form-control" id="tasks_label" readonly tabindex="-1">
+        <form>
+            <div class="p-3 mb-3 bg-light">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="check_all" checked>
+                    <label class="form-check-label" id="checkbox_label" for="check_all">Select all
+                    </label>
+                </div>
+                <hr/>
+                <div class="overflow-auto" id="task_selection_div" style="height:100px"></div>
+            </div>
+        </form>
+
+<!--                <label for="tasks_label" class="form-label">Tasks</label>-->
+<!--                <input type='text' class="form-control" id="tasks_label" readonly tabindex="-1">-->
             </div>
             <button type="button" class="btn btn-primary" id="continue_btn" disabled>Continue</button>
         </form>
@@ -76,8 +87,8 @@
     $subj_table_body.empty();
 
     function enable_save() {
-        if ($tasks_input.val()
-            && $staff_id_input.val()
+        if ( // $tasks_input.val()           &&
+            $staff_id_input.val()
             && $('#subject_table tr').length > 1) {
             $continue_btn.prop("disabled", false);
         } else {
@@ -134,8 +145,9 @@
             alert("An error occurred: " + xhr.status + " " + xhr.statusText);
         },
         success: function(response) {
-            const tasks = JSON.parse(response)[selected_col]
-            $tasks_input.val(tasks.join(", "));
+            // const tasks = JSON.parse(response)[selected_col]
+            // $tasks_input.val(tasks.join(", "));
+            $("#task_selection_div").html(response);
             enable_save();
     }});})
 
@@ -157,7 +169,6 @@
         json_data['subj_id'] = $subj_id_input.val();
         json_data['study_id'] = $study_select.val();
         json_data['collection_id'] = $col_select.val();
-        json_data['tasks'] = $
         $.ajax({
             type: 'GET',
             url:continue_url,
@@ -204,7 +215,16 @@
             enable_save();
         }
       })
-    })
+    });
+
+    // check/uncheck all tasks
+    // NOTE: this logic relies on the checkboxes having id values that start with "check-"
+    $("#check_all").click(function() {
+        check_bool = $("#check_all").is(':checked')
+        $("input[id^=check-]").prop('checked',  check_bool);
+    });
+
+
 </script>
 </body>
 </html>

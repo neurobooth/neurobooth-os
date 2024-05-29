@@ -201,8 +201,11 @@ def _make_session_id(conn: connection, session_log):
         assert len(task_df) < 2, "More than one 'session_id' found"
         return task_df.index[0]
     # Create new session log otherwise
-    vals = list(session_log.values())
-    session_id = table.insert_rows([tuple(vals)], cols=list(session_log))
+    log_sess = _new_session_log_dict()
+    for k in log_sess:
+        log_sess[k] = session_log[k]
+    vals = list(log_sess.values())
+    session_id = table.insert_rows([tuple(vals)], cols=list(log_sess))
     return session_id
 
 

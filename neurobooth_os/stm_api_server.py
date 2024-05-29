@@ -63,7 +63,6 @@ app = FastAPI(
 # TODO: move to config file?
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
-
 config.load_config(validate_paths=False)
 logger = make_db_logger()  # Initialize logging to default
 logger.debug("Am I working?")
@@ -85,8 +84,8 @@ async def prepare_req(collection_id: str, database_name: str, subject_id: int, s
     global task_log_entry
     global subj_id
 
-    subj_id = subject_id
     logger.info(f'MESSAGE RECEIVED: Prepare for session {session_id} for {subject_id}')
+    subj_id = subject_id
     session, task_log_entry = prepare_session(collection_id, database_name, subject_id, session_id, logger)
     # initialize_presentation(session_id)
     return {"message": "Ready to handle tasks"}

@@ -1,7 +1,6 @@
 import datetime
 import os
 import os.path as op
-import threading
 import time
 from datetime import datetime
 from typing import Dict
@@ -116,13 +115,17 @@ async def get_collections(study_id: str):
 
 
 @app.get("/get_tasks/{collection_id}", tags=['session setup'])
-async def get_tasks(collection_id: str):
+async def get_tasks(request: Request, collection_id: str):
     """Returns a list of the tasks associated with the given collection_id"""
     log_sess["collection_id"] = collection_id
     tasks = _get_tasks(collection_id)
-    log_sess["tasks"] = tasks
-    response = {collection_id: tasks}
-    return json.dumps(response)
+    # log_sess["tasks"] = tasks
+    # response = {collection_id: tasks}
+    # return json.dumps(response)
+    return templates.TemplateResponse("task_selection.html", {
+        'request': request,
+        'tasks': tasks,
+    })
 
 
 # @app.get("/get_subjects/{last_name}/{first_name}", tags=['session setup'])
@@ -152,16 +155,15 @@ async def save_session_data(request: Request, staff_id: str, subj_id: str, study
     log_sess['subject_id'] = subj_id
     log_sess['study_id'] = study_id
     log_sess['collection_id'] = collection_id
-    tasks = []
-    print(log_sess)
+    tasks = _get_tasks(collection_id)
+    log_sess['tasks'] = tasks
     result = _init_session_save()
-    print(result)
     # return f"'message': {result}"
     return templates.TemplateResponse("page_2.html", {
         'request': request,
         'subject': subj_id,
         'staff_id': staff_id,
-        'tasks': ', '.join(tasks),
+        'tasks': tasks,
     })
 
 
@@ -176,8 +178,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # return JSONResponse(content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
 
-@app.post("/save_notes/{note_text}", tags=['session operation'])
-async def save_rc_notes(note_text: str, note_task):
+@app.get("/save_notes", tags=['session operation'])
+async def save_rc_notes(note_text: str, note_task: str):
     """Save the current rc notes"""
     result = _save_session_notes(log_sess, note_task, note_text)
     return f"'message': {result}"
@@ -187,7 +189,9 @@ async def save_rc_notes(note_text: str, note_task):
 async def start_servers():
     """Start Neurobooth presentation and data acquisition servers """
     # TODO: Start the STM and ACQ servers
-    return f"{'message': {_start_servers(nodes)}}"
+    _start_servers(nodes)
+    dict = {"message": "servers started, I guess"}
+    return json.dumps(dict)
 
 
 @app.get("/connect_devices", tags=['server operations'])
@@ -213,7 +217,8 @@ async def start_session():
     time_1 = time.time()
     elapsed_time = time_1 - time_0
     logger.info(f'Round-trip time: {elapsed_time}')
-    pass
+    dict = {"message": "session started, sorta"}
+    return json.dumps(dict)
 
 
 @app.get("/pause_session", tags=['session operation'])
@@ -285,11 +290,11 @@ def _find_subject(first_name, last_name):
 
 def _start_servers(nodes):
     # TODO: implement
-    print("GUI starting servers")
-    # window["-init_servs-"].Update(button_color=("black", "red"))
-    ctr_rec.start_servers(nodes=nodes)
-    time.sleep(1)
-    print("GUI servers started")
+    print(f"CTR starting servers on nodes {nodes}")
+    # # window["-init_servs-"].Update(button_color=("black", "red"))
+    # ctr_rec.start_servers(nodes=nodes)
+    # time.sleep(1)
+    print("CTR started servers")
     # return event, values
     return None
 
@@ -302,27 +307,7 @@ def _init_session_save():
         return "No staff ID"
     else:
         sess_info = _save_session()
-        # Update page
-        # _start_ctr_server(host_ctr, port_ctr)
         return sess_info
-
-
-def _start_ctr_server(window, host_ctr, port_ctr):
-    """Start threaded control server and new window."""
-
-    # Start a threaded socket CTR server once main window generated
-    callback_args = window
-    server_thread = threading.Thread(
-        target=get_messages_to_ctr,
-        args=(
-            _process_received_data,
-            host_ctr,
-            port_ctr,
-            callback_args,
-        ),
-        daemon=True,
-    )
-    server_thread.start()
 
 
 def _process_received_data(serv_data, window):
@@ -335,8 +320,8 @@ def _save_session():
     now: str = datetime.now().strftime("%Y-%m-%d")
     log_task['subject_id'] = log_sess['subject_id']
     log_task["subject_id-date"] = f'{log_sess["subject_id"]}_{now}'
-
     log_sess["subject_id-date"] = log_task['subject_id-date']
+    log_sess["session_id"] = meta._make_session_id(conn, log_sess)
     return log_sess
 
 
@@ -364,16 +349,16 @@ def send_prepare_request(log_sess, database_name):
     collection_id = log_sess["collection_id"]
     subject_id = log_sess["subject_id"]
     session_id = log_sess["session_id"]
-    connection = http.client.HTTPSConnection(host=server, port=port)
+    stm_http_conn = http.client.HTTPConnection(host=server, port=port)
 
     headers = {'Content-type': 'application/json'}
 
-    connection.request('GET', f'/prepare/{collection_id}'
-                              f'?database_name={database_name}'
-                              f'&subject_id={subject_id}'
-                              f'&session_id={session_id}', "", headers)
+    stm_http_conn.request('GET', f'/prepare/{collection_id}'
+                                 f'?database_name={database_name}'
+                                 f'&subject_id={subject_id}'
+                                 f'&session_id={session_id}', "", headers)
 
-    response = connection.getresponse()
+    response = stm_http_conn.getresponse()
     print(response.read().decode())
 
 

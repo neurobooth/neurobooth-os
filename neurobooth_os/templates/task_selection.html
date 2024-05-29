@@ -1,0 +1,8 @@
+{% for task in tasks %}
+<div class="form-check" id="taskCheckboxDiv">
+    <input class="form-check-input task-check form-" type="checkbox" value="" id="check-{{task}}" checked>
+    <label class="form-check-label" for="check-{{task}}">
+        {{task}}
+    </label>
+</div>
+{% endfor %}
