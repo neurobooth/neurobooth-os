@@ -55,7 +55,7 @@
                 <label for="tasks_label" class="form-label">Tasks</label>
                 <input type='text' class="form-control" id="tasks_label" readonly tabindex="-1">
             </div>
-            <button type="button" class="btn btn-primary" id="save_and_continue" disabled>Save and continue</button>
+            <button type="button" class="btn btn-primary" id="continue_btn" disabled>Continue</button>
         </form>
     </div>
 </div>
@@ -63,14 +63,15 @@
 <script lang="javascript">
 
     const $subj_table_body = $("#subject_table_body");
+    const $content_container =  $("#content-container");
     const $subj_id_input = $('#subj_id_input');
     const $subj_search_btn = $('#subj-search-btn');
     const $subj_table = $("#subject_table");
-    const $staff_id_input =$('#staff_id_input');
+    const $staff_id_input = $('#staff_id_input');
     const $study_select = $('#study_select');
     const $col_select = $("#collection_select");
     const $tasks_input = $('#tasks_label');
-    const $save_and_cont= $('#save_and_continue');
+    const $continue_btn= $('#continue_btn');
 
     $subj_table_body.empty();
 
@@ -78,9 +79,9 @@
         if ($tasks_input.val()
             && $staff_id_input.val()
             && $('#subject_table tr').length > 1) {
-            $save_and_cont.prop("disabled", false);
+            $continue_btn.prop("disabled", false);
         } else {
-            $save_and_cont.prop("disabled", true);
+            $continue_btn.prop("disabled", true);
         }
     }
     // On study option select event, populate and enable the collection list
@@ -140,12 +141,38 @@
 
     // If user hits enter in subject input, click the search button
     $subj_id_input.keypress(function(e) {
-        if(e.which == 13) {
+        if (e.which == 13) {
             jQuery(this).blur();
             $subj_search_btn.click();
             return false;
         }
     });
+
+    // On continue button click, update session state and replace div with new content
+    $('#continue_btn').click(function() {
+        const continue_url = 'http://127.0.0.1:8082/save_session';
+
+        const json_data = {}
+        json_data['staff_id'] = $staff_id_input.val();
+        json_data['subj_id'] = $subj_id_input.val();
+        json_data['study_id'] = $study_select.val();
+        json_data['collection_id'] = $col_select.val();
+        json_data['tasks'] = $
+        $.ajax({
+            type: 'GET',
+            url:continue_url,
+            data: jQuery.param(json_data),
+            contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
+            success: function (response) {
+                $content_container.html(response);
+                $("#notes-text-area").focus()
+            },
+            error: function(xhr) {
+                alert("An error occurred: " + xhr.status + " " + xhr.statusText);
+            }
+            });
+        });
+
 
     // On subject search button click, search for the subject id and populate table
     $subj_search_btn.click(function () {
@@ -160,7 +187,7 @@
                 enable_save()
                 alert("Subject " + s_id + ' was not found.');
             } else
-                $save_and_cont.prop("disabled", false);
+                $continue_btn.prop("disabled", false);
                 alert("An error occurred: " + xhr.status + " " + xhr.statusText);
         },
         success: function(response) {

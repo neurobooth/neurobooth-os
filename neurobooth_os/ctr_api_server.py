@@ -9,7 +9,10 @@ import http.client
 import json
 
 from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.templating import Jinja2Templates
 
 from neurobooth_os import config
 from neurobooth_os.log_manager import make_db_logger
@@ -17,7 +20,6 @@ import neurobooth_os.iout.metadator as meta
 import neurobooth_os.main_control_rec as ctr_rec
 
 from neurobooth_os.netcomm import node_info, get_messages_to_ctr
-
 
 api_title = "Neurobooth CTR API"
 api_description = """
@@ -70,6 +72,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+templates = Jinja2Templates(directory="templates")
+
 # TODO: Fix db connection validate config paths arg
 db_validate_paths = False
 config.load_config(validate_paths=db_validate_paths)
@@ -77,6 +81,10 @@ db_name = config.neurobooth_config.database.dbname
 conn = meta.get_database_connection(db_name, db_validate_paths)
 logger = make_db_logger()
 logger.debug("Starting CTR")
+log_sess: Dict = meta._new_session_log_dict()
+log_task: Dict = meta._new_tech_log_dict()
+stream_ids, inlets = {}, {}
+plot_elem, inlet_keys = [], []
 
 
 def _get_ports():
@@ -87,7 +95,6 @@ def _get_ports():
 
 nodes, host_ctr, port_ctr = _get_ports()
 
-log_sess: Dict = {}
 connection = meta.get_database_connection()
 
 
@@ -138,16 +145,38 @@ async def get_subject_by_id(subject_id: str):
         raise HTTPException(status_code=404, detail="Subject not found")
 
 
-@app.post("/save_session", tags=['session setup'])
-async def save_session_data(staff_id: str):
+@app.get("/save_session", tags=['session setup'])
+async def save_session_data(request: Request, staff_id: str, subj_id: str, study_id: str, collection_id: str):
     """Saves the current session"""
     log_sess['staff_id'] = staff_id
+    log_sess['subject_id'] = subj_id
+    log_sess['study_id'] = study_id
+    log_sess['collection_id'] = collection_id
+    tasks = []
+    print(log_sess)
     result = _init_session_save()
     print(result)
-    return f"'message': {result}"
+    # return f"'message': {result}"
+    return templates.TemplateResponse("page_2.html", {
+        'request': request,
+        'subject': subj_id,
+        'staff_id': staff_id,
+        'tasks': ', '.join(tasks),
+    })
 
 
-@app.post("/save_notes/{note_text}", tags=['session setup'])
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    exc_str = f'{exc}'.replace('\n', ' ').replace('   ', ' ')
+    logger.error(f"{request}: {exc_str}")
+    content = {'status_code': 10422, 'message': exc_str, 'data': None}
+    return content
+
+
+# return JSONResponse(content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+
+@app.post("/save_notes/{note_text}", tags=['session operation'])
 async def save_rc_notes(note_text: str, note_task):
     """Save the current rc notes"""
     result = _save_session_notes(log_sess, note_task, note_text)
@@ -266,14 +295,14 @@ def _start_servers(nodes):
 
 
 def _init_session_save():
-    if not log_sess['tasks']:
-        return "No task combo"
-    elif log_sess['staff_id'] == "":
+    # if not log_sess['tasks']:
+    #     return "No task combo"
+    # elif
+    if log_sess['staff_id'] == "":
         return "No staff ID"
     else:
         sess_info = _save_session()
-
-        # Open new layout with main window
+        # Update page
         # _start_ctr_server(host_ctr, port_ctr)
         return sess_info
 
@@ -303,8 +332,11 @@ def _process_received_data(serv_data, window):
 
 def _save_session():
     """Save session."""
-    now = datetime.now().strftime("%Y-%m-%d")
-    log_sess["subject_id-date"] = f'{log_sess["subject_id"]}_{now}'
+    now: str = datetime.now().strftime("%Y-%m-%d")
+    log_task['subject_id'] = log_sess['subject_id']
+    log_task["subject_id-date"] = f'{log_sess["subject_id"]}_{now}'
+
+    log_sess["subject_id-date"] = log_task['subject_id-date']
     return log_sess
 
 
@@ -319,7 +351,7 @@ def _prepare_devices(nodes, collection_id, log_task, database):
     # )
 
     nodes = ctr_rec._get_nodes(nodes)
-    #for node in nodes:
+    # for node in nodes:
     #     socket_message(f"prepare:{collection_id}:{database}:{str(log_task)}", node)
 
     # return vidf_mrkr, event, values
