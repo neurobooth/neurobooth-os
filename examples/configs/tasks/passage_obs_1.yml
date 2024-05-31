@@ -13,6 +13,7 @@ device_id_array:
 - Mbient_BK_1
 - FLIR_blackfly_1
 - Eyelink_1
+- Mouse
 - Mic_Yeti_dev_1
 - IPhone_dev_1
 arg_parser: iout.stim_param_reader.py::RawTaskParams()
