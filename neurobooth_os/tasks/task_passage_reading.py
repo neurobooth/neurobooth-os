@@ -19,14 +19,14 @@ class Passage_Reading(Eyelink_HostPC):
         super().__init__(**kwargs)
 
     def render_image(self):
-        self._render_image(op.join(neurobooth_os.__path__[0], "tasks/assets/bamboo_screenshot.jpg"),
-                          0, 0, 1920, 1080, 0, 0)
+        self._render_image(
+            op.join(neurobooth_os.__path__[0], "tasks/assets/bamboo_screenshot.jpg"),
+            0, 0, 1920, 1080, 0, 0
+        )
 
     def present_task(self, prompt=True, duration=0, **kwargs):
-        
-        fname = op.join(
-            neurobooth_os.__path__[0], "tasks/assets/passage_reading_1536x864.jpg"
-        )
+        self.Mouse.setVisible(1)  # Allow participants to use the mouse to assist their reading
+        fname = op.join(neurobooth_os.__path__[0], "tasks/assets/passage_reading_1536x864.jpg")
         screen = utils.create_image_screen(self.win, fname)
         self.show_text(screen=screen, msg="Task", audio=None, wait_time=5)
 
@@ -40,7 +40,7 @@ class Passage_Reading(Eyelink_HostPC):
 
         self.clear_screen()
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     task = Passage_Reading()
     task.run(prompt=True, duration=10)
