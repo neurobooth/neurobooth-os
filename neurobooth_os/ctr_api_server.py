@@ -15,6 +15,7 @@ from starlette.templating import Jinja2Templates
 
 from neurobooth_os import config
 from neurobooth_os.log_manager import make_db_logger
+from neurobooth_os.iout import marker_stream
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.main_control_rec as ctr_rec
 
@@ -72,6 +73,14 @@ app.add_middleware(
 )
 
 templates = Jinja2Templates(directory="templates")
+
+stm_server = '127.0.0.1'
+stm_port = 8084
+stm_http_conn = http.client.HTTPConnection(host=stm_server, port=stm_port)
+
+acq_server = '127.0.0.1'
+acq_port = 8083
+acq_http_conn = http.client.HTTPConnection(host=acq_server, port=acq_port)
 
 # TODO: Fix db connection validate config paths arg
 db_validate_paths = False
@@ -204,7 +213,16 @@ async def connect_data_capture_devices():
 @app.get("/terminate_servers", tags=['server operations'])
 async def terminate_servers():
     """Shut-down Neurobooth servers after the end of the current task (if any)"""
-    pass
+    # TODO: Queue request for deferred execution
+    headers = {'Content-type': 'application/json'}
+    stm_http_conn.request('GET', '/shut_down/', "", headers)
+    acq_http_conn.request('GET', '/shut_down/', "", headers)
+    stm_response = stm_http_conn.getresponse()
+    acq_response = acq_http_conn.getresponse()
+    print(stm_response.read().decode())
+    print(acq_response.read().decode())
+
+
 
 
 @app.get("/start_session", tags=['session operation'])
@@ -344,23 +362,35 @@ def _prepare_devices(nodes, collection_id, log_task, database):
 
 
 def send_prepare_request(log_sess, database_name):
-    server = '127.0.0.1'
-    port = 8084
+    print("Connecting devices")
+    # vidf_mrkr = marker_stream("videofiles")
+    vidf_mrkr = None
+
     collection_id = log_sess["collection_id"]
     subject_id = log_sess["subject_id"]
     session_id = log_sess["session_id"]
-    stm_http_conn = http.client.HTTPConnection(host=server, port=port)
 
     headers = {'Content-type': 'application/json'}
+    # nodes = ctr_rec._get_nodes(nodes)
 
+    print("Sending STM prepare message")
     stm_http_conn.request('GET', f'/prepare/{collection_id}'
                                  f'?database_name={database_name}'
                                  f'&subject_id={subject_id}'
                                  f'&session_id={session_id}', "", headers)
 
-    response = stm_http_conn.getresponse()
-    print(response.read().decode())
+    stm_response = stm_http_conn.getresponse()
+    print(f'STM response: {stm_response.read().decode()}')
 
+    print("Sending ACQ prepare message")
+    acq_http_conn.request('GET', f'/prepare/{collection_id}'
+                                 f'?database_name={database_name}'
+                                 f'&subject_id={subject_id}'
+                                 f'&session_id={session_id}', "", headers)
+    acq_response = acq_http_conn.getresponse()
+    print(f'ACQ response: {acq_response.read().decode()}')
+
+    return vidf_mrkr
 
 def _save_session_notes(sess_info, notes_task, notes):
     if not notes_task:

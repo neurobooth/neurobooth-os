@@ -8,6 +8,7 @@ from time import time
 from typing import Optional
 
 from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
 
 import neurobooth_os
 import neurobooth_os.iout.metadator as meta
@@ -76,13 +77,28 @@ app = FastAPI(
     tags_metadata=tags_metadata,
 )
 
+# TODO: Replace with appropriate URLs
+origins = [
+    "http://127.0.0.1",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:8082",
+]
 
-@app.get("/prepare/{sess_name}", tags=['session operation'])
-async def prepare(sess_name: str, subject_id: str, collection_id: str):
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/prepare/{collection_id}", tags=['session operation'])
+async def prepare(collection_id: str, database_name: str, subject_id: str, session_id: str):
     global system_resource_logger, logger, task_args, device_manager, session_name
 
-    logger.info(f'MESSAGE RECEIVED: prepare {sess_name}')
-    session_name = sess_name
+    logger.info(f'MESSAGE RECEIVED: prepare {session_id}')
+    session_name = session_id
 
     ses_folder = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name)
     if not os.path.exists(ses_folder):

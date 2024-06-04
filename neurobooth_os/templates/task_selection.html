@@ -1,8 +1,27 @@
-{% for task in tasks %}
-<div class="form-check" id="taskCheckboxDiv">
-    <input class="form-check-input task-check form-" type="checkbox" value="" id="check-{{task}}" checked>
-    <label class="form-check-label" for="check-{{task}}">
-        {{task}}
+<div class="form-check">
+    <input class="form-check-input" type="checkbox" id="check_all" checked>
+    <label class="form-check-label" id="checkbox_label" for="check_all">Select all
     </label>
 </div>
+<hr/>
+<div class="overflow-auto"  style="height:100px">
+{% for task in tasks %}
+        <div class="form-check" id="taskCheckboxDiv">
+            <input class="form-check-input task-check form-" type="checkbox" value="" id="check-{{task}}" checked>
+            <label class="form-check-label" for="check-{{task}}">
+                {{task}}
+            </label>
+        </div>
 {% endfor %}
+</div>
+
+<script lang="javascript">
+    // check/uncheck all tasks
+    // NOTE: this logic relies on the checkboxes having id values that start with "check-"
+    $("#check_all").click(function() {
+        check_bool = $("#check_all").is(':checked')
+        $("input[id^=check-]").prop('checked',  check_bool);
+    });
+
+
+</script>

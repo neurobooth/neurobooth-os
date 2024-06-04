@@ -1,6 +1,5 @@
 import logging
 import threading
-from neurobooth_os.iout import metadator as meta
 from neurobooth_os.iout.stim_param_reader import DeviceArgs, TaskArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 from typing import Any, Dict, List, Callable

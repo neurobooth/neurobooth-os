@@ -9,6 +9,7 @@ from collections import OrderedDict  # This import is required for eval
 
 from fastapi import FastAPI
 from psychopy import prefs
+from starlette.middleware.cors import CORSMiddleware
 
 import neurobooth_os
 import neurobooth_os.iout.metadator as meta
@@ -59,6 +60,22 @@ app = FastAPI(
     version="0.0.1",
     tags_metadata = tags_metadata,
 )
+
+# TODO: Replace with appropriate URLs
+origins = [
+    "http://127.0.0.1",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:8082",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # TODO: move to config file?
 prefs.hardware["audioLib"] = ["PTB"]

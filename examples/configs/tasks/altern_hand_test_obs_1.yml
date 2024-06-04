@@ -1,0 +1,14 @@
+task_id: altern_hand_test_obs_1
+feature_of_interest: motor
+stimulus_id: altern_hand_mov_task1
+instruction_id: alt_hand_1
+device_id_array:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+arg_parser: iout.stim_param_reader.py::RawTaskParams()
