@@ -178,6 +178,7 @@ class ClickInfo(NamedTuple):
 class TrialResult(NamedTuple):
     """Contains information about subject performance during the trial"""
     trial_type: str
+    trial_count: int
     n_circles: int
     n_targets: int
     n_correct: int
@@ -209,6 +210,7 @@ class TrialFrame(MOTFrame):
         super().__init__(window)
         self.task = task
         self._allow_clicks = True
+        self._log_results = True
 
         # Time-related properties of the stimulus
         self.flash_duration = trial_param.flash_duration
@@ -286,6 +288,8 @@ class TrialFrame(MOTFrame):
                 "click the dots that flashed."
             )
             self.result_status = 'timeout'
+            if self._log_results:
+                self.task.log_result(self.results())
             self.update_score(-sum([c.correct for c in self.click_info]))
             self.click_info = []
             self.run()  # Repeat the trial
@@ -293,6 +297,8 @@ class TrialFrame(MOTFrame):
 
         self.send_marker(self.end_marker)
         self.completed = True
+        if self._log_results:
+            self.task.log_result(self.results())
         wait(0.5)
 
     def send_marker(self, marker: str) -> None:
@@ -469,6 +475,7 @@ class TrialFrame(MOTFrame):
             click_duration=max([0, *[c.time for c in self.click_info]]),
             state='aborted' if not self.completed else self.result_status,
             trial_type=self.trial_type,
+            trial_count=self.trial_count,
         )
 
 
@@ -479,6 +486,7 @@ class ExampleFrame(TrialFrame):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._allow_clicks = False
+        self._log_results = False
 
         # Disable the message at the top/bottom of the stimulus area
         self.click_message = ''
@@ -502,6 +510,7 @@ class PracticeFrame(TrialFrame):
         :param max_attempts: The maximum number of practice attempts.
         """
         super().__init__(*args, **kwargs)
+        self._log_results = False  # This class will handle result logging after calling super.run()
 
         # Set a different message to display at the bottom of the stimulus area
         self.click_message = f'Click the {self.n_targets} dots that were cyan'
@@ -526,10 +535,12 @@ class PracticeFrame(TrialFrame):
             n_correct = sum([c.correct for c in self.click_info])
             if (n_correct < self.n_targets) and (i < self.max_attempts-1):
                 self.result_status = 'repeat'
+                self.task.log_result(self.results())
                 self.present_alert(
                     "Let's try again.\n"
                     f"When the movement stops, click the {self.n_targets} dots that flashed."
                 )
             else:
                 self.present_alert(f"You got {n_correct} of {self.n_targets} dots correct.")
+                self.task.log_result(self.results())
                 break
