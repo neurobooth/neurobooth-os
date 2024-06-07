@@ -258,6 +258,7 @@ class TrialFrame(MOTFrame):
         self.result_status: str = 'click'
 
     def run(self) -> None:
+        self.result_status = 'click'
         self.__current_message = self.animation_message
         self.send_marker(self.start_marker)
         self.send_marker(f"number targets:{self.n_targets}")

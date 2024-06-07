@@ -190,7 +190,13 @@ class MOT(Task_Eyetracker):
     @staticmethod
     def run_chunk(chunk: List[MOTFrame]) -> None:
         for frame in chunk:
-            frame.run()
+            try:
+                frame.run()
+            except TaskAborted as e:
+                # Log results for aborted frame, then propagate the exception
+                if isinstance(frame, (PracticeFrame, TrialFrame)):
+                    self.log_result(frame.results())
+                raise e
 
     def log_result(self, result: TrialResult):
         self.results.append(result)
