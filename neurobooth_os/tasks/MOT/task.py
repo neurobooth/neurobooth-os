@@ -187,8 +187,7 @@ class MOT(Task_Eyetracker):
         self.present_complete(last_task)
         return self.events
 
-    @staticmethod
-    def run_chunk(chunk: List[MOTFrame]) -> None:
+    def run_chunk(self, chunk: List[MOTFrame]) -> None:
         for frame in chunk:
             try:
                 frame.run()
