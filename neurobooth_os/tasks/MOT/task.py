@@ -85,6 +85,8 @@ class MOT(Task_Eyetracker):
         self.stimulus_params = [continue_message, practice_chunks, test_chunks]
         self._init_frame_sequence(*self.stimulus_params)
 
+        self.results: List[TrialResult] = []
+
     @classmethod
     def asset_path(cls, asset: Union[str, os.PathLike]) -> str:
         """
@@ -110,7 +112,8 @@ class MOT(Task_Eyetracker):
                 self.trial_count += 1
                 return TrialFrame(self.win, self, self.trial_count, params)
             elif params.trial_type == 'practice':
-                return PracticeFrame(self.win, self, 0, params)
+                self.trial_count += 1
+                return PracticeFrame(self.win, self, self.trial_count, params)
             elif params.trial_type == 'example':
                 return ExampleFrame(self.win, self, 0, params)
             else:
@@ -122,7 +125,7 @@ class MOT(Task_Eyetracker):
             raise MOTException(f'Unexpected frame parameter type: {type(params)}')
 
     def _create_chunk(self, chunk: FrameChunk) -> List[MOTFrame]:
-        self.trial_count = 0  # Keep track of how many test trial frames are in a chunk
+        self.trial_count = 0  # Keep track of how many test/practice trial frames are in a chunk
         return [self._create_frame(params) for params in chunk.frames]
 
     def _init_frame_sequence(
@@ -184,10 +187,18 @@ class MOT(Task_Eyetracker):
         self.present_complete(last_task)
         return self.events
 
-    @staticmethod
-    def run_chunk(chunk: List[MOTFrame]) -> None:
+    def run_chunk(self, chunk: List[MOTFrame]) -> None:
         for frame in chunk:
-            frame.run()
+            try:
+                frame.run()
+            except TaskAborted as e:
+                # Log results for aborted frame, then propagate the exception
+                if isinstance(frame, (PracticeFrame, TrialFrame)):
+                    self.log_result(frame.results())
+                raise e
+
+    def log_result(self, result: TrialResult):
+        self.results.append(result)
 
     @staticmethod
     def chunk_click_duration(chunk: List[MOTFrame]) -> float:
@@ -214,12 +225,7 @@ class MOT(Task_Eyetracker):
         self.task_files.append(fname)
 
     def save_results(self):
-        all_frames: List[MOTFrame] = [*chain(*self.practice_chunks), *chain(*self.test_chunks)]
-        results: List[TrialResult] = [
-            frame.results() for frame in all_frames
-            if isinstance(frame, TrialFrame) and frame.trial_type in ('test', 'practice')
-        ]
-        results_df = pd.DataFrame(results, columns=TrialResult._fields)
+        results_df = pd.DataFrame(self.results, columns=TrialResult._fields)
 
         test_results = results_df.loc[(results_df['trial_type'] == 'test') & (results_df['state'] == 'click')]
         total_targets = test_results['n_targets'].sum()
@@ -233,6 +239,8 @@ class MOT(Task_Eyetracker):
 
         self.save_csv(results_df, 'results')
         self.save_csv(outcome_df, 'outcomes')
+
+        self.results = []  # Clear log of results in case the task repeats!
 
 
 if __name__ == "__main__":
