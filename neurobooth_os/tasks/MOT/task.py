@@ -235,6 +235,8 @@ class MOT(Task_Eyetracker):
         self.save_csv(results_df, 'results')
         self.save_csv(outcome_df, 'outcomes')
 
+        self.results = []  # Clear log of results in case the task repeats!
+
 
 if __name__ == "__main__":
     from psychopy import monitors
