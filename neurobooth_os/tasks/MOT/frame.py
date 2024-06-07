@@ -259,6 +259,7 @@ class TrialFrame(MOTFrame):
 
     def run(self) -> None:
         self.result_status = 'click'
+        self.completed = False
         self.__current_message = self.animation_message
         self.send_marker(self.start_marker)
         self.send_marker(f"number targets:{self.n_targets}")
@@ -289,6 +290,7 @@ class TrialFrame(MOTFrame):
                 "click the dots that flashed."
             )
             self.result_status = 'timeout'
+            self.completed = True
             if self._log_results:
                 self.task.log_result(self.results())
             self.update_score(-sum([c.correct for c in self.click_info]))
