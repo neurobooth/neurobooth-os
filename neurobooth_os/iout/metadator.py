@@ -335,6 +335,7 @@ def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict: D
     # remap device entries to their log_device_param keys
     device_id_list = []
     for d in dict_vals["device_args"]:
+        print(f"Object is {d}")
         device_id_list.append(device_log_entry_dict[d['device_id']])
     log_task['log_device_ids'] = device_id_list
     del dict_vals['device_args']

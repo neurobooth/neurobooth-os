@@ -1,4 +1,5 @@
 import copy
+import json
 import logging
 import os
 import sys
@@ -96,15 +97,16 @@ calib_instructions = False
 
 
 @app.get("/prepare/{collection_id}", tags=["setup"])
-async def prepare_req(collection_id: str, database_name: str, subject_id: int, session_id: str):
+async def prepare_req(collection_id: str, database_name: str, subject_id: int, session_id: str, selected_tasks: List[str]):
     global session
     global task_log_entry
     global subj_id
+    global device_log_entry_dict
 
     logger.info(f'MESSAGE RECEIVED: Prepare for session {session_id} for {subject_id}')
     subj_id = subject_id
     session, task_log_entry = prepare_session(collection_id, database_name, subject_id, session_id, logger)
-    # initialize_presentation(session_id)
+    initialize_presentation(session_id, selected_tasks)
     return {"message": "Ready to handle tasks"}
 
 
@@ -137,11 +139,13 @@ async def present(task_id):
         task: Task = task_args.task_instance
 
         # task_list.append(task_args)
-        logger.info(task_args)
+        logger.debug(task_args)
         tsk_fun_obj: Callable = copy.copy(task_args.task_constructor_callable)  # callable for Task constructor
+        logger.debug(str(tsk_fun_obj))
         this_task_kwargs = create_task_kwargs(session, task_args)
+        logger.debug(this_task_kwargs)
         task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
-
+        logger.debug(f"Task instance created for {task_id}.")
         # Do not record if intro instructions
         if "intro_" in task_id or "pause_" in task_id:
             session.logger.debug(f"RUNNING PAUSE/INTRO (No Recording)")
@@ -276,26 +280,24 @@ def prepare_session(collection_id: str, database_name: str, subject_id, session_
     return stm_session, task_log_entry
 
 
-def initialize_presentation(session_id: str):
+def initialize_presentation(session_id: str, selected_tasks: List[str]):
 
     global device_log_entry_dict
 
     session.logger.info("Beginning Presentation")
     task_log_entry.log_session_id = session_id
 
-    # TODO: Move to device_log_entry_dict creation to CTR?
-    # tasks = tasks.split("-")
-    # task_list: List[TaskArgs] = []
-    # for task_id in tasks:
-    #     if task_id in session.tasks():
-    #         task_args: TaskArgs = _get_task_args(session, task_id)
-    #         task_list.append(task_args)
-    #         logger.info(task_args)
-    #         tsk_fun_obj: Callable = copy.copy(
-    #             task_args.task_constructor_callable)  # callable for Task constructor
-    #         this_task_kwargs = create_task_kwargs(session, task_args)
-    #         task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
-    # device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
+    task_list: List[TaskArgs] = []
+    for task_id in selected_tasks:
+         if task_id in session.tasks():
+             task_args: TaskArgs = _get_task_args(session, task_id)
+             task_list.append(task_args)
+             logger.info(task_args)
+             tsk_fun_obj: Callable = copy.copy(
+                 task_args.task_constructor_callable)  # callable for Task constructor
+             this_task_kwargs = create_task_kwargs(session, task_args)
+             task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
+    device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
     session.win = welcome_screen(win=session.win)
     reset_stdout()
 

@@ -57,9 +57,7 @@ s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 
 try:
-    logger.debug("Starting ACQ")
     os.chdir(neurobooth_os.__path__[0])
-
 except Exception as argument:
     logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                     exc_info=sys.exc_info())

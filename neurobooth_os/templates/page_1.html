@@ -11,12 +11,12 @@
     <h1>Neurobooth</h1>
     <div class="container" id="content-container">
         <form>
-        <div class="input-group mb-3">
-            <input type="text" class="form-control" id="subj_id_input" placeholder="Subject ID"
-                   aria-label="Subject's ID"
-                   autofocus="autofocus">
-            <button type="button" class="btn btn-primary" id="subj-search-btn">Search</button>
-        </div>
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" id="subj_id_input" placeholder="Subject ID"
+                       aria-label="Subject's ID"
+                       autofocus="autofocus">
+                <button type="button" class="btn btn-primary" id="subj-search-btn">Search</button>
+            </div>
         </form>
         <table class="table table-success" id="subject_table">
             <thead>
@@ -51,23 +51,21 @@
                 </select>
             </div>
             <div class="mb-3">
-        <form>
-            <div class="p-3 mb-3 bg-light" id="task_selection_div" >
-            </div>
-        </form>
-
-<!--                <label for="tasks_label" class="form-label">Tasks</label>-->
-<!--                <input type='text' class="form-control" id="tasks_label" readonly tabindex="-1">-->
+                <form>
+                    <div class="p-3 mb-3 bg-light" id="task_selection_div">
+                    </div>
+                </form>
             </div>
             <button type="button" class="btn btn-primary" id="continue_btn" disabled>Continue</button>
         </form>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-<script lang="javascript">
+<script>
 
     const $subj_table_body = $("#subject_table_body");
-    const $content_container =  $("#content-container");
+    const $content_container = $("#content-container");
     const $subj_id_input = $('#subj_id_input');
     const $subj_search_btn = $('#subj-search-btn');
     const $subj_table = $("#subject_table");
@@ -75,7 +73,7 @@
     const $study_select = $('#study_select');
     const $col_select = $("#collection_select");
     const $tasks_input = $('#tasks_label');
-    const $continue_btn= $('#continue_btn');
+    const $continue_btn = $('#continue_btn');
 
     $subj_table_body.empty();
 
@@ -88,8 +86,9 @@
             $continue_btn.prop("disabled", true);
         }
     }
+
     // On study option select event, populate and enable the collection list
-    $study_select.change(function() {
+    $study_select.change(function () {
         const selected_study = $(this).val()
         if (this.options[0].text == selected_study) {
             $col_select[0].selectedIndex = 0;
@@ -99,30 +98,32 @@
             return
         }
         $col_select.prop("disabled", false);
-        const col_url = 'http://127.0.0.1:8082/get_collections/'+selected_study;
+        const col_url = 'http://127.0.0.1:8082/get_collections/' + selected_study;
         $.ajax({
-        type: 'GET', url:col_url,
-        error: function(xhr) {
-            enable_save()
-            alert("An error occurred: " + xhr.status + " " + xhr.statusText);
-        },
-        success: function(response) {
-            const resp_json = JSON.parse(response);
-            const collections = resp_json[selected_study]
-            $col_select.empty();
-            for (const c of collections) {
-                $col_select.append(new Option(c, c));
+            type: 'GET', url: col_url,
+            error: function (xhr) {
+                enable_save()
+                alert("An error occurred: " + xhr.status + " " + xhr.statusText);
+            },
+            success: function (response) {
+                const resp_json = JSON.parse(response);
+                const collections = resp_json[selected_study]
+                $col_select.empty();
+                for (const c of collections) {
+                    $col_select.append(new Option(c, c));
+                }
+                enable_save()
             }
-            enable_save()
-    }});})
+        });
+    })
 
     // Handle change in staff id
-     $staff_id_input.change(function() {
+    $staff_id_input.change(function () {
         enable_save();
-     })
+    })
 
     // On collection option select event, populate and enable the tasks input
-    $col_select.change(function() {
+    $col_select.change(function () {
         const selected_col = $(this).val()
         if (this.options[0].text == selected_col) {
             $tasks_input.val("")
@@ -130,22 +131,25 @@
             return
         }
 
-        const task_url = 'http://127.0.0.1:8082/get_tasks/'+selected_col;
-    $.ajax({
-        type: 'GET', url:task_url,
-        error: function(xhr) {
-            enable_save()
-            alert("An error occurred: " + xhr.status + " " + xhr.statusText);
-        },
-        success: function(response) {
-            // const tasks = JSON.parse(response)[selected_col]
-            // $tasks_input.val(tasks.join(", "));
-            $("#task_selection_div").html(response);
-            enable_save();
-    }});})
+        const task_url = 'http://127.0.0.1:8082/get_tasks/' + selected_col;
+
+        $.ajax({
+            type: 'GET', url: task_url,
+            error: function (xhr) {
+                enable_save()
+                alert("An error occurred: " + xhr.status + " " + xhr.statusText);
+            },
+            success: function (response) {
+                // const tasks = JSON.parse(response)[selected_col]
+                // $tasks_input.val(tasks.join(", "));
+                $("#task_selection_div").html(response);
+                enable_save();
+            }
+        });
+    })
 
     // If user hits enter in subject input, click the search button
-    $subj_id_input.keypress(function(e) {
+    $subj_id_input.keypress(function (e) {
         if (e.which == 13) {
             jQuery(this).blur();
             $subj_search_btn.click();
@@ -154,60 +158,73 @@
     });
 
     // On continue button click, update session state and replace div with new content
-    $('#continue_btn').click(function() {
-        const continue_url = 'http://127.0.0.1:8082/save_session';
+    $('#continue_btn').click(function () {
+        const continue_url = 'http://127.0.0.1:8082/save_session/';
+        const tasks = [];
+        $('.task-check:checkbox:checked').each(function () {
+            if (this.id) {
+                tasks.push(this.id.replace("check-", ""));
+            }
+        });
 
+        console.log(tasks)
         const json_data = {}
         json_data['staff_id'] = $staff_id_input.val();
-        json_data['subj_id'] = $subj_id_input.val();
+        json_data['subject_id'] = $subj_id_input.val();
         json_data['study_id'] = $study_select.val();
         json_data['collection_id'] = $col_select.val();
-        $.ajax({
-            type: 'GET',
-            url:continue_url,
-            data: jQuery.param(json_data),
-            contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
-            success: function (response) {
-                $content_container.html(response);
+        json_data['selected_tasks'] = tasks
+        const json_body = JSON.stringify(json_data)
+        console.log(json_body)
+        axios.post(continue_url,
+            json_body, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log("success??")
+                console.log(response)
+                $content_container.html(response.data);
                 $("#notes-text-area").focus()
-            },
-            error: function(xhr) {
-                alert("An error occurred: " + xhr.status + " " + xhr.statusText);
-            }
+            })
+            .catch(error => {
+                console.error('Error:', error);
             });
-        });
+
+    });
 
 
     // On subject search button click, search for the subject id and populate table
     $subj_search_btn.click(function () {
         const s_id = $subj_id_input.val();
-        const subj_url = 'http://127.0.0.1:8082/get_subject/'+s_id;
+        const subj_url = 'http://127.0.0.1:8082/get_subject/' + s_id;
         $("#subject_table_body").empty();
-    $.ajax({
-        type: 'GET', url:subj_url,
-        error: function(xhr) {
-            if (xhr.status === 404) {
-                $subj_id_input.val('')
-                enable_save()
-                alert("Subject " + s_id + ' was not found.');
-            } else
-                $continue_btn.prop("disabled", false);
+        $.ajax({
+            type: 'GET', url: subj_url,
+            error: function (xhr) {
+                if (xhr.status === 404) {
+                    $subj_id_input.val('')
+                    enable_save()
+                    alert("Subject " + s_id + ' was not found.');
+                } else
+                    $continue_btn.prop("disabled", false);
                 alert("An error occurred: " + xhr.status + " " + xhr.statusText);
-        },
-        success: function(response) {
-            const json_response = JSON.parse(response);
-            $subj_table.find('tbody')
-            .append($('<tr>')
-                .append($('<td>').text(json_response.subject_id))
-                .append($('<td>').text(json_response.first_name_birth))
-                .append($('<td>').text(json_response.middle_name_birth))
-                .append($('<td>').text(json_response.last_name_birth))
-                .append($('<td>').text(json_response.date_of_birth.split('T')[0]))
-            );
-            $staff_id_input.focus()
-            enable_save();
-        }
-      })
+            },
+            success: function (response) {
+                const json_response = JSON.parse(response);
+                $subj_table.find('tbody')
+                    .append($('<tr>')
+                        .append($('<td>').text(json_response.subject_id))
+                        .append($('<td>').text(json_response.first_name_birth))
+                        .append($('<td>').text(json_response.middle_name_birth))
+                        .append($('<td>').text(json_response.last_name_birth))
+                        .append($('<td>').text(json_response.date_of_birth.split('T')[0]))
+                    );
+                $staff_id_input.focus()
+                enable_save();
+            }
+        })
     });
 
 

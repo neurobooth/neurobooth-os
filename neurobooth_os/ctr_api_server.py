@@ -2,15 +2,19 @@ import datetime
 import os
 import os.path as op
 import time
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict
+from queue import PriorityQueue
+from typing import Dict, List, Union
 import http.client
 import json
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel, ValidationError
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 from starlette.templating import Jinja2Templates
 
 from neurobooth_os import config
@@ -20,6 +24,13 @@ import neurobooth_os.iout.metadator as meta
 import neurobooth_os.main_control_rec as ctr_rec
 
 from neurobooth_os.netcomm import node_info, get_messages_to_ctr
+
+
+@dataclass(order=True)
+class PrioritizedTask:
+    priority: int
+    item: str = field(compare=False)
+
 
 api_title = "Neurobooth CTR API"
 api_description = """
@@ -73,6 +84,8 @@ app.add_middleware(
 )
 
 templates = Jinja2Templates(directory="templates")
+
+task_queue = PriorityQueue()
 
 stm_server = '127.0.0.1'
 stm_port = 8084
@@ -157,21 +170,42 @@ async def get_subject_by_id(subject_id: str):
         raise HTTPException(status_code=404, detail="Subject not found")
 
 
-@app.get("/save_session", tags=['session setup'])
-async def save_session_data(request: Request, staff_id: str, subj_id: str, study_id: str, collection_id: str):
+class Session(BaseModel):
+    staff_id: str
+    subject_id: str
+    study_id: str
+    collection_id: str
+    selected_tasks: List[str]
+
+
+@app.exception_handler(RequestValidationError)
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request, exc):
+    print(f"The client sent invalid data!: {request.body}")
+    print(f"The client sent invalid data!: {exc}")
+    exc_json = json.loads(exc.json())
+    response = {"message": [], "data": None}
+    for error in exc_json:
+        response['message'].append(f"{error['loc']}: {error['msg']}")
+
+    return JSONResponse(response, status_code=422)
+
+
+@app.post("/save_session", tags=['session setup'])
+async def save_session(request: Request, session: Session):
     """Saves the current session"""
-    log_sess['staff_id'] = staff_id
-    log_sess['subject_id'] = subj_id
-    log_sess['study_id'] = study_id
-    log_sess['collection_id'] = collection_id
-    tasks = _get_tasks(collection_id)
+    log_sess['staff_id'] = session.staff_id
+    log_sess['subject_id'] = session.subject_id
+    log_sess['study_id'] = session.study_id
+    log_sess['collection_id'] = session.collection_id
+    tasks = _get_tasks(session.collection_id)
     log_sess['tasks'] = tasks
+    log_sess['selected_tasks'] = session.selected_tasks
     result = _init_session_save()
-    # return f"'message': {result}"
     return templates.TemplateResponse("page_2.html", {
         'request': request,
-        'subject': subj_id,
-        'staff_id': staff_id,
+        'subject': session.subject_id,
+        'staff_id': session.staff_id,
         'tasks': tasks,
     })
 
@@ -223,20 +257,46 @@ async def terminate_servers():
     print(acq_response.read().decode())
 
 
+class Item(BaseModel):
+    name: str
+    description: Union[str, None] = None
+    price: float
+    tax: Union[float, None] = None
+
+
+@app.post("/items/")
+async def create_item(item: Item):
+    return item
 
 
 @app.get("/start_session", tags=['session operation'])
 async def start_session():
     """Starts a Neurobooth session, and begin presentation of stimuli to subjects. """
-    # Run time test against STM and ACQ
+    global task_queue
+    await run_round_trip_time_test()
+    dict = {"message": "session started, sorta"}
+    # using priority queue, execute all tasks
+
+    # build task queue
+    priority = 100
+    for task in log_sess['tasks']:
+        task_queue.put(PrioritizedTask(priority, task))
+        priority = priority + 1
+
+    for t in task_queue.queue:
+        send_present_request(t.item)
+    return json.dumps(dict)
+
+
+async def run_round_trip_time_test():
+    """ Run time test against STM and ACQ
+    """
     time_0 = time.time()
     # TODO: send requests
     # Send request to ACQ to STM
     time_1 = time.time()
     elapsed_time = time_1 - time_0
     logger.info(f'Round-trip time: {elapsed_time}')
-    dict = {"message": "session started, sorta"}
-    return json.dumps(dict)
 
 
 @app.get("/pause_session", tags=['session operation'])
@@ -288,6 +348,7 @@ def _get_tasks(collection_id: str):
 
 def _select_subject(window, subject_df):
     """Select subject from the DOB window"""
+
     subject = subject_df.iloc[window["dob"].get_indexes()]
     subject_id = subject.name
     first_name = subject["first_name_birth"]
@@ -318,9 +379,6 @@ def _start_servers(nodes):
 
 
 def _init_session_save():
-    # if not log_sess['tasks']:
-    #     return "No task combo"
-    # elif
     if log_sess['staff_id'] == "":
         return "No staff ID"
     else:
@@ -343,22 +401,17 @@ def _save_session():
     return log_sess
 
 
-def _prepare_devices(nodes, collection_id, log_task, database):
-    """Prepare devices"""
-    print("Connecting devices")
+def send_present_request(task_id):
+    print(f"Starting presentation for {task_id}")
 
-    # vidf_mrkr = marker_stream("videofiles")
-    # Create event to capture outlet_id
-    # window.write_event_value(
-    #     "-OUTLETID-", f"['{vidf_mrkr.name}', '{vidf_mrkr.oulet_id}']"
-    # )
+    headers = {'Content-type': 'application/json'}
 
-    nodes = ctr_rec._get_nodes(nodes)
-    # for node in nodes:
-    #     socket_message(f"prepare:{collection_id}:{database}:{str(log_task)}", node)
+    print("Sending STM present message")
+    stm_http_conn.request('GET', f'/present/{task_id}', "", headers)
 
-    # return vidf_mrkr, event, values
-    return None
+    stm_response = stm_http_conn.getresponse()
+    print(f'STM response: {stm_response.read().decode()}')
+    return f"Presented {task_id} Ok?"
 
 
 def send_prepare_request(log_sess, database_name):
@@ -369,6 +422,7 @@ def send_prepare_request(log_sess, database_name):
     collection_id = log_sess["collection_id"]
     subject_id = log_sess["subject_id"]
     session_id = log_sess["session_id"]
+    selected_tasks = log_sess["selected_tasks"]
 
     headers = {'Content-type': 'application/json'}
     # nodes = ctr_rec._get_nodes(nodes)
@@ -377,7 +431,8 @@ def send_prepare_request(log_sess, database_name):
     stm_http_conn.request('GET', f'/prepare/{collection_id}'
                                  f'?database_name={database_name}'
                                  f'&subject_id={subject_id}'
-                                 f'&session_id={session_id}', "", headers)
+                                 f'&session_id={session_id}',
+                                 f'&selected_tasks={selected_tasks}', "", headers)
 
     stm_response = stm_http_conn.getresponse()
     print(f'STM response: {stm_response.read().decode()}')
