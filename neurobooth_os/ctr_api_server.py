@@ -24,6 +24,7 @@ import neurobooth_os.iout.metadator as meta
 import neurobooth_os.main_control_rec as ctr_rec
 
 from neurobooth_os.netcomm import node_info, get_messages_to_ctr
+from neurobooth_os.msg.request import PrepareRequest
 
 
 @dataclass(order=True)
@@ -181,7 +182,6 @@ class Session(BaseModel):
 @app.exception_handler(RequestValidationError)
 @app.exception_handler(ValidationError)
 async def validation_exception_handler(request, exc):
-    print(f"The client sent invalid data!: {request.body}")
     print(f"The client sent invalid data!: {exc}")
     exc_json = json.loads(exc.json())
     response = {"message": [], "data": None}
@@ -373,6 +373,7 @@ def _start_servers(nodes):
     # # window["-init_servs-"].Update(button_color=("black", "red"))
     # ctr_rec.start_servers(nodes=nodes)
     # time.sleep(1)
+    print(log_sess)
     print("CTR started servers")
     # return event, values
     return None
@@ -395,9 +396,9 @@ def _save_session():
     """Save session."""
     now: str = datetime.now().strftime("%Y-%m-%d")
     log_task['subject_id'] = log_sess['subject_id']
-    log_task["subject_id-date"] = f'{log_sess["subject_id"]}_{now}'
+    log_task["subject_id-date"] = f'{log_sess["subject_id"]}_{log_sess["date"]}'
     log_sess["subject_id-date"] = log_task['subject_id-date']
-    log_sess["session_id"] = meta._make_session_id(conn, log_sess)
+    log_sess["session_id"] = int(meta._make_session_id(conn, log_sess))
     return log_sess
 
 
@@ -415,10 +416,20 @@ def send_present_request(task_id):
 
 
 def send_prepare_request(log_sess, database_name):
+
     print("Connecting devices")
+    print(json.dumps(log_sess))
     # vidf_mrkr = marker_stream("videofiles")
     vidf_mrkr = None
 
+    req = PrepareRequest(
+        database_name=database_name,
+        collection_id=log_sess["collection_id"],
+        subject_id=log_sess["subject_id"],
+        session_id=log_sess["session_id"],
+        selected_tasks=log_sess["selected_tasks"],
+        date=log_sess["date"]
+    )
     collection_id = log_sess["collection_id"]
     subject_id = log_sess["subject_id"]
     session_id = log_sess["session_id"]
@@ -428,12 +439,8 @@ def send_prepare_request(log_sess, database_name):
     # nodes = ctr_rec._get_nodes(nodes)
 
     print("Sending STM prepare message")
-    stm_http_conn.request('GET', f'/prepare/{collection_id}'
-                                 f'?database_name={database_name}'
-                                 f'&subject_id={subject_id}'
-                                 f'&session_id={session_id}',
-                                 f'&selected_tasks={selected_tasks}', "", headers)
 
+    stm_http_conn.request('POST', '/prepare/', req.model_dump_json(), headers)
     stm_response = stm_http_conn.getresponse()
     print(f'STM response: {stm_response.read().decode()}')
 

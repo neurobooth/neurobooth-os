@@ -1,12 +1,10 @@
 import copy
-import json
 import logging
 import os
 import sys
 from datetime import datetime, time
 from threading import Thread
 from typing import Optional, Dict, List, Callable
-from collections import OrderedDict  # This import is required for eval
 
 from fastapi import FastAPI
 from psychopy import prefs
@@ -19,13 +17,13 @@ import neurobooth_os.tasks.utils as utl
 from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.log_manager import make_db_logger
+from neurobooth_os.msg.request import PrepareRequest
 from neurobooth_os.netcomm import socket_message, NewStdout, get_data_with_timeout
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 from neurobooth_os.util.task_log_entry import TaskLogEntry
 from concurrent.futures import ThreadPoolExecutor, wait
-
 
 api_title = "Neurobooth STM API"
 api_description = """
@@ -59,7 +57,7 @@ app = FastAPI(
     description=api_description,
     summary="API for messaging to control the operation of the Neurobooth STM (stimulus) function.",
     version="0.0.1",
-    tags_metadata = tags_metadata,
+    tags_metadata=tags_metadata,
 )
 
 # TODO: Replace with appropriate URLs
@@ -70,13 +68,13 @@ origins = [
 ]
 
 app.add_middleware(
+
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # TODO: move to config file?
 prefs.hardware["audioLib"] = ["PTB"]
@@ -96,17 +94,16 @@ device_log_entry_dict: Optional[Dict] = None
 calib_instructions = False
 
 
-@app.get("/prepare/{collection_id}", tags=["setup"])
-async def prepare_req(collection_id: str, database_name: str, subject_id: int, session_id: str, selected_tasks: List[str]):
+@app.post("/prepare/", tags=["setup"])
+async def prepare_req(req: PrepareRequest):
     global session
     global task_log_entry
     global subj_id
     global device_log_entry_dict
 
-    logger.info(f'MESSAGE RECEIVED: Prepare for session {session_id} for {subject_id}')
-    subj_id = subject_id
-    session, task_log_entry = prepare_session(collection_id, database_name, subject_id, session_id, logger)
-    initialize_presentation(session_id, selected_tasks)
+    logger.info(f'MESSAGE RECEIVED: Prepare for session {req.session_id} for {req.subject_id}')
+    session, task_log_entry = prepare_session(req, logger)
+    initialize_presentation(req.session_id, req.selected_tasks)
     return {"message": "Ready to handle tasks"}
 
 
@@ -120,7 +117,6 @@ async def end_session_req():
 
 @app.get("/present/{task_id}", tags=['session operation'])
 async def present_req(task_id: str):
-
     await present(task_id)
 
     return {"message": f"Presenting task '{task_id}'"}
@@ -256,23 +252,46 @@ def server_exit():
     exit()
 
 
-def prepare_session(collection_id: str, database_name: str, subject_id, session_id, logger):
+def extract_task_log_entry(req: PrepareRequest):
+    """
+    Extracts and returns a dictionary containing info request,
+    which is a message from the controller.
+
+    Parameters
+    ----------
+    req: a PrepareRequest
+
+    Returns
+    -------
+        TaskLogEntry
+    """
+    log_entry = {
+        "log_session_id": req.session_id,
+        "subject_id_date": req.session_name(),
+        "subject_id": req.subject_id,
+        "task_id": "",
+        "log_task_id": "",
+        "task_notes_file": "",
+        "date_times": "",
+        "event_array": []
+    }
+    return TaskLogEntry(**log_entry)
+
+
+def prepare_session(req: PrepareRequest, logger):
+    global task_log_entry
     logger.info("Preparing STM for operation.")
-    logger.info(f"Database name is {database_name}.")
-    # task_log_entry = extract_task_log_entry(collection_id, None, database_name)
-    # subject_id: str = task_log_entry.subject_id
+    task_log_entry = extract_task_log_entry(req)
     stm_session = StmSession(
         logger=logger,
-        # session_name=task_log_entry.subject_id_date,
-        session_name=session_id,
-        collection_id=collection_id,
-        db_conn=meta.get_database_connection(database=database_name),
+        session_name=req.session_name(),
+        collection_id=req.collection_id,
+        db_conn=meta.get_database_connection(database=req.database_name),
     )
     #  TODO(larry): See about refactoring so we don't need to create a new logger here.
     #   (continued) We already have a db_logger, it just needs session attributes
-    stm_session.logger = make_db_logger(subject_id, stm_session.session_name)
-    stm_session.logger.info('LOGGER CREATED FOR SESSION')
-    print("UPDATOR:-Connect-")
+    stm_session.logger = make_db_logger(req.subject_id, stm_session.session_name)
+    stm_session.logger.info('Logger created for session')
 
     ##############################################################
     # Do the initial present work
@@ -280,75 +299,33 @@ def prepare_session(collection_id: str, database_name: str, subject_id, session_
     return stm_session, task_log_entry
 
 
-def initialize_presentation(session_id: str, selected_tasks: List[str]):
-
+def initialize_presentation(session_id: int, selected_tasks: List[str]):
     global device_log_entry_dict
+    global task_log_entry
+    global calib_instructions
 
-    session.logger.info("Beginning Presentation")
+    session.logger.info("Preparing for presentation")
     task_log_entry.log_session_id = session_id
 
     task_list: List[TaskArgs] = []
     for task_id in selected_tasks:
-         if task_id in session.tasks():
-             task_args: TaskArgs = _get_task_args(session, task_id)
-             task_list.append(task_args)
-             logger.info(task_args)
-             tsk_fun_obj: Callable = copy.copy(
-                 task_args.task_constructor_callable)  # callable for Task constructor
-             this_task_kwargs = create_task_kwargs(session, task_args)
-             task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
+        print(f"Preparing {task_id}.")
+        if "calibration_task" in task_id:
+            # Show calibration instruction video only the first time
+            # TODO set to false after calibration run
+            calib_instructions = True
+
+        if task_id in session.tasks():
+            task_args: TaskArgs = _get_task_args(session, task_id)
+            task_list.append(task_args)
+            logger.info(task_args)
+            tsk_fun_obj: Callable = copy.copy(task_args.task_constructor_callable)  # callable for Task constructor
+            this_task_kwargs = create_task_kwargs(session, task_args)
+            task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
+
     device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
+    print("log entry dict created")
     session.win = welcome_screen(win=session.win)
-    reset_stdout()
-
-    # TODO: Handle elsewhere
-    # task_calib = [t for t in tasks if "calibration_task" in t]
-    # # Show calibration instruction video only the first time
-    # calib_instructions = True
-
-#
-# # TODO: Move this to GUI
-# def extract_task_log_entry(collection_id: str, database_name: str):
-#     """
-#     Extracts and returns an object containing info encoded in the data argument,
-#     which is a message from the GUI.
-#     The other arguments are used simply to trim the rest of the message
-#
-#     Parameters
-#     ----------
-#     collection_id
-#     data
-#     database_name
-#
-#     Returns
-#     -------
-#         TaskLogEntry
-#     """
-#     # remove the first part of the msg
-#     log_entry = eval(
-#         data.replace(f"prepare:{collection_id}:{database_name}:", "")
-#     )
-#
-#     # type conversion
-#     if log_entry["log_session_id"]:
-#         log_entry["log_session_id"] = int(log_entry["log_session_id"])
-#     else:
-#         log_entry["log_session_id"] = None
-#
-#     # change name to be usable as an attribute name
-#     if log_entry["subject_id-date"]:
-#         log_entry["subject_id_date"] = log_entry["subject_id-date"]
-#         del log_entry["subject_id-date"]
-#
-#     return TaskLogEntry(**log_entry)
-
-
-def reset_stdout():
-    """When win is created, stdout pipe is reset to message the control node"""
-    if not hasattr(sys.stdout, "terminal"):
-        sys.stdout = NewStdout(
-            "STM", target_node="control", terminal_print=True
-        )
 
 
 def main():
@@ -416,7 +393,7 @@ def start_acq(calib_instructions, executor, session: StmSession, task_args: Task
         if "calibration_task" in stimulus_id:  # if not calibration record with start method
             this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
         else:
-            task_args.task_instance.render_image() # Render image on HostPC/Tablet screen
+            task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
             session.eye_tracker.start(fname)
     session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
     os.wait([acq_result])  # Wait for ACQ to finish

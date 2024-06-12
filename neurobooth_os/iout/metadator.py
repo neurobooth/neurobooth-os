@@ -66,9 +66,13 @@ def get_database_connection(database: Optional[str] = None, validate_config_path
     tunnel.start()
     host = tunnel.local_bind_host
     port = tunnel.local_bind_port
-
+    db = database_info.dbname if database is None else database
+    print(db)
+    print(host)
+    print(port)
+    print(database_info.user)
     conn = psycopg2.connect(
-        database=database_info.dbname if database is None else database,
+        database=db,
         user=database_info.user,
         password=database_info.password,
         host=host,
