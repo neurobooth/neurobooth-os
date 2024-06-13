@@ -91,7 +91,7 @@ class NewStdout:
         pass
 
 
-def get_client_messages(s1, port, host):
+def get_client_messages(s1: socket, port: int, host: str):
     """Create socket server and get messages from clients.
 
     Parameters
@@ -110,20 +110,14 @@ def get_client_messages(s1, port, host):
     conn : callable
         Socket connector for sending back data.
     """
-
     s1.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s1.bind((host, port))
-    print("socket bound to port", port)
-
-    # put the socket into listening mode
-    s1.listen(5)
-    print("socket is listening")
+    s1.listen(5)  # Put the socket into listening mode
 
     # Signal event to change init_serv button to green
     print("UPDATOR:-init_servs-")
 
-    # a forever loop until client wants to exit
-    while True:
+    while True:  # a forever loop until client wants to exit
 
         # establish connection with client
         try:
@@ -182,13 +176,12 @@ def get_messages_to_ctr(
     s.close()
 
 
-def get_data_timeout(s1, timeout=0.1):
+def get_data_with_timeout(s1: socket, timeout: float = 0.1):
     """Change socket timeout, get data, and remove timeout.
 
     Parameters
     ----------
-    s1 : callable
-        socket.socket instance
+    s1 : socket.socket instance
     timeout: float
         Time to wait for message
     """

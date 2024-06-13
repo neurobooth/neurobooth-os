@@ -16,8 +16,9 @@ from enum import IntEnum
 from hashlib import md5
 from base64 import b64decode
 
+from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.iout.usbmux import USBMux
-
+from neurobooth_os.log_manager import APP_LOG_NAME
 
 # --------------------------------------------------------------------------------
 # Module-level constants and debugging flags
@@ -184,19 +185,20 @@ class IPhone:
     MESSAGE_TYPES = set(MESSAGE_TYPES)
     MESSAGE_KEYS = {"MessageType", "SessionID", "TimeStamp", "Message"}
 
-    def __init__(self, name, sess_id="", mock=False, device_id="", sensor_ids=("",), enable_timeout_exceptions=False):
+    def __init__(self, name, sess_id="", mock=False, device_args: DeviceArgs = None, enable_timeout_exceptions=False):
         self.connected = False
         self.tag = 0
         self.iphone_sessionID = sess_id
         self.name = name
         self.mock = mock
-        self.device_id = device_id
-        self.sensor_ids = sensor_ids
+        if not DISABLE_LSL:  # Device and sensor IDs are only needed if streaming data to LSL.
+            self.device_id = device_args.device_id
+            self.sensor_ids = device_args.sensor_ids
         self.enable_timeout_exceptions = enable_timeout_exceptions
         self.streaming = False
         self.streamName = "IPhoneFrameIndex"
         self.outlet_id = str(uuid.uuid4())
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger(APP_LOG_NAME)
 
         # --------------------------------------------------------------------------------
         # Lock-based threading objects and their associated protected data
@@ -820,7 +822,7 @@ class IPhoneListeningThread(threading.Thread):
     def __init__(self, iphone: IPhone):
         self._iphone = iphone
         self._running = True
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger(APP_LOG_NAME)
         threading.Thread.__init__(self)
 
     def run(self):
@@ -863,7 +865,7 @@ class IPhoneListeningThread(threading.Thread):
 def test_script():
     args = script_parse_args()
     script_capture_data(args.subject_id, args.recording_folder, args.duration)
-    script_results(args.subject_id, args.show_plots)
+    script_results(args.recording_folder, args.subject_id, args.show_plots)
 
 
 def script_parse_args() -> argparse.Namespace:
@@ -913,7 +915,17 @@ def script_parse_args() -> argparse.Namespace:
 
 
 def script_capture_data(subject_id: str, recording_folder: str, capture_duration: int) -> None:
-    iphone = IPhone("iphone")
+    dev_args = DeviceArgs(
+        ENV_devices={'IPhone_dev_1': {}},
+        device_id='IPhone_dev_1',
+        device_name='IPhone',
+        wearable_bool=False,
+        sensor_ids=['IPhone_sens_1'],
+        sensor_array=[],  # The sensor array and arg parser are not needed by the test script
+        arg_parser='',
+    )
+
+    iphone = IPhone("IPhone", device_args=dev_args)
     default_config: CONFIG = {
         "NOTIFYONFRAME": "1",
         "VIDEOQUALITY": "1920x1080",
@@ -946,12 +958,13 @@ def script_capture_data(subject_id: str, recording_folder: str, capture_duration
     iphone.disconnect()
 
 
-def script_results(subject_id: str, show_plots: bool) -> None:
+def script_results(recording_folder: str, subject_id: str, show_plots: bool) -> None:
     import pyxdf
     import glob
     import numpy as np
 
-    fname = glob.glob(f"{subject_id}/recording_R0*.xdf")[-1]
+    path = op.join(recording_folder, subject_id, 'recording_R0*.xdf')
+    fname = glob.glob(path)[-1]
     data, header = pyxdf.load_xdf(fname)
 
     ts = data[0]["time_series"]
@@ -960,7 +973,8 @@ def script_results(subject_id: str, show_plots: bool) -> None:
 
     df_pc = np.diff(ts_pc)
     df_ip = np.diff(ts_ip)
-    print(f"mean diff diff: {np.mean(np.abs(df_pc[1:] - df_ip[1:]))}")
+    print(f"mean diff diff: {np.mean(np.abs(df_pc[1:] - df_ip[1:])) * 1e3:.3f} ms")
+    print(f"effective sample rate: {1/np.mean(df_ip):.1f} fps")
 
     if show_plots:
         import matplotlib.pyplot as plt

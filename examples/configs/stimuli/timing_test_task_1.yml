@@ -1,0 +1,19 @@
+stimulus_id: timing_test_task_1
+stimulus_description: test audio-video synch
+arg_parser: iout.stim_param_reader.py::TimingTestStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.test_timing.saccades_sounds.py::Saccade_synch()
+
+# Visual stimulus properties
+monochrome: True  # G->R->G->B or Black->White? B/W seems to work better for automated timing tests.
+target_size: 0.7
+
+# Audio stimulus properties
+tone_freq: 1000
+tone_duration: 0.1
+
+# Timing properties.
+wait_center:  1
+num_iterations: 10  # Each iteration consists of four transitions.
+
+duration: null

@@ -1,0 +1,121 @@
+stimulus_id: MOT_task_1
+stimulus_description: multiple object tracking
+num_iterations: 1
+duration: null
+arg_parser: tasks.MOT.task.py::MotStimArgs()
+stimulus_file_type: psychopy
+stimulus_file: tasks.MOT.task.py::MOT()
+task_repeatable_by_subject: false
+continue_message: continue.png
+chunk_timeout_sec: 120  # Abort remaining chunks if click time in a given chunk exceeds this threshold
+
+################################################################################
+# MOT is composed of a sequence of "frames", each of which either displays an
+# image or runs a trial. Frames are grouped into chunks. If early stopping is
+# enabled, subsequent chunks will not be run if a previous chunk takes too long
+# to complete. The below configuration defines these chunks and frames.
+################################################################################
+
+practice_chunks:  # Task instructions and practice parameters
+  - chunk_name: practice
+    frames:
+      - image_path: intro.png
+      - image_path: inst1.png
+      - trial_type: example
+        animation_path: example_trial_00_2tgt.npz
+        n_targets: 2
+        movement_duration: 3
+
+      - image_path: inst2.png
+      - trial_type: practice
+        animation_path: practice_trial_01_2tgt.npz
+        n_targets: 2
+        movement_duration: 3
+
+      - image_path: inst3.png
+      - trial_type: practice
+        animation_path: practice_trial_02_3tgt.npz
+        n_targets: 3
+        movement_duration: 3
+
+test_chunks:  # Test parameters
+  - chunk_name: 3-target
+    frames:
+      - image_path: targ3.png
+      - trial_type: test
+        animation_path: trial_03_3tgt.npz
+        n_targets: 3
+
+      - trial_type: test
+        animation_path: trial_04_3tgt.npz
+        n_targets: 3
+
+      - trial_type: test
+        animation_path: trial_05_3tgt.npz
+        n_targets: 3
+
+      - trial_type: test
+        animation_path: trial_06_3tgt.npz
+        n_targets: 3
+
+      - trial_type: test
+        animation_path: trial_07_3tgt.npz
+        n_targets: 3
+
+      - trial_type: test
+        animation_path: trial_08_3tgt.npz
+        n_targets: 3
+
+  - chunk_name: 4-target
+    frames:
+      - image_path: targ4.png
+      - trial_type: test
+        animation_path: trial_09_4tgt.npz
+        n_targets: 4
+
+      - trial_type: test
+        animation_path: trial_10_4tgt.npz
+        n_targets: 4
+
+      - trial_type: test
+        animation_path: trial_11_4tgt.npz
+        n_targets: 4
+
+      - trial_type: test
+        animation_path: trial_12_4tgt.npz
+        n_targets: 4
+
+      - trial_type: test
+        animation_path: trial_13_4tgt.npz
+        n_targets: 4
+
+      - trial_type: test
+        animation_path: trial_14_4tgt.npz
+        n_targets: 4
+
+  - chunk_name: 5-target
+    frames:
+      - image_path: targ5.png
+      - trial_type: test
+        animation_path: trial_15_5tgt.npz
+        n_targets: 5
+
+      - trial_type: test
+        animation_path: trial_16_5tgt.npz
+        n_targets: 5
+
+      - trial_type: test
+        animation_path: trial_17_5tgt.npz
+        n_targets: 5
+
+      - trial_type: test
+        animation_path: trial_18_5tgt.npz
+        n_targets: 5
+
+      - trial_type: test
+        animation_path: trial_19_5tgt.npz
+        n_targets: 5
+
+      - trial_type: test
+        animation_path: trial_20_5tgt_corrected.npz
+        n_targets: 5

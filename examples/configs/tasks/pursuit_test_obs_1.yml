@@ -1,0 +1,9 @@
+task_id: pursuit_test_obs_1
+feature_of_interest: eye movement
+stimulus_id: pursuit_task_1
+instruction_id: null
+device_id_array:
+- FLIR_blackfly_1
+- Eyelink_1
+- IPhone_dev_1
+arg_parser: iout.stim_param_reader.py::RawTaskParams()

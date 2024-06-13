@@ -1,0 +1,6 @@
+sensor_id: Intel_D455_depth_1
+sample_rate: 60
+width_px: 640
+height_px: 480
+file_type: bag
+arg_parser: iout.stim_param_reader.py::IntelSensorArgs()

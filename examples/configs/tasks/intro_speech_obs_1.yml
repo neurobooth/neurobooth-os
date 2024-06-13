@@ -1,0 +1,7 @@
+task_id: intro_speech_obs_1
+feature_of_interest: intro
+stimulus_id: intro_speech_task_1
+instruction_id: intro_speech_1
+device_id_array:
+- Intel_D455_1
+arg_parser: iout.stim_param_reader.py::RawTaskParams()

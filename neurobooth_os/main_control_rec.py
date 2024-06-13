@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Mar 25 12:46:08 2021
-
-@author: neurobooth
 """
 
-# from registration import get_session_info
 import os
 import socket
 import time
@@ -40,26 +36,6 @@ def start_servers(nodes=("acquisition", "presentation")):
     nodes = _get_nodes(nodes)
     for node in nodes:
         start_server(node)
-
-
-def prepare_feedback(nodes=("acquisition", "presentation")):
-    nodes = _get_nodes(nodes)
-    for node in nodes:
-        if node.startswith("acq"):
-            msg = "vis_stream"
-        elif node.startswith("pres"):
-            msg = "scr_stream"
-        else:
-            return
-    socket_message(msg, node)
-
-
-def prepare_devices(collection_id="mvp_025", nodes=("acquisition", "presentation")):
-    # prepares devices, collection_id can be just colletion name but also
-    # "collection_id:str(log_task)"
-    nodes = _get_nodes(nodes)
-    for node in nodes:
-        socket_message(f"prepare:{collection_id}", node)
 
 
 def shut_all(nodes=("acquisition", "presentation")):
@@ -105,27 +81,3 @@ def test_lan_delay(n=100, nodes=("acquisition", "presentation")):
     ]
 
     return times_2w, times_1w
-
-
-def initiate_labRec():
-    # Start LabRecorder
-    if "LabRecorder.exe" not in (p.name() for p in psutil.process_iter()):
-        os.startfile(config.neurobooth_config["LabRecorder"])
-
-    time.sleep(0.05)
-    s = socket.create_connection(("localhost", 22345))
-    s.sendall(b"select all\n")
-    s.close()
-
-
-if 0:
-    pid = start_server("acquisition")
-
-    t2w, t1w = test_lan_delay(100)
-
-    socket_message("connect_mbient", "acquisition")
-    socket_message("shutdown", "acquisition")
-
-    prepare_feedback()
-
-    prepare_devices()

@@ -1,4 +1,5 @@
 import neurobooth_os.iout.iphone as iphone
+from neurobooth_os.iout.lsl_streamer import get_device_assignment
 import neurobooth_os.config as cfg
 import re
 import os
@@ -6,9 +7,10 @@ import os.path as op
 import datetime
 import logging
 from typing import Optional
-from neurobooth_os.log_manager import make_default_logger
+from neurobooth_os.log_manager import make_db_logger, APP_LOG_NAME
 import argparse
 import sys
+from tqdm import tqdm
 
 
 class TimeoutException(Exception):
@@ -25,8 +27,8 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
     args
         Command line arguments.
     """
-    session_root = cfg.neurobooth_config[args.server]["local_data_dir"]
-    logger = logging.getLogger('default')
+    logger = logging.getLogger(APP_LOG_NAME)
+    session_root = cfg.neurobooth_config.current_server().local_data_dir
     logger.debug(f'Session Root: {session_root}')
 
     # Connect to the iPhone
@@ -47,6 +49,7 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
     logger.debug(f'{len(file_names)} files to transfer: {str(file_names)}')
 
     # Try to extract and save each file
+    file_names = tqdm(file_names, unit='file', desc='iPhone File Transfer')  # This wrapper creates a progress bar
     for file_name, file_hash in zip(file_names, file_hashes):
         # Parse the session folder out of the file name
         sess_name = re.findall("[0-9]*_[0-9]{4}-[0-9]{2}-[0-9]{2}", file_name)
@@ -105,7 +108,7 @@ def dump_file(
     delete_zero_byte
         If true, delete files from the iPhone if no data is observed.
     """
-    logger = logging.getLogger('default')
+    logger = logging.getLogger(APP_LOG_NAME)
     if op.exists(file_name_out):  # Do not overwrite a file that already exists
         logger.error(f'Cannot write {file_name_out} as it already exists!')
         return
@@ -131,7 +134,7 @@ def dump_file(
 
 
 def parse_arguments() -> argparse.Namespace:
-    logger = logging.getLogger('default')
+    logger = logging.getLogger(APP_LOG_NAME)
     parser = argparse.ArgumentParser(description='Download and save all files on the iPhone (both .json and .MOV).')
     parser.add_argument(
         '--delete-zero-byte',
@@ -143,12 +146,6 @@ def parse_arguments() -> argparse.Namespace:
         default=600,
         type=int,
         help='Specify a timeout (in seconds) for each file retrieval. Default is 10 min. No timeout if <= 0.'
-    )
-    parser.add_argument(
-        '--server',
-        default='acquisition',
-        type=str,
-        help='Specify the server to run on so the proper value of local_data_dir is used. Default is "acquisition".'
     )
     args = parser.parse_args()
 
@@ -166,9 +163,16 @@ def parse_arguments() -> argparse.Namespace:
 
 def main():
     cfg.load_config()
-    logger = make_default_logger()
+    logger = make_db_logger()
     iphone.DISABLE_LSL = True
 
+    # Check if we should be running the dump on this machine.
+    server_name = cfg.get_server_name_from_env()
+    if get_device_assignment('IPhone_dev_1') != server_name:
+        logger.debug(f'IPhone not assigned to {server_name}.')
+        return
+
+    # Run and time the dump.
     args = parse_arguments()
     t0 = datetime.datetime.now()
     logger.info('Running Dump')
@@ -180,7 +184,9 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        logger = logging.getLogger("default")
+        logger = logging.getLogger(APP_LOG_NAME)
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(e)}")
         logger.critical(e, exc_info=sys.exc_info())
         raise
+    finally:
+        logging.shutdown()

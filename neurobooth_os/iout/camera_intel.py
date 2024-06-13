@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Mar 29 10:46:13 2021
-
-@author: adonay
+    Wrapper around intel camera library
 """
 import os.path as op
 from time import time
@@ -15,7 +13,9 @@ from pylsl import local_clock
 import pyrealsense2 as rs
 from pylsl import StreamInfo, StreamOutlet
 
+from neurobooth_os.iout.stim_param_reader import IntelDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+from neurobooth_os.log_manager import APP_LOG_NAME
 
 warnings.filterwarnings("ignore")
 
@@ -28,53 +28,43 @@ class RealSenseException(Exception):
 class VidRec_Intel:
     def __init__(
         self,
-        size_rgb=(640, 480),
-        size_depth=(640, 360),
-        device_id="Intel_D455_1",
-        sensor_ids=["Intel_D455_rgb_1", "Intel_D455_depth_1"],
-        fps_rgb=60,
-        fps_depth=60,
-        camindex=[3, "SerialNumber"],
+        device_args: IntelDeviceArgs
     ):
-
+        self.device_args = device_args
         self.open = True
         self.recording = threading.Event()
         self.record_stopped_flag = threading.Event()
         self.recording.clear()
         self.video_thread = None
 
-        self.device_index = camindex[0]
-        self.serial_num = camindex[1]
-        self.fps = (fps_rgb, fps_depth)
-        self.frameSize = (size_rgb, size_depth)
-        self.device_id = device_id
-        self.sensor_ids = sensor_ids
+        self.device_index = int(device_args.device_id[-1])
+        self.serial_num = device_args.device_sn
         self.config = rs.config()
         self.config.enable_device(self.serial_num)
         self.pipeline = rs.pipeline()
 
         self.config.enable_stream(
             rs.stream.color,
-            self.frameSize[0][0],
-            self.frameSize[0][1],
+            self.device_args.framesize()[0][0],
+            self.device_args.framesize()[0][1],
             rs.format.rgb8,
-            self.fps[0],
+            self.device_args.sample_rate()[0],
         )
 
-        if fps_depth:
+        if device_args.has_depth_sensor():
             self.config.enable_stream(
                 rs.stream.depth,
-                self.frameSize[1][0],
-                self.frameSize[1][1],
+                self.device_args.framesize()[1][0],
+                self.device_args.framesize()[1][1],
                 rs.format.z16,
-                self.fps[1],
+                self.device_args.sample_rate()[1],
             )
 
         self.outlet = self.createOutlet()
 
-        self.logger = logging.getLogger('session')
+        self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(
-            f'RealSense [{self.device_index}] ({self.serial_num}): fps={str(self.fps)}; frame_size={str(self.frameSize)}'
+            f'RealSense [{self.device_index}] ({self.serial_num}): fps={str(self.device_args.sample_rate())}; frame_size={str(self.device_args.framesize())}'
         )
 
     def start(self, name="temp_video"):
@@ -107,8 +97,8 @@ class VidRec_Intel:
                 channel_count=4,
                 source_id=self.outlet_id,
             ),
-            device_id=self.device_id,
-            sensor_ids=self.sensor_ids,
+            device_id=self.device_args.device_id,
+            sensor_ids=self.device_args.sensor_ids,
             data_version=DataVersion(1, 0),
             columns=['FrameNum', 'FrameNum_RealSense', 'Time_RealSense', 'Time_ACQ'],
             column_desc={
@@ -118,10 +108,10 @@ class VidRec_Intel:
                 'Time_ACQ': 'Local machine timestamp (s)',
             },
             serial_number=self.serial_num,
-            size_rgb=str(self.frameSize[0]),
-            size_depth=str(self.frameSize[1]),
-            fps_rgb=str(self.fps[0]),
-            fps_depth=str(self.fps[1]),
+            size_rgb=str(self.device_args.framesize()[0]),
+            size_depth=str(self.device_args.framesize()[1]),
+            fps_rgb=str(self.device_args.sample_rate()[0]),
+            fps_depth=str(self.device_args.sample_rate()[1]),
         )
         print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
         return StreamOutlet(info)

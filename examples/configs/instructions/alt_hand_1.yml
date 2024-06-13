@@ -1,0 +1,5 @@
+instruction_id: alt_hand_1
+instruction_text: null
+instruction_filetype: null
+instruction_file: motor_Rapid Alternating Hand Movements_2021_11_09_v0.4.mp4
+arg_parser: iout.stim_param_reader.py::InstructionArgs()

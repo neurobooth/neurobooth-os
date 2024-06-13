@@ -14,7 +14,6 @@ from neurobooth_os.iout import metadator as meta
 from neurobooth_terra import Table
 import neurobooth_os.config as cfg
 
-
 # This file keeps track of XDF files that have yet to be split
 DONT_SPLIT_FILENAME = "split_tohdf5.csv"
 
@@ -51,10 +50,7 @@ def split_sens_files(
 
     t0 = time.time()
     xdf_path = os.path.join(folder, fname)
-    if conn is not None:
-        _, device_ids, _, _ = meta._get_task_param(task_id, conn)
-    else:
-        device_ids = None
+    device_ids = meta.get_device_ids(task_id)
 
     # Read XDF file
     device_data = _parse_xdf(xdf_path, device_ids)
@@ -288,8 +284,8 @@ def create_h5_from_csv(
             if not os.path.exists(row[0]):
                 xdf_path = xdf_path.replace('\\', '/')
                 xdf_path = xdf_path.replace(
-                    cfg.neurobooth_config[server_name]["local_data_dir"][:-1],
-                    cfg.neurobooth_config["remote_data_dir"]
+                    cfg.neurobooth_config.server_by_name(server_name).local_data_dir[:-1],
+                    cfg.neurobooth_config.remote_data_dir
                 )
 
             out = split_sens_files(xdf_path, task_id=task_id, conn=conn)
