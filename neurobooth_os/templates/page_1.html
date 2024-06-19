@@ -167,7 +167,6 @@
             }
         });
 
-        console.log(tasks)
         const json_data = {}
         json_data['staff_id'] = $staff_id_input.val();
         json_data['subject_id'] = $subj_id_input.val();
@@ -175,7 +174,6 @@
         json_data['collection_id'] = $col_select.val();
         json_data['selected_tasks'] = tasks
         const json_body = JSON.stringify(json_data)
-        console.log(json_body)
         axios.post(continue_url,
             json_body, {
                 headers: {

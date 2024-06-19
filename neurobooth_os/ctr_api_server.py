@@ -5,11 +5,12 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from queue import PriorityQueue
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 import http.client
 import json
 
-from fastapi import FastAPI, HTTPException, Query
+import liesl
+from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ValidationError
 from starlette.middleware.cors import CORSMiddleware
@@ -21,10 +22,10 @@ from neurobooth_os import config
 from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.iout.metadator as meta
-import neurobooth_os.main_control_rec as ctr_rec
+# import neurobooth_os.main_control_rec as ctr_rec
 
-from neurobooth_os.netcomm import node_info, get_messages_to_ctr
-from neurobooth_os.msg.request import PrepareRequest
+from neurobooth_os.netcomm import node_info
+from neurobooth_os.msg.request import PrepareRequest, TaskInfo
 
 
 @dataclass(order=True)
@@ -105,8 +106,11 @@ logger = make_db_logger()
 logger.debug("Starting CTR")
 log_sess: Dict = meta._new_session_log_dict()
 log_task: Dict = meta._new_tech_log_dict()
-stream_ids, inlets = {}, {}
-plot_elem, inlet_keys = [], []
+stream_ids: Dict = {}
+inlets: Dict = {}
+plot_elem: List = []
+inlet_keys: []
+session: Optional[liesl.Session]
 
 
 def _get_ports():
@@ -257,6 +261,16 @@ async def terminate_servers():
     print(acq_response.read().decode())
 
 
+def _start_lsl_session(folder=""):
+    global session
+    # Create LSL session
+    stream_args = [{"name": n} for n in list(inlets)]
+    session = liesl.Session(
+        prefix=folder, streamargs=stream_args, mainfolder=config.neurobooth_config.control.local_data_dir
+    )
+    print("LSL session with: ", list(inlets))
+    return session
+
 class Item(BaseModel):
     name: str
     description: Union[str, None] = None
@@ -284,9 +298,36 @@ async def start_session():
         priority = priority + 1
 
     for t in task_queue.queue:
-        send_present_request(t.item)
+        task_info: TaskInfo = send_task_create_request(t.item)
+        rec_fname = _record_lsl(
+            log_sess["subject_id_date"],
+            task_info.stimulus_id,
+            t.item.name,
+            task_info.log_task_id,
+            task_info.task_start_time,
+        )
+        lsl_result_msg = send_lsl_recording_msg(t.item)
+        # TODO: Stop LSL Recording
+
     return json.dumps(dict)
 
+
+def _record_lsl(
+    subject_id,
+    stim_id,
+    task_id,
+    obs_log_id,
+    task_start_time,
+):
+
+    print(
+        f"task initiated: task_id {stim_id}, t_obs_id {task_id}, obs_log_id :{obs_log_id}"
+    )
+
+    # Start LSL recording
+    rec_fname = f"{subject_id}_{task_start_time}_{task_id}"
+    session.start_recording(rec_fname)
+    return rec_fname
 
 async def run_round_trip_time_test():
     """ Run time test against STM and ACQ
@@ -402,25 +443,44 @@ def _save_session():
     return log_sess
 
 
-def send_present_request(task_id):
+def send_lsl_recording_msg(task_id):
+    global stm_http_conn
+    print(f"LSL recording for {task_id}")
+
+    headers = {'Content-type': 'application/json'}
+
+    print("Sending STM LSL Recording message")
+    stm_http_conn = http.client.HTTPConnection(host=stm_server, port=stm_port)
+    stm_http_conn.request('GET', f'/lsl_recording/{task_id}', "", headers)
+
+    stm_response = stm_http_conn.getresponse()
+    stm_response_msg = stm_response.read().decode()
+    print(f'STM response: {stm_response_msg}')
+    return f"Task {task_id} was created. Check the response"
+
+
+def send_task_create_request(task_id) -> TaskInfo:
+    global stm_http_conn
     print(f"Starting presentation for {task_id}")
 
     headers = {'Content-type': 'application/json'}
 
-    print("Sending STM present message")
-    stm_http_conn.request('GET', f'/present/{task_id}', "", headers)
+    print("Sending STM create task message")
+    stm_http_conn = http.client.HTTPConnection(host=stm_server, port=stm_port)
+    stm_http_conn.request('GET', f'/create/{task_id}', "", headers)
 
     stm_response = stm_http_conn.getresponse()
-    print(f'STM response: {stm_response.read().decode()}')
-    return f"Presented {task_id} Ok?"
+    stm_response_msg = stm_response.read().decode()
+    task_info_json: Dict = json.loads(stm_response_msg)
+    task_info = TaskInfo(**task_info_json)
+    return task_info
 
 
 def send_prepare_request(log_sess, database_name):
 
     print("Connecting devices")
     print(json.dumps(log_sess))
-    # vidf_mrkr = marker_stream("videofiles")
-    vidf_mrkr = None
+    vidf_mrkr = marker_stream("videofiles")
 
     req = PrepareRequest(
         database_name=database_name,
