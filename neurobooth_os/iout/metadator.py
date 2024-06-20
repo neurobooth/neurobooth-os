@@ -67,10 +67,6 @@ def get_database_connection(database: Optional[str] = None, validate_config_path
     host = tunnel.local_bind_host
     port = tunnel.local_bind_port
     db = database_info.dbname if database is None else database
-    print(db)
-    print(host)
-    print(port)
-    print(database_info.user)
     conn = psycopg2.connect(
         database=db,
         user=database_info.user,
@@ -339,7 +335,6 @@ def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict: D
     # remap device entries to their log_device_param keys
     device_id_list = []
     for d in dict_vals["device_args"]:
-        print(f"Object is {d}")
         device_id_list.append(device_log_entry_dict[d['device_id']])
     log_task['log_device_ids'] = device_id_list
     del dict_vals['device_args']

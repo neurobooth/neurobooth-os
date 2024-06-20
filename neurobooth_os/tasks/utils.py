@@ -102,21 +102,15 @@ def present(
     waitKeys=True,
     first_screen=False,
 ):
-    print("In utl.present()")
     win.color = win_color
-    print(screen)
     if screen is not None:
         screen.draw()
         win.flip()
         if first_screen:
-            print("in utl.present, before get keys")
             get_keys()
-    print(audio)
     if audio is not None:
         audio.play()
-    print(wait_time)
     countdown(wait_time)
-    print("about to get get_keys")
     if waitKeys:
         get_keys()
 

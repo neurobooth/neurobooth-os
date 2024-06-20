@@ -1,4 +1,5 @@
 import copy
+import http.client
 import logging
 import os
 import sys
@@ -19,12 +20,11 @@ from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.msg.request import PrepareRequest, TaskInfo
-from neurobooth_os.netcomm import socket_message, NewStdout
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 from neurobooth_os.util.task_log_entry import TaskLogEntry
-from concurrent.futures import ThreadPoolExecutor, wait
+from concurrent.futures import ThreadPoolExecutor
 
 api_title = "Neurobooth STM API"
 api_description = """
@@ -76,6 +76,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# TODO: get server, port from config
+acq_server = '127.0.0.1'
+acq_port = 8083
+acq_http_conn = http.client.HTTPConnection(host=acq_server, port=acq_port, timeout=600)
+headers = {'Content-type': 'application/json'}
 
 # TODO: move to config file?
 prefs.hardware["audioLib"] = ["PTB"]
@@ -199,26 +205,7 @@ async def lsl_recording(task_id):
     session.logger.info(f'FINISHED TASK: {task_id}')
 
     log_task(events, task_id, task_args.stim_args.stimulus_id, task)
-
-    # Check if pause requested, unpause or stop
-
-    # TODO: Move all pause logic to GUI
-    # if data == "pause tasks":
-    #     data = pause(session)
-    #
-    #     # Next message tells what to do now that we paused
-    #     if data == "continue tasks":
-    #         continue
-    #     elif data == "stop tasks":
-    #         break
-    #     elif data == "calibrate":
-    #         if not len(task_calib):
-    #             continue
-    #         tasks.insert(0, task_calib[0])
-    #         calib_instructions = False
-    #     else:
-    #         print("Received an unexpected message while paused")
-    #         logger.warn("Received an unexpected message while paused")
+    return {"message": f"Finished task: {task_id}"}
 
 
 @app.get("/shut_down", tags=['server operations'])
@@ -353,14 +340,18 @@ def stop_acq(executor):
     """ Stop recording on ACQ in parallel to stopping on STM """
     session.logger.info(f'SENDING record_stop TO ACQ')
     stimulus_id = task_args.stim_args.stimulus_id
-    acq_result = executor.submit(socket_message, "record_stop", "acquisition", wait_data=15)
+    # acq_result = executor.submit(socket_message, "record_stop", "acquisition", wait_data=15)
+    acq_http_conn.request('GET', f'/record_stop/', "", headers)
+    acq_response = acq_http_conn.getresponse()
+    print(f'ACQ "record_stop" message response was {acq_response.read().decode()}')
+    # TODO: Handle error response
     # Stop eyetracker
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         if "calibration_task" not in stimulus_id:
             session.eye_tracker.stop()
-    wait([acq_result])  # Wait for ACQ to finish
-    acq_result.result()  # Raise any exceptions swallowed by the executor
+    # wait([acq_result])  # Wait for ACQ to finish
+    # acq_result.result()  # Raise any exceptions swallowed by the executor
 
 
 def start_acq(executor, task_id: str):
@@ -376,15 +367,19 @@ def start_acq(executor, task_id: str):
     -------
 
     """
-    session.logger.info(f'SENDING record_start TO ACQ')
+    msg = 'SENDING record_start TO ACQ'
+    session.logger.info(msg)
+    print(msg)
     stimulus_id = task_args.stim_args.stimulus_id
-    acq_result = executor.submit(
-        socket_message,
-        f"record_start::{session.session_name}_{task_start_time}_{task_id}::{task_id}",
-        "acquisition",
-        wait_data=10,
-    )
+    acq_http_conn.request('GET', f'/record_start/'
+                                 f'?fname={session.session_name}_{task_start_time}_{task_id}'
+                                 f'&task_id={task_id}', "", headers)
+    acq_response = acq_http_conn.getresponse()
+    print(f'ACQ "record_start" message response was {acq_response.read().decode()}')
+    # TODO: Handle error response
+
     # Start eyetracker if device in task
+    # TODO: Review the eyetracker startup logic below. It's probably wrong
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         fname = f"{session.path}/{session.session_name}_{task_start_time}_{task_id}.edf"
@@ -393,9 +388,10 @@ def start_acq(executor, task_id: str):
         else:
             task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
             session.eye_tracker.start(fname)
-    session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
-    wait([acq_result])  # Wait for ACQ to finish
-    acq_result.result()  # Raise any exceptions swallowed by the executor
+    if any("mbient" in d for d in device_ids):
+        session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
+    # wait([acq_result])  # Wait for ACQ to finish
+    # acq_result.result()  # Raise any exceptions swallowed by the executor
 
 
 def log_task(events: List,

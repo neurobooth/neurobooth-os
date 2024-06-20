@@ -1,13 +1,15 @@
 import datetime
+import http.client
+import json
 import os
 import os.path as op
 import time
+import threading
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from queue import PriorityQueue
 from typing import Dict, List, Union, Optional
-import http.client
-import json
 
 import liesl
 from fastapi import FastAPI, HTTPException
@@ -19,6 +21,7 @@ from starlette.responses import JSONResponse
 from starlette.templating import Jinja2Templates
 
 from neurobooth_os import config
+from neurobooth_os.iout.split_xdf import split_sens_files, get_xdf_name
 from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.iout.metadator as meta
@@ -26,6 +29,7 @@ import neurobooth_os.iout.metadator as meta
 
 from neurobooth_os.netcomm import node_info
 from neurobooth_os.msg.request import PrepareRequest, TaskInfo
+from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets
 
 
 @dataclass(order=True)
@@ -89,13 +93,14 @@ templates = Jinja2Templates(directory="templates")
 
 task_queue = PriorityQueue()
 
+# TODO get servers, ports from config
 stm_server = '127.0.0.1'
 stm_port = 8084
-stm_http_conn = http.client.HTTPConnection(host=stm_server, port=stm_port)
+stm_http_conn = http.client.HTTPConnection(host=stm_server, port=stm_port, timeout=600)
 
 acq_server = '127.0.0.1'
 acq_port = 8083
-acq_http_conn = http.client.HTTPConnection(host=acq_server, port=acq_port)
+acq_http_conn = http.client.HTTPConnection(host=acq_server, port=acq_port, timeout=600)
 
 # TODO: Fix db connection validate config paths arg
 db_validate_paths = False
@@ -108,9 +113,10 @@ log_sess: Dict = meta._new_session_log_dict()
 log_task: Dict = meta._new_tech_log_dict()
 stream_ids: Dict = {}
 inlets: Dict = {}
+outlets: Dict = {}
 plot_elem: List = []
 inlet_keys: []
-session: Optional[liesl.Session]
+lsl_session: Optional[liesl.Session]
 
 
 def _get_ports():
@@ -120,8 +126,6 @@ def _get_ports():
 
 
 nodes, host_ctr, port_ctr = _get_ports()
-
-connection = meta.get_database_connection()
 
 
 @app.get("/get_studies", tags=['session setup'])
@@ -154,15 +158,6 @@ async def get_tasks(request: Request, collection_id: str):
         'tasks': tasks,
     })
 
-
-# @app.get("/get_subjects/{last_name}/{first_name}", tags=['session setup'])
-# async def get_subjects_by_name(last_name: str, first_name: str):
-#     """Retrieve a list of subjects with the provided first and last names. The names should be those given to the
-#     subject at birth"""
-#     subject_df = _find_subject(first_name, last_name)
-#     print("Testing")
-#     return f"subjects: {subject_df}"
-#
 
 @app.get("/get_subject/{subject_id}", tags=['session setup'])
 async def get_subject_by_id(subject_id: str):
@@ -244,7 +239,7 @@ async def start_servers():
 @app.get("/connect_devices", tags=['server operations'])
 async def connect_data_capture_devices():
     """Connect devices for capturing sound, image, and position data streams"""
-    send_prepare_request(log_sess, database_name=db_name)
+    send_prepare_request(database_name=db_name)
     # session = _start_lsl_session(window, inlets, folder_session)
 
 
@@ -252,24 +247,26 @@ async def connect_data_capture_devices():
 async def terminate_servers():
     """Shut-down Neurobooth servers after the end of the current task (if any)"""
     # TODO: Queue request for deferred execution
-    headers = {'Content-type': 'application/json'}
+    print("Sending terminate server requests to STM and ACQ")
+    headers: Dict[str, str] = {'Content-type': 'application/json'}
     stm_http_conn.request('GET', '/shut_down/', "", headers)
     acq_http_conn.request('GET', '/shut_down/', "", headers)
     stm_response = stm_http_conn.getresponse()
     acq_response = acq_http_conn.getresponse()
-    print(stm_response.read().decode())
-    print(acq_response.read().decode())
+    print(f"STM terminate response {stm_response.read().decode()}")
+    print(f"ACQ terminate response {acq_response.read().decode()}")
 
 
 def _start_lsl_session(folder=""):
-    global session
+    global lsl_session
     # Create LSL session
     stream_args = [{"name": n} for n in list(inlets)]
-    session = liesl.Session(
+    lsl_session = liesl.Session(
         prefix=folder, streamargs=stream_args, mainfolder=config.neurobooth_config.control.local_data_dir
     )
     print("LSL session with: ", list(inlets))
-    return session
+    return lsl_session
+
 
 class Item(BaseModel):
     name: str
@@ -289,8 +286,8 @@ async def start_session():
     global task_queue
     await run_round_trip_time_test()
     dict = {"message": "session started, sorta"}
-    # using priority queue, execute all tasks
 
+    # using priority queue, execute all tasks
     # build task queue
     priority = 100
     for task in log_sess['tasks']:
@@ -302,32 +299,72 @@ async def start_session():
         rec_fname = _record_lsl(
             log_sess["subject_id_date"],
             task_info.stimulus_id,
-            t.item.name,
+            t.item,
             task_info.log_task_id,
             task_info.task_start_time,
         )
         lsl_result_msg = send_lsl_recording_msg(t.item)
-        # TODO: Stop LSL Recording
-
+        _stop_lsl_and_save(rec_fname, t.item, task_info.log_task_id, task_info.stimulus_id, log_sess["subject_id_date"])
     return json.dumps(dict)
 
 
-def _record_lsl(
-    subject_id,
-    stim_id,
-    task_id,
-    obs_log_id,
-    task_start_time,
-):
+def _create_lsl_inlet(outlet_values):
+    # event values -> f"['{outlet_name}', '{outlet_id}']
+    outlet_name, outlet_id = eval(outlet_values)
 
+    # update the inlet if new or different source_id
+    if stream_ids.get(outlet_name) is None or outlet_id != stream_ids[outlet_name]:
+        stream_ids[outlet_name] = outlet_id
+        inlets.update(create_lsl_inlets({outlet_name: outlet_id}))
+
+
+def _record_lsl(
+    subject_id: str,
+    stim_id: str,
+    task_id: str,
+    log_task_id: str,
+    task_start_time: str,
+):
+    print("About to start LSL recording for a task")
     print(
-        f"task initiated: task_id {stim_id}, t_obs_id {task_id}, obs_log_id :{obs_log_id}"
+        f"task initiated: task_id {stim_id}, t_obs_id {task_id}, obs_log_id :{log_task_id}"
     )
 
     # Start LSL recording
     rec_fname = f"{subject_id}_{task_start_time}_{task_id}"
-    session.start_recording(rec_fname)
+    lsl_session.start_recording(rec_fname)
     return rec_fname
+
+
+def _stop_lsl_and_save(rec_fname,
+                       stim_id: str,
+                       log_task_id: str,
+                       task_id: str,
+                       folder):
+    """Stop LSL stream and save"""
+    lsl_session.stop_recording()
+    xdf_fname = get_xdf_name(lsl_session, rec_fname)
+    t0 = time.time()
+    if any([tsk in stim_id for tsk in ["hevelius", "MOT", "pursuit"]]):
+        dont_split_xdf_fpath = "C:/neurobooth"
+    else:
+        dont_split_xdf_fpath = None
+    # split xdf in a thread
+    xdf_split = threading.Thread(
+        target=split_sens_files,
+        args=(
+            xdf_fname,
+            log_task_id,
+            task_id,
+            conn,
+            folder,
+            dont_split_xdf_fpath,
+        ),
+        daemon=True,
+    )
+    xdf_split.start()
+    print(f"CTR xdf_split threading took: {time.time() - t0}")
+
 
 async def run_round_trip_time_test():
     """ Run time test against STM and ACQ
@@ -414,7 +451,6 @@ def _start_servers(nodes):
     # # window["-init_servs-"].Update(button_color=("black", "red"))
     # ctr_rec.start_servers(nodes=nodes)
     # time.sleep(1)
-    print(log_sess)
     print("CTR started servers")
     # return event, values
     return None
@@ -445,12 +481,10 @@ def _save_session():
 
 def send_lsl_recording_msg(task_id):
     global stm_http_conn
-    print(f"LSL recording for {task_id}")
-
     headers = {'Content-type': 'application/json'}
 
-    print("Sending STM LSL Recording message")
-    stm_http_conn = http.client.HTTPConnection(host=stm_server, port=stm_port)
+    print(f"Sending STM LSL Recording message for {task_id}")
+    stm_http_conn = http.client.HTTPConnection(host=stm_server, port=stm_port, timeout=600)
     stm_http_conn.request('GET', f'/lsl_recording/{task_id}', "", headers)
 
     stm_response = stm_http_conn.getresponse()
@@ -459,14 +493,14 @@ def send_lsl_recording_msg(task_id):
     return f"Task {task_id} was created. Check the response"
 
 
-def send_task_create_request(task_id) -> TaskInfo:
+def send_task_create_request(task_id: str) -> TaskInfo:
     global stm_http_conn
     print(f"Starting presentation for {task_id}")
 
     headers = {'Content-type': 'application/json'}
 
     print("Sending STM create task message")
-    stm_http_conn = http.client.HTTPConnection(host=stm_server, port=stm_port)
+    stm_http_conn = http.client.HTTPConnection(host=stm_server, port=stm_port, timeout=600)
     stm_http_conn.request('GET', f'/create/{task_id}', "", headers)
 
     stm_response = stm_http_conn.getresponse()
@@ -476,11 +510,13 @@ def send_task_create_request(task_id) -> TaskInfo:
     return task_info
 
 
-def send_prepare_request(log_sess, database_name):
+def send_prepare_request(database_name):
 
     print("Connecting devices")
-    print(json.dumps(log_sess))
     vidf_mrkr = marker_stream("videofiles")
+
+    # TODO: Figure out what these are used for
+    outlets[vidf_mrkr.name] = vidf_mrkr.oulet_id
 
     req = PrepareRequest(
         database_name=database_name,
@@ -494,7 +530,8 @@ def send_prepare_request(log_sess, database_name):
     subject_id = log_sess["subject_id"]
     session_id = log_sess["session_id"]
     selected_tasks = log_sess["selected_tasks"]
-
+    log_sess["subject_id_date"] = req.session_name()
+    _start_lsl_session(req.session_name())
     headers = {'Content-type': 'application/json'}
     # nodes = ctr_rec._get_nodes(nodes)
 
@@ -512,6 +549,7 @@ def send_prepare_request(log_sess, database_name):
     acq_response = acq_http_conn.getresponse()
     print(f'ACQ response: {acq_response.read().decode()}')
 
+    print(f"outlets: {outlets}")
     return vidf_mrkr
 
 def _save_session_notes(sess_info, notes_task, notes):

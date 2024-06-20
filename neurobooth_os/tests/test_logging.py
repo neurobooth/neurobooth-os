@@ -15,7 +15,7 @@ database = "mock_neurobooth_1"
 connection = None
 
 subject = "000000"
-session = "000000_2023_12_25 12:12:12"
+lsl_session = "000000_2023_12_25 12:12:12"
 
 
 def get_connection():
@@ -96,23 +96,23 @@ class TestLogging(unittest.TestCase):
 
     def test_db_logging_shutdown(self):
         """Tests to ensure log handler is closed (or at least, doesn't blow up when closing) """
-        db_log = make_db_logger(subject, session)
+        db_log = make_db_logger(subject, lsl_session)
         db_log.critical("Microphone: Entering LSL Loop", extra={"device": "playstation"})
         logging.shutdown()
 
     def test_db_logging0(self):
         """Tests logging to database using make_db_logger with session and subject set"""
-        db_log = make_db_logger(subject, session)
+        db_log = make_db_logger(subject, lsl_session)
         db_log.critical("Microphone: Entering LSL Loop", extra={"device": "playstation"})
         db_log.critical("Another one.", extra={"device": "playstation"})
 
         df = get_records()
         assert df.iloc[0]["subject_id"] == subject
-        assert df.iloc[0]["session_id"] == session
+        assert df.iloc[0]["session_id"] == lsl_session
         assert df.iloc[0]["message"] == "Microphone: Entering LSL Loop"
 
         assert df.iloc[1]["subject_id"] == subject
-        assert df.iloc[1]["session_id"] == session
+        assert df.iloc[1]["session_id"] == lsl_session
         assert df.iloc[1]["message"] == "Another one."
 
     def test_db_logging1(self):
@@ -141,13 +141,13 @@ class TestLogging(unittest.TestCase):
 
     def test_db_logging2(self):
         """Tests logging to database with session and subject set to empty strings AFTER being set to values"""
-        db_log = make_db_logger(subject, session)
+        db_log = make_db_logger(subject, lsl_session)
         db_log.critical("Subject and session set for the logger", extra={"device": "playstation"})
         db_log = make_db_logger("", "")
         db_log.error("No subject or session for new records")
         df = get_records()
         assert df.iloc[0]["subject_id"] == subject
-        assert df.iloc[0]["session_id"] == session
+        assert df.iloc[0]["session_id"] == lsl_session
 
         assert df.iloc[1]["subject_id"] == ""
         assert df.iloc[1]["session_id"] == ""
@@ -177,7 +177,7 @@ class TestLogging(unittest.TestCase):
     def test_db_logging3(self):
         """Tests logging fallback to local file logging.
         """
-        db_log = make_db_logger(subject, session, log_path)
+        db_log = make_db_logger(subject, lsl_session, log_path)
         db_log.critical("Test fallback logging. No DB Connection should be available")
         file_list = os.listdir(log_path)[0]
         filename = os.path.join(log_path, file_list)

@@ -11,8 +11,8 @@ import os.path as op
 
 fname = "Z:/data/100090_2022-05-09/100090_2022-05-09_11h-49m-48s_saccades_vertical_obs_1_R001.xdf"
 
-session = "100114_2022-06-02"
-fnames = glob.glob(f"Z:/data/{session}/{session}_*.xdf")
+lsl_session = "100114_2022-06-02"
+fnames = glob.glob(f"Z:/data/{lsl_session}/{lsl_session}_*.xdf")
 
 for fname in fnames:
     data, header = pyxdf.load_xdf(fname)

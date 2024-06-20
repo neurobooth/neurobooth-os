@@ -54,10 +54,12 @@ task = None
 recording = False
 session_name: Optional[str] = None
 s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+port = config.neurobooth_config.acquisition.port
+host = ''  # Listen on all network interfaces
 
 try:
     os.chdir(neurobooth_os.__path__[0])
+
 except Exception as argument:
     logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                     exc_info=sys.exc_info())

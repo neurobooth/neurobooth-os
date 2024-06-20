@@ -38,13 +38,10 @@ def my_textbox2(win, text, pos=(0, 0), size=(None, None)):
 def welcome_screen(win=None):
     if win is None:
         win = utl.make_win(full_screen=False)
-    print("After make_win in welcome screen")
 
     fname = op.join(neurobooth_os.__path__[0], "tasks/assets/welcome.jpg")
     welcome = visual.ImageStim(win, image=fname, units="pix")
-    print("After ImageStim in welcome screen")
     utl.present(win, welcome, waitKeys=True, first_screen=True)
-    print("Before winHandle activate in welcome screen")
     win.winHandle.activate()
     return win
 
