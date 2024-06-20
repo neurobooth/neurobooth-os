@@ -55,9 +55,6 @@ def split_sens_files(
     # Read XDF file
     device_data = _parse_xdf(xdf_path, device_ids)
 
-    # Correct old data stream formats
-    device_data = [_correct_hdf5(d) for d in device_data]
-
     # Either 1) Write the HDF5 files or 2) save note to do so later
     if dont_split_xdf_fpath is None:
         _write_device_hdf5(device_data)
@@ -215,26 +212,6 @@ def _log_to_database(
                 sensor_file_paths,
             )]
             table_sens_log.insert_rows(vals, LOG_SENSOR_COLUMNS)
-
-
-def _correct_hdf5(device_data: DeviceData) -> DeviceData:
-    """
-    Correct the format of old HDF5 data streams (in memory prior to writing).
-
-    :param device_data: The device data stream to correct.
-    :returns: The corrected device data stream.
-    """
-    # Import here to prevent circular import
-    from neurobooth_os.iout.correct_hdf5 import HDF5_CORRECT_HOOKS, correct_marker
-
-    # Correct the marker data stream
-    device_data = correct_marker(device_data)
-
-    # Correct the device data stream if a hook is registered for the device ID
-    if device_data.device_id in HDF5_CORRECT_HOOKS:
-        device_data = HDF5_CORRECT_HOOKS[device_data.device_id](device_data)
-
-    return device_data
 
 
 def get_xdf_name(session: liesl.Session, fname_prefix: str) -> str:
