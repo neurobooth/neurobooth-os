@@ -79,8 +79,6 @@ def parse_xdf(xdf_path: str, device_ids: Optional[List[str]] = None) -> List[Dev
             if d[0] == "":
                 continue
             stream_id, file_id = d[0].split(",")
-            if folder:
-                file_id = f"{folder}/{file_id}"
             if stream_id in video_files:
                 video_files[stream_id].append(file_id)
             else:
@@ -171,7 +169,7 @@ def log_to_database(
         temporal_resolution = 1 / np.median(np.diff(timestamps))
 
         # Construct the set of file names associated with the sensor
-        sensor_file_paths = [dev.hdf5_path, *dev.video_files]
+        sensor_file_paths = [os.path.basename(dev.hdf5_path), *dev.video_files]
         sensor_file_paths = '{' + ', '.join(sensor_file_paths) + '}'
 
         for sensor_id in dev.sensor_ids:
