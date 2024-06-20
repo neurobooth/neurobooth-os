@@ -37,10 +37,9 @@ def split_xdf(xdf_path: str, config_file: Optional[str] = None, task_id: Optiona
         task_id = extract_task_id(filename)
 
     return split_sens_files(
-        filename,
+        os.path.join(folder, filename),
         task_id=task_id,
         conn=conn,
-        folder=folder,
     )
 
 
