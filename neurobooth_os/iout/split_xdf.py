@@ -13,7 +13,6 @@ import json
 
 from neurobooth_os.iout import metadator as meta
 from neurobooth_terra import Table
-import neurobooth_os.config as cfg
 
 
 def compute_clocks_diff() -> float:
@@ -219,9 +218,8 @@ def postpone_xdf_split(
     :param log_task_id: Task log ID for the database.
     :param backlog_file: The file keeping track of which XDFs need to be split.
     """
-    _, xdf_name = os.path.split(xdf_path)
     with open(backlog_file, "a+") as f:
-        f.write(f"{xdf_name},{task_id},{log_task_id}\n")
+        f.write(f"{xdf_path},{task_id},{log_task_id}\n")
 
 
 def postprocess_xdf_split(
@@ -231,17 +229,26 @@ def postprocess_xdf_split(
     """
     Split all XDFs in the backlog file.
     :param backlog_file: The file keeping track of which XDFs need to be split.
-    :param conn: Connection to the database.
+    :param conn: Connection to the database.\
     """
-    # Read file and split to HDF5 in the same directory
+    import sys
     import csv
-    data_dir = cfg.neurobooth_config.current_server().local_data_dir
+    import neurobooth_os.log_manager as log_mgr
+
+    # Read file and split to HDF5 in the same directory
+    incomplete = []
     with open(backlog_file, newline="") as csvfile:
         for row in csv.reader(csvfile, delimiter=",", quotechar="|"):
-            xdf_name, task_id, log_task_id = row
-            xdf_path = os.path.join(data_dir, xdf_name)  # File should be on NAS
-            split_sens_files(xdf_path, log_task_id, task_id, conn)
+            xdf_path, task_id, log_task_id = row
+            try:
+                split_sens_files(xdf_path, log_task_id, task_id, conn)
+            except:
+                incomplete.append(row)
+                if log_mgr.APP_LOGGER is not None:
+                    log_mgr.APP_LOGGER.error(f'Unable to process: {xdf_path}', exc_info=sys.exc_info())
 
     # Processing complete; clear out the backlog file
     with open(backlog_file, "w") as f:
         f.write("")
+        for row in incomplete:
+            f.write(",".join(row) + '\n')
