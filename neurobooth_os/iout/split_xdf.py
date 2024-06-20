@@ -52,7 +52,7 @@ class DeviceData(NamedTuple):
     device_id: str
     device_data: Any
     marker_data: Any
-    video_files: Optional[str]
+    video_files: List[str]
     sensor_ids: List[str]
     hdf5_path: str
 
@@ -83,9 +83,9 @@ def parse_xdf(xdf_path: str, device_ids: Optional[List[str]] = None) -> List[Dev
             if folder:
                 file_id = f"{folder}/{file_id}"
             if stream_id in video_files:
-                video_files[stream_id] += f", {file_id}"
+                video_files[stream_id].append(file_id)
             else:
-                video_files[stream_id] = file_id
+                video_files[stream_id] = [file_id]
 
     # Parse device data into more structured format; associate with marker and videos
     results = []
@@ -106,7 +106,7 @@ def parse_xdf(xdf_path: str, device_ids: Optional[List[str]] = None) -> List[Dev
             device_id=device_id,
             device_data=device_data,
             marker_data=marker,
-            video_files=video_files[device_name] if device_name in video_files else None,
+            video_files=video_files[device_name] if device_name in video_files else [],
             sensor_ids=sensors_ids,
             hdf5_path=_make_hdf5_path(xdf_path, device_id, sensors_ids),
         ))
@@ -172,11 +172,8 @@ def log_to_database(
         temporal_resolution = 1 / np.median(np.diff(timestamps))
 
         # Construct the set of file names associated with the sensor
-        if dev.video_files is None:
-            sensor_file_paths = dev.hdf5_path
-        else:
-            sensor_file_paths = f"{dev.hdf5_path}, {dev.video_files}"
-        sensor_file_paths = "{" + sensor_file_paths + "}"
+        sensor_file_paths = [dev.hdf5_path, *dev.video_files]
+        sensor_file_paths = '{' + ', '.join(sensor_file_paths) + '}'
 
         for sensor_id in dev.sensor_ids:
             vals = [(
