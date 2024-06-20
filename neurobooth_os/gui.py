@@ -276,12 +276,7 @@ def _stop_lsl_and_save(
         # Split XDF in a thread
         xdf_split = threading.Thread(
             target=split_sens_files,
-            args=(
-                xdf_path,
-                obs_log_id,
-                t_obs_id,
-                conn,
-            ),
+            args=(xdf_path, obs_log_id, t_obs_id, conn),
             daemon=True,
         )
         xdf_split.start()
