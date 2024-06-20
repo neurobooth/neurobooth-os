@@ -4,6 +4,6 @@ import neurobooth_os.config as config
 
 config.load_config()
 postprocess_xdf_split(
-    "C:/neurobooth/split_tohdf5.csv",
+    config.neurobooth_config.split_xdf_backlog,
     get_database_connection()
 )

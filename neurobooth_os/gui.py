@@ -270,8 +270,7 @@ def _stop_lsl_and_save(
     t0 = time.time()
     if any([tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]]):
         # Don't split large files now, just add to a backlog to handle post-session
-        xdf_backlog = "C:/neurobooth/split_tohdf5.csv"
-        postpone_xdf_split(xdf_path, t_obs_id, obs_log_id, xdf_backlog)
+        postpone_xdf_split(xdf_path, t_obs_id, obs_log_id, cfg.neurobooth_config.split_xdf_backlog)
         print(f"SPLIT XDF {t_obs_id} took: {time.time() - t0}")
     else:
         # Split XDF in a thread
