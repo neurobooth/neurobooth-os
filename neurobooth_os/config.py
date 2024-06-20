@@ -61,7 +61,7 @@ class ServerSpec(BaseModel):
 class NeuroboothConfig(BaseModel):
     default_log_path: str
     remote_data_dir: str
-    split_xdf_backlog: str = "C:/neurobooth/split_xdf_backlog.csv"  # TODO: Undefault and put this in the config
+    split_xdf_backlog: str
     video_task_dir: str
     cam_inx_lowfeed: int
     acquisition: ServerSpec

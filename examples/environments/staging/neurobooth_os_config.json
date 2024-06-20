@@ -1,6 +1,7 @@
 {
     "remote_data_dir": "Z:/data/",
     "video_task_dir": "C:/Users/STM/Dropbox (Partners HealthCare)/Neurobooth Videos for tasks/Videos_to_present",
+    "split_xdf_backlog": "C:/neurobooth/split_xdf_backlog.csv",
     "cam_inx_lowfeed": 0,
     "default_log_path": "D:/neurobooth/neurobooth_logs",
     "fullscreen": false,
