@@ -235,10 +235,11 @@ def postprocess_xdf_split(
     """
     # Read file and split to HDF5 in the same directory
     import csv
+    data_dir = cfg.neurobooth_config.current_server().local_data_dir
     with open(backlog_file, newline="") as csvfile:
         for row in csv.reader(csvfile, delimiter=",", quotechar="|"):
             xdf_name, task_id, log_task_id = row
-            xdf_path = os.path.join(cfg.neurobooth_config.remote_data_dir, xdf_name)  # File should be on NAS
+            xdf_path = os.path.join(data_dir, xdf_name)  # File should be on NAS
             split_sens_files(xdf_path, log_task_id, task_id, conn)
 
     # Processing complete; clear out the backlog file
