@@ -13,9 +13,9 @@ import glob
 import os.path as op
 
 # session = '100080_2022-05-09' # MOT 1 ms wait, DSC no keyrelease
-lsl_session = "72_2022-05-17"
+session = "72_2022-05-17"
 
-f_ascs = glob.glob(f"Z:/data/{lsl_session}/{lsl_session}_*.asc")
+f_ascs = glob.glob(f"Z:/data/{session}/{session}_*.asc")
 
 
 for f_asc in f_ascs:
