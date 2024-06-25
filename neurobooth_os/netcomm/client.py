@@ -10,7 +10,6 @@ from io import StringIO
 
 import neurobooth_os.config as cfg
 
-
 def setup_log(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
@@ -137,8 +136,9 @@ def node_info(node_name):
     port int
         port number
     """
-    host = cfg.neurobooth_config.server_by_name(node_name).name
-    port = cfg.neurobooth_config.server_by_name(node_name).port
+    server = cfg.neurobooth_config.server_by_name(node_name)
+    host = server.name
+    port = server.port
     logger.debug(f"Host is {host}, and port is {port}.")
     return host, port
 
