@@ -1,0 +1,14 @@
+task_id: sit_to_stand_test_obs
+feature_of_interest: body movement
+stimulus_id: sit_to_stand_task_1
+instruction_id: '1'
+device_id_array:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+arg_parser: iout.stim_param_reader.py::RawTaskParams()
