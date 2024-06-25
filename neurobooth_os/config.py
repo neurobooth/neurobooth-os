@@ -86,14 +86,20 @@ class NeuroboothConfig(BaseModel):
 neurobooth_config: Optional[NeuroboothConfig] = None
 
 
-def load_config(fname: Optional[str] = None, validate_paths: bool = True) -> None:
-    """
-    Load neurobooth configurations from a file and store them in the `neurobooth_config` module variable.
+def validate_system_paths(server_name: str):
+    if server_name == "presentation":
+        validate_folder(neurobooth_config.video_task_dir)
+    validate_folder(neurobooth_config.remote_data_dir)
+    validate_folder(neurobooth_config.default_log_path)
 
-    :param fname: Path to the configuration file. If None, load the path from the NB_CONFIG environment variable.
-    :param validate_paths: Whether to check the validity of key files and directories. Should be True for active
-        Nuerobooth sessions. (Toggle is provided for use by secondary scripts.)
-    """
+    source = neurobooth_config.current_server().local_data_dir
+    if not path.exists(source):
+        raise FileNotFoundError(f"The local_data_dir '{source}' for server {server_name} does not exist.")
+    if not path.isdir(source):
+        raise ConfigException(f"The local_data_dir '{source}' for server {server_name} is not a folder.")
+
+
+def load_neurobooth_config(fname: Optional[str] = None):
     if fname is None:
         fname = path.join(environ.get("NB_CONFIG"), "neurobooth_os_config.json")
 
@@ -104,18 +110,34 @@ def load_config(fname: Optional[str] = None, validate_paths: bool = True) -> Non
         global neurobooth_config
         neurobooth_config = NeuroboothConfig(**json.load(f))
 
+
+# TODO: Replace this method with something better
+def load_ctr_config(fname: Optional[str] = None, validate_paths: bool = True) -> None:
+    """
+    Load neurobooth configurations from a file and store them in the `neurobooth_config` module variable.
+
+    :param fname: Path to the configuration file. If None, load the path from the NB_CONFIG environment variable.
+    :param validate_paths: Whether to check the validity of key files and directories. Should be True for active
+        Neurobooth sessions. (Toggle is provided for use by secondary scripts.)
+    """
+    load_neurobooth_config(fname)
+    if validate_paths:
+        server_name = "control"
+        validate_system_paths(server_name)
+
+
+def load_config(fname: Optional[str] = None, validate_paths: bool = True) -> None:
+    """
+    Load neurobooth configurations from a file and store them in the `neurobooth_config` module variable.
+
+    :param fname: Path to the configuration file. If None, load the path from the NB_CONFIG environment variable.
+    :param validate_paths: Whether to check the validity of key files and directories. Should be True for active
+        Nuerobooth sessions. (Toggle is provided for use by secondary scripts.)
+    """
+    load_neurobooth_config(fname)
+
     if validate_paths:
         server_name = get_server_name_from_env()
         if server_name is None:
             raise ConfigException('The server name could not be identified!')
-
-        if server_name == "presentation":
-            validate_folder(neurobooth_config.video_task_dir)
-        validate_folder(neurobooth_config.remote_data_dir)
-        validate_folder(neurobooth_config.default_log_path)
-
-        source = neurobooth_config.current_server().local_data_dir
-        if not path.exists(source):
-            raise FileNotFoundError(f"The local_data_dir '{source}' for server {server_name} does not exist.")
-        if not path.isdir(source):
-            raise ConfigException(f"The local_data_dir '{source}' for server {server_name} is not a folder.")
+        validate_system_paths(server_name)

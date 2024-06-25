@@ -16,7 +16,7 @@
         "name": "stm-staging",
         "user": "STM",
         "password": "5519",
-	    "port": 12347,
+	    "port": 12348,
         "local_data_dir": "C:/neurobooth/neurobooth_data/",
         "bat": "%NB_INSTALL%/neurobooth_os/server_stm.bat"
     },
@@ -24,7 +24,7 @@
         "name": "ctr-staging",
         "user": "CTR",
         "password": "5519",
-	    "port": 12347,
+	    "port": 12349,
         "local_data_dir": "C:/neurobooth/neurobooth_data/"
     },
     "database": {
