@@ -275,11 +275,6 @@ class Item(BaseModel):
     tax: Union[float, None] = None
 
 
-@app.post("/items/")
-async def create_item(item: Item):
-    return item
-
-
 @app.get("/start_session", tags=['session operation'])
 async def start_session():
     """Starts a Neurobooth session, and begin presentation of stimuli to subjects. """
