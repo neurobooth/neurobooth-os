@@ -393,7 +393,7 @@ def gui():
     database = cfg.neurobooth_config.database.dbname
     nodes, host_ctr, port_ctr = _get_ports()
 
-    # declare and intialize vars
+    # declare and initialize vars
     subject_id = None
     first_name = None
     last_name = None
