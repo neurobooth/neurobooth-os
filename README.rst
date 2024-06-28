@@ -42,8 +42,10 @@ then unzip the file, cd to the folder and run:
 
 Setup
 -----
+As described below, Neurobooth is designed to run on multiple Windows server machines. To do this, it requires that 
+you setup your servers to communicate via WMI. Please see the documentation (https://github.com/neurobooth/neurobooth-os/blob/master/docs/enable_WMI_instuctions.txt), which explains how to configure WMI for more information. 
 
-It requires a postgreSQL database running on a server. Connection is established with the function
+Neurobooth requires a postgreSQL database running on a server. Connection is established with the function
 `neurobooth_os.iout.metadator.get_conn()`. Currently, as specified in 
 `~/.neurobooth_os_secrets` the local IP is 192.168.100.1, and remotely it connects to 
 `neurodoor.nmr.mgh.harvard.edu` using the private key in '~/.ssh/id_rsa'.
@@ -62,7 +64,7 @@ https://github.com/neurobooth/neurobooth-os/blob/master/docs/system_configuratio
 Run
 ----
 
-The program runs on 3 different computers and the starting point is
+As mentioned above, Neurobooth runs on 3 different computers and the starting point is
 ``gui.py``. The computers are:
 
 * CTR (control) computer: This computer hosts the GUI and relays commands
