@@ -494,7 +494,7 @@ def gui():
 
         # Shut down the other servers and stops plotting
         elif event == "Shut Down" or event == sg.WINDOW_CLOSED:
-            if values is not None and values['notes'] and not values["_notes_taskname_"]:
+            if values['notes'] and not values["_notes_taskname_"]:
                 sg.PopupError(
                     "Unsaved notes without task. Before exiting, "
                     "select a task in the dropdown list or delete the note text."
@@ -588,8 +588,6 @@ def gui():
 
 
 def _save_session_notes(sess_info, values, window):
-    if values is None:
-        return
     if not values["_notes_taskname_"]:
         return
     _make_session_folder(sess_info)
