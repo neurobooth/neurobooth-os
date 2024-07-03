@@ -169,7 +169,12 @@ def log_to_database(
         temporal_resolution = 1 / np.median(np.diff(timestamps))
 
         # Construct the set of file names associated with the sensor
-        sensor_file_paths = [os.path.basename(dev.hdf5_path), *dev.video_files]
+        hdf5_folder, hdf5_file = os.path.split(dev.hdf5_path)
+        sensor_file_paths = [hdf5_file, *dev.video_files]
+        # File paths need to start with the session folder for downstream scripts
+        _, session_folder = os.path.split(hdf5_folder)
+        sensor_file_paths = [f'{session_folder}/{f}' for f in sensor_file_paths]
+        # Covert to array string for postgres
         sensor_file_paths = '{' + ', '.join(sensor_file_paths) + '}'
 
         for sensor_id in dev.sensor_ids:
