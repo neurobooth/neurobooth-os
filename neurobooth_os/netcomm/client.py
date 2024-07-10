@@ -43,7 +43,7 @@ def socket_message(message, node_name, wait_data=False):
         # connect to server on local computer
         s.connect((host, port))
         s.send(message.encode("ascii"))
-        logger.info("Connecting to host: {host} and port: {port}")
+        logger.info(f"Connecting to host: {host} and port: {port} to send messages to that host")
 
         data = None
         if wait_data:
@@ -53,11 +53,13 @@ def socket_message(message, node_name, wait_data=False):
         return data
 
     host, port = node_info(node_name)
+    if not host:
+        host = socket.gethostname()
 
     try:
         data = connect()
     except (TimeoutError, ConnectionRefusedError) as e:
-        logger.error(f"Unable to connect to client: {e}. Retrying.")
+        logger.error(f"Unable to send message {message} to {node_name} @ host: {host}, port: {port}: {e}. Retrying.")
         try:
             data = connect()
         except Exception as e:
@@ -93,6 +95,8 @@ def socket_time(node_name, print_flag=1, time_out=3):
     t0 = time()
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(time_out)
+    if not host:
+        host = socket.gethostname()
 
     try:
         # connect to server on local computer
@@ -139,7 +143,7 @@ def node_info(node_name):
     server = cfg.neurobooth_config.server_by_name(node_name)
     host = server.name
     port = server.port
-    logger.debug(f"Host is {host}, and port is {port}.")
+    logger.debug(f"Node: {node_name} and host {host} and port: {port}")
     return host, port
 
 
@@ -215,17 +219,22 @@ def start_server(node_name, save_pid_txt=True):
     # Kill any previous server
     kill_pid_txt(node_name=node_name)
 
-    logger.debug(f"Attempting to start server: {node_name}")
-    logger.debug(f"Server {node_name} has configuration: {s} ")
-
     # get list of python processes
-    task_cmd = f"tasklist.exe /S {s.name} /U {s.user} /P {s.password}"
+    if s.name:
+        task_cmd = f"tasklist.exe /S {s.name} /U {s.user} /P {s.password}"
+    else:
+        task_cmd = "tasklist.exe"
+
     out = os.popen(task_cmd).read()
     logger.debug(f"Python processes found: {out}")
     pids_old = get_python_pids(out)
 
     # Get list of scheduled tasks and run TaskOnEvent if not running
-    cmd_out = f"SCHTASKS /query /fo CSV /nh /S {s.name} /U {s.name}\\{s.user} /P {s.password}"
+    if s.name:
+        cmd_out = f"SCHTASKS /query /fo CSV /nh /S {s.name} /U {s.name}\\{s.user} /P {s.password}"
+    else:
+        cmd_out = "SCHTASKS /query /fo CSV /nh"
+
     out = os.popen(cmd_out).read().replace("\\", "")
     df = pd.read_csv(StringIO(out), sep=",", index_col=0, names=["date", "status"])
 
@@ -241,7 +250,10 @@ def start_server(node_name, save_pid_txt=True):
         break
 
     # Run scheduled task cmd1 creates a scheduled task, cmd2 initiates it
-    cmd_str = f"SCHTASKS /S {s.name} /U {s.name}\\{s.user} /P {s.password}"
+    if s.name:
+        cmd_str = f"SCHTASKS /S {s.name} /U {s.name}\\{s.user} /P {s.password}"
+    else:
+        cmd_str = f"SCHTASKS"
     cmd_1 = (
         cmd_str
         + f" /Create /TN {task_name} /TR {s.bat} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
@@ -291,10 +303,13 @@ def kill_remote_pid(pids, node_name):
     if isinstance(pids, str):
         pids = [pids]
 
-    cmd = f"taskkill /S {s.name} /U {s.user} /P {s.password} /PID %s"
+    if s.name:
+        cmd = f"taskkill /S {s.name} /U {s.user} /P {s.password} /PID %s"
+    else:
+        cmd = f"taskkill /PID %s /F"
     for pid in pids:
         out = os.popen(cmd % pid)
-        print(out.read())
+        out.read()
     return
 
 
