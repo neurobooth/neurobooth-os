@@ -387,7 +387,7 @@ def _get_ports():
     return nodes, host_ctr, port_ctr
 
 
-def gui():
+def gui(logger):
     """Start the Graphical User Interface.
     """
     database = cfg.neurobooth_config.database.dbname
@@ -460,6 +460,7 @@ def gui():
                 # Open new layout with main window
                 window = _win_gen(_main_layout, sess_info)
                 _start_ctr_server(window, host_ctr, port_ctr)
+                logger.debug(f"ctr server started on {host_ctr}:{port_ctr}")
 
         ############################################################
         # Main Window -> Run neurobooth session
@@ -629,7 +630,7 @@ def main():
     logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
     try:
         logger.debug("Starting GUI")
-        gui()
+        gui(logger)
         logger.debug("Stopping GUI")
     except Exception as argument:
         logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
