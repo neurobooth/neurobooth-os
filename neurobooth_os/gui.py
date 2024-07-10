@@ -626,7 +626,7 @@ def _make_session_folder(sess_info):
 def main():
     """The starting point of Neurobooth"""
 
-    cfg.load_ctr_config()  # Load Neurobooth-OS configuration
+    cfg.load_config_by_service_name("CTR")  # Load Neurobooth-OS configuration
     logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
     try:
         logger.debug("Starting GUI")
