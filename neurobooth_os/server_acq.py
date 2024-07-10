@@ -30,7 +30,7 @@ def countdown(period):
 
 
 def main():
-    config.load_config()  # Load Neurobooth-OS configuration
+    config.load_config_by_service_name("ACQ")  # Load Neurobooth-OS configuration
     logger = make_db_logger()  # Initialize default logger
     try:
         logger.debug("Starting ACQ")
