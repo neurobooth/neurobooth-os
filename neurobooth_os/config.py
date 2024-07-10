@@ -14,6 +14,17 @@ class ConfigException(Exception):
     pass
 
 
+def get_server_name(abbreviation: str) -> Optional[str]:
+    abbr = abbreviation.upper()
+    if "STM" in abbr:
+        return 'presentation'
+    if "ACQ" in abbr:
+        return 'acquisition'
+    if "CTR" in abbr:
+        return 'control'
+    return None
+
+
 def get_server_name_from_env() -> Optional[str]:
     """
     This is a hack to get the role of the machine that this code is being executed on. It's based on the
@@ -21,15 +32,7 @@ def get_server_name_from_env() -> Optional[str]:
     :returns: a server name, or None.
     """
     user = getenv("USERPROFILE")
-
-    if "STM" in user:
-        return 'presentation'
-    if "ACQ" in user:
-        return 'acquisition'
-    if "CTR" in user:
-        return 'control'
-
-    return None
+    return get_server_name(user)
 
 
 def validate_folder(value: str) -> None:
@@ -92,7 +95,7 @@ def validate_system_paths(server_name: str):
     validate_folder(neurobooth_config.remote_data_dir)
     validate_folder(neurobooth_config.default_log_path)
 
-    source = neurobooth_config.current_server().local_data_dir
+    source = neurobooth_config.server_by_name(server_name).local_data_dir
     if not path.exists(source):
         raise FileNotFoundError(f"The local_data_dir '{source}' for server {server_name} does not exist.")
     if not path.isdir(source):
@@ -111,18 +114,19 @@ def load_neurobooth_config(fname: Optional[str] = None):
         neurobooth_config = NeuroboothConfig(**json.load(f))
 
 
-# TODO: Replace this method with something better
-def load_ctr_config(fname: Optional[str] = None, validate_paths: bool = True) -> None:
+def load_config_by_service_name(service_abbr: str, fname: Optional[str] = None, validate_paths: bool = True) -> None:
     """
-    Load neurobooth configurations from a file and store them in the `neurobooth_config` module variable.
-
+    Parameters
+    ----------
+    :param service_abbr    Short name for service, for example STM for presentation, CTR for control, ACQ for acquisition
     :param fname: Path to the configuration file. If None, load the path from the NB_CONFIG environment variable.
     :param validate_paths: Whether to check the validity of key files and directories. Should be True for active
         Neurobooth sessions. (Toggle is provided for use by secondary scripts.)
+
     """
     load_neurobooth_config(fname)
+    server_name = get_server_name(service_abbr)
     if validate_paths:
-        server_name = "control"
         validate_system_paths(server_name)
 
 
