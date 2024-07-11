@@ -63,7 +63,6 @@ def parse_xdf(xdf_path: str, device_ids: Optional[List[str]] = None) -> List[Dev
     :param device_ids: If provided, only parse files corresponding to the specified devices.
     :returns: A structured representation of information extracted from the XDF file for each device.
     """
-    folder, file_name = os.path.split(xdf_path)
     data, _ = pyxdf.load_xdf(xdf_path, dejitter_timestamps=False)
 
     # Find marker stream to associate with each device
