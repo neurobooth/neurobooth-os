@@ -37,7 +37,10 @@ When running on one machine, we do not use an SSH tunnel to connect to the datab
 
 ## Debugging
 In order to run the GUI from within Pycharm, we must add PYDEVD_USE_FRAME_EVAL=NO to the list of environment variables specified in the Pycharm run configuration. 
-This is due to a known issue that occurs when running the Pycharm/python debugger on a QT based GUI. The issue causes a python interpreter crash with the error message "Process finished with exit code -1073741819 (0xC0000005)"
+This is due to a known issue that occurs when running the Pycharm/python debugger on a QT based GUI. 
+The issue causes a python interpreter crash with the error message "Process finished with exit code -1073741819 (0xC0000005)"
+
+PyCharm should be run as Administrator so the PyCharm interpreter will have adequate permissions.
 
 # Miscellaneous
 If you want to run from your development environment, it will add a server_pids.txt file to the neurobooth_os folder. This can  be ignored. 
