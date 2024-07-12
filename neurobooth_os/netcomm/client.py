@@ -238,7 +238,8 @@ def start_server(node_name, save_pid_txt=True):
     out = os.popen(cmd_out).read().replace("\\", "")
     df = pd.read_csv(StringIO(out), sep=",", index_col=0, names=["date", "status"])
 
-    task_name = "TaskOnEvent1"
+    task_name = node_name + "1"
+    # task_name = "TaskOnEvent1"
     while True:
         if task_name in out:
             # if task already running add n+1 to task name
@@ -254,11 +255,13 @@ def start_server(node_name, save_pid_txt=True):
         cmd_str = f"SCHTASKS /S {s.name} /U {s.name}\\{s.user} /P {s.password}"
     else:
         cmd_str = f"SCHTASKS"
-    cmd_1 = (
-        cmd_str
-        + f" /Create /TN {task_name} /TR {s.bat} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
-    )
-    out = os.popen(cmd_1).read()
+
+    if task_name not in out:
+        cmd_1 = (
+            cmd_str
+            + f" /Create /TN {task_name} /TR {s.bat} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
+        )
+        out = os.popen(cmd_1).read()
 
     cmd_2 = cmd_str + f" /Run /TN {task_name}"
     out = os.popen(cmd_2).read()
