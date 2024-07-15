@@ -501,7 +501,7 @@ def gui(logger):
 
         # Shut down the other servers and stops plotting
         elif event == "Shut Down" or event == sg.WINDOW_CLOSED:
-            if values['notes'] and not values["_notes_taskname_"]:
+            if values and values['notes'] and not values["_notes_taskname_"]:
                 sg.PopupError(
                     "Unsaved notes without task. Before exiting, "
                     "select a task in the dropdown list or delete the note text."
