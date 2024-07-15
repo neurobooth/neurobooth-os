@@ -36,6 +36,8 @@ The first step is to install a working copy of PostgreSQL and PGAdmin.  While PG
 
 When running on one machine, we do not use an SSH tunnel to connect to the database. 
 
+## Studies and Task Collections
+Since your local device is unlikely to have the standard devices, a new task collection called test_no_eyelink has been added to the configuration files. 
 ## Testing your code in PyCharm
 The easiest way to run the system on a single machine is to create a Run Configuration in PyCharm that executes gui.py. WIth this 
 approach, any changes made to the code can be tested with a mouse click. 
