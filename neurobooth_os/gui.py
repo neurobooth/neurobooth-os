@@ -414,6 +414,7 @@ def gui(logger):
     }
     steps = list()  # keep track of steps done
     event, values = window.read(0.1)
+    sess_info = None
     while True:
         event, values = window.read(0.5)
         ############################################################
@@ -501,7 +502,7 @@ def gui(logger):
 
         # Shut down the other servers and stops plotting
         elif event == "Shut Down" or event == sg.WINDOW_CLOSED:
-            if values and values['notes'] and not values["_notes_taskname_"]:
+            if values and 'notes' in values and "_notes_taskname_" not in values:
                 sg.PopupError(
                     "Unsaved notes without task. Before exiting, "
                     "select a task in the dropdown list or delete the note text."
@@ -591,7 +592,8 @@ def gui(logger):
             inlet_keys = list(inlets)
             window["inlet_State"].update("\n".join(inlet_keys))
     window.close()
-    window["-OUTPUT-"].__del__()
+    if "-OUTPUT-" in window.AllKeysDict:
+        window["-OUTPUT-"].__del__()
     print("Session terminated")
 
 
