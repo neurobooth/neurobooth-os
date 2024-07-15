@@ -37,7 +37,7 @@ The first step is to install a working copy of PostgreSQL and PGAdmin.  While PG
 When running on one machine, we do not use an SSH tunnel to connect to the database. 
 
 ## Testing your code in PyCharm
-Te easiest way to run the system on a single machine is to create a Run Configuration in PyCharm that executes gui.py. WIth this 
+The easiest way to run the system on a single machine is to create a Run Configuration in PyCharm that executes gui.py. WIth this 
 approach, any changes made to the code can be tested with a mouse click. 
 
 Note: PyCharm should be started as Administrator. This will ensure that the PyCharm interpreter will have adequate permissions.
