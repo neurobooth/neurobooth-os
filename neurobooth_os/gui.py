@@ -508,7 +508,8 @@ def gui(logger):
                 )
                 continue
             else:
-                _save_session_notes(sess_info, values, window)
+                if sess_info and values:
+                    _save_session_notes(sess_info, values, window)
                 plttr.stop()
                 ctr_rec.shut_all(nodes=nodes[::-1])
                 break
