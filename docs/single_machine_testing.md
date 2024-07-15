@@ -36,15 +36,15 @@ The first step is to install a working copy of PostgreSQL and PGAdmin.  While PG
 
 When running on one machine, we do not use an SSH tunnel to connect to the database. 
 
-# Testing
-The easiest way to run the system on a single machine is to create a Run Configuration in PyCharm that executes gui.py. WIth this 
+## Testing your code in PyCharm
+Te easiest way to run the system on a single machine is to create a Run Configuration in PyCharm that executes gui.py. WIth this 
 approach, any changes made to the code can be tested with a mouse click. 
 
 Note: PyCharm should be started as Administrator. This will ensure that the PyCharm interpreter will have adequate permissions.
 
 When running from your development environment, Neurobooth will add a server_pids.txt file to the neurobooth_os folder. This can  be ignored and will be ignored by git. 
 
-## Debugging
+### Debugging in PyCharm
 In order to run the GUI from within PyCharm, we must add PYDEVD_USE_FRAME_EVAL=NO to the list of environment variables specified in the PyCharm run configuration. 
 This is due to a known issue that occurs when running the PyCharm/python debugger on a QT based GUI.
 The issue causes a python interpreter crash with the error message "Process finished with exit code -1073741819 (0xC0000005)"
