@@ -38,7 +38,7 @@ from neurobooth_os.log_manager import make_db_logger
 
 
 def main():
-    config.load_config()  # Load Neurobooth-OS configuration
+    config.load_config_by_service_name("STM")  # Load Neurobooth-OS configuration
     logger = make_db_logger()  # Initialize logging to default
     try:
         logger.debug("Starting STM")

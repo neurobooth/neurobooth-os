@@ -10,7 +10,7 @@ Consult the release notes for any modifications to the example files, as these m
 
 ## Config files
 At least one config file (neurobooth_os_config.json) should be modified as necessary and placed in the folder named in the NB_CONFIG environment variable. (See below)
-Any additional config files required by the system in the future will also be placed in this folder or in a sub-folder. It is expected that device-specific config files will be placed in a sub-folder called "devices".
+Any additional config files required by the system will also be placed in this folder or in a sub-folder. It is expected that device-specific config files will be placed in a sub-folder called "devices".
 
 ## Environment Variables
 Several environment variables must be setup to run neurobooth. An example Windows batch file can be found that creates all the required variables (or updates them if they already exist). 
