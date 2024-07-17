@@ -4,6 +4,11 @@ This document describes the steps required to run Neurobooth on a single machine
 
 Note: You must be running Windows 10 or greater to run Neurobooth on your machine.
 
+# Screen Resolution
+For best results, set your screen resolution to 1920x1080, and ensure that the display size is set to 100%. 
+Note that this may be suboptimal for your laptop so you may want to change these settings if your preferred settings 
+make neurobooth unusable. You can adjust your Windows display settings by navigating to Start  > Settings  > System > Display.
+
 ## Configuration
 To run on a single machine you must modify the neurobooth config file, typically "neurobooth_os_config.json". 
 The following changes should be applied:
