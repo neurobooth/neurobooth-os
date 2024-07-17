@@ -110,6 +110,13 @@ def get_client_messages(s1: socket, port: int, host: str):
     conn : callable
         Socket connector for sending back data.
     """
+    if not host:
+        from neurobooth_os.log_manager import make_db_logger
+        logger = make_db_logger()
+        logger.warning("No hostname provided, defaulting to local host")
+        host = socket.gethostname()
+        logger.debug(f"Host: {host} / Port: {port}")
+
     s1.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s1.bind((host, port))
     s1.listen(5)  # Put the socket into listening mode
@@ -135,7 +142,7 @@ def get_client_messages(s1: socket, port: int, host: str):
 
 
 def get_messages_to_ctr(
-    callback=None, host="", port=12347, *callback_args
+    callback, host, port, *callback_args
 ):
     """Creates socket server and run callback with socket data string.
 
@@ -143,20 +150,25 @@ def get_messages_to_ctr(
     ----------
     callback : callable
         Function that processes received socket data, by default None
-    host : str, optional
-        IP adrress of the socket connexion
-    port : int, optional
-        Port of the socket, by default 12347
+    host : str
+        IP address of the socket connection
+    port : int
+        Port of the socket
     callback_args : args
-        Args to pass into callback function
+        Arguments to pass into callback function
     """
+    from neurobooth_os.log_manager import make_db_logger
+    logger = make_db_logger()
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if not host:
+        logger.warning("No hostname provided, defaulting to local host")
+        host = socket.gethostname()
     s.bind((host, port))
-    print("Ctr socket binded to port", port)
+    logger.debug(f"Ctr socket bound to {host} @ port {port}")
 
     s.listen(5)
-    print("socket is listening")
 
     while True:
         try:

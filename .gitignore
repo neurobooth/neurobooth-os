@@ -70,3 +70,6 @@ venv-*
 
 # Logs
 *.log
+
+# Misc
+server_pids.txt

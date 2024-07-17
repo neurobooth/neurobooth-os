@@ -1,0 +1,7 @@
+collection_id: test_no_eyelink
+is_active: true
+task_ids:
+- altern_hand_test_obs_1
+- foot_tapping_test_obs_1
+- sit_to_stand_test_obs
+arg_parser: iout.stim_param_reader.py::CollectionArgs()

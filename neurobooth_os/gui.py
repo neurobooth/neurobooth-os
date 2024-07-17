@@ -285,6 +285,7 @@ def _stop_lsl_and_save(
 
 ######### Server communication ############
 
+
 def _start_servers(window, nodes):
     print("GUI starting servers")
     window["-init_servs-"].Update(button_color=("black", "red"))
@@ -381,13 +382,13 @@ def _get_ports():
     return nodes, host_ctr, port_ctr
 
 
-def gui():
+def gui(logger):
     """Start the Graphical User Interface.
     """
     database = cfg.neurobooth_config.database.dbname
     nodes, host_ctr, port_ctr = _get_ports()
 
-    # declare and intialize vars
+    # declare and initialize vars
     subject_id = None
     first_name = None
     last_name = None
@@ -408,6 +409,7 @@ def gui():
     }
     steps = list()  # keep track of steps done
     event, values = window.read(0.1)
+    sess_info = None
     while True:
         event, values = window.read(0.5)
         ############################################################
@@ -454,6 +456,7 @@ def gui():
                 # Open new layout with main window
                 window = _win_gen(_main_layout, sess_info)
                 _start_ctr_server(window, host_ctr, port_ctr)
+                logger.debug(f"ctr server started on {host_ctr}:{port_ctr}")
 
         ############################################################
         # Main Window -> Run neurobooth session
@@ -494,14 +497,15 @@ def gui():
 
         # Shut down the other servers and stops plotting
         elif event == "Shut Down" or event == sg.WINDOW_CLOSED:
-            if values is not None and values['notes'] and not values["_notes_taskname_"]:
+            if values is not None and 'notes' in values and "_notes_taskname_" not in values:
                 sg.PopupError(
                     "Unsaved notes without task. Before exiting, "
                     "select a task in the dropdown list or delete the note text."
                 )
                 continue
             else:
-                _save_session_notes(sess_info, values, window)
+                if sess_info and values:
+                    _save_session_notes(sess_info, values, window)
                 plttr.stop()
                 ctr_rec.shut_all(nodes=nodes[::-1])
                 break
@@ -583,14 +587,13 @@ def gui():
             inlet_keys = list(inlets)
             window["inlet_State"].update("\n".join(inlet_keys))
     window.close()
-    window["-OUTPUT-"].__del__()
+    if "-OUTPUT-" in window.AllKeysDict:
+        window["-OUTPUT-"].__del__()
     print("Session terminated")
 
 
 def _save_session_notes(sess_info, values, window):
-    if values is None:
-        return
-    if not values["_notes_taskname_"]:
+    if values is None or "_notes_taskname_" not in values:
         return
     _make_session_folder(sess_info)
     if values["_notes_taskname_"] == "All tasks":
@@ -621,11 +624,11 @@ def _make_session_folder(sess_info):
 def main():
     """The starting point of Neurobooth"""
 
-    cfg.load_config()  # Load Neurobooth-OS configuration
+    cfg.load_config_by_service_name("CTR")  # Load Neurobooth-OS configuration
     logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
     try:
         logger.debug("Starting GUI")
-        gui()
+        gui(logger)
         logger.debug("Stopping GUI")
     except Exception as argument:
         logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",

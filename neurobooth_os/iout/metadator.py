@@ -55,17 +55,22 @@ def get_database_connection(database: Optional[str] = None, validate_config_path
     log_man.make_default_logger(log_level=logging.ERROR, validate_paths=validate_config_paths)
 
     database_info = cfg.neurobooth_config.database
-    tunnel = SSHTunnelForwarder(
-        database_info.remote_host,
-        ssh_username=database_info.remote_user,
-        ssh_config_file="~/.ssh/config",
-        ssh_pkey="~/.ssh/id_rsa",
-        remote_bind_address=(database_info.host, database_info.port),
-        local_bind_address=("localhost", 6543),  # TODO: address in config
-    )
-    tunnel.start()
-    host = tunnel.local_bind_host
-    port = tunnel.local_bind_port
+    if database_info.host not in ["127.0.0.1", "localhost"]:
+        # If the DB is not on this host, use SSH tunneling for access
+        tunnel = SSHTunnelForwarder(
+            database_info.remote_host,
+            ssh_username=database_info.remote_user,
+            ssh_config_file="~/.ssh/config",
+            ssh_pkey="~/.ssh/id_rsa",
+            remote_bind_address=(database_info.host, database_info.port),
+            local_bind_address=("localhost", 6543),  # TODO: address in config
+        )
+        tunnel.start()
+        host = tunnel.local_bind_host
+        port = tunnel.local_bind_port
+    else:
+        host = database_info.host
+        port = database_info.port
 
     conn = psycopg2.connect(
         database=database_info.dbname if database is None else database,

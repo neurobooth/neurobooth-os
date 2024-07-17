@@ -1,0 +1,14 @@
+task_id: foot_tapping_test_obs_1
+feature_of_interest: foot movement
+stimulus_id: foot_tapping_task_1
+instruction_id: foot_tap_1
+device_id_array:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+arg_parser: iout.stim_param_reader.py::RawTaskParams()
