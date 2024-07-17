@@ -1,9 +1,13 @@
 from neurobooth_os.iout.metadator import get_database_connection
-from neurobooth_os.iout.split_xdf import create_h5_from_csv
+from neurobooth_os.iout.split_xdf import postprocess_xdf_split
+import logging
+from neurobooth_os.log_manager import make_db_logger
 import neurobooth_os.config as config
 
 config.load_config()
-conn = get_database_connection()
-# location of the csv file containing path filename and task ID
-dont_split_xdf_fpath = "C:/neurobooth"
-create_h5_from_csv(dont_split_xdf_fpath, conn)
+make_db_logger()  # Initialize logging to default
+postprocess_xdf_split(
+    config.neurobooth_config.split_xdf_backlog,
+    get_database_connection()
+)
+logging.shutdown()

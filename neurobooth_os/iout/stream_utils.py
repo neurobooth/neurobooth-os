@@ -1,4 +1,5 @@
 import json
+import re
 from typing import NamedTuple, List, Dict
 from pylsl import StreamInfo
 
@@ -9,6 +10,13 @@ class DataVersion(NamedTuple):
 
     def __str__(self):
         return f'{self.major}.{self.minor}'
+
+    @staticmethod
+    def from_str(version_str: str) -> 'DataVersion':
+        match = re.match(r'(\d+)\.(\d+)', version_str)
+        if match is None:
+            raise ValueError(f'Invalid version string: {version_str}')
+        return DataVersion(major=int(match.group(1)), minor=int(match.group(2)))
 
 
 def set_stream_description(

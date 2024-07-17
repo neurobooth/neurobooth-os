@@ -27,7 +27,7 @@ from neurobooth_os.netcomm import (
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
 from neurobooth_os.log_manager import make_db_logger
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.iout.split_xdf import split_sens_files, get_xdf_name
+from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
 
@@ -266,26 +266,21 @@ def _stop_lsl_and_save(
     window["Start"].Update(button_color=("black", "green"))
 
     xdf_fname = get_xdf_name(session, rec_fname)
+    xdf_path = op.join(folder, xdf_fname)
     t0 = time.time()
     if any([tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]]):
-        dont_split_xdf_fpath = "C:/neurobooth"
+        # Don't split large files now, just add to a backlog to handle post-session
+        postpone_xdf_split(xdf_path, t_obs_id, obs_log_id, cfg.neurobooth_config.split_xdf_backlog)
+        print(f"SPLIT XDF {t_obs_id} took: {time.time() - t0}")
     else:
-        dont_split_xdf_fpath = None
-    # split xdf in a thread
-    xdf_split = threading.Thread(
-        target=split_sens_files,
-        args=(
-            xdf_fname,
-            obs_log_id,
-            t_obs_id,
-            conn,
-            folder,
-            dont_split_xdf_fpath,
-        ),
-        daemon=True,
-    )
-    xdf_split.start()
-    print(f"CTR xdf_split threading took: {time.time() - t0}")
+        # Split XDF in a thread
+        xdf_split = threading.Thread(
+            target=split_sens_files,
+            args=(xdf_path, obs_log_id, t_obs_id, conn),
+            daemon=True,
+        )
+        xdf_split.start()
+        print(f"CTR xdf_split threading took: {time.time() - t0}")
 
 
 ######### Server communication ############
@@ -502,7 +497,7 @@ def gui(logger):
 
         # Shut down the other servers and stops plotting
         elif event == "Shut Down" or event == sg.WINDOW_CLOSED:
-            if values and 'notes' in values and "_notes_taskname_" not in values:
+            if values is not None and 'notes' in values and "_notes_taskname_" not in values:
                 sg.PopupError(
                     "Unsaved notes without task. Before exiting, "
                     "select a task in the dropdown list or delete the note text."
@@ -598,7 +593,7 @@ def gui(logger):
 
 
 def _save_session_notes(sess_info, values, window):
-    if not values["_notes_taskname_"]:
+    if values is None or "_notes_taskname_" not in values:
         return
     _make_session_folder(sess_info)
     if values["_notes_taskname_"] == "All tasks":
