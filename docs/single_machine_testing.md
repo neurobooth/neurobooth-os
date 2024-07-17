@@ -8,12 +8,14 @@ Note: You must be running Windows 10 or greater to run Neurobooth on your machin
 To run on a single machine you must modify the neurobooth config file, typically "neurobooth_os_config.json". 
 The following changes should be applied:
 - The entries for acquisition, control, and presentation must have name, user, and password all set to  "".
-- The entries for acquisition, control, and presentation must have port set to different values
+- The entries for acquisition, control, and presentation must use different ports since they will all be on the same host.
 - TODO: Describe how to set the monitor width, etc.
 
 If you're running the db on the same machine as the neurobooth code, the following additional changes are required:
 - The database host value should be set to the loopback address "127.0.0.1"
 - You will likely also need to update some of your other database params (e.g. user and password)
+
+For more information on configuration settings, please see: [system_configuration.md](system_configuration.md) 
 
 ## Servers
 ACQ and STM servers are started via the GUI using WMI. See the [WMI instructions](enable_WMI_instuctions.txt) document to get started. 
