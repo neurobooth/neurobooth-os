@@ -72,8 +72,10 @@ def get_database_connection(database: Optional[str] = None, validate_config_path
         host = database_info.host
         port = database_info.port
 
+    db = database_info.dbname if database is None else database
+
     conn = psycopg2.connect(
-        database=database_info.dbname if database is None else database,
+        database=db,
         user=database_info.user,
         password=database_info.password,
         host=host,
@@ -95,6 +97,30 @@ def get_subject_ids(conn: connection, first_name, last_name):
         where=f"LOWER(first_name_birth)=LOWER('{f_name}') AND LOWER(last_name_birth)=LOWER('{l_name}')"
     )
     return subject_df
+
+
+def get_subject_by_id(conn: connection, subject_id:str):
+
+    class Subject(BaseModel):
+        subject_id: str
+        first_name_birth: str
+        middle_name_birth: str
+        last_name_birth: str
+        date_of_birth: datetime
+
+    table_subject = Table("subject", conn=conn)
+    subject_df = table_subject.query(where=f"LOWER(subject_id)=LOWER('{subject_id}')")
+
+    if not subject_df.empty:
+        subj = Subject(
+            subject_id=subject_id,
+            first_name_birth=subject_df['first_name_birth'].iloc[0],
+            middle_name_birth=subject_df['middle_name_birth'].iloc[0],
+            last_name_birth=subject_df['last_name_birth'].iloc[0],
+            date_of_birth=subject_df['date_of_birth_subject'].iloc[0],
+        )
+        return subj.model_dump_json()
+    return None
 
 
 def _escape_name_string(name: str) -> str:

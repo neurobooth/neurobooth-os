@@ -10,7 +10,6 @@ import logging
 import json
 
 import neurobooth_os
-from neurobooth_os.iout.camera_brio import VidRec_Brio
 
 from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs, DeviceArgs
@@ -62,20 +61,7 @@ def run_acq(logger):
     for data, connx in get_client_messages(s1, port, host):
         logger.info(f'MESSAGE RECEIVED: {data}')
 
-        if "vis_stream" in data:
-            if not lowFeed_running:
-                lowFeed = VidRec_Brio(
-                    camindex=config.neurobooth_config.cam_inx_lowfeed, doPreview=True
-                )
-                print("LowFeed running")
-                lowFeed_running = True
-            else:
-                print(f"-OUTLETID-:Webcam:{lowFeed.preview_outlet_id}")
-                print("Already running low feed video streaming")
-
-        elif "prepare" in data:
-            # data = "prepare:collection_id:database:str(log_task_dict)"
-            collection_id = data.split(":")[1]
+        if "prepare" in data:
             database_name = data.split(":")[2]
             log_task = eval(
                 data.replace(f"prepare:{collection_id}:{database_name}:", "")
