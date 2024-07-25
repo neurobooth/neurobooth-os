@@ -61,7 +61,7 @@ def get_database_connection(database: Optional[str] = None, validate_config_path
         ssh_config_file="~/.ssh/config",
         ssh_pkey="~/.ssh/id_rsa",
         remote_bind_address=(database_info.host, database_info.port),
-        local_bind_address=("localhost", database_info.port),  # TODO: address in config
+        local_bind_address=("localhost", 6543),  # TODO: address in config
     )
     tunnel.start()
     host = tunnel.local_bind_host
