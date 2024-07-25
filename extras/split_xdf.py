@@ -7,7 +7,7 @@ import os
 import re
 import argparse
 import datetime
-from typing import NamedTuple, List
+from typing import NamedTuple, List, Optional
 
 import psycopg2 as pg
 import neurobooth_os.config as cfg
@@ -68,7 +68,7 @@ class DatabaseConnection:
         self.connection = DatabaseConnection.connect(config_path, tunnel)
 
     @staticmethod
-    def connect(config_path: str, tunnel: bool) -> pg.connection:
+    def connect(config_path: str, tunnel: bool) -> pg.extensions.connection:
         """
         Load and parse a Neurobooth-OS configuration, then create a psycopg2 connection.
         Note: This function copies some code from metadator.py, but importing that file introduces extra dependencies.
@@ -144,10 +144,26 @@ class DatabaseConnection:
             return [row[0] for row in cursor.fetchall()]
 
 
+def device_id_from_yaml(file: str, task_id: str) -> List[str]:
+    """
+    Load a YAML file defining preset task ID -> device ID mappings and look up the given task.
+    :param file: The YAML file containing the mappings.
+    :param task_id: The task ID to look up.
+    :return: The preset device IDs associated with the task ID.
+    """
+    try:
+        import yaml
+        with open(file, 'r') as stream:
+            task_device_map = yaml.safe_load(stream)
+        return task_device_map[task_id]
+    except Exception as e:
+        raise SplitException(f'Could not locate task {task_id} using map file {file}.') from e
+
 
 def split(
         xdf_path: str,
         database_conn: DatabaseConnection,
+        task_map_file: Optional[str] = None,
 ) -> None:
     """
     Split a single XDF file into device-specific HDF5 files.
@@ -156,14 +172,24 @@ def split(
 
     :param xdf_path: The path to the XDF file to split.
     :param database_conn: A connection interface to the Neurobooth database.
+    :param task_map_file: A YAML file containing a preset mapping of task ID -> device IDs.
     """
     xdf_info = XDFInfo.parse_xdf_name(xdf_path)
-    device_ids = database_conn.get_device_ids(xdf_info)
-    # TODO: Figure out what to do if we cannot locate device IDs...
 
+    # Look up device IDs for the given task and session
+    device_ids = database_conn.get_device_ids(xdf_info)
+    if not device_ids:  # Could not find in database, use presets from file instead
+        if task_map_file is None:
+            raise SplitException('Could not locate task ID {} for session {}_{} in the database.'.format(
+                xdf_info.task_id, xdf_info.subject_id, xdf_info.date.isoformat()
+            ))
+        device_ids = device_id_from_yaml(task_map_file, xdf_info.task_id)
+
+    # Parse the XDF, apply corrections, and write the resulting HDF5.
     device_data = xdf.parse_xdf(xdf_path, device_ids)
     # TODO: Apply XDF corrections
     xdf.write_device_hdf5(device_data)
+
     # TODO: Write to new log table int database
 
 
@@ -188,21 +214,28 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--ssh-tunnel',
         action='store_true',
-        help="Specify this flag to SSH tunnel before connecting to the database."
+        help=(
+            "Specify this flag to SSH tunnel before connecting to the database. "
+            "This is flag is not needed if running on the same machine as the database."
+        )
+    )
+    parser.add_argument(
+        '--task-device-map',
+        type=str,
+        default=None,
+        help="Optional path to a YAML file containing a preset map of task ID -> device IDs."
     )
     return parser.parse_args()
-    # return {
-    #     'xdf_path': os.path.abspath(args.xdf),
-    #     'config_path': os.path.abspath(args.config_path),
-    #     'tunnel': args.ssh_tunnel,
-    # }
 
 
 def main() -> None:
     """Entry point for command-line calls."""
     args = parse_arguments()
-    database_connection = DatabaseConnection(os.path.abspath(args.config_path), args.ssh_tunnel)
-    split(os.path.abspath(args.xdf), database_connection)
+    split(
+        xdf_path=os.path.abspath(args.xdf),
+        database_conn=DatabaseConnection(os.path.abspath(args.config_path), args.ssh_tunnel),
+        task_map_file=os.path.abspath(args.task_device_map),
+    )
 
 
 if __name__ == '__main__':
