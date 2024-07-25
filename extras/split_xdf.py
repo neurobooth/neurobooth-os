@@ -7,8 +7,10 @@ import os
 import re
 import argparse
 import datetime
-from typing import Dict, NamedTuple
+from typing import NamedTuple, List
 
+import psycopg2 as pg
+import neurobooth_os.config as cfg
 import neurobooth_os.iout.split_xdf as xdf
 
 
@@ -54,26 +56,118 @@ class XDFInfo(NamedTuple):
         )
 
 
+class DatabaseConnection:
+    """Handles limited interactions with the Neurobooth database"""
+
+    def __init__(self, config_path: str, tunnel: bool):
+        """
+        Create a new DatabaseConnection based on the provided Neurobooth-OS configuration file.
+        :param config_path: The path to the Neurobooth-OS configuration, including a 'database' entry.
+        :param tunnel: Whether to SSH tunnel prior to connecting. Should be False if running on neurodoor.
+        """
+        self.connection = DatabaseConnection.connect(config_path, tunnel)
+
+    @staticmethod
+    def connect(config_path: str, tunnel: bool) -> pg.connection:
+        """
+        Load and parse a Neurobooth-OS configuration, then create a psycopg2 connection.
+        Note: This function copies some code from metadator.py, but importing that file introduces extra dependencies.
+
+        :param config_path: The path to the Neurobooth-OS configuration, including a 'database' entry.
+        :param tunnel: Whether to SSH tunnel prior to connecting. Should be False if running on neurodoor.
+        """
+        cfg.load_config(config_path, validate_paths=False)
+        database_info = cfg.neurobooth_config.database
+
+        if tunnel:
+            from sshtunnel import SSHTunnelForwarder
+            tunnel = SSHTunnelForwarder(
+                database_info.remote_host,
+                ssh_username=database_info.remote_user,
+                ssh_config_file="~/.ssh/config",
+                ssh_pkey="~/.ssh/id_rsa",
+                remote_bind_address=(database_info.host, database_info.port),
+                local_bind_address=("localhost", 6543),
+            )
+            tunnel.start()
+            host = tunnel.local_bind_host
+            port = tunnel.local_bind_port
+        else:
+            host = database_info.host
+            port = database_info.port
+
+        return pg.connect(
+            database=database_info.dbname,
+            user=database_info.user,
+            password=database_info.password,
+            host=host,
+            port=port,
+        )
+
+    DEVICE_ID_QUERY = """
+    WITH device AS (
+        -- This subquery defines a temporary table of log device IDs
+        -- associated with the specified task and session.
+        SELECT UNNEST(tparam.log_device_ids) AS log_device_id  -- Flatten the list
+        -- We need to do a chain of joins to get from the session -> task -> task paramaters
+        FROM log_session sess
+        JOIN log_task task
+            ON sess.log_session_id = task.log_session_id
+        JOIN log_task_param tparam
+            ON task.log_task_id = tparam.log_task_id
+        -- Filter to just the session and task of interest.
+        -- We use a parameterized query and pass in the filters to psycopg2.
+        WHERE sess.subject_id = %(subject_id)s
+            AND sess.date = %(session_date)s
+            AND task.task_id = %(task_id)s
+    )
+    -- Now we can look up which devices were actually present during the task recording.
+    SELECT dparam.device_id
+    FROM device
+    JOIN log_device_param dparam
+        ON device.log_device_id = dparam.id
+    """
+
+    def get_device_ids(self, xdf_info: XDFInfo) -> List[str]:
+        """
+        Retrieve the list of device IDs associated with a given task and session.
+        :param xdf_info: An XDF info structure, which details the task and session.
+        :return: The list of device IDs retrieved from the log_* tables in the database.
+        """
+        query_params = {
+            'subject_id': xdf_info.subject_id,
+            'session_date': xdf_info.date.isoformat(),
+            'task_id': xdf_info.task_id,
+        }
+        with self.connection.cursor() as cursor:
+            cursor.execute(DatabaseConnection.DEVICE_ID_QUERY, query_params)
+            return [row[0] for row in cursor.fetchall()]
+
+
+
 def split(
         xdf_path: str,
-        config_path: str,
+        database_conn: DatabaseConnection,
 ) -> None:
     """
     Split a single XDF file into device-specific HDF5 files.
     Intended to be called either via the command line (via parse_arguments()) or by another script (e.g., one that
     finds and iterates over all files to be split).
+
     :param xdf_path: The path to the XDF file to split.
-    :param config_path: The path to a Neurobooth configuration file with a 'database' entry.
+    :param database_conn: A connection interface to the Neurobooth database.
     """
     xdf_info = XDFInfo.parse_xdf_name(xdf_path)
-    device_ids = None  # TODO: Get device IDs for the task!
+    device_ids = database_conn.get_device_ids(xdf_info)
+    # TODO: Figure out what to do if we cannot locate device IDs...
 
     device_data = xdf.parse_xdf(xdf_path, device_ids)
     # TODO: Apply XDF corrections
     xdf.write_device_hdf5(device_data)
+    # TODO: Write to new log table int database
 
 
-def parse_arguments() -> Dict[str, str]:
+def parse_arguments() -> argparse.Namespace:
     """
     Parse command line arguments.
     :return: Dictionary of keyword arguments to split().
@@ -91,12 +185,25 @@ def parse_arguments() -> Dict[str, str]:
         type=str,
         help="Path to a Neurobooth configuration file with a 'database' entry."
     )
-    args = parser.parse_args()
-    return {
-        'xdf_path': os.path.abspath(args.xdf),
-        'config_path': os.path.abspath(args.config_path),
-    }
+    parser.add_argument(
+        '--ssh-tunnel',
+        action='store_true',
+        help="Specify this flag to SSH tunnel before connecting to the database."
+    )
+    return parser.parse_args()
+    # return {
+    #     'xdf_path': os.path.abspath(args.xdf),
+    #     'config_path': os.path.abspath(args.config_path),
+    #     'tunnel': args.ssh_tunnel,
+    # }
+
+
+def main() -> None:
+    """Entry point for command-line calls."""
+    args = parse_arguments()
+    database_connection = DatabaseConnection(os.path.abspath(args.config_path), args.ssh_tunnel)
+    split(os.path.abspath(args.xdf), database_connection)
 
 
 if __name__ == '__main__':
-    split(**parse_arguments())
+    main()
