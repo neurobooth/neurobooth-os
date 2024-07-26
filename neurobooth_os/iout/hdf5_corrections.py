@@ -17,7 +17,7 @@ def get_data_version(data) -> DataVersion:
     """Extract the data version from the device or marker data. Assume v0.0 if the key is missing."""
     try:
         desc = get_description(data)
-        return DataVersion.from_str(desc['data_version'][0])
+        return DataVersion.from_str(desc['data_version'])
     # Old marker descriptions don't have the full structure or store data version
     except (KeyError, AttributeError, TypeError):
         return DataVersion(0, 0)
@@ -27,7 +27,7 @@ def correct_marker(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.marker_data)
     if data_version.major < 1:
         data.marker_data['info']['desc'] = {
-            'data_version': [str(data_version)],
+            'data_version': str(data_version),
             'column_names': json.dumps(['Marker']),
             'column_descriptions': json.dumps({'Marker': 'Marker message string'}),
             'device_id': 'marker',
@@ -40,7 +40,7 @@ def correct_intel(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.device_data)
     if data_version.major < 1:
         desc = get_description(data.device_data)
-        desc['data_version'] = [str(data_version)]
+        desc['data_version'] = str(data_version)
         desc['column_names'] = json.dumps(['FrameNum', 'FrameNum_RealSense', 'Time_RealSense', 'Time_ACQ'])
         desc['column_descriptions'] = json.dumps({
             'FrameNum': 'Locally-tracked frame number',
@@ -55,7 +55,7 @@ def correct_eyelink(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.device_data)
     if data_version.major < 1:
         desc = get_description(data.device_data)
-        desc['data_version'] = [str(data_version)]
+        desc['data_version'] = str(data_version)
         desc['column_names'] = json.dumps([
             'R_GazeX', 'R_GazeY', 'R_PupilSize',
             'L_GazeX', 'L_GazeY', 'L_PupilSize',
@@ -85,7 +85,7 @@ def correct_flir(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.device_data)
     if data_version.major < 1:
         desc = get_description(data.device_data)
-        desc['data_version'] = [str(data_version)]
+        desc['data_version'] = str(data_version)
         desc['column_names'] = json.dumps(['FrameNum', 'Time_FLIR'])
         desc['column_descriptions'] = json.dumps({
             'FrameNum': 'Frame number',
@@ -98,7 +98,7 @@ def correct_iphone(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.device_data)
     if data_version.major < 1:
         desc = get_description(data.device_data)
-        desc['data_version'] = [str(data_version)]
+        desc['data_version'] = str(data_version)
         desc['column_names'] = json.dumps(['FrameNum', 'Time_iPhone', 'Time_ACQ'])
         desc['column_descriptions'] = json.dumps({
             'FrameNum': 'App-tracked frame number',
@@ -112,7 +112,7 @@ def correct_mbient(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.device_data)
     if data_version.major < 1:
         desc = get_description(data.device_data)
-        desc['data_version'] = [str(data_version)]
+        desc['data_version'] = str(data_version)
         desc['column_names'] = json.dumps(['Time_Mbient', 'AccelX', 'AccelY', 'AccelZ', 'GyroX', 'GyroY', 'GyroZ'])
         desc['column_descriptions'] = json.dumps({
             'Time_Mbient': 'Device timestamp (ms; epoch)',
@@ -130,7 +130,7 @@ def correct_yeti(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.device_data)
     if data_version.major < 1:
         desc = get_description(data.device_data)
-        desc['data_version'] = [str(data_version)]
+        desc['data_version'] = str(data_version)
         desc['column_names'] = json.dumps(['ElapsedTime', 'Amplitude (1024 samples)'])
         desc['column_descriptions'] = json.dumps({
             'ElapsedTime': 'Elapsed time on the local LSL clock since the last chunk of samples (ms)',
@@ -143,7 +143,7 @@ def correct_mouse(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.device_data)
     if data_version.major < 1:
         desc = get_description(data.device_data)
-        desc['data_version'] = [str(data_version)]
+        desc['data_version'] = str(data_version)
         desc['column_names'] = json.dumps(['PosX', 'PosY', 'MouseState'])
         desc['column_descriptions'] = json.dumps({
             'PosX': 'X screen coordinate of the mouse (pixels)',
