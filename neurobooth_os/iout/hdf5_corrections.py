@@ -17,7 +17,7 @@ def get_data_version(data) -> DataVersion:
     """Extract the data version from the device or marker data. Assume v0.0 if the key is missing."""
     try:
         desc = get_description(data)
-    except KeyError:  # Old marker descriptions don't have the full structure
+    except (KeyError, AttributeError):  # Old marker descriptions don't have the full structure
         return DataVersion(0, 0)
 
     if 'data_version' in desc.keys():  # Newer device descriptions include the data version
