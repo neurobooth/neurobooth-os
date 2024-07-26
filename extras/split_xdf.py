@@ -9,7 +9,9 @@ import argparse
 import datetime
 from typing import NamedTuple, List, Dict, Optional, Any
 
+import yaml
 import psycopg2 as pg
+
 import neurobooth_os.config as cfg
 import neurobooth_os.iout.split_xdf as xdf
 
@@ -146,6 +148,11 @@ class DatabaseConnection:
             return [row[0] for row in cursor.fetchall()]
 
     def log_split(self, xdf_info: XDFInfo, device_data: List[xdf.DeviceData]) -> None:
+        """
+        Create entries in the log_split table to reflect created HDF5 files.
+        :param xdf_info: An XDF info structure, which details the task and session.
+        :param device_data: Structures representing the XDF data for each device.
+        """
         with self.connection.cursor() as cursor:
             for device in device_data:
                 # The file path should be session/file.hdf5 to permit comparison to log_sensor_file
@@ -180,7 +187,6 @@ def device_id_from_yaml(file: str, task_id: str) -> List[str]:
     :return: The preset device IDs associated with the task ID.
     """
     try:
-        import yaml
         with open(file, 'r') as stream:
             task_device_map = yaml.safe_load(stream)
         return task_device_map[task_id]
