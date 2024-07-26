@@ -8,7 +8,7 @@ import re
 import argparse
 import datetime
 import importlib
-from typing import NamedTuple, List, Dict, Optional, Any, Callable
+from typing import NamedTuple, List, Dict, Optional, Any, Callable, ClassVar
 
 import yaml
 import psycopg2 as pg
@@ -43,7 +43,7 @@ class HDF5CorrectionSpec(BaseModel):
         except Exception as e:
             raise SplitException('Unable to load correction functions from {path}!') from e
 
-    FUNC_STR_PATTERN = re.compile(r'(.*)\.py::(.*)\(\)')
+    FUNC_STR_PATTERN: ClassVar = re.compile(r'(.*)\.py::(.*)\(\)')
 
     @staticmethod
     def import_function(func_str: str) -> Callable:
