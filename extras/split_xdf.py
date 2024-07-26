@@ -7,13 +7,15 @@ import os
 import re
 import argparse
 import datetime
-from typing import NamedTuple, List, Dict, Optional, Any
+from typing import NamedTuple, List, Dict, Optional, Any, Callable
 
 import yaml
 import psycopg2 as pg
+from pydantic import BaseModel
 
 import neurobooth_os.config as cfg
 import neurobooth_os.iout.split_xdf as xdf
+
 
 # TODO: pick device ID source based on date.
 
@@ -21,6 +23,42 @@ import neurobooth_os.iout.split_xdf as xdf
 class SplitException(Exception):
     """For generic errors that occur when splitting an XDF file."""
     pass
+
+
+CorrectionFunction = Callable[[xdf.DeviceData], xdf.DeviceData]
+
+
+class HDF5CorrectionSpec(BaseModel):
+    marker: Optional[CorrectionFunction] = None
+    devices: Dict[str, CorrectionFunction] = {}
+
+    @staticmethod
+    def load(path: str) -> 'HDF5CorrectionSpec':
+        """
+        Load the correction specification from a YAML configuration file.
+        :param path: The path to the YAML file.
+        :return: The correction specification.
+        """
+        try:
+            with open(path, 'r') as stream:
+                return HDF5CorrectionSpec(**yaml.load(stream, yaml.FullLoader))
+        except Exception as e:
+            raise SplitException('Unable to load correction functions from {path}!') from e
+
+    def correct_device(self, device: xdf.DeviceData) -> xdf.DeviceData:
+        """
+        Apply in-memory corrections to device data if corrections were specified for the given device/marker.
+        :param device: The device structure loaded from the XDF file.
+        :return: The corrected device structure.
+        """
+        if self.marker is not None:
+            device = self.marker(device)
+
+        device_id = device.device_id
+        if device_id in self.devices:
+            device = self.devices[device_id](device)
+
+        return device
 
 
 XDF_NAME_PATTERN = re.compile(r'(\d+)_(\d\d\d\d-\d\d-\d\d)_\d\dh-\d\dm-\d\ds_(.*)_R001\.xdf', flags=re.IGNORECASE)
@@ -198,6 +236,7 @@ def split(
         xdf_path: str,
         database_conn: DatabaseConnection,
         task_map_file: Optional[str] = None,
+        corrections: Optional[HDF5CorrectionSpec] = None,
 ) -> None:
     """
     Split a single XDF file into device-specific HDF5 files.
@@ -207,6 +246,7 @@ def split(
     :param xdf_path: The path to the XDF file to split.
     :param database_conn: A connection interface to the Neurobooth database.
     :param task_map_file: (Optional) A YAML file containing a preset mapping of task ID -> device IDs.
+    :param corrections: (Optional) Apply device-specific in-memory corrections before writing data to HDF5 files.
     """
     xdf_info = XDFInfo.parse_xdf_name(xdf_path)
 
@@ -223,7 +263,8 @@ def split(
 
     # Parse the XDF, apply corrections, write the resulting HDF5, and add an entry to log_split in the database.
     device_data = xdf.parse_xdf(xdf_path, device_ids)
-    # TODO: Apply XDF corrections
+    if corrections is not None:
+        device_data = [corrections.correct_device(dev) for dev in device_data]
     xdf.write_device_hdf5(device_data)
     database_conn.log_split(xdf_info, device_data)
 
@@ -260,14 +301,28 @@ def parse_arguments() -> Dict[str, Any]:
         default=None,
         help="If provided, the specified YAML file will be used to define a preset map of task ID -> device IDs."
     )
+    parser.add_argument(
+        '--hdf5-corrections',
+        type=str,
+        default=None,
+        help="If provided, the specified YAML file will be used to locate correction functions for each device ID."
+    )
+
+    def abspath(path: Optional[str]) -> Optional[str]:
+        return os.path.abspath(path) if path is not None else path
 
     args = parser.parse_args()
-    task_map_file = os.path.abspath(args.task_device_map) if (args.task_device_map is not None) else None
-    database_conn = DatabaseConnection(os.path.abspath(args.config_path), args.ssh_tunnel)
+    task_map_file = abspath(args.task_device_map)
+    database_conn = DatabaseConnection(abspath(args.config_path), args.ssh_tunnel)
+    corrections = abspath(args.hdf5_corrections)
+    if corrections is not None:
+        corrections = HDF5CorrectionSpec.load(corrections)
+
     return {
         'xdf_path': os.path.abspath(args.xdf),
         'database_conn': database_conn,
         'task_map_file': task_map_file,
+        'corrections': corrections,
     }
 
 

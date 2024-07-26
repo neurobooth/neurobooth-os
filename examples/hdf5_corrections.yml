@@ -1,0 +1,5 @@
+# Specify which functions should be used to apply in-memory corrections to HDF5 data before writing.
+
+marker: neurobooth_os.iout.hdf5_corrections.py::correct_marker()
+devices:
+  IPhone_dev_1: neurobooth_os.iout.hdf5_corrections.py::correct_iphone()
