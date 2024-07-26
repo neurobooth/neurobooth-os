@@ -164,7 +164,7 @@ def device_id_from_yaml(file: str, task_id: str) -> List[str]:
 
 def split(
         xdf_path: str,
-        database_conn: Optional[DatabaseConnection] = None,
+        database_conn: DatabaseConnection,
         task_map_file: Optional[str] = None,
 ) -> None:
     """
@@ -174,17 +174,15 @@ def split(
 
     :param xdf_path: The path to the XDF file to split.
     :param database_conn: A connection interface to the Neurobooth database.
-    :param task_map_file: A YAML file containing a preset mapping of task ID -> device IDs.
+    :param task_map_file: (Optional) A YAML file containing a preset mapping of task ID -> device IDs.
     """
     xdf_info = XDFInfo.parse_xdf_name(xdf_path)
 
     # Look up device IDs for the given task and session
-    if database_conn is not None:
-        device_ids = database_conn.get_device_ids(xdf_info)
-    elif task_map_file is not None:
+    if task_map_file is not None:
         device_ids = device_id_from_yaml(task_map_file, xdf_info.task_id)
     else:
-        raise ValueError("Must specify either database_conn or task_map_file.")
+        device_ids = database_conn.get_device_ids(xdf_info)
 
     if not device_ids:  # Check that we found at least one device ID
         raise SplitException('Could not locate task ID {} for session {}_{}.'.format(
@@ -215,10 +213,7 @@ def parse_arguments() -> Dict[str, Any]:
         '--config-path',
         default=None,
         type=str,
-        help=(
-            "If provided, specify a path to a Neurobooth configuration file with a 'database' entry. "
-            "Used to define the map of task ID -> device IDs."
-        )
+        help="Specify a path to a Neurobooth configuration file with a 'database' entry."
     )
     parser.add_argument(
         '--ssh-tunnel',
@@ -234,23 +229,10 @@ def parse_arguments() -> Dict[str, Any]:
         default=None,
         help="If provided, the specified YAML file will be used to define a preset map of task ID -> device IDs."
     )
+
     args = parser.parse_args()
-
-    if args.config_path is not None:
-        database_conn = DatabaseConnection(os.path.abspath(args.config_path), args.ssh_tunnel)
-    else:
-        database_conn = None
-
-    if args.task_device_map is not None:
-        task_map_file = os.path.abspath(args.task_device_map)
-    else:
-        task_map_file = None
-
-    if (database_conn is None) and (task_map_file is None):
-        parser.error(
-            "Must specify either a config for database connection or path to a YAML file for task -> device mappings."
-        )
-
+    task_map_file = os.path.abspath(args.task_device_map) if (args.task_device_map is not None) else None
+    database_conn = DatabaseConnection(os.path.abspath(args.config_path), args.ssh_tunnel)
     return {
         'xdf_path': os.path.abspath(args.xdf),
         'database_conn': database_conn,
