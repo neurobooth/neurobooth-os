@@ -37,9 +37,9 @@ def correct_marker(data: DeviceData) -> DeviceData:
 
 
 def correct_intel(data: DeviceData) -> DeviceData:
-    data_version = get_data_version(data.marker_data)
+    data_version = get_data_version(data.device_data)
     if data_version.major < 1:
-        desc = get_description(data.marker_data)
+        desc = get_description(data.device_data)
         desc['data_version'] = [str(data_version)]
         desc['column_names'] = json.dumps(['FrameNum', 'FrameNum_RealSense', 'Time_RealSense', 'Time_ACQ'])
         desc['column_descriptions'] = json.dumps({
@@ -52,9 +52,9 @@ def correct_intel(data: DeviceData) -> DeviceData:
 
 
 def correct_eyelink(data: DeviceData) -> DeviceData:
-    data_version = get_data_version(data.marker_data)
+    data_version = get_data_version(data.device_data)
     if data_version.major < 1:
-        desc = get_description(data.marker_data)
+        desc = get_description(data.device_data)
         desc['data_version'] = [str(data_version)]
         desc['column_names'] = json.dumps([
             'R_GazeX', 'R_GazeY', 'R_PupilSize',
@@ -82,9 +82,9 @@ def correct_eyelink(data: DeviceData) -> DeviceData:
 
 
 def correct_flir(data: DeviceData) -> DeviceData:
-    data_version = get_data_version(data.marker_data)
+    data_version = get_data_version(data.device_data)
     if data_version.major < 1:
-        desc = get_description(data.marker_data)
+        desc = get_description(data.device_data)
         desc['data_version'] = [str(data_version)]
         desc['column_names'] = json.dumps(['FrameNum', 'Time_FLIR'])
         desc['column_descriptions'] = json.dumps({
@@ -97,7 +97,7 @@ def correct_flir(data: DeviceData) -> DeviceData:
 def correct_iphone(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.device_data)
     if data_version.major < 1:
-        desc = get_description(data.marker_data)
+        desc = get_description(data.device_data)
         desc['data_version'] = [str(data_version)]
         desc['column_names'] = json.dumps(['FrameNum', 'Time_iPhone', 'Time_ACQ'])
         desc['column_descriptions'] = json.dumps({
@@ -109,9 +109,9 @@ def correct_iphone(data: DeviceData) -> DeviceData:
 
 
 def correct_mbient(data: DeviceData) -> DeviceData:
-    data_version = get_data_version(data.marker_data)
+    data_version = get_data_version(data.device_data)
     if data_version.major < 1:
-        desc = get_description(data.marker_data)
+        desc = get_description(data.device_data)
         desc['data_version'] = [str(data_version)]
         desc['column_names'] = json.dumps(['Time_Mbient', 'AccelX', 'AccelY', 'AccelZ', 'GyroX', 'GyroY', 'GyroZ'])
         desc['column_descriptions'] = json.dumps({
@@ -129,7 +129,7 @@ def correct_mbient(data: DeviceData) -> DeviceData:
 def correct_yeti(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.device_data)
     if data_version.major < 1:
-        desc = get_description(data.marker_data)
+        desc = get_description(data.device_data)
         desc['data_version'] = [str(data_version)]
         desc['column_names'] = json.dumps(['ElapsedTime', 'Amplitude (1024 samples)'])
         desc['column_descriptions'] = json.dumps({
@@ -142,7 +142,7 @@ def correct_yeti(data: DeviceData) -> DeviceData:
 def correct_mouse(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.device_data)
     if data_version.major < 1:
-        desc = get_description(data.marker_data)
+        desc = get_description(data.device_data)
         desc['data_version'] = [str(data_version)]
         desc['column_names'] = json.dumps(['PosX', 'PosY', 'MouseState'])
         desc['column_descriptions'] = json.dumps({
