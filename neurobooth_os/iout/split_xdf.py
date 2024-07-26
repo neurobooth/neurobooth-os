@@ -92,7 +92,8 @@ def parse_xdf(xdf_path: str, device_ids: Optional[List[str]] = None) -> List[Dev
             continue
 
         device_id = device_data["info"]["desc"][0]["device_id"][0]
-        sensors_ids = json.loads(device_data["info"]["desc"][0]["sensor_ids"][0])  # Deserialize into list
+        sensors_ids = device_data["info"]["desc"][0]["sensor_ids"][0]
+        sensors_ids = json.loads(sensors_ids.replace("'", '"'))  # Deserialize into list
 
         if (device_ids is not None) and (device_id not in device_ids):  # Only split specified devices
             continue
