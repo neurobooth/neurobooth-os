@@ -145,6 +145,32 @@ class DatabaseConnection:
             cursor.execute(DatabaseConnection.DEVICE_ID_QUERY, query_params)
             return [row[0] for row in cursor.fetchall()]
 
+    def log_split(self, xdf_info: XDFInfo, device_data: List[xdf.DeviceData]) -> None:
+        with self.connection.cursor() as cursor:
+            for device in device_data:
+                # The file path should be session/file.hdf5 to permit comparison to log_sensor_file
+                hdf5_folder, hdf5_file = os.path.split(device.hdf5_path)
+                _, session_folder = os.path.split(hdf5_folder)
+                hdf5_file = f'{session_folder}/{hdf5_file}'
+
+                for sensor_id in device.sensor_ids:
+                    query_params = {
+                        'subject_id': xdf_info.subject_id,
+                        'date': xdf_info.date.isoformat(),
+                        'task_id': xdf_info.task_id,
+                        'device_id': device.device_id,
+                        'sensor_id': sensor_id,
+                        'hdf5_file_path': hdf5_file,
+                    }
+                    cursor.execute(
+                        """
+                        INSERT INTO log_split (subject_id, date, task_id, device_id, sensor_id, hdf5_file_path)
+                        VALUES (%(subject_id)s, %(date)s, %(task_id)s, %(device_id)s, %(sensor_id)s, %(hdf5_file_path)s)
+                        """,
+                        query_params
+                    )
+        self.connection.commit()
+
 
 def device_id_from_yaml(file: str, task_id: str) -> List[str]:
     """
@@ -189,12 +215,11 @@ def split(
             xdf_info.task_id, xdf_info.subject_id, xdf_info.date.isoformat()
         ))
 
-    # Parse the XDF, apply corrections, and write the resulting HDF5.
+    # Parse the XDF, apply corrections, write the resulting HDF5, and add an entry to log_split in the database.
     device_data = xdf.parse_xdf(xdf_path, device_ids)
     # TODO: Apply XDF corrections
     xdf.write_device_hdf5(device_data)
-
-    # TODO: Write to new log table int database
+    database_conn.log_split(xdf_info, device_data)
 
 
 def parse_arguments() -> Dict[str, Any]:
