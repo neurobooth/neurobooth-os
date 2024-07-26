@@ -7,6 +7,7 @@ import os
 import re
 import argparse
 import datetime
+import importlib
 from typing import NamedTuple, List, Dict, Optional, Any, Callable
 
 import yaml
@@ -25,12 +26,9 @@ class SplitException(Exception):
     pass
 
 
-CorrectionFunction = Callable[[xdf.DeviceData], xdf.DeviceData]
-
-
 class HDF5CorrectionSpec(BaseModel):
-    marker: Optional[CorrectionFunction] = None
-    devices: Dict[str, CorrectionFunction] = {}
+    marker: Optional[str] = None
+    devices: Dict[str, str] = {}
 
     @staticmethod
     def load(path: str) -> 'HDF5CorrectionSpec':
@@ -41,9 +39,30 @@ class HDF5CorrectionSpec(BaseModel):
         """
         try:
             with open(path, 'r') as stream:
-                return HDF5CorrectionSpec(**yaml.load(stream, yaml.FullLoader))
+                return HDF5CorrectionSpec(**yaml.safe_load(stream))
         except Exception as e:
             raise SplitException('Unable to load correction functions from {path}!') from e
+
+    FUNC_STR_PATTERN = re.compile(r'(.*)\.py::(.*)\(\)')
+
+    @staticmethod
+    def import_function(func_str: str) -> Callable:
+        """
+        Import and return the function specified by a fully.qualified.module.py::func() string.
+        This code is adapted from metadator, but we avoid the import because of dependency baggage.
+        :param func_str: The string to parse and import.
+        :return: The imported function.
+        """
+        match = re.match(HDF5CorrectionSpec.FUNC_STR_PATTERN, func_str)
+        if match is None:
+            raise SplitException(f'The function specification does not match the expected pattern: {func_str}')
+        module, func = match.groups()
+
+        try:
+            module = importlib.import_module(module)
+            return getattr(module, func)
+        except Exception as e:
+            raise SplitException(f'Unable to import {func_str}') from e
 
     def correct_device(self, device: xdf.DeviceData) -> xdf.DeviceData:
         """
@@ -52,11 +71,13 @@ class HDF5CorrectionSpec(BaseModel):
         :return: The corrected device structure.
         """
         if self.marker is not None:
-            device = self.marker(device)
+            func = HDF5CorrectionSpec.import_function(self.marker)
+            device = func(device)
 
         device_id = device.device_id
         if device_id in self.devices:
-            device = self.devices[device_id](device)
+            func = HDF5CorrectionSpec.import_function(self.devices[device_id])
+            device = func(device)
 
         return device
 
