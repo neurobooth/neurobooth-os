@@ -7,11 +7,13 @@ import os
 import re
 import argparse
 import datetime
-from typing import NamedTuple, List, Optional
+from typing import NamedTuple, List, Dict, Optional, Any
 
 import psycopg2 as pg
 import neurobooth_os.config as cfg
 import neurobooth_os.iout.split_xdf as xdf
+
+# TODO: pick device ID source based on date.
 
 
 class SplitException(Exception):
@@ -162,7 +164,7 @@ def device_id_from_yaml(file: str, task_id: str) -> List[str]:
 
 def split(
         xdf_path: str,
-        database_conn: DatabaseConnection,
+        database_conn: Optional[DatabaseConnection] = None,
         task_map_file: Optional[str] = None,
 ) -> None:
     """
@@ -177,13 +179,17 @@ def split(
     xdf_info = XDFInfo.parse_xdf_name(xdf_path)
 
     # Look up device IDs for the given task and session
-    device_ids = database_conn.get_device_ids(xdf_info)
-    if not device_ids:  # Could not find in database, use presets from file instead
-        if task_map_file is None:
-            raise SplitException('Could not locate task ID {} for session {}_{} in the database.'.format(
-                xdf_info.task_id, xdf_info.subject_id, xdf_info.date.isoformat()
-            ))
+    if database_conn is not None:
+        device_ids = database_conn.get_device_ids(xdf_info)
+    elif task_map_file is not None:
         device_ids = device_id_from_yaml(task_map_file, xdf_info.task_id)
+    else:
+        raise ValueError("Must specify either database_conn or task_map_file.")
+
+    if not device_ids:  # Check that we found at least one device ID
+        raise SplitException('Could not locate task ID {} for session {}_{}.'.format(
+            xdf_info.task_id, xdf_info.subject_id, xdf_info.date.isoformat()
+        ))
 
     # Parse the XDF, apply corrections, and write the resulting HDF5.
     device_data = xdf.parse_xdf(xdf_path, device_ids)
@@ -193,7 +199,7 @@ def split(
     # TODO: Write to new log table int database
 
 
-def parse_arguments() -> argparse.Namespace:
+def parse_arguments() -> Dict[str, Any]:
     """
     Parse command line arguments.
     :return: Dictionary of keyword arguments to split().
@@ -207,9 +213,12 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         '--config-path',
-        required=True,
+        default=None,
         type=str,
-        help="Path to a Neurobooth configuration file with a 'database' entry."
+        help=(
+            "If provided, specify a path to a Neurobooth configuration file with a 'database' entry. "
+            "Used to define the map of task ID -> device IDs."
+        )
     )
     parser.add_argument(
         '--ssh-tunnel',
@@ -223,19 +232,35 @@ def parse_arguments() -> argparse.Namespace:
         '--task-device-map',
         type=str,
         default=None,
-        help="Optional path to a YAML file containing a preset map of task ID -> device IDs."
+        help="If provided, the specified YAML file will be used to define a preset map of task ID -> device IDs."
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    if args.config_path is not None:
+        database_conn = DatabaseConnection(os.path.abspath(args.config_path), args.ssh_tunnel)
+    else:
+        database_conn = None
+
+    if args.task_device_map is not None:
+        task_map_file = os.path.abspath(args.task_device_map)
+    else:
+        task_map_file = None
+
+    if (database_conn is None) and (task_map_file is None):
+        parser.error(
+            "Must specify either a config for database connection or path to a YAML file for task -> device mappings."
+        )
+
+    return {
+        'xdf_path': os.path.abspath(args.xdf),
+        'database_conn': database_conn,
+        'task_map_file': task_map_file,
+    }
 
 
 def main() -> None:
     """Entry point for command-line calls."""
-    args = parse_arguments()
-    split(
-        xdf_path=os.path.abspath(args.xdf),
-        database_conn=DatabaseConnection(os.path.abspath(args.config_path), args.ssh_tunnel),
-        task_map_file=os.path.abspath(args.task_device_map),
-    )
+    split(**parse_arguments())
 
 
 if __name__ == '__main__':
