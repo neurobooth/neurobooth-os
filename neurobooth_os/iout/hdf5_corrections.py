@@ -27,10 +27,13 @@ def get_data_version(data) -> DataVersion:
 def correct_marker(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.marker_data)
     if data_version.major < 1:
-        desc = get_description(data.marker_data)
-        desc['data_version'] = [str(data_version)]
-        desc['column_names'] = json.dumps(['Marker'])
-        desc['column_descriptions'] = json.dumps({'Marker': 'Marker message string'})
+        data.marker_data['info']['desc'] = {
+            'data_version': [str(data_version)],
+            'column_names': json.dumps(['Marker']),
+            'column_descriptions': json.dumps({'Marker': 'Marker message string'}),
+            'device_id': 'marker',
+            'sensor_ids': json.dumps(['marker']),
+        }
     return data
 
 
