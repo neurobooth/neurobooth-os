@@ -16,9 +16,11 @@ def get_description(data):
 def get_data_version(data) -> DataVersion:
     """Extract the data version from the device or marker data. Assume v0.0 if the key is missing."""
     desc = get_description(data)
-    if 'data_version' in desc.keys():
+    if desc is None:  # Old marker descriptions don't have any nesting
+        return DataVersion(0, 0)
+    elif 'data_version' in desc.keys():  # Newer device descriptions include the data version
         return DataVersion.from_str(desc['data_version'][0])
-    else:
+    else:  # Must be an old device description
         return DataVersion(0, 0)
 
 
