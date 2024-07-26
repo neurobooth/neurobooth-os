@@ -18,7 +18,8 @@ def get_data_version(data) -> DataVersion:
     try:
         desc = get_description(data)
         return DataVersion.from_str(desc['data_version'][0])
-    except (KeyError, AttributeError):  # Old marker descriptions don't have the full structure or store data version
+    # Old marker descriptions don't have the full structure or store data version
+    except (KeyError, AttributeError, TypeError):
         return DataVersion(0, 0)
 
 
