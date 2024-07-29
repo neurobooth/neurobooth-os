@@ -19,13 +19,12 @@ def get_data_version(data) -> DataVersion:
         desc = get_description(data)
         return DataVersion.from_str(desc['data_version'][0])
     # Old marker descriptions don't have the full structure or store data version
-    except (KeyError, AttributeError, TypeError):
+    except (KeyError, AttributeError, TypeError, IndexError):
         return DataVersion(0, 0)
 
 
 def correct_marker(data: DeviceData) -> DeviceData:
     data_version = get_data_version(data.marker_data)
-    print(data_version)
     if data_version.major < 1:
         data.marker_data['info']['desc'] = {
             'data_version': str(data_version),
