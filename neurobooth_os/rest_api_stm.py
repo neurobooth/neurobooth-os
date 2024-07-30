@@ -19,7 +19,7 @@ import neurobooth_os.tasks.utils as utl
 from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.log_manager import make_db_logger
-from neurobooth_os.msg.request import PrepareRequest, TaskInfo
+from neurobooth_os.msg.messages import PrepareRequest, TaskInfo
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen

@@ -7,6 +7,8 @@ from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 
+import pandas as pd
+from pandas import DataFrame
 from pydantic import BaseModel
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
@@ -17,6 +19,7 @@ import neurobooth_os.config as cfg
 from neurobooth_os.iout import stim_param_reader
 from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, get_cfg_path, DeviceArgs, StimulusArgs, \
     RawTaskParams, TaskArgs, StudyArgs, CollectionArgs
+from neurobooth_os.msg.messages import Message
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
 
@@ -82,6 +85,81 @@ def get_database_connection(database: Optional[str] = None, validate_config_path
         port=port,
     )
     return conn
+
+
+def post_message(msg: Message, conn: connection) -> str:
+    """
+    Posts a new message to the database that mediates between message senders and receivers
+
+    Parameters
+    ----------
+    msg: Message        The Message to be posted
+    conn: connection    A database connection
+
+    Returns
+    -------
+    pk_val : str | None
+            The primary keys of the row inserted into.
+            If multiple rows are inserted, returns None.
+
+    """
+    table = Table("message_queue", conn=conn)
+    body = msg.body.model_dump_json()
+    return table.insert_rows([(str(msg.uuid),
+                               msg.type,
+                               msg.source,
+                               msg.destination,
+                               msg.priority,
+                               msg.time_created,
+                               body)],
+                             cols=["uuid", "type", "source", "destination", 'priority', 'time_created', 'body'])
+
+
+def read_next_message(destination: str, conn: connection) -> DataFrame:
+    f"""
+    Returns a Pandas dataframe containing one row representing the next message to be handled by 
+    the calling process. Code representing the {destination} would call this message to check for new messages
+    
+    NOTE: A MESSAGE CAN ONLY BE READ ONCE using this method as the message's time_read value is updated before 
+    returning the query results. Only rows where time_read is NULL are returned here. 
+    
+    Parameters
+    ----------
+    destination: str    The identifier for the process that is the intended receiver of the message
+    conn: connection    A database connection
+
+    Returns a Pandas Dataframe containing zero or one rows. Clients should check return_value.empty before trying to 
+        use the results. 
+    -------
+
+    """
+    time_read = datetime.now()
+    update_str = \
+        f''' 
+        with selection as
+            (
+            select *  
+            from message_queue
+            where time_read is NULL
+            and destination = '{destination}'
+            order by priority desc, id asc
+            limit 1
+            )
+        UPDATE message_queue
+        SET time_read = '{time_read}' 
+        from selection
+        where message_queue.id = selection.id
+        returning message_queue.id, message_queue.uuid, message_queue.type, message_queue.priority,
+        message_queue.source, message_queue.destination, message_queue.time_created, message_queue.time_read,
+        message_queue.body
+     '''
+
+    curs = conn.cursor()
+    curs.execute(update_str)
+    msg_df = pd.DataFrame(curs.fetchall())
+    conn.commit()
+    curs.close()
+    return msg_df
 
 
 def get_study_ids() -> List[str]:
