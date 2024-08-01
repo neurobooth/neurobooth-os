@@ -18,9 +18,6 @@ import neurobooth_os.config as cfg
 import neurobooth_os.iout.split_xdf as xdf
 
 
-# TODO: pick device ID source based on date.
-
-
 class SplitException(Exception):
     """For generic errors that occur when splitting an XDF file."""
     pass
