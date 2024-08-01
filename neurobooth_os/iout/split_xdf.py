@@ -92,8 +92,8 @@ def parse_xdf(xdf_path: str, device_ids: Optional[List[str]] = None) -> List[Dev
             continue
 
         device_id = device_data["info"]["desc"][0]["device_id"][0]
-        sensors_ids = device_data["info"]["desc"][0]["sensor_ids"][0]
-        sensors_ids = json.loads(sensors_ids.replace("'", '"'))  # Deserialize into list
+        sensor_id_str = device_data["info"]["desc"][0]["sensor_ids"][0]
+        sensor_ids = json.loads(sensor_id_str.replace("'", '"'))  # Deserialize into list
 
         if (device_ids is not None) and (device_id not in device_ids):  # Only split specified devices
             continue
@@ -103,8 +103,8 @@ def parse_xdf(xdf_path: str, device_ids: Optional[List[str]] = None) -> List[Dev
             device_data=device_data,
             marker_data=marker,
             video_files=video_files[device_name] if device_name in video_files else [],
-            sensor_ids=sensors_ids,
-            hdf5_path=_make_hdf5_path(xdf_path, device_id, sensors_ids),
+            sensor_ids=sensor_ids,
+            hdf5_path=_make_hdf5_path(xdf_path, device_id, sensor_ids),
         ))
 
     return results
