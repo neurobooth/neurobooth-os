@@ -13,17 +13,18 @@ body = PrepareRequest(database_name=database_name,
                       selected_tasks=['task_1'],
                       date=dt.isoformat())
 
-msg = Request(type="Test",
+msg = Request(
               source='CTR',
               destination='STM',
-              body=body)
+              body=body
+)
 
 
 class TestMessages(unittest.TestCase):
 
-    def test_header(self):
+    def test_instantiation(self):
         print(body.model_dump_json() )
-        print(msg)
+        print(msg.model_dump_json())
 
     def test_post(self):
         conn = meta.get_database_connection(database=database_name, validate_config_paths=False)
@@ -32,6 +33,6 @@ class TestMessages(unittest.TestCase):
     def test_read(self):
         conn = meta.get_database_connection(database=database_name, validate_config_paths=False)
         meta.post_message(msg, conn)
-        df = meta.read_next_message(msg.destination, conn)
-        print(df.iloc[:1])
-        self.assertFalse(df.empty)
+        message = meta.read_next_message(msg.destination, conn)
+        print(message.model_dump_json())
+        print(type(message.uuid))
