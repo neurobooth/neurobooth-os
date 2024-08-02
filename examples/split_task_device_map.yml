@@ -1,0 +1,388 @@
+# This file defines default task-device mappings for the XDF split run on the cluster.
+# These mappings are used if the actual device list cannot be located in log_device_param.
+
+intro_sess_obs_1:
+- Intel_D455_1
+
+intro_occulo_obs_1:
+- Intel_D455_1
+
+calibration_obs_1:
+- FLIR_blackfly_1
+- Eyelink_1
+- Mic_Yeti_dev_1
+- IPhone_dev_1
+
+pursuit_obs:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Eyelink_1
+- Mic_Yeti_dev_1
+- IPhone_dev_1
+
+fixation_no_target_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+- Eyelink_1
+- IPhone_dev_1
+
+gaze_holding_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+- Eyelink_1
+- IPhone_dev_1
+
+saccades_horizontal_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Eyelink_1
+- Mic_Yeti_dev_1
+- IPhone_dev_1
+
+saccades_vertical_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Eyelink_1
+- Mic_Yeti_dev_1
+- IPhone_dev_1
+
+intro_cog_obs_1:
+- Intel_D455_1
+
+MOT_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Eyelink_1
+- Mic_Yeti_dev_1
+- IPhone_dev_1
+
+DSC_obs:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+- Eyelink_1
+- IPhone_dev_1
+
+hevelius_obs:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Eyelink_1
+- Mouse
+- Mic_Yeti_dev_1
+- IPhone_dev_1
+
+intro_speech_obs_1:
+- Intel_D455_1
+
+passage_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Eyelink_1
+- Mouse
+- Mic_Yeti_dev_1
+- IPhone_dev_1
+
+ahh_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Eyelink_1
+- Mic_Yeti_dev_1
+- IPhone_dev_1
+
+gogogo_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+- Eyelink_1
+- IPhone_dev_1
+
+lalala_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+- Eyelink_1
+- IPhone_dev_1
+
+mememe_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+- Eyelink_1
+- IPhone_dev_1
+
+pataka_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Eyelink_1
+- Mic_Yeti_dev_1
+- IPhone_dev_1
+
+coord_pause_obs_1:
+- Intel_D455_1
+
+finger_nose_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+- Eyelink_1
+- IPhone_dev_1
+
+foot_tapping_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+
+altern_hand_mov_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+
+coord_pause_obs_2:
+- Intel_D455_1
+
+sit_to_stand_obs:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+
+clapping_test_obs:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+- Eyelink_1
+- IPhone_dev_1
+
+timing_test_obs:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+- Eyelink_1
+- IPhone_dev_1
+
+saccades_horizontal_obs_test:
+- FLIR_blackfly_1
+- Eyelink_1
+- IPhone_dev_1
+
+pursuit_test_obs_1:
+- FLIR_blackfly_1
+- Eyelink_1
+- IPhone_dev_1
+
+pursuit_test_obs_test:
+- FLIR_blackfly_1
+- Eyelink_1
+- IPhone_dev_1
+
+finger_nose_demo_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+
+mouse_demo_obs:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Eyelink_1
+- Mouse
+- Mic_Yeti_dev_1
+- IPhone_dev_1
+
+passage_demo_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Eyelink_1
+- Mouse
+- Mic_Yeti_dev_1
+- IPhone_dev_1
+
+
+noIMU_ahh_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Eyelink_1
+- Mic_Yeti_dev_1
+- IPhone_dev_1
+
+noIMU_gogogo_obs_1:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Eyelink_1
+- Mic_Yeti_dev_1
+- IPhone_dev_1
