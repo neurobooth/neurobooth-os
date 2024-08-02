@@ -19,7 +19,7 @@ import neurobooth_os.config as cfg
 from neurobooth_os.iout import stim_param_reader
 from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, get_cfg_path, DeviceArgs, StimulusArgs, \
     RawTaskParams, TaskArgs, StudyArgs, CollectionArgs
-from neurobooth_os.msg.messages import Message
+from neurobooth_os.msg.messages import Message, MsgBody
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
 
@@ -106,16 +106,17 @@ def post_message(msg: Message, conn: connection) -> str:
     table = Table("message_queue", conn=conn)
     body = msg.body.model_dump_json()
     return table.insert_rows([(str(msg.uuid),
-                               msg.type,
+                               msg.msg_type,
+                               msg.full_msg_type(),
                                msg.source,
                                msg.destination,
                                msg.priority,
                                msg.time_created,
                                body)],
-                             cols=["uuid", "type", "source", "destination", 'priority', 'time_created', 'body'])
+                             cols=["uuid", "msg_type", "full_msg_type", "source", "destination", 'priority', 'time_created', 'body'])
 
 
-def read_next_message(destination: str, conn: connection) -> DataFrame:
+def read_next_message(destination: str, conn: connection) -> Optional[Message]:
     f"""
     Returns a Pandas dataframe containing one row representing the next message to be handled by 
     the calling process. Code representing the {destination} would call this message to check for new messages
@@ -128,8 +129,7 @@ def read_next_message(destination: str, conn: connection) -> DataFrame:
     destination: str    The identifier for the process that is the intended receiver of the message
     conn: connection    A database connection
 
-    Returns a Pandas Dataframe containing zero or one rows. Clients should check return_value.empty before trying to 
-        use the results. 
+    Returns a Message or None. Clients should check return_value.empty before trying to use the results. 
     -------
 
     """
@@ -149,17 +149,32 @@ def read_next_message(destination: str, conn: connection) -> DataFrame:
         SET time_read = '{time_read}' 
         from selection
         where message_queue.id = selection.id
-        returning message_queue.id, message_queue.uuid, message_queue.type, message_queue.priority,
-        message_queue.source, message_queue.destination, message_queue.time_created, message_queue.time_read,
-        message_queue.body
+        returning message_queue.id, message_queue.uuid, message_queue.msg_type, message_queue.full_msg_type, 
+        message_queue.priority, message_queue.source, message_queue.destination, message_queue.time_created, 
+        message_queue.time_read, message_queue.body
      '''
 
     curs = conn.cursor()
     curs.execute(update_str)
-    msg_df = pd.DataFrame(curs.fetchall())
+    msg_df: DataFrame = pd.DataFrame(curs.fetchall())
     conn.commit()
     curs.close()
-    return msg_df
+    if msg_df.empty:
+        return None
+    field_names = [i[0] for i in curs.description]
+    print(field_names)
+    msg_df = msg_df.set_axis(field_names, axis='columns')
+    body = msg_df['body'].iloc[0]
+    uuid = msg_df['uuid'].iloc[0]
+    msg_type = msg_df['msg_type'].iloc[0]
+    msg_type_full = msg_df['full_msg_type'].iloc[0]
+    priority = msg_df['priority'].iloc[0]
+    source = msg_df['source'].iloc[0]
+    destination = msg_df['destination'].iloc[0]
+    body_constructor = str_fileid_to_eval(msg_type_full)
+    msg_body: MsgBody = body_constructor(**body)
+    msg = Message(body=msg_body, uuid=uuid, msg_type=msg_type, source=source, destination=destination, priority=priority)
+    return msg
 
 
 def get_study_ids() -> List[str]:
