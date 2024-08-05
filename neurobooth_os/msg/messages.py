@@ -15,6 +15,14 @@ from typing import List, Optional, Any
 
 from pydantic import BaseModel
 
+# Standard priority levels for messages, Higher priority messages are processed before lower priority messages
+# If two messages have equal priorities, the one created first (based on Message_Queue table's ID column value)
+# is processed first
+HIGHEST_PRIORITY = 100
+HIGH_PRIORITY = 75
+STANDARD_PRIORITY = 50
+LOW_PRIORITY = 25
+
 
 class MsgBody(BaseModel):
     msg_type: str
@@ -48,8 +56,6 @@ class Message(BaseModel):
         return f"{mod}.py::{self.body.msg_type}()"
 
 
-
-
 class Request(Message):
     """
     A Message that is not issued in reply to any other message. Used to either start a conversation or for messages that
@@ -81,20 +87,123 @@ class PrepareRequest(MsgBody):
     date: str
 
     def __init__(self, **data):
-        data['priority'] = 50
+        data['priority'] = STANDARD_PRIORITY
         super().__init__(**data)
 
     def session_name(self):
         return f'{self.subject_id}_{self.date}'
 
 
-class TaskInfo(MsgBody):
+class CreateTaskRequest(MsgBody):
+    task_id: str
+    subj_id: str
+    session_id: str
+
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class PerformTaskRequest(MsgBody):
     task_id: str
     stimulus_id: str
     task_start_time: str
     log_task_id: str
 
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
 
-# TODO: Unused message type
-class StatusMessage(BaseModel):
+
+class PauseSessionRequest(MsgBody):
+
+    def __init__(self, **data):
+        data['priority'] = HIGH_PRIORITY
+        super().__init__(**data)
+
+
+class CancelSessionRequest(MsgBody):
+
+    def __init__(self, **data):
+        data['priority'] = HIGHEST_PRIORITY
+        super().__init__(**data)
+
+
+class ResumeSessionRequest(MsgBody):
+
+    def __init__(self, **data):
+        data['priority'] = HIGH_PRIORITY
+        super().__init__(**data)
+
+
+class StopSessionRequest(MsgBody):
+
+    def __init__(self, **data):
+        data['priority'] = HIGHEST_PRIORITY
+        super().__init__(**data)
+
+
+class ShutdownRequest(MsgBody):
+
+    def __init__(self, **data):
+        data['priority'] = HIGHEST_PRIORITY
+        super().__init__(**data)
+
+
+class CalibrationRequest(MsgBody):
+
+    def __init__(self, **data):
+        data['priority'] = HIGH_PRIORITY
+        super().__init__(**data)
+
+
+class DeviceInitializationStatus(MsgBody):
+    """
+    Msg sent from Device modules to indicate that they've been initialized
+    """
+    device_name: str
+    status: str
+
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class LslRecording(MsgBody):
+
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class TaskInitialization(MsgBody):
+    """
+    Msg sent from STM to CTR to tell CTR to start LSL
+    """
+    task_id: str
+    log_task_id: str
+    tsk_start_time: str
+
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class TaskCompletion(MsgBody):
+    """
+    Msg sent from STM to CTR to tell CTR to stop LSL
+    """
+    task_id: str
+
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class StatusMessage(MsgBody):
     text: str
+
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+

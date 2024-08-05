@@ -10,12 +10,15 @@ import sys
 import time
 import threading
 from datetime import datetime
+from typing import Dict
+
 import cv2
 import numpy as np
 # from typing import Dict
 
 import PySimpleGUI as sg
 import liesl
+from psycopg2._psycopg import connection
 
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
@@ -30,6 +33,8 @@ import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
+from neurobooth_os.msg.messages import Message, PrepareRequest, Request, PerformTaskRequest, CreateTaskRequest, \
+    ShutdownRequest
 
 
 def setup_log(sg_handler=None):
@@ -42,12 +47,28 @@ def setup_log(sg_handler=None):
 
 class Handler(logging.StreamHandler):
     """LogHandler that emits entries to the GUI"""
+
     def __init__(self):
         logging.StreamHandler.__init__(self)
 
     def emit(self, record):
         buffer = str(record).strip()
         window['log'].update(value=buffer)
+
+
+def send_task_requests(task_id: str, conn) -> PerformTaskRequest:
+    print(f"Starting presentation for {task_id}")
+
+    print("Sending STM create task message")
+    create_msg = CreateTaskRequest(task_id=task_id, subj_id=, session_id=)
+    msg: Request = Request(source='CTR', destination='STM', body=create_msg)
+    meta.post_message(msg, conn)
+
+    print("Sending STM Perform task message")
+    # TODO:
+    task_info_json = {}
+    task_info = PerformTaskRequest(**task_info_json)
+    return task_info
 
 
 def _process_received_data(serv_data, window):
@@ -168,7 +189,18 @@ def _save_session(window, log_task, staff_id, subject_id, first_name, last_name,
 def _start_task_presentation(window, tasks, subject_id, session_id, steps, node):
     """Present tasks"""
     window["Start"].Update(button_color=("black", "yellow"))
+    conn = meta.get_database_connection()
     if len(tasks) > 0:
+        for task in tasks: # TODO: Make sure these tasks are filtered before sending
+            msg_body = CreateTaskRequest(task_id=task)
+            msg = Request(
+                source='CTR',
+                destination='STM',
+                body=msg_body
+            )
+            meta.post_message(msg, conn), conn
+
+
         running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
         socket_message(f"present:{running_task}:{subject_id}:{session_id}", node)
         steps.append("task_started")
@@ -218,16 +250,15 @@ def _start_lsl_session(window, inlets, folder=""):
 
 
 def _record_lsl(
-    window,
-    session,
-    subject_id,
-    task_id,
-    t_obs_id,
-    obs_log_id,
-    tsk_strt_time,
-    presentation_node,
+        window,
+        session,
+        subject_id,
+        task_id,
+        t_obs_id,
+        obs_log_id,
+        tsk_strt_time,
+        presentation_node,
 ):
-
     print(
         f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}"
     )
@@ -255,7 +286,7 @@ def _create_lsl_inlet(stream_ids, outlet_values, inlets):
 
 
 def _stop_lsl_and_save(
-    window, session, conn, rec_fname, task_id, obs_log_id, t_obs_id, folder
+        window, session, conn, rec_fname, task_id, obs_log_id, t_obs_id, folder
 ):
     """Stop LSL stream and save"""
     t0 = time.time()
@@ -372,6 +403,19 @@ def _prepare_devices(window, nodes, collection_id, log_task, database):
     nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:
         socket_message(f"prepare:{collection_id}:{database}:{str(log_task)}", node)
+        body = PrepareRequest(database_name=database,
+                              subject_id=log_task['subject_id'],
+                              session_id=log_task['session'],
+                              collection_id=collection_id,
+                              selected_tasks=log_task['tasks'],
+                              date=log_task['date']
+                              )
+        msg = Request(type=body.type,
+                      source='CTR',
+                      destination="STM",
+                      priority=body.priority,
+                      body=body)
+        meta.post_message(msg, conn=meta.get_database_connection())
 
     return vidf_mrkr, event, values
 
@@ -507,7 +551,15 @@ def gui(logger):
                 if sess_info and values:
                     _save_session_notes(sess_info, values, window)
                 plttr.stop()
-                ctr_rec.shut_all(nodes=nodes[::-1])
+                shutdown_acq_msg: Message = Message(source="CTR",
+                                                destination="STM",
+                                                body=ShutdownRequest())
+                shutdown_stm_msg: Message = Message(source="CTR",
+                                                destination="ACQ",
+                                                body=ShutdownRequest())
+                meta.post_message(shutdown_acq_msg, conn)
+                meta.post_message(shutdown_stm_msg, conn)
+                # TODO: DELETE ME -> ctr_rec.shut_all(nodes=nodes[::-1])
                 break
 
         ##################################################################################

@@ -3,7 +3,7 @@ import socket
 import sys
 import os
 from collections import OrderedDict  # This import is required for eval
-from time import time
+from time import time, sleep
 from datetime import datetime
 import copy
 
@@ -13,6 +13,8 @@ from typing import Dict, Optional, Callable, List
 from psychopy import prefs
 
 from neurobooth_os.iout.stim_param_reader import TaskArgs
+from neurobooth_os.msg.messages import Message, CreateTaskRequest, StatusMessage, PerformTaskRequest, \
+    TaskInitialization, Request, TaskCompletion
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
@@ -27,7 +29,6 @@ from neurobooth_os.iout import metadator as meta
 
 from neurobooth_os.netcomm import (
     socket_message,
-    get_client_messages,
     NewStdout,
     get_data_with_timeout,
 )
@@ -60,16 +61,22 @@ def run_stm(logger):
     host: str = ''  # Listen on all network interfaces
 
     presented: bool = False
+    paused: bool = False
     session: Optional[StmSession] = None
     task_log_entry: Optional[TaskLogEntry] = None
+    db_conn = meta.get_database_connection(database=config.neurobooth_config.database.dbname)
+    shutdown_flag = False
+    while not shutdown_flag:
+        # for data, socket_conn in get_client_messages(socket_1, port, host):
+        message: Message = meta.read_next_message("STM", conn=db_conn)
 
-    for data, socket_conn in get_client_messages(socket_1, port, host):
-        logger.info(f'MESSAGE RECEIVED: {data}')
-
-        if "prepare" in data:
+        logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
+        logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
+        current_msg_type:str = message.msg_type
+        if "PrepareRequest" == current_msg_type:
             session, task_log_entry = prepare_session(data, socket_1, logger)
 
-        elif "present" in data:  # -> "present:TASKNAME:subj_id:session_id"
+        elif "CreateTaskRequest" == current_msg_type:  # -> "present:TASKNAME:subj_id:session_id"
             # task_name can be list of tk1-task2-task3
             session.logger.info("Beginning Presentation")
             tasks, subj_id, session_id = data.split(":")[1:]
@@ -102,114 +109,120 @@ def run_stm(logger):
             # Show calibration instruction video only the first time
             calib_instructions = True
 
-            while len(tasks):
-                task_id: str = tasks.pop(0)
+        elif "PerformTaskRequest" == current_msg_type:  #:
+            msg_body: PerformTaskRequest = message.body
+            task_id: str = msg_body.task_id
 
-                session.logger.info(f'TASK: {task_id}')
-                tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
+            session.logger.info(f'TASK: {task_id}')
+            tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
 
-                if task_id not in session.tasks():
-                    session.logger.warning(f'Task {task_id} not implemented')
+            if task_id not in session.tasks():
+                session.logger.warning(f'Task {task_id} not implemented')
+            else:
+                t00 = time()
+                # get task and params
+                task_args: TaskArgs = _get_task_args(session, task_id)
+                task: Task = task_args.task_instance
+                this_task_kwargs = create_task_kwargs(session, task_args)
+                task_id = task_args.task_id
+
+                # Do not record if intro instructions"
+                if "intro_" in task_id or "pause_" in task_id:
+                    session.logger.debug(f"RUNNING PAUSE/INTRO (No Recording)")
+                    task.run(**this_task_kwargs)
                 else:
-                    t00 = time()
-                    # get task and params
-                    task_args: TaskArgs = _get_task_args(session, task_id)
-                    task: Task = task_args.task_instance
-                    this_task_kwargs = create_task_kwargs(session, task_args)
-                    task_id = task_args.task_id
+                    log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
+                    meta.log_task_params(
+                        session.db_conn,
+                        log_task_id,
+                        device_log_entry_dict,
+                        session.task_func_dict[task_id]
+                    )
+                    task_log_entry.date_times = (
+                            "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","
+                    )
+                    task_log_entry.log_task_id = log_task_id
 
-                    # Do not record if intro instructions"
-                    if "intro_" in task_id or "pause_" in task_id:
-                        session.logger.debug(f"RUNNING PAUSE/INTRO (No Recording)")
-                        task.run(**this_task_kwargs)
-                    else:
-                        log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
-                        meta.log_task_params(
-                            session.db_conn,
-                            log_task_id,
-                            device_log_entry_dict,
-                            session.task_func_dict[task_id]
-                        )
-                        task_log_entry.date_times = (
-                                "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","
-                        )
-                        task_log_entry.log_task_id = log_task_id
+                    # Signal CTR to start LSL rec and wait for start confirmation
+                    session.logger.info(f'STARTING TASK: {task_id}')
+                    t0 = time()
+                    init_task_body = TaskInitialization(task_id, log_task_id, tsk_start_time)
+                    meta.post_message(Message(init_task_body, session.db_conn)
+                    session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
 
-                        # Signal CTR to start LSL rec and wait for start confirmation
-                        session.logger.info(f'STARTING TASK: {task_id}')
-                        t0 = time()
-                        print(f"Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}")
-                        session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
-                        ctr_msg: Optional[str] = None
-                        while ctr_msg != "lsl_recording":
-                            ctr_msg = get_data_with_timeout(session.socket, 4)
-                        elapsed_time = time() - t0
-                        session.logger.info(f'Waiting for CTR took: {elapsed_time:.2f}')
+                    # TODO: Move this logic to separate function
+                    ctr_msg_found: bool = False
+                    attempt = 0
+                    while not ctr_msg_found and attempt < 4:
+                        ctr_msg_found = meta.read_next_lsl_message("STM", db_conn) is not None
+                        sleep(1)
+                        attempt = attempt + 1
+                    elapsed_time = time() - t0
+                    session.logger.info(f'Waiting for LSL startup took: {elapsed_time:.2f}')
 
-                        with ThreadPoolExecutor(max_workers=1) as executor:
-                            start_acq(calib_instructions, executor, session, task_args,
-                                      task_id, this_task_kwargs, tsk_start_time)
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        start_acq(calib_instructions, executor, session, task_args,
+                                  task_id, this_task_kwargs, tsk_start_time)
 
-                        this_task_kwargs.update({"last_task": len(tasks) == 0})
-                        this_task_kwargs["task_name"] = task_id
-                        this_task_kwargs["subj_id"] += "_" + tsk_start_time
+                    this_task_kwargs.update({"last_task": len(tasks) == 0})
+                    this_task_kwargs["task_name"] = task_id
+                    this_task_kwargs["subj_id"] += "_" + tsk_start_time
 
-                        elapsed_time = time() - t00
-                        session.logger.info(f"Total TASK WAIT start took: {elapsed_time:.2f}")
+                    elapsed_time = time() - t00
+                    session.logger.info(f"Total TASK WAIT start took: {elapsed_time:.2f}")
 
-                        session.logger.debug(f"RUNNING TASK FUNCTION")
-                        events = task.run(**this_task_kwargs)
-                        session.logger.debug(f"TASK FUNCTION RETURNED")
+                    session.logger.debug(f"RUNNING TASK FUNCTION")
+                    events = task.run(**this_task_kwargs)
+                    session.logger.debug(f"TASK FUNCTION RETURNED")
 
-                        with ThreadPoolExecutor(max_workers=1) as executor:
-                            stop_acq(executor, session, task_args)
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        stop_acq(executor, session, task_args)
 
-                        # Signal CTR to start LSL rec and wait for start confirmation
-                        print(f"Finished task: {task_id}")
-                        session.logger.info(f'FINISHED TASK: {task_id}')
+                    # Signal CTR to stop LSL rec
+                    meta.post_message(Message(TaskCompletion(task_id=task_id)), db_conn)
+                    print(f"Finished task: {task_id}")
+                    session.logger.info(f'FINISHED TASK: {task_id}')
 
-                        log_task(events, session, task_id, task_id, task_log_entry, task)
+                    log_task(events, session, task_id, task_id, task_log_entry, task)
 
-                        elapsed_time = time() - t00
-                        session.logger.info(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
+                    elapsed_time = time() - t00
+                    session.logger.info(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
 
-                        # Check if pause requested, unpause or stop
-                        data = get_data_with_timeout(session.socket, 0.1)
-                        if data == "pause tasks":
-                            data = pause(session)
+        if "PauseSessionRequest" == current_msg_type:
+            paused = True
+            data = pause(session)
 
-                            # Next message tells what to do now that we paused
-                            if data == "continue tasks":
-                                continue
-                            elif data == "stop tasks":
-                                break
-                            elif data == "calibrate":
-                                if not len(task_calib):
-                                    continue
-                                tasks.insert(0, task_calib[0])
-                                calib_instructions = False
-                            else:
-                                print("Received an unexpected message while paused ")
-                                logger.warn("Received an unexpected message while paused ")
+        # Next message tells what to do now that we paused
+        if "ResumeSessionRequest" == current_msg_type:
+            paused = False
+            continue
 
-            session.logger.debug('FINISH SCREEN')
-            finish_screen(session.win)
+        elif "StopSessionRequest" == current_msg_type:
+            break
+        elif "CalibrationRequest" == current_msg_type:
+            if not len(task_calib):
+                continue
+            tasks.insert(0, task_calib[0])
+            calib_instructions = False
 
-        elif "shutdown" in data:
+        elif "ShutdownRequest" == current_msg_type:
             if session is not None:
                 session.shutdown()
             else:
                 if socket_1 is not None:
                     socket_1.close()
-            sys.stdout = sys.stdout.terminal
             break
 
-        elif "time_test" in data:
-            msg = f"ping_{time()}"
-            socket_conn.send(msg.encode("ascii"))
-
         else:
-            logger.error(f'Unexpected message received: {data}')
+            if paused:
+                meta.post_message(StatusMessage())
+                print("Received an unexpected message while paused ")
+                logger.warn("Received an unexpected message while paused ")
+                session.logger.debug('FINISH SCREEN')
+                finish_screen(session.win)
+
+            else:
+                logger.error(f'Unexpected message received: {data}')
 
     exit()
 
