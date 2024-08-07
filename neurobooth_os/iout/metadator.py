@@ -118,6 +118,7 @@ def post_message(msg: Message, conn: connection) -> str:
                                    'time_created', 'body'])
 
 
+# TODO: Merge the read_next functions to minimize code duplication
 def read_next_message(destination: str, conn: connection) -> Optional[Message]:
     f"""
     Returns a Pandas dataframe containing one row representing the next message to be handled by 

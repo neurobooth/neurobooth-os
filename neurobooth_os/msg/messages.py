@@ -25,9 +25,11 @@ LOW_PRIORITY = 25
 
 
 class MsgBody(BaseModel):
-    msg_type: str
-    module: str
-    priority: int
+
+    # These attributes are required, but should be set as constants in subclass init code, rather than at Construction
+    msg_type: Optional[str]
+    module: Optional[str]
+    priority: Optional[int]
 
     def __init__(self, **data):
         data['msg_type']=self.__class__.__name__
@@ -37,13 +39,13 @@ class MsgBody(BaseModel):
 
 # TODO: Add string length constraints for source, destination, and type
 class Message(BaseModel):
-    uuid: UUID = uuid4()                   # Unique id for message
-    msg_type: str                               # Name for request type
+    uuid: UUID = uuid4()                        # Unique id for message
+    msg_type: Optional[str]                     # Filled-in automatically from the MsgBody subtype class name
     source: str                                 # Service sending request (e.g. 'CTR')
-    destination: str                            # List of services handling the request
+    destination: str                            # Service handling the request
     time_created: datetime = datetime.now()     # Time of message creation
     time_read: Optional[datetime] = None        # Time when message was read
-    priority: int                               # message priority, higher values move to front of queue
+    priority: Optional[int]                     # message priority, filled-in automatically from MsgBody field
     body: MsgBody                               # Message body
 
     def __init__(self, **data: Any):
@@ -157,12 +159,12 @@ class CalibrationRequest(MsgBody):
         super().__init__(**data)
 
 
-class DeviceInitializationStatus(MsgBody):
+class DeviceInitialization(MsgBody):
     """
     Msg sent from Device modules to indicate that they've been initialized
     """
-    device_name: str
-    status: str
+    stream_name: str
+    outlet_id: str
 
     def __init__(self, **data):
         data['priority'] = STANDARD_PRIORITY
@@ -203,6 +205,41 @@ class TaskCompletion(MsgBody):
 class StatusMessage(MsgBody):
     text: str
 
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class StartRecording(MsgBody):
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class StartRecordingMsg(Request):
+    """
+    Request from STM to ACQ to start recording task data
+    """
+    def __init__(self, **data):
+        data['source'] = 'STM'
+        data['destination'] = 'ACQ'
+        data['body'] = StartRecording()
+        super().__init__(**data)
+
+
+class StopRecording(MsgBody):
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class RecordingStarted(MsgBody):
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class RecordingStopped(MsgBody):
     def __init__(self, **data):
         data['priority'] = STANDARD_PRIORITY
         super().__init__(**data)

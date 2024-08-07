@@ -1,5 +1,4 @@
 import logging
-import socket
 import sys
 import os
 from collections import OrderedDict  # This import is required for eval
@@ -14,7 +13,7 @@ from psychopy import prefs
 
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.msg.messages import Message, CreateTaskRequest, StatusMessage, PerformTaskRequest, \
-    TaskInitialization, Request, TaskCompletion
+    TaskInitialization, Request, TaskCompletion, StartRecordingMsg, MsgBody
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
@@ -27,12 +26,6 @@ from neurobooth_os import config
 
 from neurobooth_os.iout import metadator as meta
 
-from neurobooth_os.netcomm import (
-    socket_message,
-    NewStdout,
-    get_data_with_timeout,
-)
-
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.log_manager import make_db_logger
@@ -44,7 +37,6 @@ def main():
     try:
         logger.debug("Starting STM")
         os.chdir(neurobooth_os.__path__[0])
-        sys.stdout = NewStdout("STM", target_node="control", terminal_print=True)
         run_stm(logger)
         logger.debug("Stopping STM")
     except Exception as argument:
@@ -56,9 +48,6 @@ def main():
 
 
 def run_stm(logger):
-    socket_1: socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    port: int = config.neurobooth_config.presentation.port
-    host: str = ''  # Listen on all network interfaces
 
     presented: bool = False
     paused: bool = False
@@ -67,18 +56,21 @@ def run_stm(logger):
     db_conn = meta.get_database_connection(database=config.neurobooth_config.database.dbname)
     shutdown_flag = False
     while not shutdown_flag:
-        # for data, socket_conn in get_client_messages(socket_1, port, host):
         message: Message = meta.read_next_message("STM", conn=db_conn)
-
+        if message is None:
+            sleep(1)
+            continue
+        msg_body: Optional[MsgBody] = None
         logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
         logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
         current_msg_type:str = message.msg_type
         if "PrepareRequest" == current_msg_type:
-            session, task_log_entry = prepare_session(data, socket_1, logger)
+            session, task_log_entry = prepare_session(data, logger)
 
         elif "CreateTaskRequest" == current_msg_type:  # -> "present:TASKNAME:subj_id:session_id"
             # task_name can be list of tk1-task2-task3
-            session.logger.info("Beginning Presentation")
+            msg_body = message.body
+            session.logger.info(f"Creating Task {msg_body.task_id}")
             tasks, subj_id, session_id = data.split(":")[1:]
             task_log_entry.log_session_id = session_id
 
@@ -103,14 +95,13 @@ def run_stm(logger):
             device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
             session.logger.info(f'Task media took {time() - t0:.2f}')
             session.win = welcome_screen(win=session.win)
-            reset_stdout()
 
             task_calib = [t for t in tasks if "calibration_task" in t]
             # Show calibration instruction video only the first time
             calib_instructions = True
 
         elif "PerformTaskRequest" == current_msg_type:  #:
-            msg_body: PerformTaskRequest = message.body
+            msg_body = message.body
             task_id: str = msg_body.task_id
 
             session.logger.info(f'TASK: {task_id}')
@@ -146,8 +137,10 @@ def run_stm(logger):
                     # Signal CTR to start LSL rec and wait for start confirmation
                     session.logger.info(f'STARTING TASK: {task_id}')
                     t0 = time()
-                    init_task_body = TaskInitialization(task_id, log_task_id, tsk_start_time)
-                    meta.post_message(Message(init_task_body, session.db_conn)
+                    init_task_body = TaskInitialization(task_id=task_id,
+                                                        log_task_id=log_task_id,
+                                                        tsk_start_time=tsk_start_time)
+                    meta.post_message(Request(source='STM', destination='CTR', body=init_task_body), conn=db_conn)
                     session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
 
                     # TODO: Move this logic to separate function
@@ -179,7 +172,8 @@ def run_stm(logger):
                         stop_acq(executor, session, task_args)
 
                     # Signal CTR to stop LSL rec
-                    meta.post_message(Message(TaskCompletion(task_id=task_id)), db_conn)
+                    meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)),
+                                      db_conn)
                     print(f"Finished task: {task_id}")
                     session.logger.info(f'FINISHED TASK: {task_id}')
 
@@ -208,9 +202,6 @@ def run_stm(logger):
         elif "ShutdownRequest" == current_msg_type:
             if session is not None:
                 session.shutdown()
-            else:
-                if socket_1 is not None:
-                    socket_1.close()
             break
 
         else:
@@ -237,6 +228,8 @@ def stop_acq(executor, session: StmSession, task_args: TaskArgs):
     """ Stop recording on ACQ in parallel to stopping on STM """
     session.logger.info(f'SENDING record_stop TO ACQ')
     stimulus_id = task_args.stim_args.stimulus_id
+
+    # TODO: Replace with new message
     acq_result = executor.submit(socket_message, "record_stop", "acquisition", wait_data=15)
     # Stop eyetracker
     device_ids = [x.device_id for x in task_args.device_args]
@@ -268,6 +261,10 @@ def start_acq(calib_instructions, executor, session: StmSession, task_args: Task
     """
     session.logger.info(f'SENDING record_start TO ACQ')
     stimulus_id = task_args.stim_args.stimulus_id
+
+    # TODO: Replace with new message
+    meta.post_message(StartRecordingMsg())
+
     acq_result = executor.submit(
         socket_message,
         f"record_start::{session.session_name}_{tsk_start_time}_{task_id}::{task_id}",
@@ -292,9 +289,8 @@ def pause(session):
     """ Handle session pause """
     pause_screen = utl.create_text_screen(session.win, text="Session Paused")
     utl.present(session.win, pause_screen, waitKeys=False)
-    connx2, _ = session.socket.accept()
-    data = connx2.recv(1024)
-    data = data.decode("utf-8")
+    # TODO: Does the pause message pass any data?
+    data=''
     session.logger.info(f'PAUSE MESSAGE RECEIVED: {data}')
     return data
 
@@ -338,15 +334,7 @@ def log_task(events: List,
     meta.fill_task_row(task_log_entry, stm_session.db_conn)
 
 
-def reset_stdout():
-    """When win is created, stdout pipe is reset to message the control node"""
-    if not hasattr(sys.stdout, "terminal"):
-        sys.stdout = NewStdout(
-            "STM", target_node="control", terminal_print=True
-        )
-
-
-def prepare_session(data: str, socket_1: socket, logger):
+def prepare_session(data: str, logger):
     logger.info("Preparing STM for operation.")
     collection_id = data.split(":")[1]
     database_name = data.split(":")[2]
@@ -358,7 +346,6 @@ def prepare_session(data: str, socket_1: socket, logger):
         session_name=task_log_entry.subject_id_date,
         collection_id=collection_id,
         db_conn=meta.get_database_connection(database=database_name),
-        socket=socket_1
     )
     #  TODO(larry): See about refactoring so we don't need to create a new logger here.
     #   (continued) We already have a db_logger, it just needs session attributes

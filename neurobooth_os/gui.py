@@ -56,11 +56,11 @@ class Handler(logging.StreamHandler):
         window['log'].update(value=buffer)
 
 
-def send_task_requests(task_id: str, conn) -> PerformTaskRequest:
+def send_task_requests(task_id: str, subj_id: str, session_id: str, conn) -> PerformTaskRequest:
     print(f"Starting presentation for {task_id}")
 
     print("Sending STM create task message")
-    create_msg = CreateTaskRequest(task_id=task_id, subj_id=, session_id=)
+    create_msg = CreateTaskRequest(task_id=task_id, subj_id=subj_id, session_id=session_id)
     msg: Request = Request(source='CTR', destination='STM', body=create_msg)
     meta.post_message(msg, conn)
 
@@ -192,7 +192,7 @@ def _start_task_presentation(window, tasks, subject_id, session_id, steps, node)
     conn = meta.get_database_connection()
     if len(tasks) > 0:
         for task in tasks: # TODO: Make sure these tasks are filtered before sending
-            msg_body = CreateTaskRequest(task_id=task)
+            msg_body = CreateTaskRequest(task_id=task, subj_id=subject_id, session_id=session_id)
             msg = Request(
                 source='CTR',
                 destination='STM',
@@ -201,8 +201,8 @@ def _start_task_presentation(window, tasks, subject_id, session_id, steps, node)
             meta.post_message(msg, conn), conn
 
 
-        running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
-        socket_message(f"present:{running_task}:{subject_id}:{session_id}", node)
+        # running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
+        # socket_message(f"present:{running_task}:{subject_id}:{session_id}", node)
         steps.append("task_started")
     else:
         sg.PopupError("No task selected")

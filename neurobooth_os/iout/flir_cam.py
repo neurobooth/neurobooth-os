@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed May 12 16:13:50 2021
-
-@author: CTR
-"""
 import os.path as op
 import numpy as np
 import queue
@@ -11,6 +6,7 @@ import time
 import os
 import threading
 import uuid
+import neurobooth_os.iout.metadator as meta
 import logging
 from typing import Callable, Any
 
@@ -24,6 +20,7 @@ import h5py
 from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
+from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -146,7 +143,9 @@ class VidRec_Flir:
             gamma=str(self.gamma),
             # device_model_id=self.cam.get_device_name().decode(),
         )
-        print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
+        msg_body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
+        meta.post_message(Request(source='', destination='CTR', body=msg_body))
+        # print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
         return StreamOutlet(info)
 
     # function to capture images, convert to numpy, send to queue, and release

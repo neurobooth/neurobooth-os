@@ -13,9 +13,11 @@ from pylsl import local_clock
 import pyrealsense2 as rs
 from pylsl import StreamInfo, StreamOutlet
 
+import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.stim_param_reader import IntelDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
+from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 warnings.filterwarnings("ignore")
 
@@ -113,7 +115,10 @@ class VidRec_Intel:
             fps_rgb=str(self.device_args.sample_rate()[0]),
             fps_depth=str(self.device_args.sample_rate()[1]),
         )
-        print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
+        msg_body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
+        meta.post_message(Request(source='', destination='CTR', body=msg_body))
+
+        # print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
         return StreamOutlet(info)
 
     def record(self):
