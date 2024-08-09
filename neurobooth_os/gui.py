@@ -10,7 +10,7 @@ import sys
 import time
 import threading
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Optional
 
 import cv2
 import numpy as np
@@ -34,7 +34,7 @@ from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, g
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
 from neurobooth_os.msg.messages import Message, PrepareRequest, Request, PerformTaskRequest, CreateTaskRequest, \
-    ShutdownRequest
+    ShutdownRequest, MsgBody, MbientDisconnected, NewVideoFile
 
 
 def setup_log(sg_handler=None):
@@ -345,6 +345,58 @@ def _start_ctr_server(window, host_ctr, port_ctr):
     )
     server_thread.start()
 
+
+def _start_ctr_msg_reader(window, logger):
+    db_conn = meta.get_database_connection()
+    shutdown_flag = False
+    while not shutdown_flag:
+        message: Message = meta.read_next_message("CTR", conn=db_conn)
+        if message is None:
+            time.sleep(1)
+            continue
+        msg_body: Optional[MsgBody] = None
+        logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
+        if "-OUTLETID-" == message.msg_type:
+            evnt, outlet_name, outlet_id = data_row.split(":")
+            window.write_event_value("-OUTLETID-", f"['{outlet_name}', '{outlet_id}']")
+        elif "UPDATOR:" == message.msg_type:
+            # UPDATOR:-elem_key-
+            elem = data_row.split(":")[1]
+            window.write_event_value("-update_butt-", elem)
+        elif "Initiating task:" == message.msg_type:
+            # Initiating task:task_id:obs_id:log_task_id:tsk_strt_time
+            _, task_id, obs_id, obs_log_id, tsk_strt_time = data_row.split(":")
+            window.write_event_value(
+                "task_initiated",
+                f"['{task_id}', '{obs_id}', '{obs_log_id}', '{tsk_strt_time}']",
+            )
+        elif "Finished task:" == message.msg_type:
+            # Finished task: task_id
+            _, task_id = data_row.split(":")
+            window.write_event_value("task_finished", task_id)
+
+        elif "-new_filename-" == message.msg_type:
+            msg_body: NewVideoFile = message.body
+
+            # new file created, data_row = "-new_filename-:stream_name:video_filename"
+            event = msg_body.event
+            stream_name = msg_body.stream_name
+            filename = msg_body.file_name
+
+            window.write_event_value(event, f"{stream_name},{filename}")
+
+        elif "NoEyetracker" == message.msg_type:
+            window.write_event_value(
+                "no_eyetracker",
+                "Eyetracker not found! \nServers will be "
+                + "terminated, wait utill are closed.\nThen, connect the eyetracker and start again",
+            )
+
+        elif "MbientDisconnected" == message.msg_type:
+            msg_body: MbientDisconnected = message.body
+            window.write_event_value(
+                "mbient_disconnected", f"{msg_body.warning}, \nconsider repeating the task"
+            )
 
 ######### Visualization ############
 

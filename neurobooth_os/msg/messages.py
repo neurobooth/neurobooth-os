@@ -11,7 +11,7 @@ Messaging is performed asynchronously with the database as an intermediary.
 
 from uuid import uuid4, UUID
 from datetime import datetime
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 
 from pydantic import BaseModel
 
@@ -41,12 +41,12 @@ class MsgBody(BaseModel):
 class Message(BaseModel):
     uuid: UUID = uuid4()                        # Unique id for message
     msg_type: Optional[str]                     # Filled-in automatically from the MsgBody subtype class name
-    source: str                                 # Service sending request (e.g. 'CTR')
-    destination: str                            # Service handling the request
+    source: Optional[str]                       # Service sending request (e.g. 'CTR')
+    destination: Optional[str]                  # Service handling the request
     time_created: datetime = datetime.now()     # Time of message creation
     time_read: Optional[datetime] = None        # Time when message was read
     priority: Optional[int]                     # message priority, filled-in automatically from MsgBody field
-    body: MsgBody                               # Message body
+    body: Optional[MsgBody]                     # Message body
 
     def __init__(self, **data: Any):
         super().__init__(**data)
@@ -71,7 +71,7 @@ class Request(Message):
 
 
 class Reply(Message):
-    request_uuid: str           # Unique id of message we are replying to
+    request_uuid: UUID           # Unique id of message we are replying to
 
     def __init__(self, **data):
         body: MsgBody = data['body']
@@ -211,6 +211,9 @@ class StatusMessage(MsgBody):
 
 
 class StartRecording(MsgBody):
+    fname: str
+    task_id: str
+    session_name: str
     def __init__(self, **data):
         data['priority'] = STANDARD_PRIORITY
         super().__init__(**data)
@@ -244,3 +247,66 @@ class RecordingStopped(MsgBody):
         data['priority'] = STANDARD_PRIORITY
         super().__init__(**data)
 
+
+class RecordingStoppedMsg(Reply):
+
+    def __init__(self, **data):
+        data['source'] = 'ACQ'
+        data['destination'] = 'STM'
+        data['body'] = RecordingStopped()
+        super().__init__(**data)
+
+
+class RecordingStartedMsg(Reply):
+
+    def __init__(self, **data):
+        data['source'] = 'ACQ'
+        data['destination'] = 'STM'
+        data['body'] = RecordingStarted()
+        super().__init__(**data)
+
+
+class ResetMbients(MsgBody):
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class MbientResetResults(MsgBody):
+    results: Dict[str, bool]
+
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class FramePreview(MsgBody):
+    def __init__(self, **data):
+        data['priority'] = HIGH_PRIORITY
+        super().__init__(**data)
+
+
+class MbientDisconnected(MsgBody):
+    warning: str
+
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class NoEyetracker(MsgBody):
+    warning: str
+
+    def __init__(self, **data):
+        data['priority'] = HIGH_PRIORITY
+        super().__init__(**data)
+
+
+class NewVideoFile(MsgBody):
+    event: str
+    stream_name: str
+    filename: str
+
+    def __init__(self, **data):
+        data['priority'] = HIGH_PRIORITY
+        super().__init__(**data)

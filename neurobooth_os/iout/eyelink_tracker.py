@@ -8,7 +8,9 @@ import pylink
 from psychopy import visual, monitors
 from pylsl import StreamInfo, StreamOutlet, local_clock
 
+from neurobooth_os.iout.metadator import get_database_connection, post_message
 from neurobooth_os.iout.stim_param_reader import EyelinkDeviceArgs
+from neurobooth_os.msg.messages import NoEyetracker, Request, NewVideoFile
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
     EyeLinkCoreGraphicsPsychoPy,
 )
@@ -90,6 +92,10 @@ class EyeTracker:
         self.connect_tracker()
         print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
 
+        body = NewVideoFile(event="-OUTLETID-", stream_name=self.streamName, filename=self.oulet_id)
+        msg = Request(source="NA", destination="CTR", body=body)
+        post_message(msg, get_database_connection())
+
     def connect_tracker(self):
         try:
             self.tk = pylink.EyeLink(self.IP)
@@ -97,6 +103,9 @@ class EyeTracker:
             msg_text = f"RuntimeError: Could not connect to tracker at %s. " \
                        "Please be sure to start Eyetracker before starting Neurobooth." % self.IP
             print(msg_text)
+            body=NoEyetracker(warning=msg_text)
+            msg = Request(source="NA", destination="CTR", body=body)
+            post_message(msg, get_database_connection())
             self.logger.error(msg_text)
 
         self.tk.setAddress(self.IP)

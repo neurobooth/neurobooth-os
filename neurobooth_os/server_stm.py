@@ -13,7 +13,7 @@ from psychopy import prefs
 
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.msg.messages import Message, CreateTaskRequest, StatusMessage, PerformTaskRequest, \
-    TaskInitialization, Request, TaskCompletion, StartRecordingMsg, MsgBody
+    TaskInitialization, Request, TaskCompletion, StartRecordingMsg, MsgBody, StartRecording
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
@@ -54,6 +54,7 @@ def run_stm(logger):
     session: Optional[StmSession] = None
     task_log_entry: Optional[TaskLogEntry] = None
     db_conn = meta.get_database_connection(database=config.neurobooth_config.database.dbname)
+
     shutdown_flag = False
     while not shutdown_flag:
         message: Message = meta.read_next_message("STM", conn=db_conn)
@@ -63,7 +64,7 @@ def run_stm(logger):
         msg_body: Optional[MsgBody] = None
         logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
         logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
-        current_msg_type:str = message.msg_type
+        current_msg_type: str = message.msg_type
         if "PrepareRequest" == current_msg_type:
             session, task_log_entry = prepare_session(data, logger)
 
@@ -263,7 +264,14 @@ def start_acq(calib_instructions, executor, session: StmSession, task_args: Task
     stimulus_id = task_args.stim_args.stimulus_id
 
     # TODO: Replace with new message
-    meta.post_message(StartRecordingMsg())
+    fname = f"{session.session_name}_{tsk_start_time}_{task_id}"
+    meta.post_message(StartRecordingMsg(
+        body=StartRecording(
+            session_name=session.session_name,
+            fname=fname,
+            task_id= task_id
+        ))
+    )
 
     acq_result = executor.submit(
         socket_message,
