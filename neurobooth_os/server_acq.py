@@ -6,7 +6,6 @@ from typing import Dict, List, Optional
 
 from pylsl import local_clock
 import logging
-import json
 
 import neurobooth_os
 
@@ -17,7 +16,7 @@ from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
 from neurobooth_os.msg.messages import Message, MsgBody, PrepareRequest, RecordingStoppedMsg, StartRecording, \
-    RecordingStartedMsg, MbientResetResults, Reply, StatusMessage, Request
+    RecordingStartedMsg, MbientResetResults, Reply, StatusMessage, Request, SessionPrepared
 
 
 def countdown(period):
@@ -102,6 +101,8 @@ def run_acq(logger):
             else:
                 device_manager.create_streams(collection_id=collection_id, task_params=task_args)
             print("UPDATOR:-Connect-")
+            updator = Request(source="ACQ", destination="CTR", body=SessionPrepared(elem_key="-Connect-"))
+            meta.post_message(updator, db_conn)
 
         elif "FramePreview" == current_msg_type and not recording:
             # TODO: fix me

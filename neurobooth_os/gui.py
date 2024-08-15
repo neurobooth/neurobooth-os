@@ -23,7 +23,6 @@ from psycopg2._psycopg import connection
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 from neurobooth_os.netcomm import (
-    get_messages_to_ctr,
     node_info,
     socket_message,
 )
@@ -35,7 +34,7 @@ from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
 from neurobooth_os.msg.messages import Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest, \
     ShutdownRequest, MsgBody, MbientDisconnected, NewVideoFile, TaskCompletion, TaskInitialization, SessionPrepared, \
-    DeviceInitialization, TasksCreated, StatusMessage
+    DeviceInitialization, TasksCreated, StatusMessage, LslRecording
 
 
 def setup_log(sg_handler=None):
@@ -129,8 +128,6 @@ def _start_task_presentation(window, tasks: List[str], subject_id: str, session_
             body=msg_body
         )
         meta.post_message(msg, conn), conn
-        # running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
-        # socket_message(f"present:{running_task}:{subject_id}:{session_id}", node)
         steps.append("task_started")
     else:
         sg.PopupError("No task selected")
@@ -185,7 +182,7 @@ def _record_lsl(
         t_obs_id,
         obs_log_id,
         tsk_strt_time,
-        presentation_node,
+        conn
 ):
     print(
         f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}"
@@ -195,7 +192,11 @@ def _record_lsl(
     rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
     session.start_recording(rec_fname)
 
-    socket_message("lsl_recording", presentation_node)
+    # TODO: Replace with new message?
+    # socket_message("lsl_recording", presentation_node)
+    msg_body = LslRecording()
+    msg_req = Request(source="CTR", destination='STM', body=msg_body)
+    meta.post_message(msg_req, conn=conn)
 
     window["task_title"].update("Running Task:")
     window["task_running"].update(task_id, background_color="red")
@@ -293,7 +294,7 @@ def _start_ctr_msg_reader(logger, window):
             elem: str = msg_body.elem_key
             window.write_event_value("-update_butt-", elem)
         elif "TasksCreated" == message.msg_type:
-            print('handling TaskSCreated in gui)')
+            print('Handling TasksCreated in gui')
             window.write_event_value("tasks_created", "")
         elif "TaskInitialization" == message.msg_type:
             msg_body: TaskInitialization = message.body
@@ -422,6 +423,7 @@ def _get_ports():
 def gui(logger):
     """Start the Graphical User Interface.
     """
+
     database = cfg.neurobooth_config.database.dbname
     nodes, host_ctr, port_ctr = _get_ports()
 
@@ -579,7 +581,7 @@ def gui(logger):
                 t_obs_id,
                 obs_log_id,
                 tsk_strt_time,
-                nodes[1],
+                conn
             )
 
         # Signal a task ended: stop LSL recording and update gui

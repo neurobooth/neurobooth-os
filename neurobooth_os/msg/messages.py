@@ -183,9 +183,11 @@ class DeviceInitialization(MsgBody):
 
 
 class LslRecording(MsgBody):
-
+    """
+    Msg sent from CTR to STM when LSL recording has started
+    """
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
 
 
@@ -248,13 +250,13 @@ class StopRecording(MsgBody):
 
 class RecordingStarted(MsgBody):
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
 
 
 class RecordingStopped(MsgBody):
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
 
 

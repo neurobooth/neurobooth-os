@@ -105,7 +105,6 @@ def post_message(msg: Message, conn: connection) -> str:
     """
     table = Table("message_queue", conn=conn)
     body = msg.body.model_dump_json()
-    print(str(msg.uuid))
     return table.insert_rows([(str(msg.uuid),
                                msg.msg_type,
                                msg.full_msg_type(),
@@ -230,7 +229,6 @@ def read_next_recording_message(destination: str, conn: connection, msg_type: st
     if msg_df.empty:
         return None
     field_names = [i[0] for i in curs.description]
-    print(field_names)
     msg_df = msg_df.set_axis(field_names, axis='columns')
     body = msg_df['body'].iloc[0]
     uuid = msg_df['uuid'].iloc[0]
@@ -241,7 +239,6 @@ def read_next_recording_message(destination: str, conn: connection, msg_type: st
     destination = msg_df['destination'].iloc[0]
     body_constructor = str_fileid_to_eval(msg_type_full)
     msg_body: MsgBody = body_constructor(**body)
-    print(str(uuid))
     msg = Message(body=msg_body, uuid=uuid, msg_type=msg_type, source=source, destination=destination, priority=priority)
     return msg
 
@@ -293,7 +290,6 @@ def read_next_lsl_message(destination: str, conn: connection) -> Optional[Messag
     if msg_df.empty:
         return None
     field_names = [i[0] for i in curs.description]
-    print(field_names)
     msg_df = msg_df.set_axis(field_names, axis='columns')
     body = msg_df['body'].iloc[0]
     uuid = msg_df['uuid'].iloc[0]
@@ -304,7 +300,6 @@ def read_next_lsl_message(destination: str, conn: connection) -> Optional[Messag
     destination = msg_df['destination'].iloc[0]
     body_constructor = str_fileid_to_eval(msg_type_full)
     msg_body: MsgBody = body_constructor(**body)
-    print(str(uuid))
     msg = Message(body=msg_body, uuid=uuid, msg_type=msg_type, source=source, destination=destination, priority=priority)
     return msg
 
