@@ -89,6 +89,7 @@ class VidRec_Intel:
         print(f"-new_filename-:{self.streamName}:{op.split(self.video_filename)[-1]}")
 
     def createOutlet(self):
+        db_conn = meta.get_database_connection()
         self.streamName = f"IntelFrameIndex_cam{self.device_index}"
         self.outlet_id = str(uuid.uuid4())
         info = set_stream_description(
@@ -115,10 +116,8 @@ class VidRec_Intel:
             fps_rgb=str(self.device_args.sample_rate()[0]),
             fps_depth=str(self.device_args.sample_rate()[1]),
         )
-        msg_body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
-        meta.post_message(Request(source='', destination='CTR', body=msg_body))
-
-        # print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
+        msg_body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.outlet_id)
+        meta.post_message(Request(source='', destination='CTR', body=msg_body), conn=db_conn)
         return StreamOutlet(info)
 
     def record(self):

@@ -13,6 +13,7 @@ from typing import NamedTuple, List, Optional
 from neurobooth_os.iout.stim_param_reader import MicYetiDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
+from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 
 class AudioDeviceInfo(NamedTuple):
@@ -83,6 +84,10 @@ class MicStream:
             fps=str(self.fps),
             device_name=device_args.device_name,
         )
+        import neurobooth_os.iout.metadator as meta
+        db_conn = meta.get_database_connection()
+        msg_body = DeviceInitialization(stream_name="Audio", outlet_id=self.oulet_id)
+        meta.post_message(Request(source='', destination='CTR', body=msg_body), conn=db_conn)
         print(f"-OUTLETID-:Audio:{self.oulet_id}")
         self.logger.debug(
             f'Microphone: sample_rate={str(self.fps)}; save_on_disk={self.save_on_disk}; channels={self.CHANNELS}'

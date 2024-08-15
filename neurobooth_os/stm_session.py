@@ -40,7 +40,6 @@ class StmSession(BaseModel):
         self.collection_id = kwargs["collection_id"]
         self.db_conn = kwargs["db_conn"]
         self.logger = kwargs["logger"]
-        self.socket = kwargs["socket"]
         self.session_folder = self.create_session_folder(self.logger, self.session_name)
         self.system_resource_logger: SystemResourceLogger = self.create_sys_resource_logger()
         self.task_func_dict = build_tasks_for_collection(self.collection_id)

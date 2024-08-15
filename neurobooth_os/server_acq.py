@@ -17,7 +17,7 @@ from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
 from neurobooth_os.msg.messages import Message, MsgBody, PrepareRequest, RecordingStoppedMsg, StartRecording, \
-    RecordingStartedMsg, MbientResetResults, Reply
+    RecordingStartedMsg, MbientResetResults, Reply, StatusMessage, Request
 
 
 def countdown(period):
@@ -34,7 +34,6 @@ def main():
     try:
         logger.debug("Starting ACQ")
         os.chdir(neurobooth_os.__path__[0])
-        # sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
         run_acq(logger)
         logger.debug("Stopping ACQ")
 
@@ -126,8 +125,10 @@ def run_acq(logger):
         elif "StartRecording" == current_msg_type:
             msg_body: StartRecording = message.body
 
-            # TODO: Send print as message to GUI
             print("Starting recording")
+            status_msg = StatusMessage(text="Starting recording")
+            status_req = Request(source="ACQ", destination="CTR", body=status_msg)
+            meta.post_message(status_req, conn=db_conn)
 
             task = msg_body.task_id
             fname = msg_body.fname
@@ -171,8 +172,9 @@ def run_acq(logger):
 def iphone_frame_preview(connx, device_manager, logger):
     frame = device_manager.iphone_frame_preview()
     if frame is None:
+        # TODO: Send as message
         print("no iphone")
-        connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
+        # connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
         logger.debug('Frame preview unavailable')
     else:
         frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"

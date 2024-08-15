@@ -6,14 +6,15 @@ from time import time, sleep
 from datetime import datetime
 import copy
 
-from concurrent.futures import ThreadPoolExecutor, wait
+from concurrent.futures import ThreadPoolExecutor
 
 from typing import Dict, Optional, Callable, List
 from psychopy import prefs
 
 from neurobooth_os.iout.stim_param_reader import TaskArgs
-from neurobooth_os.msg.messages import Message, CreateTaskRequest, StatusMessage, PerformTaskRequest, \
-    TaskInitialization, Request, TaskCompletion, StartRecordingMsg, MsgBody, StartRecording
+from neurobooth_os.msg.messages import Message, CreateTasksRequest, StatusMessage, \
+    TaskInitialization, Request, TaskCompletion, StartRecordingMsg, MsgBody, StartRecording, SessionPrepared, \
+    PrepareRequest, TasksCreated, Reply, StopRecording
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
@@ -65,21 +66,20 @@ def run_stm(logger):
         logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
         logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
         current_msg_type: str = message.msg_type
+        print(current_msg_type)
         if "PrepareRequest" == current_msg_type:
-            session, task_log_entry = prepare_session(data, logger)
-
-        elif "CreateTaskRequest" == current_msg_type:  # -> "present:TASKNAME:subj_id:session_id"
+            session, task_log_entry = prepare_session(message.body, logger)
+        elif 'CreateTasksRequest' == current_msg_type:
             # task_name can be list of tk1-task2-task3
-            msg_body = message.body
-            session.logger.info(f"Creating Task {msg_body.task_id}")
-            tasks, subj_id, session_id = data.split(":")[1:]
+            msg_body: CreateTasksRequest = message.body
+            session.logger.info(f"Creating Tasks {msg_body.tasks}")
+            tasks = msg_body.tasks
+            subj_id = msg_body.subj_id
+            session_id = msg_body.session_id
             task_log_entry.log_session_id = session_id
 
             # Preload tasks media
             t0 = time()
-
-            # split into a list of task_id strings
-            tasks = tasks.split("-")
             task_list: List[TaskArgs] = []
             for task_id in tasks:
                 if task_id in session.tasks():
@@ -100,8 +100,10 @@ def run_stm(logger):
             task_calib = [t for t in tasks if "calibration_task" in t]
             # Show calibration instruction video only the first time
             calib_instructions = True
-
-        elif "PerformTaskRequest" == current_msg_type:  #:
+            reply_body = TasksCreated()
+            reply = Reply(source="STM", destination=message.source, body=reply_body, request_uuid=message.uuid)
+            meta.post_message(reply, session.db_conn)
+        elif "PerformTaskRequest" == current_msg_type:
             msg_body = message.body
             task_id: str = msg_body.task_id
 
@@ -116,7 +118,6 @@ def run_stm(logger):
                 task_args: TaskArgs = _get_task_args(session, task_id)
                 task: Task = task_args.task_instance
                 this_task_kwargs = create_task_kwargs(session, task_args)
-                task_id = task_args.task_id
 
                 # Do not record if intro instructions"
                 if "intro_" in task_id or "pause_" in task_id:
@@ -154,9 +155,7 @@ def run_stm(logger):
                     elapsed_time = time() - t0
                     session.logger.info(f'Waiting for LSL startup took: {elapsed_time:.2f}')
 
-                    with ThreadPoolExecutor(max_workers=1) as executor:
-                        start_acq(calib_instructions, executor, session, task_args,
-                                  task_id, this_task_kwargs, tsk_start_time)
+                    start_acq(calib_instructions, session, task_args, task_id, this_task_kwargs, tsk_start_time)
 
                     this_task_kwargs.update({"last_task": len(tasks) == 0})
                     this_task_kwargs["task_name"] = task_id
@@ -169,8 +168,7 @@ def run_stm(logger):
                     events = task.run(**this_task_kwargs)
                     session.logger.debug(f"TASK FUNCTION RETURNED")
 
-                    with ThreadPoolExecutor(max_workers=1) as executor:
-                        stop_acq(executor, session, task_args)
+                    stop_acq(session, task_args)
 
                     # Signal CTR to stop LSL rec
                     meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)),
@@ -183,12 +181,12 @@ def run_stm(logger):
                     elapsed_time = time() - t00
                     session.logger.info(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
 
-        if "PauseSessionRequest" == current_msg_type:
+        elif "PauseSessionRequest" == current_msg_type:
             paused = True
             data = pause(session)
 
         # Next message tells what to do now that we paused
-        if "ResumeSessionRequest" == current_msg_type:
+        elif "ResumeSessionRequest" == current_msg_type:
             paused = False
             continue
 
@@ -207,15 +205,19 @@ def run_stm(logger):
 
         else:
             if paused:
-                meta.post_message(StatusMessage())
                 print("Received an unexpected message while paused ")
+                body = StatusMessage(text=f'"Received an unexpected message while paused: {message.model_dump_json()}')
+
+                err_msg = Request(source='STM', destination='CTR', body=body)
+                meta.post_message(err_msg, session.db_conn)
                 logger.warn("Received an unexpected message while paused ")
                 session.logger.debug('FINISH SCREEN')
                 finish_screen(session.win)
 
             else:
-                logger.error(f'Unexpected message received: {data}')
-
+                unex_msg = f'Unexpected message received: {message.model_dump_json()}'
+                print(unex_msg)
+                logger.error(unex_msg)
     exit()
 
 
@@ -225,23 +227,36 @@ def _get_task_args(session: StmSession, task_id: str):
     return session.task_func_dict[task_id]
 
 
-def stop_acq(executor, session: StmSession, task_args: TaskArgs):
+def stop_acq(session: StmSession, task_args: TaskArgs):
     """ Stop recording on ACQ in parallel to stopping on STM """
     session.logger.info(f'SENDING record_stop TO ACQ')
     stimulus_id = task_args.stim_args.stimulus_id
 
     # TODO: Replace with new message
-    acq_result = executor.submit(socket_message, "record_stop", "acquisition", wait_data=15)
+    body = StopRecording()
+    sr_msg = Request(source="STM", destination='ACQ', body=body)
+    meta.post_message(sr_msg, session.db_conn)
+
+    # acq_result = executor.submit(socket_message, "record_stop", "acquisition", wait_data=15)
+
     # Stop eyetracker
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         if "calibration_task" not in stimulus_id:
             session.eye_tracker.stop()
-    wait([acq_result])  # Wait for ACQ to finish
-    acq_result.result()  # Raise any exceptions swallowed by the executor
+
+    acq_reply = None
+    while acq_reply is None:
+        acq_reply = meta.read_next_recording_message("STM", session.db_conn, msg_type="RecordingStopped")
+        # TODO: Handle higher priority msgs
+        # TODO: Handle error conditions reported by ACQ
+        sleep(1)
+
+    # wait([acq_result])  # Wait for ACQ to finish
+    # acq_result.result()  # Raise any exceptions swallowed by the executor
 
 
-def start_acq(calib_instructions, executor, session: StmSession, task_args: TaskArgs, task_id: str, this_task_kwargs,
+def start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, task_id: str, this_task_kwargs,
               tsk_start_time):
     """
     Start recording on ACQ in parallel to starting on STM
@@ -249,7 +264,6 @@ def start_acq(calib_instructions, executor, session: StmSession, task_args: Task
     Parameters
     ----------
     calib_instructions
-    executor
     session
     task_args
     task_id
@@ -263,22 +277,23 @@ def start_acq(calib_instructions, executor, session: StmSession, task_args: Task
     session.logger.info(f'SENDING record_start TO ACQ')
     stimulus_id = task_args.stim_args.stimulus_id
 
-    # TODO: Replace with new message
     fname = f"{session.session_name}_{tsk_start_time}_{task_id}"
-    meta.post_message(StartRecordingMsg(
-        body=StartRecording(
-            session_name=session.session_name,
-            fname=fname,
-            task_id= task_id
-        ))
+    body = StartRecording(
+        session_name=session.session_name,
+        fname=fname,
+        task_id=task_id
     )
+    sr_msg = StartRecordingMsg(body=body)
+    meta.post_message(sr_msg, session.db_conn)
 
-    acq_result = executor.submit(
-        socket_message,
-        f"record_start::{session.session_name}_{tsk_start_time}_{task_id}::{task_id}",
-        "acquisition",
-        wait_data=10,
-    )
+    # acq_result = executor.submit(
+    #     # TODO: Replace with new message
+    #     # socket_message,
+    #     f"record_start::{session.session_name}_{tsk_start_time}_{task_id}::{task_id}",
+    #     "acquisition",
+    #     wait_data=10,
+    # )
+
     # Start eyetracker if device in task
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
@@ -289,8 +304,15 @@ def start_acq(calib_instructions, executor, session: StmSession, task_args: Task
             task_args.task_instance.render_image() # Render image on HostPC/Tablet screen
             session.eye_tracker.start(fname)
     session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
-    wait([acq_result])  # Wait for ACQ to finish
-    acq_result.result()  # Raise any exceptions swallowed by the executor
+    acq_reply = None
+    while acq_reply is None:
+        acq_reply = meta.read_next_recording_message("STM", session.db_conn, msg_type="RecordingStarted")
+        # TODO: Handle higher priority msgs
+        # TODO: Handle error conditions reported by ACQ
+        sleep(1)
+
+    # wait([acq_result])  # Wait for ACQ to finish
+    # acq_result.result()  # Raise any exceptions swallowed by the executor
 
 
 def pause(session):
@@ -342,12 +364,12 @@ def log_task(events: List,
     meta.fill_task_row(task_log_entry, stm_session.db_conn)
 
 
-def prepare_session(data: str, logger):
+def prepare_session(prepare_req: PrepareRequest, logger):
     logger.info("Preparing STM for operation.")
-    collection_id = data.split(":")[1]
-    database_name = data.split(":")[2]
+    collection_id = prepare_req.collection_id
+    database_name = prepare_req.database_name
     logger.info(f"Database name is {database_name}.")
-    task_log_entry = extract_task_log_entry(collection_id, data, database_name)
+    task_log_entry = extract_task_log_entry(prepare_req)
     subject_id: str = task_log_entry.subject_id
     stm_session = StmSession(
         logger=logger,
@@ -359,6 +381,8 @@ def prepare_session(data: str, logger):
     #   (continued) We already have a db_logger, it just needs session attributes
     stm_session.logger = make_db_logger(subject_id, stm_session.session_name)
     stm_session.logger.info('LOGGER CREATED FOR SESSION')
+    updator = Request(source="STM", destination="CTR", body=SessionPrepared(elem_key="-Connect-"))
+    meta.post_message(updator, stm_session.db_conn)
     print("UPDATOR:-Connect-")
     return stm_session, task_log_entry
 
@@ -373,37 +397,27 @@ def create_task_kwargs(session: StmSession, task_args: TaskArgs) -> Dict:
     return result
 
 
-def extract_task_log_entry(collection_id: str, data: str, database_name: str):
+def extract_task_log_entry(prepare_req:PrepareRequest):
     """
     Extracts and returns an object containing info encoded in the data argument,
     which is a message from the GUI.
-    The other arguments are used simply to trim the rest of the message
 
     Parameters
     ----------
-    collection_id
-    data
-    database_name
+    prepare_req
 
     Returns
     -------
         TaskLogEntry
     """
     # remove the first part of the msg
-    log_entry = eval(
-        data.replace(f"prepare:{collection_id}:{database_name}:", "")
-    )
-
-    # type conversion
-    if log_entry["log_session_id"]:
-        log_entry["log_session_id"] = int(log_entry["log_session_id"])
-    else:
-        log_entry["log_session_id"] = None
-
-    # change name to be usable as an attribute name
-    if log_entry["subject_id-date"]:
-        log_entry["subject_id_date"] = log_entry["subject_id-date"]
-        del log_entry["subject_id-date"]
+    log_entry = {}
+    log_entry['log_task_id'] = ''
+    log_entry['subject_id'] = prepare_req.subject_id
+    log_entry['log_session_id'] = None
+    log_entry['task_output_files'] = []
+    log_entry['collection_id'] = prepare_req.collection_id
+    log_entry['subject_id_date'] = prepare_req.session_name()
 
     return TaskLogEntry(**log_entry)
 

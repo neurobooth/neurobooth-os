@@ -10,7 +10,7 @@ import sys
 import time
 import threading
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import cv2
 import numpy as np
@@ -33,8 +33,9 @@ import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
-from neurobooth_os.msg.messages import Message, PrepareRequest, Request, PerformTaskRequest, CreateTaskRequest, \
-    ShutdownRequest, MsgBody, MbientDisconnected, NewVideoFile
+from neurobooth_os.msg.messages import Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest, \
+    ShutdownRequest, MsgBody, MbientDisconnected, NewVideoFile, TaskCompletion, TaskInitialization, SessionPrepared, \
+    DeviceInitialization, TasksCreated, StatusMessage
 
 
 def setup_log(sg_handler=None):
@@ -54,77 +55,6 @@ class Handler(logging.StreamHandler):
     def emit(self, record):
         buffer = str(record).strip()
         window['log'].update(value=buffer)
-
-
-def send_task_requests(task_id: str, subj_id: str, session_id: str, conn) -> PerformTaskRequest:
-    print(f"Starting presentation for {task_id}")
-
-    print("Sending STM create task message")
-    create_msg = CreateTaskRequest(task_id=task_id, subj_id=subj_id, session_id=session_id)
-    msg: Request = Request(source='CTR', destination='STM', body=create_msg)
-    meta.post_message(msg, conn)
-
-    print("Sending STM Perform task message")
-    # TODO:
-    task_info_json = {}
-    task_info = PerformTaskRequest(**task_info_json)
-    return task_info
-
-
-def _process_received_data(serv_data, window):
-    """Gets string data from other servers and create PySimpleGui window events.
-
-    Parameters
-    ----------
-    serv_data : str
-        Data sent by other servers
-    window : object
-        PySimpleGui window object
-    """
-
-    # Split server name and data
-    serv_data = serv_data.split(":::")[-1]
-    for data_row in serv_data.split("\n"):
-
-        if "-OUTLETID-" in data_row:
-            # -OUTLETID-:outlet_name:uuid
-            evnt, outlet_name, outlet_id = data_row.split(":")
-            window.write_event_value("-OUTLETID-", f"['{outlet_name}', '{outlet_id}']")
-
-        elif "UPDATOR:" in data_row:
-            # UPDATOR:-elem_key-
-            elem = data_row.split(":")[1]
-            window.write_event_value("-update_butt-", elem)
-
-        elif "Initiating task:" in data_row:
-            # Initiating task:task_id:obs_id:log_task_id:tsk_strt_time
-            _, task_id, obs_id, obs_log_id, tsk_strt_time = data_row.split(":")
-            window.write_event_value(
-                "task_initiated",
-                f"['{task_id}', '{obs_id}', '{obs_log_id}', '{tsk_strt_time}']",
-            )
-
-        elif "Finished task:" in data_row:
-            # Finished task: task_id
-            _, task_id = data_row.split(":")
-            window.write_event_value("task_finished", task_id)
-
-        elif "-new_filename-" in data_row:
-            # new file created, data_row = "-new_filename-:stream_name:video_filename"
-            event, stream_name, filename = data_row.split(":")
-            window.write_event_value(event, f"{stream_name},{filename}")
-
-        elif "RuntimeError: Could not connect to tracker" in data_row:
-            window.write_event_value(
-                "no_eyetracker",
-                "Eyetracker not found! \nServers will be "
-                + "terminated, wait utill are closed.\nThen, connect the eyetracker and start again",
-            )
-
-        elif "-WARNING mbient-" in data_row:
-            window.write_event_value(
-                "mbient_disconnected", f"{data_row}, \nconsider repeating the task"
-            )
 
 
 ########## Database functions ############
@@ -164,11 +94,12 @@ def _get_collections(window, study_id: str):
     return collection_ids
 
 
-def _save_session(window, log_task, staff_id, subject_id, first_name, last_name, tasks):
-    """Save session."""
+def _create_session_dict(window, log_task, staff_id, subject_id, first_name, last_name, tasks):
+    """Create session dictionary."""
     log_task["subject_id"] = subject_id
-    log_task["subject_id-date"] = f'{subject_id}_{datetime.now().strftime("%Y-%m-%d")}'
-
+    dt = datetime.now().strftime("%Y-%m-%d")
+    log_task["subject_id-date"] = f'{subject_id}_{dt}'
+    log_task["date"]=dt
     subject_id_date = log_task["subject_id-date"]
 
     window.close()
@@ -186,21 +117,18 @@ def _save_session(window, log_task, staff_id, subject_id, first_name, last_name,
 ########## Task-related functions ############
 
 
-def _start_task_presentation(window, tasks, subject_id, session_id, steps, node):
+def _start_task_presentation(window, tasks: List[str], subject_id: str, session_id: int, steps):
     """Present tasks"""
     window["Start"].Update(button_color=("black", "yellow"))
     conn = meta.get_database_connection()
     if len(tasks) > 0:
-        for task in tasks: # TODO: Make sure these tasks are filtered before sending
-            msg_body = CreateTaskRequest(task_id=task, subj_id=subject_id, session_id=session_id)
-            msg = Request(
-                source='CTR',
-                destination='STM',
-                body=msg_body
-            )
-            meta.post_message(msg, conn), conn
-
-
+        msg_body = CreateTasksRequest(tasks=tasks, subj_id=subject_id, session_id=session_id)
+        msg = Request(
+            source='CTR',
+            destination='STM',
+            body=msg_body
+        )
+        meta.post_message(msg, conn), conn
         # running_task = "-".join(tasks)  # task_name can be list of task1-task2-task3
         # socket_message(f"present:{running_task}:{subject_id}:{session_id}", node)
         steps.append("task_started")
@@ -328,17 +256,15 @@ def _start_servers(window, nodes):
     return event, values
 
 
-def _start_ctr_server(window, host_ctr, port_ctr):
+def _start_ctr_server(window, logger):
     """Start threaded control server and new window."""
 
     # Start a threaded socket CTR server once main window generated
     callback_args = window
     server_thread = threading.Thread(
-        target=get_messages_to_ctr,
+        target=_start_ctr_msg_reader,
         args=(
-            _process_received_data,
-            host_ctr,
-            port_ctr,
+            logger,
             callback_args,
         ),
         daemon=True,
@@ -346,7 +272,7 @@ def _start_ctr_server(window, host_ctr, port_ctr):
     server_thread.start()
 
 
-def _start_ctr_msg_reader(window, logger):
+def _start_ctr_msg_reader(logger, window):
     db_conn = meta.get_database_connection()
     shutdown_flag = False
     while not shutdown_flag:
@@ -356,32 +282,41 @@ def _start_ctr_msg_reader(window, logger):
             continue
         msg_body: Optional[MsgBody] = None
         logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
-        if "-OUTLETID-" == message.msg_type:
-            evnt, outlet_name, outlet_id = data_row.split(":")
+        if "DeviceInitialization" == message.msg_type:
+            msg_body: DeviceInitialization = message.body
+            outlet_name = msg_body.stream_name
+            outlet_id = msg_body.outlet_id
             window.write_event_value("-OUTLETID-", f"['{outlet_name}', '{outlet_id}']")
-        elif "UPDATOR:" == message.msg_type:
+        elif "SessionPrepared" == message.msg_type:
             # UPDATOR:-elem_key-
-            elem = data_row.split(":")[1]
+            msg_body: SessionPrepared = message.body
+            elem: str = msg_body.elem_key
             window.write_event_value("-update_butt-", elem)
-        elif "Initiating task:" == message.msg_type:
-            # Initiating task:task_id:obs_id:log_task_id:tsk_strt_time
-            _, task_id, obs_id, obs_log_id, tsk_strt_time = data_row.split(":")
+        elif "TasksCreated" == message.msg_type:
+            print('handling TaskSCreated in gui)')
+            window.write_event_value("tasks_created", "")
+        elif "TaskInitialization" == message.msg_type:
+            msg_body: TaskInitialization = message.body
+            task_id = msg_body.task_id
+            log_task_id = msg_body.log_task_id
+            tsk_strt_time = msg_body.tsk_start_time
             window.write_event_value(
                 "task_initiated",
-                f"['{task_id}', '{obs_id}', '{obs_log_id}', '{tsk_strt_time}']",
+                f"['{task_id}', '{task_id}', '{log_task_id}', '{tsk_strt_time}']",
             )
-        elif "Finished task:" == message.msg_type:
+        elif "TaskCompletion:" == message.msg_type:
             # Finished task: task_id
-            _, task_id = data_row.split(":")
+            msg_body: TaskCompletion = message.body
+            task_id = msg_body.task_id
             window.write_event_value("task_finished", task_id)
 
-        elif "-new_filename-" == message.msg_type:
+        elif "NewVideoFile" == message.msg_type:
             msg_body: NewVideoFile = message.body
 
             # new file created, data_row = "-new_filename-:stream_name:video_filename"
             event = msg_body.event
             stream_name = msg_body.stream_name
-            filename = msg_body.file_name
+            filename = msg_body.filename
 
             window.write_event_value(event, f"{stream_name},{filename}")
 
@@ -397,6 +332,11 @@ def _start_ctr_msg_reader(window, logger):
             window.write_event_value(
                 "mbient_disconnected", f"{msg_body.warning}, \nconsider repeating the task"
             )
+        elif "StatusMsg" == message.msg_type:
+            msg_body: StatusMessage = message.body
+            print(msg_body.text)
+            # window.write_event_value("status", msg_body.text)
+
 
 ######### Visualization ############
 
@@ -440,7 +380,7 @@ def _update_button_status(window, statecolors, button_name, inlets, folder_sessi
             return session
 
 
-def _prepare_devices(window, nodes, collection_id, log_task, database):
+def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dict, database, tasks: str):
     """Prepare devices"""
     window["-Connect-"].Update(button_color=("black", "red"))
     event, values = window.read(0.1)
@@ -454,19 +394,20 @@ def _prepare_devices(window, nodes, collection_id, log_task, database):
 
     nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:
-        socket_message(f"prepare:{collection_id}:{database}:{str(log_task)}", node)
+        if node == 'acquisition':
+            dest = "ACQ"
+        else:
+            dest = "STM"
         body = PrepareRequest(database_name=database,
                               subject_id=log_task['subject_id'],
-                              session_id=log_task['session'],
                               collection_id=collection_id,
-                              selected_tasks=log_task['tasks'],
+                              selected_tasks=tasks.split(),
                               date=log_task['date']
                               )
-        msg = Request(type=body.type,
-                      source='CTR',
-                      destination="STM",
-                      priority=body.priority,
+        msg = Request(source='CTR',
+                      destination=dest,
                       body=body)
+
         meta.post_message(msg, conn=meta.get_database_connection())
 
     return vidf_mrkr, event, values
@@ -529,7 +470,7 @@ def gui(logger):
                 sg.popup("No subject selected")
 
         elif event == "collection_id":
-            collection_id = values[event]
+            collection_id: str = values[event]
             log_sess["collection_id"] = collection_id
             tasks = _get_tasks(window, collection_id)
 
@@ -540,7 +481,7 @@ def gui(logger):
                 sg.PopupError("No staff ID")
             else:
                 log_sess["staff_id"] = values["staff_id"]
-                sess_info = _save_session(
+                sess_info = _create_session_dict(
                     window,
                     log_task,
                     values["staff_id"],
@@ -551,8 +492,8 @@ def gui(logger):
                 )
                 # Open new layout with main window
                 window = _win_gen(_main_layout, sess_info)
-                _start_ctr_server(window, host_ctr, port_ctr)
-                logger.debug(f"ctr server started on {host_ctr}:{port_ctr}")
+                _start_ctr_server(window, logger)
+                logger.debug(f"ctr msg reader started")
 
         ############################################################
         # Main Window -> Run neurobooth session
@@ -565,7 +506,7 @@ def gui(logger):
         # Turn on devices
         elif event == "-Connect-":
             vidf_mrkr, event, values = _prepare_devices(
-                window, nodes, collection_id, log_task, database
+                window, nodes, collection_id, log_task, database, tasks
             )
 
         elif event == "plot":
@@ -575,8 +516,15 @@ def gui(logger):
             session_id = meta._make_session_id(conn, log_sess)
             tasks = [k for k, v in values.items() if "obs" in k and v is True]
             _start_task_presentation(
-                window, tasks, sess_info["subject_id"], session_id, steps, node=nodes[1]
+                window, tasks, sess_info["subject_id"], session_id, steps
             )
+
+        elif event == "tasks_created":
+            print('tasks created, now start performing')
+            for task_id in tasks:
+                msg_body = PerformTaskRequest(task_id=task_id)
+                msg = Request(source="CTR", destination="STM", body=msg_body)
+                meta.post_message(msg, conn)
 
         elif event == "Pause tasks":
             _pause_tasks(steps, presentation_node=nodes[1])

@@ -2,7 +2,7 @@ import unittest
 import neurobooth_os.iout.metadator as meta
 from datetime import date, datetime
 
-from neurobooth_os.msg.messages import Request, PrepareRequest, CreateTaskRequest, PerformTaskRequest
+from neurobooth_os.msg.messages import Request, PrepareRequest, CreateTasksRequest, PerformTaskRequest
 
 database_name = "mock_neurobooth"
 dt = date.today()
@@ -39,7 +39,7 @@ class TestMessages(unittest.TestCase):
 
     def test_create_task_request(self):
         task_id: str = "12345"
-        body_1 = CreateTaskRequest(task_id=task_id)
+        body_1 = CreateTasksRequest(task_id=task_id)
         msg_1 = Request(
             source='CTR',
             destination='STM',

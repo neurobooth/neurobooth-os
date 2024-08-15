@@ -83,7 +83,6 @@ class Reply(Message):
 class PrepareRequest(MsgBody):
     database_name: str
     subject_id: str
-    session_id: int
     collection_id: str
     selected_tasks: List[str]
     date: str
@@ -96,10 +95,25 @@ class PrepareRequest(MsgBody):
         return f'{self.subject_id}_{self.date}'
 
 
-class CreateTaskRequest(MsgBody):
-    task_id: str
+class TasksCreated(MsgBody):
+
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class SessionPrepared(MsgBody):
+    elem_key: str
+
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
+class CreateTasksRequest(MsgBody):
+    tasks: List[str]
     subj_id: str
-    session_id: str
+    session_id: int
 
     def __init__(self, **data):
         data['priority'] = STANDARD_PRIORITY
@@ -108,9 +122,6 @@ class CreateTaskRequest(MsgBody):
 
 class PerformTaskRequest(MsgBody):
     task_id: str
-    stimulus_id: str
-    task_start_time: str
-    log_task_id: str
 
     def __init__(self, **data):
         data['priority'] = STANDARD_PRIORITY
@@ -226,7 +237,6 @@ class StartRecordingMsg(Request):
     def __init__(self, **data):
         data['source'] = 'STM'
         data['destination'] = 'ACQ'
-        data['body'] = StartRecording()
         super().__init__(**data)
 
 
