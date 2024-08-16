@@ -67,7 +67,6 @@ def run_acq(logger):
             continue
         msg_body: Optional[MsgBody] = None
         logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
-        logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
 
         current_msg_type : str = message.msg_type
         if "PrepareRequest" == current_msg_type:

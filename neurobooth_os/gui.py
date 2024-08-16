@@ -18,7 +18,6 @@ import numpy as np
 
 import PySimpleGUI as sg
 import liesl
-from psycopg2._psycopg import connection
 
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
@@ -34,7 +33,7 @@ from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
 from neurobooth_os.msg.messages import Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest, \
     ShutdownRequest, MsgBody, MbientDisconnected, NewVideoFile, TaskCompletion, TaskInitialization, SessionPrepared, \
-    DeviceInitialization, TasksCreated, StatusMessage, LslRecording
+    DeviceInitialization, StatusMessage, LslRecording
 
 
 def setup_log(sg_handler=None):
@@ -305,20 +304,17 @@ def _start_ctr_msg_reader(logger, window):
                 "task_initiated",
                 f"['{task_id}', '{task_id}', '{log_task_id}', '{tsk_strt_time}']",
             )
-        elif "TaskCompletion:" == message.msg_type:
-            # Finished task: task_id
+        elif "TaskCompletion" == message.msg_type:
             msg_body: TaskCompletion = message.body
             task_id = msg_body.task_id
+            logger.debug(f"TaskCompletion msg for {task_id}")
             window.write_event_value("task_finished", task_id)
 
         elif "NewVideoFile" == message.msg_type:
             msg_body: NewVideoFile = message.body
-
-            # new file created, data_row = "-new_filename-:stream_name:video_filename"
             event = msg_body.event
             stream_name = msg_body.stream_name
             filename = msg_body.filename
-
             window.write_event_value(event, f"{stream_name},{filename}")
 
         elif "NoEyetracker" == message.msg_type:
@@ -333,12 +329,14 @@ def _start_ctr_msg_reader(logger, window):
             window.write_event_value(
                 "mbient_disconnected", f"{msg_body.warning}, \nconsider repeating the task"
             )
-        elif "StatusMsg" == message.msg_type:
+        elif "StatusMessage" == message.msg_type:
             msg_body: StatusMessage = message.body
-            print(msg_body.text)
+            logger.debug(msg_body.text)
             # window.write_event_value("status", msg_body.text)
-
-
+        elif "-TIMEOUT-" == message.msg_type.upper():
+            pass
+        else:
+            logger.debug(f"Unhandled message: {message.msg_type}")
 ######### Visualization ############
 
 def _plot_realtime(window, plttr, inlets):
@@ -425,6 +423,7 @@ def gui(logger):
     """
 
     database = cfg.neurobooth_config.database.dbname
+
     nodes, host_ctr, port_ctr = _get_ports()
 
     # declare and initialize vars
@@ -434,6 +433,8 @@ def gui(logger):
     tasks = None
 
     conn = meta.get_database_connection()
+    meta.clear_msg_queue(conn)
+
     window = _win_gen(_init_layout, conn)
 
     plttr = stream_plotter()
@@ -573,6 +574,7 @@ def gui(logger):
             # event values -> f"['{task_id}', '{t_obs_id}', '{log_task_id}, '{tsk_strt_time}']
             window["-frame_preview-"].update(visible=False)
             task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
+            logger.debug(f"Starting LSL for task: {t_obs_id}")
             rec_fname = _record_lsl(
                 window,
                 session,
@@ -586,23 +588,8 @@ def gui(logger):
 
         # Signal a task ended: stop LSL recording and update gui
         elif event == "task_finished":
-            task_id = values["task_finished"]
-
-            _stop_lsl_and_save(
-                window,
-                session,
-                conn,
-                rec_fname,
-                task_id,
-                obs_log_id,
-                t_obs_id,
-                sess_info["subject_id_date"],
-            )
-
-            write_task_notes(
-                sess_info["subject_id_date"], sess_info["staff_id"], task_id, ""
-            )
-            window["-frame_preview-"].update(visible=True)
+            logger.debug(f"Stopping LSL for task: {t_obs_id}")
+            handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window)
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":
@@ -644,6 +631,24 @@ def gui(logger):
     if "-OUTPUT-" in window.AllKeysDict:
         window["-OUTPUT-"].__del__()
     print("Session terminated")
+
+
+def handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window):
+    task_id = values["task_finished"]
+    _stop_lsl_and_save(
+        window,
+        session,
+        conn,
+        rec_fname,
+        task_id,
+        obs_log_id,
+        t_obs_id,
+        sess_info["subject_id_date"],
+    )
+    write_task_notes(
+        sess_info["subject_id_date"], sess_info["staff_id"], task_id, ""
+    )
+    window["-frame_preview-"].update(visible=True)
 
 
 def _save_session_notes(sess_info, values, window):

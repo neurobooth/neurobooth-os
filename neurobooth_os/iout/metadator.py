@@ -87,6 +87,24 @@ def get_database_connection(database: Optional[str] = None, validate_config_path
     return conn
 
 
+def clear_msg_queue(conn):
+    """
+    Clears message_queue table. Intended for use at the start of a session so errors in prior session don't leave
+    unhandled messages.
+    TODO: Copy messages to log before clearing
+    Parameters
+    ----------
+    conn: connection    A database connection
+
+    Returns
+    -------
+    None
+    """
+    table = Table("message_queue", conn=conn)
+    table.delete_row()
+
+
+
 def post_message(msg: Message, conn: connection) -> str:
     """
     Posts a new message to the database that mediates between message senders and receivers
