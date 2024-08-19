@@ -544,6 +544,7 @@ def gui(logger):
 
         # Shut down the other servers and stops plotting
         elif event == "Shut Down" or event == sg.WINDOW_CLOSED:
+            logger.debug("Shut down event caught in GUI")
             if values is not None and 'notes' in values and "_notes_taskname_" not in values:
                 sg.PopupError(
                     "Unsaved notes without task. Before exiting, "
@@ -551,18 +552,20 @@ def gui(logger):
                 )
                 continue
             else:
+
+                logger.debug("Shut down event being processed in GUI")
+
                 if sess_info and values:
                     _save_session_notes(sess_info, values, window)
                 plttr.stop()
-                shutdown_acq_msg: Message = Message(source="CTR",
+                shutdown_acq_msg: Message = Request(source="CTR",
                                                 destination="STM",
                                                 body=ShutdownRequest())
-                shutdown_stm_msg: Message = Message(source="CTR",
+                shutdown_stm_msg: Message = Request(source="CTR",
                                                 destination="ACQ",
                                                 body=ShutdownRequest())
                 meta.post_message(shutdown_acq_msg, conn)
                 meta.post_message(shutdown_stm_msg, conn)
-                # TODO: DELETE ME -> ctr_rec.shut_all(nodes=nodes[::-1])
                 break
 
         ##################################################################################

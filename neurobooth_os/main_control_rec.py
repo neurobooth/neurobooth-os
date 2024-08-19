@@ -38,21 +38,6 @@ def start_servers(nodes=("acquisition", "presentation")):
         start_server(node)
 
 
-def shut_all(nodes=("acquisition", "presentation")):
-    """Shut all nodes
-
-    Parameters
-    ----------
-    nodes : tuple | str
-        The node names
-    """
-    nodes = _get_nodes(nodes)
-    for node in nodes:
-        socket_message("shutdown", node)
-    time.sleep(10)
-    # kill_pid_txt()  # TODO only if error
-
-
 def test_lan_delay(n=100, nodes=("acquisition", "presentation")):
     """Test LAN delay
 

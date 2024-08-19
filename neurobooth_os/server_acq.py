@@ -73,10 +73,6 @@ def run_acq(logger):
             msg_body: PrepareRequest = message.body
             database_name = msg_body.database_name
 
-            # log_task = eval(
-            #     data.replace(f"prepare:{collection_id}:{database_name}:", "")
-            # )
-
             subject_id: str = msg_body.subject_id
             session_name: str = msg_body.session_name()
             collection_id: str = msg_body.collection_id
@@ -148,13 +144,11 @@ def run_acq(logger):
             meta.post_message(reply, db_conn)
             recording = False
 
-        elif "Shutdown" == current_msg_type:
+        elif "ShutdownRequest" == current_msg_type:
+            print("Message ShutdownRequest received in ACQ")
             if recording:
                 elapsed_time = stop_recording(device_manager, task_args[task].device_args)
                 logger.info(f'Device stop took {elapsed_time:.2f}')
-                recording = False
-
-            # s1.close()
 
             if device_manager is not None:
                 device_manager.close_streams()
@@ -162,9 +156,7 @@ def run_acq(logger):
             if system_resource_logger is not None:
                 system_resource_logger.stop()
             logging.shutdown()
-
-            break
-
+            shutdown_flag = True
         else:
             logger.error(f'Unexpected message received: {message.model_dump_json()}')
 

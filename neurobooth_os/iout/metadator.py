@@ -139,7 +139,8 @@ def post_message(msg: Message, conn: connection) -> str:
 def read_next_message(destination: str, conn: connection) -> Optional[Message]:
     f"""
     Returns a Pandas dataframe containing one row representing the next message to be handled by 
-    the calling process. Code representing the {destination} would call this message to check for new messages
+    the calling process. Code representing the message {destination} would call this message to check for new messages.
+    LslRecording messages are skipped as they have their own message handling loop and their own query.
     
     NOTE: A MESSAGE CAN ONLY BE READ ONCE using this method as the message's time_read value is updated before 
     returning the query results. Only rows where time_read is NULL are returned here. 
@@ -162,6 +163,7 @@ def read_next_message(destination: str, conn: connection) -> Optional[Message]:
             from message_queue
             where time_read is NULL
             and destination = '{destination}'
+            and msg_type != 'LslRecording'
             order by priority desc, id asc
             limit 1
             )
@@ -194,6 +196,7 @@ def read_next_message(destination: str, conn: connection) -> Optional[Message]:
     msg_body: MsgBody = body_constructor(**body)
     msg = Message(body=msg_body, uuid=uuid, msg_type=msg_type, source=source, destination=destination, priority=priority)
     return msg
+
 
 def read_next_recording_message(destination: str, conn: connection, msg_type: str) -> Optional[Message]:
     f"""

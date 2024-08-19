@@ -145,15 +145,7 @@ def run_stm(logger):
                     meta.post_message(Request(source='STM', destination='CTR', body=init_task_body), conn=db_conn)
                     session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
 
-                    # TODO: Move this logic to separate function
-                    ctr_msg_found: bool = False
-                    attempt = 0
-                    while not ctr_msg_found and attempt < 4:
-                        ctr_msg_found = meta.read_next_lsl_message("STM", db_conn) is not None
-                        sleep(1)
-                        attempt = attempt + 1
-                    elapsed_time = time() - t0
-                    session.logger.info(f'Waiting for LSL startup took: {elapsed_time:.2f}')
+                    wait_for_lsl_recording_to_start(db_conn, logger, session, t0)
 
                     start_acq(calib_instructions, session, task_args, task_id, this_task_kwargs, tsk_start_time)
 
@@ -201,7 +193,8 @@ def run_stm(logger):
         elif "ShutdownRequest" == current_msg_type:
             if session is not None:
                 session.shutdown()
-            break
+            shutdown_flag = True
+            print("Message ShutdownRequest received in STM")
 
         else:
             if paused:
@@ -219,6 +212,21 @@ def run_stm(logger):
                 print(unex_msg)
                 logger.error(unex_msg)
     exit()
+
+
+def wait_for_lsl_recording_to_start(db_conn, logger, session, t0):
+    ctr_msg_found: bool = False
+    attempt = 0
+    while not ctr_msg_found and attempt < 60:
+        ctr_msg_found = meta.read_next_lsl_message("STM", db_conn) is not None
+        sleep(1)
+        attempt = attempt + 1
+    if not ctr_msg_found:
+        logger.info("Message LsLRecording not received in STM")
+    else:
+        logger.info("Message LsLRecording received in STM")
+    elapsed_time = time() - t0
+    session.logger.info(f'Waiting for LSL startup took: {elapsed_time:.2f}')
 
 
 def _get_task_args(session: StmSession, task_id: str):
