@@ -33,7 +33,7 @@ from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
 from neurobooth_os.msg.messages import Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest, \
     ShutdownRequest, MsgBody, MbientDisconnected, NewVideoFile, TaskCompletion, TaskInitialization, SessionPrepared, \
-    DeviceInitialization, StatusMessage, LslRecording
+    DeviceInitialization, StatusMessage, LslRecording, TasksFinished
 
 
 def setup_log(sg_handler=None):
@@ -528,6 +528,10 @@ def gui(logger):
                 msg_body = PerformTaskRequest(task_id=task_id)
                 msg = Request(source="CTR", destination="STM", body=msg_body)
                 meta.post_message(msg, conn)
+            # PerformTask Messages queued for all tasks, now queue a TasksFinished message
+            msg_body = TasksFinished()
+            msg = Request(source="CTR", destination="STM", body=msg_body)
+            meta.post_message(msg, conn)
 
         elif event == "Pause tasks":
             _pause_tasks(steps, presentation_node=nodes[1])
@@ -544,7 +548,6 @@ def gui(logger):
 
         # Shut down the other servers and stops plotting
         elif event == "Shut Down" or event == sg.WINDOW_CLOSED:
-            logger.debug("Shut down event caught in GUI")
             if values is not None and 'notes' in values and "_notes_taskname_" not in values:
                 sg.PopupError(
                     "Unsaved notes without task. Before exiting, "
@@ -552,9 +555,6 @@ def gui(logger):
                 )
                 continue
             else:
-
-                logger.debug("Shut down event being processed in GUI")
-
                 if sess_info and values:
                     _save_session_notes(sess_info, values, window)
                 plttr.stop()

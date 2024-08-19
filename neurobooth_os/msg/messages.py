@@ -128,6 +128,12 @@ class PerformTaskRequest(MsgBody):
         super().__init__(**data)
 
 
+class TasksFinished(MsgBody):
+    def __init__(self, **data):
+        data['priority'] = STANDARD_PRIORITY
+        super().__init__(**data)
+
+
 class PauseSessionRequest(MsgBody):
 
     def __init__(self, **data):

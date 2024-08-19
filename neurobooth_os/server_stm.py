@@ -195,6 +195,9 @@ def run_stm(logger):
                 session.shutdown()
             shutdown_flag = True
             print("Message ShutdownRequest received in STM")
+        elif "TasksFinished" == current_msg_type:
+            session.logger.debug('FINISH SCREEN')
+            finish_screen(session.win)
 
         else:
             if paused:
