@@ -1,0 +1,17 @@
+# Specify which functions should be used to apply in-memory corrections to HDF5 data before writing.
+
+marker: neurobooth_os.iout.hdf5_corrections.py::correct_marker()
+devices:
+  Eyelink_1: neurobooth_os.iout.hdf5_corrections.py::correct_eyelink()
+  FLIR_blackfly_1: neurobooth_os.iout.hdf5_corrections.py::correct_flir()
+  Intel_D455_1: neurobooth_os.iout.hdf5_corrections.py::correct_intel()
+  Intel_D455_2: neurobooth_os.iout.hdf5_corrections.py::correct_intel()
+  Intel_D455_3: neurobooth_os.iout.hdf5_corrections.py::correct_intel()
+  IPhone_dev_1: neurobooth_os.iout.hdf5_corrections.py::correct_iphone()
+  Mbient_BK_1: neurobooth_os.iout.hdf5_corrections.py::correct_mbient()
+  Mbient_LH_2: neurobooth_os.iout.hdf5_corrections.py::correct_mbient()
+  Mbient_LF_2: neurobooth_os.iout.hdf5_corrections.py::correct_mbient()
+  Mbient_RH_2: neurobooth_os.iout.hdf5_corrections.py::correct_mbient()
+  Mbient_RF_2: neurobooth_os.iout.hdf5_corrections.py::correct_mbient()
+  Mic_Yeti_dev_1: neurobooth_os.iout.hdf5_corrections.py::correct_yeti()
+  Mouse: neurobooth_os.iout.hdf5_corrections.py::correct_mouse()
