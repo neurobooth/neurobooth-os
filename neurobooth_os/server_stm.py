@@ -66,7 +66,6 @@ def run_stm(logger):
         logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
         logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
         current_msg_type: str = message.msg_type
-        print(current_msg_type)
         if "PrepareRequest" == current_msg_type:
             session, task_log_entry = prepare_session(message.body, logger)
         elif 'CreateTasksRequest' == current_msg_type:
@@ -220,7 +219,7 @@ def run_stm(logger):
 def wait_for_lsl_recording_to_start(db_conn, logger, session, t0):
     ctr_msg_found: bool = False
     attempt = 0
-    while not ctr_msg_found and attempt < 60:
+    while not ctr_msg_found and attempt < 30:
         ctr_msg_found = meta.read_next_lsl_message("STM", db_conn) is not None
         sleep(1)
         attempt = attempt + 1
@@ -243,7 +242,6 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
     session.logger.info(f'SENDING record_stop TO ACQ')
     stimulus_id = task_args.stim_args.stimulus_id
 
-    # TODO: Replace with new message
     body = StopRecording()
     sr_msg = Request(source="STM", destination='ACQ', body=body)
     meta.post_message(sr_msg, session.db_conn)
@@ -257,14 +255,14 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
             session.eye_tracker.stop()
 
     acq_reply = None
-    while acq_reply is None:
+    attempts = 0
+    while acq_reply is None and attempts < 30:
         acq_reply = meta.read_next_recording_message("STM", session.db_conn, msg_type="RecordingStopped")
         # TODO: Handle higher priority msgs
-        # TODO: Handle error conditions reported by ACQ
+        # TODO: Handle error conditions reported by ACQ -> Consider adding an error field to the RecordingStopped msg
         sleep(1)
+        attempts = attempts + 1
 
-    # wait([acq_result])  # Wait for ACQ to finish
-    # acq_result.result()  # Raise any exceptions swallowed by the executor
 
 
 def start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, task_id: str, this_task_kwargs,
@@ -319,7 +317,7 @@ def start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, task
     while acq_reply is None:
         acq_reply = meta.read_next_recording_message("STM", session.db_conn, msg_type="RecordingStarted")
         # TODO: Handle higher priority msgs
-        # TODO: Handle error conditions reported by ACQ
+        # TODO: Handle error conditions reported by ACQ  -> Consider adding an error field to the RecordingStarted msg
         sleep(1)
 
     # wait([acq_result])  # Wait for ACQ to finish
