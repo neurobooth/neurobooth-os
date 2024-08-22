@@ -220,7 +220,7 @@ def wait_for_lsl_recording_to_start(db_conn, logger, session, t0):
     ctr_msg_found: bool = False
     attempt = 0
     while not ctr_msg_found and attempt < 30:
-        ctr_msg_found = meta.read_next_lsl_message("STM", db_conn) is not None
+        ctr_msg_found = meta.read_next_message("STM", db_conn, 'LslRecording') is not None
         sleep(1)
         attempt = attempt + 1
     if not ctr_msg_found:
@@ -257,7 +257,7 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
     acq_reply = None
     attempts = 0
     while acq_reply is None and attempts < 30:
-        acq_reply = meta.read_next_recording_message("STM", session.db_conn, msg_type="RecordingStopped")
+        acq_reply = meta.read_next_message("STM", session.db_conn, msg_type="RecordingStopped")
         # TODO: Handle higher priority msgs
         # TODO: Handle error conditions reported by ACQ -> Consider adding an error field to the RecordingStopped msg
         sleep(1)
@@ -315,7 +315,7 @@ def start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, task
     session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
     acq_reply = None
     while acq_reply is None:
-        acq_reply = meta.read_next_recording_message("STM", session.db_conn, msg_type="RecordingStarted")
+        acq_reply = meta.read_next_message("STM", session.db_conn, msg_type="RecordingStarted")
         # TODO: Handle higher priority msgs
         # TODO: Handle error conditions reported by ACQ  -> Consider adding an error field to the RecordingStarted msg
         sleep(1)

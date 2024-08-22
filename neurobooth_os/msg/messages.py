@@ -298,7 +298,16 @@ class MbientResetResults(MsgBody):
         super().__init__(**data)
 
 
-class FramePreview(MsgBody):
+class FramePreviewRequest(MsgBody):
+    def __init__(self, **data):
+        data['priority'] = HIGH_PRIORITY
+        super().__init__(**data)
+
+
+class FramePreviewReply(MsgBody):
+    image: Optional[bytearray]
+    image_available: bool
+
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
         super().__init__(**data)

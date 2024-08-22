@@ -33,7 +33,7 @@ from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
 from neurobooth_os.msg.messages import Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest, \
     ShutdownRequest, MsgBody, MbientDisconnected, NewVideoFile, TaskCompletion, TaskInitialization, SessionPrepared, \
-    DeviceInitialization, StatusMessage, LslRecording, TasksFinished
+    DeviceInitialization, StatusMessage, LslRecording, TasksFinished, FramePreviewRequest, FramePreviewReply
 
 
 def setup_log(sg_handler=None):
@@ -351,13 +351,26 @@ def _plot_realtime(window, plttr, inlets):
         plttr.start(inlets)
 
 
-def _request_frame_preview(window, nodes):
-    frame = socket_message("frame_preview", nodes[0], wait_data=True)
+def _request_frame_preview(window, conn):
+    # frame = socket_message("frame_preview", nodes[0], wait_data=True)
+    msg = FramePreviewRequest()
+    req = Request(source="CTR", destination="ACQ", body=msg)
+    meta.post_message(req, conn)
+    frame_reply: Optional[FramePreviewReply] = None
+    attempts = 0
+    while frame_reply is None and attempts < 60:
+        frame_reply = meta.read_next_message(destination="CTR", conn=conn, msg_type="FramePreviewReply")
+        time.sleep(1)
+        attempts = attempts + 1
 
     # If frame just error massage, return
-    if len(frame) < 100:
+    # if len(frame) < 100:
+    #     return
+    if not frame_reply.image_available:
+        print("ERROR: no iphone in LSL streams")
         return
 
+    frame = frame_reply.image
     nparr = np.frombuffer(frame, np.uint8)
     img_np = cv2.imdecode(nparr, flags=1)
     img_rz = cv2.resize(img_np, (1080 // 4, 1920 // 4))
