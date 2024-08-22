@@ -99,7 +99,7 @@ def run_acq(logger):
             updator = Request(source="ACQ", destination="CTR", body=SessionPrepared(elem_key="-Connect-"))
             meta.post_message(updator, db_conn)
 
-        elif "FramePreview" == current_msg_type and not recording:
+        elif "FramePreviewRequest" == current_msg_type and not recording:
             iphone_frame_preview(db_conn, device_manager, logger)
 
         # TODO: Both reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
@@ -162,19 +162,18 @@ def run_acq(logger):
 def iphone_frame_preview(db_conn, device_manager, logger):
     frame = device_manager.iphone_frame_preview()
     if frame is None:
-        # TODO: Send as message
         print("no iphone")
-        # connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
         body = FramePreviewReply(image=None, image_available=False)
-
-        logger.debug('Frame preview unavailable')
     else:
-        # frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
-        # frame = frame_prefix + frame
+        frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
+        frame = frame_prefix + frame
         body = FramePreviewReply(image=frame, image_available=True)
-        logger.debug('Frame preview sent')
     reply = Request(source="ACQ", destination="CTR", body=body)
     meta.post_message(reply, db_conn)
+    if body.image_available:
+        logger.debug('Frame preview sent')
+    else:
+        logger.debug('Frame preview unavailable')
 
 
 def start_recording(device_manager: DeviceManager, fname: str, task_devices: List[DeviceArgs]) -> float:

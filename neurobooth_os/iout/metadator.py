@@ -104,7 +104,6 @@ def clear_msg_queue(conn):
     table.delete_row()
 
 
-
 def post_message(msg: Message, conn: connection) -> str:
     """
     Posts a new message to the database that mediates between message senders and receivers
@@ -160,7 +159,7 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
     if msg_type is None:
         # TODO: Make sure no other non-standard messages should be excluded
         msg_type_stmt = \
-            " and msg_type NOT IN ('LslRecording', 'RecordingStarted', 'RecordingStopped', 'FramePreviewReply') "
+            " and msg_type NOT IN ('LslRecording', 'RecordingStarted', 'RecordingStopped') "
     else:
         msg_type_stmt = f" and msg_type = '{msg_type}' "
 
@@ -173,7 +172,7 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
             from message_queue
             where time_read is NULL
             and destination = '{destination}'
-            '{msg_type_stmt}'
+            {msg_type_stmt}
             order by priority desc, id asc
             limit 1
             )

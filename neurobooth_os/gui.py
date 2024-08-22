@@ -332,9 +332,11 @@ def _start_ctr_msg_reader(logger, window):
         elif "StatusMessage" == message.msg_type:
             msg_body: StatusMessage = message.body
             logger.debug(msg_body.text)
+            # TODO: How do we print this?
             # window.write_event_value("status", msg_body.text)
-        elif "-TIMEOUT-" == message.msg_type.upper():
-            pass
+        elif "FramePreviewReply" == message.msg_type:
+            frame_reply: FramePreviewReply = message.body
+            handle_frame_preview_reply(window, frame_reply)
         else:
             logger.debug(f"Unhandled message: {message.msg_type}")
 ######### Visualization ############
@@ -351,22 +353,9 @@ def _plot_realtime(window, plttr, inlets):
         plttr.start(inlets)
 
 
-def _request_frame_preview(window, conn):
-    # frame = socket_message("frame_preview", nodes[0], wait_data=True)
-    msg = FramePreviewRequest()
-    req = Request(source="CTR", destination="ACQ", body=msg)
-    meta.post_message(req, conn)
-    frame_reply: Optional[FramePreviewReply] = None
-    attempts = 0
-    while frame_reply is None and attempts < 60:
-        frame_reply = meta.read_next_message(destination="CTR", conn=conn, msg_type="FramePreviewReply")
-        time.sleep(1)
-        attempts = attempts + 1
-
-    # If frame just error massage, return
-    # if len(frame) < 100:
-    #     return
-    if not frame_reply.image_available:
+def handle_frame_preview_reply(window, frame_reply: FramePreviewReply):
+    # If frame just error massage, print message and return
+    if not frame_reply.image_available or len(frame_reply.image) < 100:
         print("ERROR: no iphone in LSL streams")
         return
 
@@ -376,6 +365,13 @@ def _request_frame_preview(window, conn):
     img_rz = cv2.resize(img_np, (1080 // 4, 1920 // 4))
     img_b = cv2.imencode(".png", img_rz)[1].tobytes()
     window["iphone"].update(data=img_b)
+
+
+
+def _request_frame_preview(window, conn):
+    msg = FramePreviewRequest()
+    req = Request(source="CTR", destination="ACQ", body=msg)
+    meta.post_message(req, conn)
 
 
 def _update_button_status(window, statecolors, button_name, inlets, folder_session):
@@ -637,7 +633,7 @@ def gui(logger):
         ##################################################################################
 
         elif event == "-frame_preview-":
-            _request_frame_preview(window, nodes)
+            _request_frame_preview(window, conn)
 
         # Print LSL inlet names in GUI
         if inlet_keys != list(inlets):

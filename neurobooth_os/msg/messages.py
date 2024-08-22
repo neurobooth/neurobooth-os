@@ -308,6 +308,9 @@ class FramePreviewReply(MsgBody):
     image: Optional[bytearray]
     image_available: bool
 
+    class Config:
+        arbitrary_types_allowed = True
+
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
