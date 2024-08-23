@@ -174,14 +174,13 @@ def run_stm(logger):
 
         elif "PauseSessionRequest" == current_msg_type:
             paused = True
-            data = pause(session)
+            pause(session)
 
         # Next message tells what to do now that we paused
         elif "ResumeSessionRequest" == current_msg_type:
             paused = False
             continue
-
-        elif "StopSessionRequest" == current_msg_type:
+        elif "CancelSessionRequest" == current_msg_type:
             break
         elif "CalibrationRequest" == current_msg_type:
             if not len(task_calib):
@@ -194,10 +193,10 @@ def run_stm(logger):
                 session.shutdown()
             shutdown_flag = True
             print("Message ShutdownRequest received in STM")
+
         elif "TasksFinished" == current_msg_type:
             session.logger.debug('FINISH SCREEN')
             finish_screen(session.win)
-
         else:
             if paused:
                 print("Received an unexpected message while paused ")
@@ -205,7 +204,7 @@ def run_stm(logger):
 
                 err_msg = Request(source='STM', destination='CTR', body=body)
                 meta.post_message(err_msg, session.db_conn)
-                logger.warn("Received an unexpected message while paused ")
+                logger.warn(f"Received an unexpected message while paused {current_msg_type}")
                 session.logger.debug('FINISH SCREEN')
                 finish_screen(session.win)
 
@@ -328,10 +327,6 @@ def pause(session):
     """ Handle session pause """
     pause_screen = utl.create_text_screen(session.win, text="Session Paused")
     utl.present(session.win, pause_screen, waitKeys=False)
-    # TODO: Does the pause message pass any data?
-    data=''
-    session.logger.info(f'PAUSE MESSAGE RECEIVED: {data}')
-    return data
 
 
 def log_task(events: List,

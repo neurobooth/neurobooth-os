@@ -33,7 +33,8 @@ from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
 from neurobooth_os.msg.messages import Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest, \
     ShutdownRequest, MsgBody, MbientDisconnected, NewVideoFile, TaskCompletion, TaskInitialization, SessionPrepared, \
-    DeviceInitialization, StatusMessage, LslRecording, TasksFinished, FramePreviewRequest, FramePreviewReply
+    DeviceInitialization, StatusMessage, LslRecording, TasksFinished, FramePreviewRequest, FramePreviewReply, \
+    PauseSessionRequest, ResumeSessionRequest, CancelSessionRequest, CalibrationRequest
 
 
 def setup_log(sg_handler=None):
@@ -132,7 +133,7 @@ def _start_task_presentation(window, tasks: List[str], subject_id: str, session_
         sg.PopupError("No task selected")
 
 
-def _pause_tasks(steps, presentation_node):
+def _pause_tasks(steps, presentation_node, conn):
     cont_or_stop_msg = "Continue or Stop tasks"
     calibrate_msg = "Calibrate"
     continue_msg = "Continue tasks"
@@ -141,7 +142,9 @@ def _pause_tasks(steps, presentation_node):
     if "task_started" not in steps:
         sg.PopupError("Tasks not started")
     else:
-        socket_message("pause tasks", presentation_node)
+        msg_body = PauseSessionRequest()
+        req = Request(source="CTR", destination="STM", body=msg_body)
+        meta.post_message(req, conn)
         resp = sg.Popup(
             "The next task will be paused. \n\nDon't respond until end current task",
             custom_text=(cont_or_stop_msg, calibrate_msg),
@@ -153,13 +156,19 @@ def _pause_tasks(steps, presentation_node):
                     stop_msg,
                 )
             )
-        if resp is None:  # handle user closing either popup using 'x' instead of making a choice
-            resp = continue_msg
-        socket_message(resp.lower(), presentation_node)
-
+        # handle user closing either popup using 'x' instead of making a choice
+        if resp == continue_msg or resp is None:
+            body = ResumeSessionRequest()
+        elif resp == stop_msg:
+            body = CancelSessionRequest()
+        elif resp == calibrate_msg:
+            body = CalibrationRequest()
+        else:
+            raise RuntimeError("Unknown Response from Pause Session dialog")
+        request = Request(source="CTR", destination="STM", body=body)
+        meta.post_message(request, conn)
 
 ########## LSL functions ############
-
 
 def _start_lsl_session(window, inlets, folder=""):
     window.write_event_value("start_lsl_session", "none")
@@ -543,7 +552,7 @@ def gui(logger):
             meta.post_message(msg, conn)
 
         elif event == "Pause tasks":
-            _pause_tasks(steps, presentation_node=nodes[1])
+            _pause_tasks(steps, presentation_node=nodes[1], conn=conn)
 
         # Save notes to a txt
         elif event == "_save_notes_":

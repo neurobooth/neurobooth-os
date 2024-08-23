@@ -20,7 +20,8 @@ from pydantic import BaseModel
 # is processed first
 HIGHEST_PRIORITY = 100
 HIGH_PRIORITY = 75
-STANDARD_PRIORITY = 50
+MEDIUM_HIGH_PRIORITY = 65
+MEDIUM_PRIORITY = 50
 LOW_PRIORITY = 25
 
 
@@ -88,7 +89,7 @@ class PrepareRequest(MsgBody):
     date: str
 
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
     def session_name(self):
@@ -98,7 +99,7 @@ class PrepareRequest(MsgBody):
 class TasksCreated(MsgBody):
 
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
@@ -106,7 +107,7 @@ class SessionPrepared(MsgBody):
     elem_key: str
 
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
@@ -116,7 +117,7 @@ class CreateTasksRequest(MsgBody):
     session_id: int
 
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
@@ -124,20 +125,20 @@ class PerformTaskRequest(MsgBody):
     task_id: str
 
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
 class TasksFinished(MsgBody):
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
 class PauseSessionRequest(MsgBody):
 
     def __init__(self, **data):
-        data['priority'] = HIGH_PRIORITY
+        data['priority'] = MEDIUM_HIGH_PRIORITY
         super().__init__(**data)
 
 
@@ -151,7 +152,7 @@ class CancelSessionRequest(MsgBody):
 class ResumeSessionRequest(MsgBody):
 
     def __init__(self, **data):
-        data['priority'] = HIGH_PRIORITY
+        data['priority'] = MEDIUM_HIGH_PRIORITY
         super().__init__(**data)
 
 
@@ -172,7 +173,7 @@ class ShutdownRequest(MsgBody):
 class CalibrationRequest(MsgBody):
 
     def __init__(self, **data):
-        data['priority'] = HIGH_PRIORITY
+        data['priority'] = MEDIUM_HIGH_PRIORITY
         super().__init__(**data)
 
 
@@ -184,7 +185,7 @@ class DeviceInitialization(MsgBody):
     outlet_id: str
 
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
@@ -206,7 +207,7 @@ class TaskInitialization(MsgBody):
     tsk_start_time: str
 
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
@@ -217,7 +218,7 @@ class TaskCompletion(MsgBody):
     task_id: str
 
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
@@ -225,7 +226,7 @@ class StatusMessage(MsgBody):
     text: str
 
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
@@ -234,7 +235,7 @@ class StartRecording(MsgBody):
     task_id: str
     session_name: str
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
@@ -250,7 +251,7 @@ class StartRecordingMsg(Request):
 
 class StopRecording(MsgBody):
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
@@ -286,7 +287,7 @@ class RecordingStartedMsg(Reply):
 
 class ResetMbients(MsgBody):
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
@@ -294,7 +295,7 @@ class MbientResetResults(MsgBody):
     results: Dict[str, bool]
 
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
@@ -320,7 +321,7 @@ class MbientDisconnected(MsgBody):
     warning: str
 
     def __init__(self, **data):
-        data['priority'] = STANDARD_PRIORITY
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
