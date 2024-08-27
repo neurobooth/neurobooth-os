@@ -70,107 +70,12 @@ def run_stm(logger):
             session, task_log_entry = prepare_session(message.body, logger)
         elif 'CreateTasksRequest' == current_msg_type:
             # task_name can be list of tk1-task2-task3
-            msg_body: CreateTasksRequest = message.body
-            session.logger.info(f"Creating Tasks {msg_body.tasks}")
-            tasks = msg_body.tasks
-            subj_id = msg_body.subj_id
-            session_id = msg_body.session_id
-            task_log_entry.log_session_id = session_id
-
-            # Preload tasks media
-            t0 = time()
-            task_list: List[TaskArgs] = []
-            for task_id in tasks:
-                if task_id in session.tasks():
-                    task_args: TaskArgs = _get_task_args(session, task_id)
-                    task_list.append(task_args)
-                    logger.info(task_args)
-                    tsk_fun_obj: Callable = copy.copy(
-                        task_args.task_constructor_callable)  # callable for Task constructor
-                    logger.info(tsk_fun_obj)
-                    this_task_kwargs = create_task_kwargs(session, task_args)
-                    logger.info(this_task_kwargs)
-                    task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
-                    logger.info(task_args.task_instance)
-            device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
-            session.logger.info(f'Task media took {time() - t0:.2f}')
-            session.win = welcome_screen(win=session.win)
-
-            task_calib = [t for t in tasks if "calibration_task" in t]
-            # Show calibration instruction video only the first time
-            calib_instructions = True
-            reply_body = TasksCreated()
-            reply = Reply(source="STM", destination=message.source, body=reply_body, request_uuid=message.uuid)
-            meta.post_message(reply, session.db_conn)
+            calib_instructions, device_log_entry_dict, subj_id, task_calib, tasks = _create_tasks(logger, message,
+                                                                                                  session,
+                                                                                                  task_log_entry)
         elif "PerformTaskRequest" == current_msg_type:
-            msg_body = message.body
-            task_id: str = msg_body.task_id
-
-            session.logger.info(f'TASK: {task_id}')
-            tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
-
-            if task_id not in session.tasks():
-                session.logger.warning(f'Task {task_id} not implemented')
-            else:
-                t00 = time()
-                # get task and params
-                task_args: TaskArgs = _get_task_args(session, task_id)
-                task: Task = task_args.task_instance
-                this_task_kwargs = create_task_kwargs(session, task_args)
-
-                # Do not record if intro instructions"
-                if "intro_" in task_id or "pause_" in task_id:
-                    session.logger.debug(f"RUNNING PAUSE/INTRO (No Recording)")
-                    task.run(**this_task_kwargs)
-                else:
-                    log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
-                    meta.log_task_params(
-                        session.db_conn,
-                        log_task_id,
-                        device_log_entry_dict,
-                        session.task_func_dict[task_id]
-                    )
-                    task_log_entry.date_times = (
-                            "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","
-                    )
-                    task_log_entry.log_task_id = log_task_id
-
-                    # Signal CTR to start LSL rec and wait for start confirmation
-                    session.logger.info(f'STARTING TASK: {task_id}')
-                    t0 = time()
-                    init_task_body = TaskInitialization(task_id=task_id,
-                                                        log_task_id=log_task_id,
-                                                        tsk_start_time=tsk_start_time)
-                    meta.post_message(Request(source='STM', destination='CTR', body=init_task_body), conn=db_conn)
-                    session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
-
-                    wait_for_lsl_recording_to_start(db_conn, logger, session, t0)
-
-                    start_acq(calib_instructions, session, task_args, task_id, this_task_kwargs, tsk_start_time)
-
-                    this_task_kwargs.update({"last_task": len(tasks) == 0})
-                    this_task_kwargs["task_name"] = task_id
-                    this_task_kwargs["subj_id"] += "_" + tsk_start_time
-
-                    elapsed_time = time() - t00
-                    session.logger.info(f"Total TASK WAIT start took: {elapsed_time:.2f}")
-
-                    session.logger.debug(f"RUNNING TASK FUNCTION")
-                    events = task.run(**this_task_kwargs)
-                    session.logger.debug(f"TASK FUNCTION RETURNED")
-
-                    stop_acq(session, task_args)
-
-                    # Signal CTR to stop LSL rec
-                    meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)),
-                                      db_conn)
-                    print(f"Finished task: {task_id}")
-                    session.logger.info(f'FINISHED TASK: {task_id}')
-
-                    log_task(events, session, task_id, task_id, task_log_entry, task)
-
-                    elapsed_time = time() - t00
-                    session.logger.info(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
+            _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id,
+                          task_log_entry, tasks)
 
         elif "PauseSessionRequest" == current_msg_type:
             paused = True
@@ -197,9 +102,10 @@ def run_stm(logger):
         elif "TasksFinished" == current_msg_type:
             session.logger.debug('FINISH SCREEN')
             finish_screen(session.win)
+            # TODO: Should there be an acknowledgement back to CTR?
         else:
             if paused:
-                print("Received an unexpected message while paused ")
+                print(f"Received an unexpected message while paused: {message.model_dump_json()}")
                 body = StatusMessage(text=f'"Received an unexpected message while paused: {message.model_dump_json()}')
 
                 err_msg = Request(source='STM', destination='CTR', body=body)
@@ -213,6 +119,110 @@ def run_stm(logger):
                 print(unex_msg)
                 logger.error(unex_msg)
     exit()
+
+
+def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id, task_log_entry,
+                  tasks):
+    msg_body = message.body
+    task_id: str = msg_body.task_id
+    session.logger.info(f'TASK: {task_id}')
+    tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
+    if task_id not in session.tasks():
+        session.logger.warning(f'Task {task_id} not implemented')
+    else:
+        t00 = time()
+        # get task and params
+        task_args: TaskArgs = _get_task_args(session, task_id)
+        task: Task = task_args.task_instance
+        this_task_kwargs = create_task_kwargs(session, task_args)
+
+        # Do not record if intro instructions"
+        if "intro_" in task_id or "pause_" in task_id:
+            session.logger.debug(f"RUNNING PAUSE/INTRO (No Recording)")
+            task.run(**this_task_kwargs)
+        else:
+            log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
+            meta.log_task_params(
+                session.db_conn,
+                log_task_id,
+                device_log_entry_dict,
+                session.task_func_dict[task_id]
+            )
+            task_log_entry.date_times = (
+                    "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","
+            )
+            task_log_entry.log_task_id = log_task_id
+
+            # Signal CTR to start LSL rec and wait for start confirmation
+            session.logger.info(f'STARTING TASK: {task_id}')
+            t0 = time()
+            init_task_body = TaskInitialization(task_id=task_id,
+                                                log_task_id=log_task_id,
+                                                tsk_start_time=tsk_start_time)
+            meta.post_message(Request(source='STM', destination='CTR', body=init_task_body), conn=db_conn)
+            session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
+
+            wait_for_lsl_recording_to_start(db_conn, logger, session, t0)
+
+            start_acq(calib_instructions, session, task_args, task_id, this_task_kwargs, tsk_start_time)
+
+            this_task_kwargs.update({"last_task": len(tasks) == 0})
+            this_task_kwargs["task_name"] = task_id
+            this_task_kwargs["subj_id"] += "_" + tsk_start_time
+
+            elapsed_time = time() - t00
+            session.logger.info(f"Total TASK WAIT start took: {elapsed_time:.2f}")
+
+            session.logger.debug(f"RUNNING TASK FUNCTION")
+            events = task.run(**this_task_kwargs)
+            session.logger.debug(f"TASK FUNCTION RETURNED")
+
+            stop_acq(session, task_args)
+
+            # Signal CTR to stop LSL rec
+            meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)),
+                              db_conn)
+            print(f"Finished task: {task_id}")
+            session.logger.info(f'FINISHED TASK: {task_id}')
+
+            log_task(events, session, task_id, task_id, task_log_entry, task)
+
+            elapsed_time = time() - t00
+            session.logger.info(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
+
+
+def _create_tasks(logger, message, session, task_log_entry):
+    msg_body: CreateTasksRequest = message.body
+    session.logger.info(f"Creating Tasks {msg_body.tasks}")
+    tasks = msg_body.tasks
+    subj_id = msg_body.subj_id
+    session_id = msg_body.session_id
+    task_log_entry.log_session_id = session_id
+    # Preload tasks media
+    t0 = time()
+    task_list: List[TaskArgs] = []
+    for task_id in tasks:
+        if task_id in session.tasks():
+            task_args: TaskArgs = _get_task_args(session, task_id)
+            task_list.append(task_args)
+            logger.info(task_args)
+            tsk_fun_obj: Callable = copy.copy(
+                task_args.task_constructor_callable)  # callable for Task constructor
+            logger.info(tsk_fun_obj)
+            this_task_kwargs = create_task_kwargs(session, task_args)
+            logger.info(this_task_kwargs)
+            task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
+            logger.info(task_args.task_instance)
+    device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
+    session.logger.info(f'Task media took {time() - t0:.2f}')
+    session.win = welcome_screen(win=session.win)
+    task_calib = [t for t in tasks if "calibration_task" in t]
+    # Show calibration instruction video only the first time
+    calib_instructions = True
+    reply_body = TasksCreated()
+    reply = Reply(source="STM", destination=message.source, body=reply_body, request_uuid=message.uuid)
+    meta.post_message(reply, session.db_conn)
+    return calib_instructions, device_log_entry_dict, subj_id, task_calib, tasks
 
 
 def wait_for_lsl_recording_to_start(db_conn, logger, session, t0):

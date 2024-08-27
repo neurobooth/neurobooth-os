@@ -21,10 +21,8 @@ import liesl
 
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
-from neurobooth_os.netcomm import (
-    node_info,
-    socket_message,
-)
+from neurobooth_os.netcomm import node_info
+
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
 from neurobooth_os.log_manager import make_db_logger
 import neurobooth_os.iout.metadator as meta
@@ -295,7 +293,8 @@ def _start_ctr_msg_reader(logger, window):
             msg_body: DeviceInitialization = message.body
             outlet_name = msg_body.stream_name
             outlet_id = msg_body.outlet_id
-            window.write_event_value("-OUTLETID-", f"['{outlet_name}', '{outlet_id}']")
+            outlet_values = f"['{outlet_name}', '{outlet_id}']"
+            window.write_event_value("-OUTLETID-", outlet_values)
         elif "SessionPrepared" == message.msg_type:
             # UPDATOR:-elem_key-
             msg_body: SessionPrepared = message.body
@@ -330,7 +329,7 @@ def _start_ctr_msg_reader(logger, window):
             window.write_event_value(
                 "no_eyetracker",
                 "Eyetracker not found! \nServers will be "
-                + "terminated, wait utill are closed.\nThen, connect the eyetracker and start again",
+                + "terminated, wait until servers are closed.\nThen, connect the eyetracker and start again",
             )
 
         elif "MbientDisconnected" == message.msg_type:

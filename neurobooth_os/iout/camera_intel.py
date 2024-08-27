@@ -86,7 +86,7 @@ class VidRec_Intel:
         self.name = name
         self.video_filename = "{}_intel{}.bag".format(name, self.device_index)
         self.config.enable_record_to_file(self.video_filename)
-        print(f"-new_filename-:{self.streamName}:{op.split(self.video_filename)[-1]}")
+        # print(f"-ne w_filename-:{self.streamName}:{op.split(self.video_filename)[-1]}")
 
     def createOutlet(self):
         db_conn = meta.get_database_connection()
@@ -117,7 +117,7 @@ class VidRec_Intel:
             fps_depth=str(self.device_args.sample_rate()[1]),
         )
         msg_body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.outlet_id)
-        meta.post_message(Request(source='', destination='CTR', body=msg_body), conn=db_conn)
+        meta.post_message(Request(source='NA', destination='CTR', body=msg_body), conn=db_conn)
         return StreamOutlet(info)
 
     def record(self):

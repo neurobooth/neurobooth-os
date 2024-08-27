@@ -90,7 +90,7 @@ class EyeTracker:
         self.recording = False
         self.paused = True
         self.connect_tracker()
-        print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
+        # print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
 
         body = NewVideoFile(event="-OUTLETID-", stream_name=self.streamName, filename=self.oulet_id)
         msg = Request(source="NA", destination="CTR", body=body)
@@ -102,8 +102,7 @@ class EyeTracker:
         except RuntimeError:
             msg_text = f"RuntimeError: Could not connect to tracker at %s. " \
                        "Please be sure to start Eyetracker before starting Neurobooth." % self.IP
-            print(msg_text)
-            body=NoEyetracker(warning=msg_text)
+            body = NoEyetracker(warning=msg_text)
             msg = Request(source="NA", destination="CTR", body=body)
             post_message(msg, get_database_connection())
             self.logger.error(msg_text)
@@ -266,7 +265,7 @@ class EyeTracker:
         self.recording = False
         if self.streaming:
             self.stream_thread.join()
-            # print("Eyelink stoped recording, downaloading edf")
+            # print("Eyelink stopped recording, downloading edf")
             self.tk.receiveDataFile(self.fname_temp, self.filename)
             self.edf_to_ascii()
             self.streaming = False
