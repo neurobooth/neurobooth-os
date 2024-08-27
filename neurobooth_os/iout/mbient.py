@@ -553,7 +553,8 @@ class Mbient:
         t0 = time()
         if notify:
             txt = f"-WARNING mbient- {self.dev_name} disconnected prematurely"
-            self.send_status_msg(txt, get_database_connection())
+            with get_database_connection() as conn:
+                self.send_status_msg(txt, conn)
             self.logger.warning(self.format_message(f'Disconnected Prematurely (status={status})'))
 
         self.device_wrapper.on_disconnect = lambda status_: self.logger.info(self.format_message(
@@ -569,11 +570,13 @@ class Mbient:
             self.logger.info(self.format_message('Reconnect Completed'))
         except MbientFailedConnection as e:
             txt = f"Failed to reconnect {self.dev_name}"
-            self.send_status_msg(txt, get_database_connection())
+            with get_database_connection() as conn:
+                self.send_status_msg(txt, conn)
             self.logger.error(self.format_message(f'Failed to Reconnect: {e}'))
         except Exception as e:
             txt = f"Couldn't setup for {self.dev_name}"
-            self.send_status_msg(txt, get_database_connection())
+            with get_database_connection() as conn:
+                self.send_status_msg(txt, conn)
             self.logger.error(self.format_message(f'Error during reconnect: {e}'), exc_info=sys.exc_info())
         finally:
             self.logger.debug(self.format_message(f'attempt_reconnect took {time() - t0} seconds.'))
@@ -591,7 +594,8 @@ class Mbient:
         # Print message to GUI terminal
         device_names = [dev.dev_name for dev in disconnected_devices]
         txt = f'The following Mbients are disconnected: {device_names}. Attempting to reconnect...'
-        Mbient.send_status_msg(txt, get_database_connection())
+        with get_database_connection() as conn:
+            Mbient.send_status_msg(txt, conn)
 
         # Attempt reconnection in parallel
         with ThreadPoolExecutor(max_workers=len(disconnected_devices)) as executor:
@@ -601,7 +605,8 @@ class Mbient:
             wait(results)  # Wait for reconnects to complete
 
         txt = 'Pre-task reconnect attempts complete.'
-        Mbient.send_status_msg(txt, get_database_connection())
+        with get_database_connection() as conn:
+            Mbient.send_status_msg(txt, conn)
 
     def reset(self, timeout_sec: float = 10) -> None:
         """
@@ -634,7 +639,8 @@ class Mbient:
         :return: Whether the device is connected after the function call is complete.
         """
         txt = f'Resetting {self.dev_name}.'
-        Mbient.send_status_msg(txt, get_database_connection())
+        with get_database_connection() as conn:
+            Mbient.send_status_msg(txt, conn)
 
         self.logger.info(self.format_message('Resetting'))
 
@@ -688,7 +694,8 @@ class Mbient:
             return True
         except (MbientFailedConnection, MbientResetTimeout) as e:
             txt = f"Failed to connect mbient {self.dev_name}"
-            Mbient.send_status_msg(txt, get_database_connection())
+            with get_database_connection() as conn:
+                self.send_status_msg(txt, conn)
             self.logger.error(self.format_message(str(e)))
             return False
         except Exception as e:
@@ -750,7 +757,8 @@ class Mbient:
         self.subscribed_signals.append(processor)
 
         txt = f"Mbient {self.dev_name} setup"  # Send message to GUI terminal
-        self.send_status_msg(txt, get_database_connection())
+        with get_database_connection() as conn:
+            self.send_status_msg(txt, conn)
         self.logger.debug(self.format_message('Setup Completed'))
 
     def log_battery_info(self) -> None:
@@ -878,7 +886,8 @@ def test_script() -> None:
         """Prints data to the console"""
         if (device.n_samples_streamed - 1) % args.decimate == 0:
             txt = f'Epoch={epoch}, Accel={acc}, Gyro={gyro}'
-            Mbient.send_status_msg(txt, get_database_connection())
+            with get_database_connection() as conn:
+                Mbient.send_status_msg(txt, conn)
 
     device.register_data_handler(_test_data_handler)
     success = device.prepare()

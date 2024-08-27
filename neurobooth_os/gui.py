@@ -342,9 +342,7 @@ def _start_ctr_msg_reader(logger, window):
         elif "StatusMessage" == message.msg_type:
             msg_body: StatusMessage = message.body
             logger.debug(msg_body.text)
-            # TODO: How do we print this?
             print(msg_body.text)
-            # window.write_event_value("status", msg_body.text)
         elif "FramePreviewReply" == message.msg_type:
             frame_reply: FramePreviewReply = message.body
             handle_frame_preview_reply(window, frame_reply)

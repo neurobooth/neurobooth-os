@@ -20,7 +20,7 @@ from neurobooth_os.iout.metadator import post_message, get_database_connection
 from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.iout.usbmux import USBMux
 from neurobooth_os.log_manager import APP_LOG_NAME
-from neurobooth_os.msg.messages import NewVideoFile, Request
+from neurobooth_os.msg.messages import NewVideoFile, Request, StatusMessage, DeviceInitialization
 
 # --------------------------------------------------------------------------------
 # Module-level constants and debugging flags
@@ -234,7 +234,8 @@ class IPhone:
         :param disconnect: Whether to trigger a disconnect as a result of the panic.
         """
         self.logger.exception(f'iPhone [state={self._state}]: PANIC Message: {e}')
-        print(f'iPhone PANIC (Please restart iphone app and session): {e}')
+        with get_database_connection() as conn:
+            IPhone.send_status_msg(f'iPhone PANIC (Please restart iphone app and session): {e}', conn)
 
         with self._state_lock:
             self._state = "#ERROR"
@@ -630,7 +631,11 @@ class IPhone:
                 'Time_ACQ': 'Local machine timestamp (s)',
             }
         )
-        print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
+        body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.outlet_id)
+        msg = Request(source="IPhone", destination="CTR", body=body)
+        with get_database_connection() as conn:
+            post_message(msg, conn)
+
         return StreamOutlet(info)
 
     @_handle_panic
@@ -759,20 +764,25 @@ class IPhone:
         filename += "_IPhone"
         filename = op.split(filename)[-1]
         if not DISABLE_LSL:
-            print(f"-new_filename-:{self.streamName}:{filename}.mov")
-            body = NewVideoFile(event="-new_filename-", stream_name=self.streamName,
-                                filename=f"{filename}.mov")
-            msg = Request(source="IPhone", destination="CTR", body=body)
-            post_message(msg, get_database_connection())
-
-            time.sleep(0.05)
-            print(f"-new_filename-:{self.streamName}:{filename}.json")
-            body = NewVideoFile(event="-new_filename-", stream_name=self.streamName,
-                                filename=f"{filename}.json")
-            msg = Request(source="IPhone", destination="CTR", body=body)
-            post_message(msg, get_database_connection())
-
+            with get_database_connection() as conn:
+                IPhone.send_file_msg(self.streamName, f"{filename}.mov", conn)
+                time.sleep(0.05)
+                IPhone.send_file_msg(self.streamName, f"{filename}.json", conn)
         self._start_recording(filename)
+
+    @staticmethod
+    def send_file_msg(stream_name, file_name, conn):
+        print(f"-new_filename-:{stream_name}:{file_name}.mov")
+        body = NewVideoFile(event="-new_filename-", stream_name=stream_name, filename=f"{file_name}.mov")
+        msg = Request(source="IPhone", destination="CTR", body=body)
+        post_message(msg, conn)
+
+    @staticmethod
+    def send_status_msg(txt, conn):
+        print(txt)
+        body = StatusMessage(text=txt)
+        msg = Request(source="IPhone", destination="CTR", body=body)
+        post_message(msg, conn)
 
     def stop(self) -> None:
         """Called during a START message to the server. Stop data capture."""
@@ -948,8 +958,8 @@ def script_capture_data(subject_id: str, recording_folder: str, capture_duration
     }
 
     if not iphone.prepare(config=default_config):
-        print("Could not connect to iphone")
-
+        with get_database_connection() as conn:
+            IPhone.send_status_msg("Could not connect to iphone", conn)
     iphone.frame_preview()
 
     # Start LSL
