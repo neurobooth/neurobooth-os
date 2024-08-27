@@ -94,7 +94,8 @@ class EyeTracker:
 
         body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
         msg = Request(source="EyeTracker", destination="CTR", body=body)
-        post_message(msg, get_database_connection())
+        with get_database_connection() as conn:
+            post_message(msg, conn)
 
     def connect_tracker(self):
         try:
@@ -104,7 +105,8 @@ class EyeTracker:
                        "Please be sure to start Eyetracker before starting Neurobooth." % self.IP
             body = NoEyetracker(warning=msg_text)
             msg = Request(source="EyeTracker", destination="CTR", body=body)
-            post_message(msg, get_database_connection())
+            with get_database_connection() as conn:
+                post_message(msg, conn)
             self.logger.error(msg_text)
 
         self.tk.setAddress(self.IP)
@@ -182,7 +184,8 @@ class EyeTracker:
                 print(f"-new_filename-:{self.streamName}:{op.split(fname_asc)[-1]}")
                 body = NewVideoFile(event="-new_filename-", stream_name=self.streamName, filename=op.split(fname_asc)[-1])
                 msg = Request(source="EyeTracker", destination="CTR", body=body)
-                post_message(msg, get_database_connection())
+                with get_database_connection() as conn:
+                    post_message(msg, conn)
 
         else:
             print(f"FILE {fname_asc} already exists")
@@ -193,7 +196,8 @@ class EyeTracker:
         print(f"-new_filename-:{self.streamName}:{op.split(filename)[-1]}")
         body = NewVideoFile(event="-new_filename-", stream_name=self.streamName, filename=op.split(filename)[-1])
         msg = Request(source="EyeTracker", destination="CTR", body=body)
-        post_message(msg, get_database_connection())
+        with get_database_connection() as conn:
+            post_message(msg, conn)
 
         self.fname_temp = "name8chr.edf"
         self.tk.openDataFile(self.fname_temp)

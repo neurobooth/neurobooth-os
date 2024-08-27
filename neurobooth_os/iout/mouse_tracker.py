@@ -4,9 +4,12 @@ import logging
 from pynput import mouse
 from pylsl import StreamInfo, StreamOutlet
 
+from neurobooth_os.iout.metadator import get_database_connection, post_message
 from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
+from neurobooth_os.msg.messages import DeviceInitialization, Request
+
 
 class MouseStream:
     def __init__(self, device_args: DeviceArgs):
@@ -32,6 +35,11 @@ class MouseStream:
         )
         self.outlet = StreamOutlet(self.info_stream)
         print(f"-OUTLETID-:Mouse:{self.oulet_id}")
+        body = DeviceInitialization(stream_name='Mouse', outlet_id=self.oulet_id)
+        msg = Request(source="MouseStream", destination="CTR", body=body)
+        with get_database_connection() as conn:
+            post_message(msg, conn)
+
         self.streaming = False
 
         self.logger = logging.getLogger(APP_LOG_NAME)
@@ -55,7 +63,7 @@ class MouseStream:
             try:
                 self.outlet.push_sample(mysample)  # , timestamp=time.time())
             except BaseException:  # OSError:
-                print("Mouse listner caugh error pushing oulet, mouse move")
+                print("Mouse listener caught error pushing outlet, mouse move")
 
         def on_click(x, y, button, pressed):
             state = 1 if pressed else -1
@@ -63,7 +71,7 @@ class MouseStream:
             try:
                 self.outlet.push_sample(mysample)  # , timestamp=time.time())
             except BaseException:  # OSError:
-                print("Mouse listner caugh error pushing oulet, click")
+                print("Mouse listener caught error pushing outlet, click")
 
         self.listener = mouse.Listener(on_move=on_move, on_click=on_click)
 
