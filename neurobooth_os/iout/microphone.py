@@ -84,10 +84,6 @@ class MicStream:
             fps=str(self.fps),
             device_name=device_args.device_name,
         )
-        import neurobooth_os.iout.metadator as meta
-        db_conn = meta.get_database_connection()
-        msg_body = DeviceInitialization(stream_name="Audio", outlet_id=self.oulet_id)
-        meta.post_message(Request(source='', destination='CTR', body=msg_body), conn=db_conn)
         print(f"-OUTLETID-:Audio:{self.oulet_id}")
         body = DeviceInitialization(stream_name='Audio', outlet_id=self.oulet_id)
         msg = Request(source="Audio", destination="CTR", body=body)

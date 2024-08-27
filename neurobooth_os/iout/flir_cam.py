@@ -20,7 +20,7 @@ import h5py
 from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
-from neurobooth_os.msg.messages import DeviceInitialization, Request
+from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFile
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -143,10 +143,9 @@ class VidRec_Flir:
             gamma=str(self.gamma),
             # device_model_id=self.cam.get_device_name().decode(),
         )
-        db_conn = meta.get_database_connection()
         msg_body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
-        meta.post_message(Request(source='', destination='CTR', body=msg_body), conn=db_conn)
-        # print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
+        with meta.get_database_connection() as db_conn:
+            meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)
         return StreamOutlet(info)
 
     # function to capture images, convert to numpy, send to queue, and release
@@ -186,8 +185,10 @@ class VidRec_Flir:
         self.video_out = cv2.VideoWriter(
             self.video_filename, fourcc, self.FRAME_RATE_OUT, self.frameSize
         )
-        print(f"-new_filename-:{self.streamName}:{op.split(self.video_filename)[-1]}")
-
+        msg_body = NewVideoFile(event='-new_filename-', stream_name=self.streamName,
+                                filename=op.split(self.video_filename)[-1])
+        with meta.get_database_connection() as db_conn:
+            meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)
         self.streaming = True
 
     def record(self):
