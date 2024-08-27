@@ -3,6 +3,7 @@ import uuid
 import threading
 import subprocess
 import logging
+import numpy as np
 
 import pylink
 from psychopy import visual, monitors
@@ -10,7 +11,7 @@ from pylsl import StreamInfo, StreamOutlet, local_clock
 
 from neurobooth_os.iout.metadator import get_database_connection, post_message
 from neurobooth_os.iout.stim_param_reader import EyelinkDeviceArgs
-from neurobooth_os.msg.messages import NoEyetracker, Request, DeviceInitialization
+from neurobooth_os.msg.messages import NoEyetracker, Request, DeviceInitialization, NewVideoFile
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
     EyeLinkCoreGraphicsPsychoPy,
 )
@@ -90,10 +91,9 @@ class EyeTracker:
         self.recording = False
         self.paused = True
         self.connect_tracker()
-        # print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
 
         body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
-        msg = Request(source="NA", destination="CTR", body=body)
+        msg = Request(source="EyeTracker", destination="CTR", body=body)
         post_message(msg, get_database_connection())
 
     def connect_tracker(self):
@@ -103,7 +103,7 @@ class EyeTracker:
             msg_text = f"RuntimeError: Could not connect to tracker at %s. " \
                        "Please be sure to start Eyetracker before starting Neurobooth." % self.IP
             body = NoEyetracker(warning=msg_text)
-            msg = Request(source="NA", destination="CTR", body=body)
+            msg = Request(source="EyeTracker", destination="CTR", body=body)
             post_message(msg, get_database_connection())
             self.logger.error(msg_text)
 
@@ -178,7 +178,12 @@ class EyeTracker:
         if not op.exists(fname_asc):
             pout = subprocess.run(["edf2asc.exe", self.filename], shell=True)
             if not pout.stderr:
+
                 print(f"-new_filename-:{self.streamName}:{op.split(fname_asc)[-1]}")
+                body = NewVideoFile(event="-new_filename-", stream_name=self.streamName, filename=op.split(fname_asc)[-1])
+                msg = Request(source="EyeTracker", destination="CTR", body=body)
+                post_message(msg, get_database_connection())
+
         else:
             print(f"FILE {fname_asc} already exists")
         return
@@ -186,20 +191,22 @@ class EyeTracker:
     def start(self, filename="TEST.edf"):
         self.filename = filename
         print(f"-new_filename-:{self.streamName}:{op.split(filename)[-1]}")
+        body = NewVideoFile(event="-new_filename-", stream_name=self.streamName, filename=op.split(filename)[-1])
+        msg = Request(source="EyeTracker", destination="CTR", body=body)
+        post_message(msg, get_database_connection())
+
         self.fname_temp = "name8chr.edf"
         self.tk.openDataFile(self.fname_temp)
         self.streaming = True
 
         pylink.beginRealTimeMode(100)
         self.tk.startRecording(1, 1, 1, 1)
-        # print("Eyetracker recording")
         self.recording = True
         self.stream_thread = threading.Thread(target=self.record)
         self.logger.debug('EyeLink: Starting Record Thread')
         self.stream_thread.start()
 
     def record(self):
-        # print("Eyetracker LSL recording")
         self.paused = False
         old_sample = None
         values = []
@@ -287,7 +294,6 @@ if __name__ == "__main__":
     et.win.close()
 
     import matplotlib.pyplot as plt
-    import numpy as np
 
     timestamps_et = [e / 1000 for e in et.timestamps_et]
     plt.figure()

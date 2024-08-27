@@ -16,9 +16,11 @@ from enum import IntEnum
 from hashlib import md5
 from base64 import b64decode
 
+from neurobooth_os.iout.metadator import post_message, get_database_connection
 from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.iout.usbmux import USBMux
 from neurobooth_os.log_manager import APP_LOG_NAME
+from neurobooth_os.msg.messages import NewVideoFile, Request
 
 # --------------------------------------------------------------------------------
 # Module-level constants and debugging flags
@@ -758,8 +760,18 @@ class IPhone:
         filename = op.split(filename)[-1]
         if not DISABLE_LSL:
             print(f"-new_filename-:{self.streamName}:{filename}.mov")
+            body = NewVideoFile(event="-new_filename-", stream_name=self.streamName,
+                                filename=f"{filename}.mov")
+            msg = Request(source="IPhone", destination="CTR", body=body)
+            post_message(msg, get_database_connection())
+
             time.sleep(0.05)
             print(f"-new_filename-:{self.streamName}:{filename}.json")
+            body = NewVideoFile(event="-new_filename-", stream_name=self.streamName,
+                                filename=f"{filename}.json")
+            msg = Request(source="IPhone", destination="CTR", body=body)
+            post_message(msg, get_database_connection())
+
         self._start_recording(filename)
 
     def stop(self) -> None:
