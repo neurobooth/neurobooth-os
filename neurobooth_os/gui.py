@@ -303,7 +303,6 @@ def _start_ctr_msg_reader(logger, window):
             elem: str = msg_body.elem_key
             window.write_event_value("-update_butt-", elem)
         elif "TasksCreated" == message.msg_type:
-            print('Handling TasksCreated in gui')
             window.write_event_value("tasks_created", "")
         elif "TaskInitialization" == message.msg_type:
             msg_body: TaskInitialization = message.body

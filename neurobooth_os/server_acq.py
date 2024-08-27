@@ -119,7 +119,6 @@ def run_acq(logger):
         elif "StartRecording" == current_msg_type:
             msg_body: StartRecording = message.body
 
-            print("Starting recording")
             status_msg = StatusMessage(text="Starting recording")
             status_req = Request(source="ACQ", destination="CTR", body=status_msg)
             meta.post_message(status_req, conn=db_conn)

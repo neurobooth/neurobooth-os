@@ -772,14 +772,12 @@ class IPhone:
 
     @staticmethod
     def send_file_msg(stream_name, file_name, conn):
-        print(f"-new_filename-:{stream_name}:{file_name}.mov")
-        body = NewVideoFile(event="-new_filename-", stream_name=stream_name, filename=f"{file_name}.mov")
+        body = NewVideoFile(event="-new_filename-", stream_name=stream_name, filename=f"{file_name}")
         msg = Request(source="IPhone", destination="CTR", body=body)
         post_message(msg, conn)
 
     @staticmethod
     def send_status_msg(txt, conn):
-        print(txt)
         body = StatusMessage(text=txt)
         msg = Request(source="IPhone", destination="CTR", body=body)
         post_message(msg, conn)
