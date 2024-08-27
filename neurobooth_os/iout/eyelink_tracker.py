@@ -92,7 +92,7 @@ class EyeTracker:
         self.connect_tracker()
         # print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
 
-        body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.outlet_id)
+        body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
         msg = Request(source="NA", destination="CTR", body=body)
         post_message(msg, get_database_connection())
 
