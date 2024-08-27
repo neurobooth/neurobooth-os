@@ -289,6 +289,8 @@ def _start_ctr_msg_reader(logger, window):
             continue
         msg_body: Optional[MsgBody] = None
         logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
+        logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
+
         if "DeviceInitialization" == message.msg_type:
             msg_body: DeviceInitialization = message.body
             outlet_name = msg_body.stream_name
