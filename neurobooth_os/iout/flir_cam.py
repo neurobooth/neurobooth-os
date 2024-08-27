@@ -143,8 +143,9 @@ class VidRec_Flir:
             gamma=str(self.gamma),
             # device_model_id=self.cam.get_device_name().decode(),
         )
+        db_conn = meta.get_database_connection()
         msg_body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
-        meta.post_message(Request(source='', destination='CTR', body=msg_body))
+        meta.post_message(Request(source='', destination='CTR', body=msg_body), conn=db_conn)
         # print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
         return StreamOutlet(info)
 
