@@ -207,6 +207,70 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
     return msg
 
 
+def read_next_message_while_paused(destination: str, conn: connection) -> Optional[Message]:
+    f"""
+    Returns a Pandas dataframe containing one row representing the next message to be handled by 
+    the calling process. Code representing the message {destination} would call this message to check for new messages.
+    
+    NOTE: A MESSAGE CAN ONLY BE READ ONCE using this method as the message's time_read value is updated before 
+    returning the query results. Only rows where time_read is NULL are returned here. 
+    
+    Parameters
+    ----------
+    destination: str    The identifier for the process that is the intended receiver of the message
+    conn: connection    A database connection
+
+    Returns a Message or None. Clients should check for None before trying to use the results. 
+    -------
+
+    """
+    msg_type_stmt = (" and msg_type IN ('ResumeSessionRequest', 'CancelSessionRequest', 'CalibrationRequest', "
+                     "'TerminateServerRequest') ")
+
+    time_read = datetime.now()
+    update_str = \
+        f''' 
+        with selection as
+            (
+            select *  
+            from message_queue
+            where time_read is NULL
+            and destination = '{destination}'
+            {msg_type_stmt}
+            order by priority desc, id asc
+            limit 1
+            )
+        UPDATE message_queue
+        SET time_read = '{time_read}' 
+        from selection
+        where message_queue.id = selection.id
+        returning message_queue.id, message_queue.uuid, message_queue.msg_type, message_queue.full_msg_type, 
+        message_queue.priority, message_queue.source, message_queue.destination, message_queue.time_created, 
+        message_queue.time_read, message_queue.body
+     '''
+
+    curs = conn.cursor()
+    curs.execute(update_str)
+    msg_df: DataFrame = pd.DataFrame(curs.fetchall())
+    conn.commit()
+    curs.close()
+    if msg_df.empty:
+        return None
+    field_names = [i[0] for i in curs.description]
+    msg_df = msg_df.set_axis(field_names, axis='columns')
+    body = msg_df['body'].iloc[0]
+    uuid = msg_df['uuid'].iloc[0]
+    msg_type = msg_df['msg_type'].iloc[0]
+    msg_type_full = msg_df['full_msg_type'].iloc[0]
+    priority = msg_df['priority'].iloc[0]
+    source = msg_df['source'].iloc[0]
+    destination = msg_df['destination'].iloc[0]
+    body_constructor = str_fileid_to_eval(msg_type_full)
+    msg_body: MsgBody = body_constructor(**body)
+    msg = Message(body=msg_body, uuid=uuid, msg_type=msg_type, source=source, destination=destination, priority=priority)
+    return msg
+
+
 def get_study_ids() -> List[str]:
     return list(read_studies().keys())
 

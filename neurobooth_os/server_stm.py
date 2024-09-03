@@ -6,21 +6,16 @@ from time import time, sleep
 from datetime import datetime
 import copy
 
-from concurrent.futures import ThreadPoolExecutor
-
 from typing import Dict, Optional, Callable, List
 from psychopy import prefs
 
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.msg.messages import Message, CreateTasksRequest, StatusMessage, \
-    TaskInitialization, Request, TaskCompletion, StartRecordingMsg, MsgBody, StartRecording, SessionPrepared, \
+    TaskInitialization, Request, TaskCompletion, StartRecordingMsg, StartRecording, SessionPrepared, \
     PrepareRequest, TasksCreated, Reply, StopRecording
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
-
-prefs.hardware["audioLib"] = ["PTB"]
-prefs.hardware["audioLatencyMode"] = 3
 
 import neurobooth_os
 from neurobooth_os import config
@@ -30,6 +25,10 @@ from neurobooth_os.iout import metadator as meta
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.log_manager import make_db_logger
+
+
+prefs.hardware["audioLib"] = ["PTB"]
+prefs.hardware["audioLatencyMode"] = 3
 
 
 def main():
@@ -50,74 +49,110 @@ def main():
 
 def run_stm(logger):
 
+    def _finish_tasks(session):
+        session.logger.debug('FINISH SCREEN')
+        finish_screen(session.win)
+        return True
+
     presented: bool = False
-    paused: bool = False
     session: Optional[StmSession] = None
     task_log_entry: Optional[TaskLogEntry] = None
     db_conn = meta.get_database_connection(database=config.neurobooth_config.database.dbname)
 
-    shutdown_flag = False
-    while not shutdown_flag:
-        message: Message = meta.read_next_message("STM", conn=db_conn)
-        if message is None:
-            sleep(1)
-            continue
-        msg_body: Optional[MsgBody] = None
-        logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
-        logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
-        current_msg_type: str = message.msg_type
-        if "PrepareRequest" == current_msg_type:
-            session, task_log_entry = prepare_session(message.body, logger)
-        elif 'CreateTasksRequest' == current_msg_type:
-            # task_name can be list of tk1-task2-task3
-            calib_instructions, device_log_entry_dict, subj_id, task_calib, tasks = _create_tasks(logger, message,
-                                                                                                  session,
-                                                                                                  task_log_entry)
-        elif "PerformTaskRequest" == current_msg_type:
-            _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id,
-                          task_log_entry, tasks)
+    paused: bool = False        # True if message received that RC requests a session pause
+    session_canceled = False    # True if message received that RC requests that the session be canceled
+    finished = False            # True if the "Thank you" screen has been displayed
+    shutdown: bool = False      # True if message received that this server should be terminated
 
-        elif "PauseSessionRequest" == current_msg_type:
-            paused = True
-            pause(session)
+    while not shutdown:
 
-        # Next message tells what to do now that we paused
-        elif "ResumeSessionRequest" == current_msg_type:
-            paused = False
-            continue
-        elif "CancelSessionRequest" == current_msg_type:
-            break
-        elif "CalibrationRequest" == current_msg_type:
-            if not len(task_calib):
+        while paused:
+            message: Message = meta.read_next_message_while_paused("STM", conn=db_conn)
+            if message is None:
+                sleep(1)
                 continue
-            tasks.insert(0, task_calib[0])
-            calib_instructions = False
 
-        elif "ShutdownRequest" == current_msg_type:
-            if session is not None:
-                session.shutdown()
-            shutdown_flag = True
-            print("Message ShutdownRequest received in STM")
+            current_msg_type: str = message.msg_type
 
-        elif "TasksFinished" == current_msg_type:
-            session.logger.debug('FINISH SCREEN')
-            finish_screen(session.win)
-            # TODO: Should there be an acknowledgement back to CTR?
-        else:
-            if paused:
+            # Next message tells what to do now that we paused
+            if "TerminateServerRequest" == current_msg_type:
+                paused = False
+                shutdown = True
+                break
+            if "ResumeSessionRequest" == current_msg_type:
+                paused = False
+                break
+            elif "CancelSessionRequest" == current_msg_type:
+                session_canceled = True
+                paused = False
+                break
+            elif "CalibrationRequest" == current_msg_type:
+                if not len(task_calib):
+                    continue
+                # TODO: Fix this line. There's no insert going on here. Just do the calib task
+                tasks.insert(0, task_calib[0])
+                calib_instructions = False
+
+                # TODO: validate this logic
+                paused = False
+                break
+            else:
                 print(f"Received an unexpected message while paused: {message.model_dump_json()}")
                 body = StatusMessage(text=f'"Received an unexpected message while paused: {message.model_dump_json()}')
 
                 err_msg = Request(source='STM', destination='CTR', body=body)
                 meta.post_message(err_msg, session.db_conn)
                 logger.warn(f"Received an unexpected message while paused {current_msg_type}")
-                session.logger.debug('FINISH SCREEN')
-                finish_screen(session.win)
+                shutdown = True
+                paused = False
+                break
+
+        message: Message = meta.read_next_message("STM", conn=db_conn)
+        if message is None:
+            sleep(1)
+            continue
+
+        logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
+        logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
+        current_msg_type: str = message.msg_type
+
+        if "TerminateServerRequest" == current_msg_type:
+            if session is not None:
+                session.shutdown()
+            shutdown = True
+            continue
+
+        if not session_canceled:
+
+            if "PrepareRequest" == current_msg_type:
+                request: PrepareRequest = message.body
+                session, task_log_entry = prepare_session(request, logger)
+
+            elif 'CreateTasksRequest' == current_msg_type:
+                # task_name can be list of tk1-task2-task3
+                calib_instructions, device_log_entry_dict, subj_id, task_calib, tasks = _create_tasks(logger, message,
+                                                                                                      session,
+                                                                                                      task_log_entry)
+            elif "PerformTaskRequest" == current_msg_type:
+                _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id,
+                              task_log_entry, tasks)
+
+            elif "PauseSessionRequest" == current_msg_type:
+                paused = _pause(session)
+
+            elif "TasksFinished" == current_msg_type:
+                session_canceled = True
+                # TODO: Should there be an acknowledgement back to CTR
 
             else:
                 unex_msg = f'Unexpected message received: {message.model_dump_json()}'
                 print(unex_msg)
                 logger.error(unex_msg)
+                shutdown = True
+
+        if session_canceled and not finished:
+            finished = _finish_tasks(session)
+
     exit()
 
 
@@ -162,9 +197,9 @@ def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, me
             meta.post_message(Request(source='STM', destination='CTR', body=init_task_body), conn=db_conn)
             session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
 
-            wait_for_lsl_recording_to_start(db_conn, logger, session, t0)
+            _wait_for_lsl_recording_to_start(db_conn, logger, session, t0)
 
-            start_acq(calib_instructions, session, task_args, task_id, this_task_kwargs, tsk_start_time)
+            _start_acq(calib_instructions, session, task_args, task_id, this_task_kwargs, tsk_start_time)
 
             this_task_kwargs.update({"last_task": len(tasks) == 0})
             this_task_kwargs["task_name"] = task_id
@@ -225,7 +260,7 @@ def _create_tasks(logger, message, session, task_log_entry):
     return calib_instructions, device_log_entry_dict, subj_id, task_calib, tasks
 
 
-def wait_for_lsl_recording_to_start(db_conn, logger, session, t0):
+def _wait_for_lsl_recording_to_start(db_conn, logger, session, t0):
     ctr_msg_found: bool = False
     attempt = 0
     while not ctr_msg_found and attempt < 30:
@@ -273,9 +308,8 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
         attempts = attempts + 1
 
 
-
-def start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, task_id: str, this_task_kwargs,
-              tsk_start_time):
+def _start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, task_id: str, this_task_kwargs,
+               tsk_start_time):
     """
     Start recording on ACQ in parallel to starting on STM
 
@@ -319,7 +353,7 @@ def start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, task
         if "calibration_task" in stimulus_id:  # if not calibration record with start method
             this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
         else:
-            task_args.task_instance.render_image() # Render image on HostPC/Tablet screen
+            task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
             session.eye_tracker.start(fname)
     session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
     acq_reply = None
@@ -333,10 +367,11 @@ def start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, task
     # acq_result.result()  # Raise any exceptions swallowed by the executor
 
 
-def pause(session):
+def _pause(session):
     """ Handle session pause """
     pause_screen = utl.create_text_screen(session.win, text="Session Paused")
     utl.present(session.win, pause_screen, waitKeys=False)
+    return True
 
 
 def log_task(events: List,
@@ -411,7 +446,7 @@ def create_task_kwargs(session: StmSession, task_args: TaskArgs) -> Dict:
     return result
 
 
-def extract_task_log_entry(prepare_req:PrepareRequest):
+def extract_task_log_entry(prepare_req: PrepareRequest):
     """
     Extracts and returns an object containing info encoded in the data argument,
     which is a message from the GUI.

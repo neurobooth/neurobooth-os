@@ -29,10 +29,10 @@ import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
-from neurobooth_os.msg.messages import Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest, \
-    ShutdownRequest, MsgBody, MbientDisconnected, NewVideoFile, TaskCompletion, TaskInitialization, SessionPrepared, \
-    DeviceInitialization, StatusMessage, LslRecording, TasksFinished, FramePreviewRequest, FramePreviewReply, \
-    PauseSessionRequest, ResumeSessionRequest, CancelSessionRequest, CalibrationRequest
+from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest, \
+    TerminateServerRequest, MsgBody, MbientDisconnected, NewVideoFile, TaskCompletion, TaskInitialization, \
+    SessionPrepared, DeviceInitialization, StatusMessage, LslRecording, TasksFinished, FramePreviewRequest,
+    FramePreviewReply, PauseSessionRequest, ResumeSessionRequest, CancelSessionRequest, CalibrationRequest)
 
 
 def setup_log(sg_handler=None):
@@ -577,10 +577,10 @@ def gui(logger):
                 plttr.stop()
                 shutdown_acq_msg: Message = Request(source="CTR",
                                                 destination="STM",
-                                                body=ShutdownRequest())
+                                                body=TerminateServerRequest())
                 shutdown_stm_msg: Message = Request(source="CTR",
                                                 destination="ACQ",
-                                                body=ShutdownRequest())
+                                                body=TerminateServerRequest())
                 meta.post_message(shutdown_acq_msg, conn)
                 meta.post_message(shutdown_stm_msg, conn)
                 break

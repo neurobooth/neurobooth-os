@@ -3,6 +3,7 @@ import os
 
 from typing import Optional, Dict
 from pydantic import BaseModel
+from psycopg2.extensions import connection
 
 from neurobooth_os import config
 from neurobooth_os.iout.eyelink_tracker import EyeTracker
@@ -20,7 +21,7 @@ class StmSession(BaseModel):
     session_name: str = ''
     collection_id: str
     logger: logging.Logger
-    db_conn: object
+    db_conn: connection
     win: Optional[object] = None
     session_folder: Optional[str] = None
     system_resource_logger: Optional[object] = None

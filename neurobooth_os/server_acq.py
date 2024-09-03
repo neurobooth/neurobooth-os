@@ -141,8 +141,7 @@ def run_acq(logger):
             meta.post_message(reply, db_conn)
             recording = False
 
-        elif "ShutdownRequest" == current_msg_type:
-            print("Message ShutdownRequest received in ACQ")
+        elif "TerminateServerRequest" == current_msg_type:
             if recording:
                 elapsed_time = stop_recording(device_manager, task_args[task].device_args)
                 logger.info(f'Device stop took {elapsed_time:.2f}')

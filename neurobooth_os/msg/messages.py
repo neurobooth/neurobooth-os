@@ -143,9 +143,12 @@ class PauseSessionRequest(MsgBody):
 
 
 class CancelSessionRequest(MsgBody):
-
+    """
+    Request to cancel the remaining tasks in the session after the current task completes.
+    Session must be paused, or have a pending PauseRequest queued, when this request is made
+    """
     def __init__(self, **data):
-        data['priority'] = HIGHEST_PRIORITY
+        data['priority'] = MEDIUM_HIGH_PRIORITY
         super().__init__(**data)
 
 
@@ -163,7 +166,7 @@ class StopSessionRequest(MsgBody):
         super().__init__(**data)
 
 
-class ShutdownRequest(MsgBody):
+class TerminateServerRequest(MsgBody):
 
     def __init__(self, **data):
         data['priority'] = HIGHEST_PRIORITY
