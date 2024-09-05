@@ -26,7 +26,6 @@ from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.iout.metadator as meta
 
-from neurobooth_os.netcomm import node_info
 from neurobooth_os.msg.messages import PrepareRequest, PerformTaskRequest
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets
 
@@ -117,14 +116,7 @@ plot_elem: List = []
 inlet_keys: []
 lsl_session: Optional[liesl.Session]
 
-
-def _get_ports():
-    other_nodes = ("acquisition", "presentation")
-    host, port = node_info("control")
-    return other_nodes, host, port
-
-
-nodes, host_ctr, port_ctr = _get_ports()
+nodes = ("acquisition", "presentation")
 
 
 @app.get("/get_studies", tags=['session setup'])

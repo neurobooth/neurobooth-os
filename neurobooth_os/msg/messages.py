@@ -297,6 +297,7 @@ class RecordingStartedMsg(Reply):
 
 
 class ResetMbients(MsgBody):
+
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
@@ -306,7 +307,7 @@ class MbientResetResults(MsgBody):
     results: Dict[str, bool]
 
     def __init__(self, **data):
-        data['priority'] = MEDIUM_PRIORITY
+        data['priority'] = MEDIUM_HIGH_PRIORITY
         super().__init__(**data)
 
 
@@ -324,7 +325,7 @@ class FramePreviewReply(MsgBody):
         arbitrary_types_allowed = True
 
     def __init__(self, **data):
-        data['priority'] = HIGH_PRIORITYF
+        data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
 
 
