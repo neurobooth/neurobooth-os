@@ -104,7 +104,15 @@ class TasksCreated(MsgBody):
 
 
 class SessionPrepared(MsgBody):
-    elem_key: str
+    elem_key: str ="-Connect-"
+
+    def __init__(self, **data):
+        data['priority'] = MEDIUM_PRIORITY
+        super().__init__(**data)
+
+
+class ServerStarted(MsgBody):
+    elem_key: str = "-init_servs-"
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
@@ -316,7 +324,7 @@ class FramePreviewReply(MsgBody):
         arbitrary_types_allowed = True
 
     def __init__(self, **data):
-        data['priority'] = HIGH_PRIORITY
+        data['priority'] = HIGH_PRIORITYF
         super().__init__(**data)
 
 

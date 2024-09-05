@@ -14,14 +14,12 @@ from typing import Dict, Optional, List
 
 import cv2
 import numpy as np
-# from typing import Dict
 
 import PySimpleGUI as sg
 import liesl
 
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
-from neurobooth_os.netcomm import node_info
 
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
 from neurobooth_os.log_manager import make_db_logger
@@ -29,10 +27,13 @@ import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
-from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest, \
-    TerminateServerRequest, MsgBody, MbientDisconnected, NewVideoFile, TaskCompletion, TaskInitialization, \
-    SessionPrepared, DeviceInitialization, StatusMessage, LslRecording, TasksFinished, FramePreviewRequest,
-    FramePreviewReply, PauseSessionRequest, ResumeSessionRequest, CancelSessionRequest, CalibrationRequest)
+from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest,
+                                        TerminateServerRequest, MsgBody, MbientDisconnected, NewVideoFile,
+                                        TaskCompletion, TaskInitialization,
+                                        SessionPrepared, DeviceInitialization, StatusMessage, LslRecording,
+                                        TasksFinished, FramePreviewRequest,
+                                        FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
+                                        CancelSessionRequest, CalibrationRequest, ServerStarted)
 
 
 def setup_log(sg_handler=None):
@@ -96,7 +97,7 @@ def _create_session_dict(window, log_task, staff_id, subject_id, first_name, las
     log_task["subject_id"] = subject_id
     dt = datetime.now().strftime("%Y-%m-%d")
     log_task["subject_id-date"] = f'{subject_id}_{dt}'
-    log_task["date"]=dt
+    log_task["date"] = dt
     subject_id_date = log_task["subject_id-date"]
 
     window.close()
@@ -165,6 +166,7 @@ def _pause_tasks(steps, presentation_node, conn):
             raise RuntimeError("Unknown Response from Pause Session dialog")
         request = Request(source="CTR", destination="STM", body=body)
         meta.post_message(request, conn)
+
 
 ########## LSL functions ############
 
@@ -298,8 +300,11 @@ def _start_ctr_msg_reader(logger, window):
             outlet_values = f"['{outlet_name}', '{outlet_id}']"
             window.write_event_value("-OUTLETID-", outlet_values)
         elif "SessionPrepared" == message.msg_type:
-            # UPDATOR:-elem_key-
             msg_body: SessionPrepared = message.body
+            elem: str = msg_body.elem_key
+            window.write_event_value("-update_butt-", elem)
+        elif "ServerStarted" == message.msg_type:
+            msg_body: ServerStarted = message.body
             elem: str = msg_body.elem_key
             window.write_event_value("-update_butt-", elem)
         elif "TasksCreated" == message.msg_type:
@@ -347,6 +352,8 @@ def _start_ctr_msg_reader(logger, window):
             handle_frame_preview_reply(window, frame_reply)
         else:
             logger.debug(f"Unhandled message: {message.msg_type}")
+
+
 ######### Visualization ############
 
 def _plot_realtime(window, plttr, inlets):
@@ -373,7 +380,6 @@ def handle_frame_preview_reply(window, frame_reply: FramePreviewReply):
     img_rz = cv2.resize(img_np, (1080 // 4, 1920 // 4))
     img_b = cv2.imencode(".png", img_rz)[1].tobytes()
     window["iphone"].update(data=img_b)
-
 
 
 def _request_frame_preview(window, conn):
@@ -429,10 +435,10 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
     return vidf_mrkr, event, values
 
 
-def _get_ports():
-    nodes = ("acquisition", "presentation")
-    host_ctr, port_ctr = node_info("control")
-    return nodes, host_ctr, port_ctr
+def _get_nodes():
+    return ("acquisition", "presentation")
+    # host_ctr, port_ctr = node_info("control")
+    # return nodes, host_ctr, port_ctr
 
 
 def gui(logger):
@@ -441,7 +447,7 @@ def gui(logger):
 
     database = cfg.neurobooth_config.database.dbname
 
-    nodes, host_ctr, port_ctr = _get_ports()
+    nodes = _get_nodes()
 
     # declare and initialize vars
     subject_id = None
@@ -576,11 +582,11 @@ def gui(logger):
                     _save_session_notes(sess_info, values, window)
                 plttr.stop()
                 shutdown_acq_msg: Message = Request(source="CTR",
-                                                destination="STM",
-                                                body=TerminateServerRequest())
+                                                    destination="STM",
+                                                    body=TerminateServerRequest())
                 shutdown_stm_msg: Message = Request(source="CTR",
-                                                destination="ACQ",
-                                                body=TerminateServerRequest())
+                                                    destination="ACQ",
+                                                    body=TerminateServerRequest())
                 meta.post_message(shutdown_acq_msg, conn)
                 meta.post_message(shutdown_stm_msg, conn)
                 break

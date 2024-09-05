@@ -12,7 +12,7 @@ from psychopy import prefs
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.msg.messages import Message, CreateTasksRequest, StatusMessage, \
     TaskInitialization, Request, TaskCompletion, StartRecordingMsg, StartRecording, SessionPrepared, \
-    PrepareRequest, TasksCreated, Reply, StopRecording
+    PrepareRequest, TasksCreated, Reply, StopRecording, ServerStarted
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
@@ -63,6 +63,8 @@ def run_stm(logger):
     session_canceled = False    # True if message received that RC requests that the session be canceled
     finished = False            # True if the "Thank you" screen has been displayed
     shutdown: bool = False      # True if message received that this server should be terminated
+    init_servers = Request(source="STM", destination="CTR", body=ServerStarted())
+    meta.post_message(init_servers, db_conn)
 
     while not shutdown:
 
@@ -430,7 +432,7 @@ def prepare_session(prepare_req: PrepareRequest, logger):
     #   (continued) We already have a db_logger, it just needs session attributes
     stm_session.logger = make_db_logger(subject_id, stm_session.session_name)
     stm_session.logger.info('LOGGER CREATED FOR SESSION')
-    updator = Request(source="STM", destination="CTR", body=SessionPrepared(elem_key="-Connect-"))
+    updator = Request(source="STM", destination="CTR", body=SessionPrepared())
     meta.post_message(updator, stm_session.db_conn)
     print("UPDATOR:-Connect-")
     return stm_session, task_log_entry

@@ -16,7 +16,8 @@ from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
 from neurobooth_os.msg.messages import Message, MsgBody, PrepareRequest, RecordingStoppedMsg, StartRecording, \
-    RecordingStartedMsg, MbientResetResults, Reply, StatusMessage, Request, SessionPrepared, FramePreviewReply
+    RecordingStartedMsg, MbientResetResults, Reply, StatusMessage, Request, SessionPrepared, FramePreviewReply, \
+    ServerStarted
 
 
 def countdown(period):
@@ -57,6 +58,8 @@ def run_acq(logger):
     system_resource_logger = None
     task_args: Dict[str, TaskArgs] = {}
     shutdown_flag = False
+    init_servers = Request(source="ACQ", destination="CTR", body=ServerStarted())
+    meta.post_message(init_servers, db_conn)
 
     # for data, connx in get_client_messages(s1, port, host)
     while not shutdown_flag:
@@ -96,7 +99,7 @@ def run_acq(logger):
             else:
                 device_manager.create_streams(collection_id=collection_id, task_params=task_args)
             print("UPDATOR:-Connect-")
-            updator = Request(source="ACQ", destination="CTR", body=SessionPrepared(elem_key="-Connect-"))
+            updator = Request(source="ACQ", destination="CTR", body=SessionPrepared())
             meta.post_message(updator, db_conn)
 
         elif "FramePreviewRequest" == current_msg_type and not recording:
