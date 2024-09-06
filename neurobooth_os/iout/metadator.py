@@ -159,7 +159,7 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
     if msg_type is None:
         # TODO: Make sure no other non-standard messages should be excluded
         msg_type_stmt = \
-            " and msg_type NOT IN ('LslRecording', 'RecordingStarted', 'RecordingStopped') "
+            " and msg_type NOT IN ('LslRecording', 'RecordingStarted', 'RecordingStopped', 'MbientResetReply') "
     else:
         msg_type_stmt = f" and msg_type = '{msg_type}' "
 
