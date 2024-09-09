@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, time
 import os
 import json
 import asyncio
@@ -14,8 +14,7 @@ import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.mbient import Mbient
 
 
-
-async def send_reset_msg() -> Dict[str, bool]:
+def send_reset_msg() -> Dict[str, bool]:
     """
     Send mbient reset message to ACQ and collect results
 
@@ -40,8 +39,8 @@ async def send_reset_msg() -> Dict[str, bool]:
             elif attempts >= max_attempts:
                 print(f"No results message found for mbient reset after {max_attempts} seconds")
                 break
-            print(f"No results from mbient reset after {attempts} attempts at {datetime.datetime.now().time()}.")
-            await asyncio.sleep(1)
+            print(f"No results from mbient reset after {attempts} attempts at {datetime.now().time()}.")
+            time.sleep(1)
             attempts = attempts + 1
     return results
 
