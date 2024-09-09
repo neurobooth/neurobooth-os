@@ -34,8 +34,9 @@ def send_reset_msg() -> Dict[str, bool]:
                 results = reply.results
                 print(results)
             attempts = attempts + 1
-            if attempts >= 180:
-                print("No results message found for mbient reset after 3 minutes")
+            if attempts >= 600:
+                print("No results message found for mbient reset after 10 minutes")
+                # TODO: Make this timeout shorter
             sleep(1)
     return results
 
