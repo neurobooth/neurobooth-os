@@ -1,6 +1,7 @@
+import datetime
 import os
 import json
-from asyncio import sleep
+import asyncio
 from typing import Optional, Dict, List
 from enum import IntEnum, auto
 from concurrent.futures import ThreadPoolExecutor, wait
@@ -24,7 +25,7 @@ def send_reset_msg() -> Dict[str, bool]:
     msg = ResetMbients()
     results = None
     attempts = 0
-    max_attempts = 240
+    max_attempts = 300
     with meta.get_database_connection() as conn:
         req = Request(source='mbient_reset', destination='ACQ', body=msg)
         meta.post_message(req, conn)
@@ -36,12 +37,11 @@ def send_reset_msg() -> Dict[str, bool]:
                 print(results)
                 break
             elif attempts >= max_attempts:
-                print("No results message found for mbient reset after 4 minutes")
+                print(f"No results message found for mbient reset after {max_attempts} seconds")
                 break
                 # TODO: Make this timeout shorter
-            print(f"No results from mbient reset after {attempts} attempts.")
-
-            sleep(1)
+            print(f"No results from mbient reset after {attempts} attempts at {datetime.time}.")
+            asyncio.sleep(1)
             attempts = attempts + 1
     return results
 
