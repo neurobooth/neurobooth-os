@@ -2,7 +2,8 @@ import unittest
 import neurobooth_os.iout.metadator as meta
 from datetime import date, datetime
 
-from neurobooth_os.msg.messages import Request, PrepareRequest, CreateTasksRequest, PerformTaskRequest
+from neurobooth_os.msg.messages import Request, PrepareRequest, CreateTasksRequest, PerformTaskRequest, \
+    MbientResetResults
 
 database_name = "mock_neurobooth"
 dt = date.today()
@@ -23,6 +24,23 @@ conn = meta.get_database_connection(database=database_name, validate_config_path
 
 
 class TestMessages(unittest.TestCase):
+
+    def test_msg_read(self):
+
+        body_1 = MbientResetResults(
+            results={"Mbient_LH_2": True}
+        )
+        msg_1 = Request(
+            source='ACQ',
+            destination='STM',
+            body=body_1
+        )
+
+        meta.post_message(msg_1, conn)
+        message = meta.read_next_message(msg.destination, conn, msg_type='MbientResetResults')
+        print(message.model_dump_json())
+        print(type(message.uuid))
+
 
     def test_instantiation(self):
         print(body.model_dump_json())

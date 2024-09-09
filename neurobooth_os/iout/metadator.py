@@ -134,12 +134,11 @@ def post_message(msg: Message, conn: connection) -> str:
                                    'time_created', 'body'])
 
 
-# TODO: Merge the read_next functions to minimize code duplication
 def read_next_message(destination: str, conn: connection, msg_type: str = None) -> Optional[Message]:
     f"""
-    Returns a Pandas dataframe containing one row representing the next message to be handled by 
+    Returns a Message representing the next message to be handled by 
     the calling process. Code representing the message {destination} would call this message to check for new messages.
-    LslRecording messages are skipped as they have their own message handling loop and their own query.
+    If msg_type is None, LslRecording messages and some others are skipped as they have their own message handling loop.
     
     NOTE: A MESSAGE CAN ONLY BE READ ONCE using this method as the message's time_read value is updated before 
     returning the query results. Only rows where time_read is NULL are returned here. 
@@ -184,9 +183,11 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
         message_queue.priority, message_queue.source, message_queue.destination, message_queue.time_created, 
         message_queue.time_read, message_queue.body
      '''
-
+    print(update_str)
     curs = conn.cursor()
     curs.execute(update_str)
+    print(curs.rowcount)
+    print(curs.rownumber)
     msg_df: DataFrame = pd.DataFrame(curs.fetchall())
     conn.commit()
     curs.close()
