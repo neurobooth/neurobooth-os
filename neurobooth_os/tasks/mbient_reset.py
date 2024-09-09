@@ -24,20 +24,25 @@ def send_reset_msg() -> Dict[str, bool]:
     msg = ResetMbients()
     results = None
     attempts = 0
+    max_attempts = 240
     with meta.get_database_connection() as conn:
         req = Request(source='mbient_reset', destination='ACQ', body=msg)
         meta.post_message(req, conn)
-        while results is None and attempts <= 180:
+        while results is None and attempts <= max_attempts:
             reply = meta.read_next_message(
                 destination="STM", conn=conn, msg_type="MbientResetResults")
             if reply is not None:
                 results = reply.results
                 print(results)
-            attempts = attempts + 1
-            if attempts >= 600:
-                print("No results message found for mbient reset after 10 minutes")
+                break
+            elif attempts >= max_attempts:
+                print("No results message found for mbient reset after 4 minutes")
+                break
                 # TODO: Make this timeout shorter
+            print(f"No results from mbient reset after {attempts} attempts.")
+
             sleep(1)
+            attempts = attempts + 1
     return results
 
 
