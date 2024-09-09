@@ -183,11 +183,8 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
         message_queue.priority, message_queue.source, message_queue.destination, message_queue.time_created, 
         message_queue.time_read, message_queue.body
      '''
-    print(update_str)
     curs = conn.cursor()
     curs.execute(update_str)
-    print(curs.rowcount)
-    print(curs.rownumber)
     msg_df: DataFrame = pd.DataFrame(curs.fetchall())
     conn.commit()
     curs.close()
