@@ -33,7 +33,7 @@ def send_reset_msg() -> Dict[str, bool]:
             reply = meta.read_next_message(
                 destination="STM", conn=conn, msg_type="MbientResetResults")
             if reply is not None:
-                results = reply.results
+                results = reply.body.results
                 print(results)
                 break
             elif attempts >= max_attempts:
