@@ -219,6 +219,9 @@ class MbientResetPause(Task):
                 acq_results = {}
 
             stm_results = {stream_name: result.result() for stream_name, result in stm_results.items()}
+            
+            print(f"ACQ Results: {acq_results}")
+            print(f"STM Results: {stm_results}")
 
             # Combine results from all serves
             results = {**acq_results, **stm_results}
