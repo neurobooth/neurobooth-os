@@ -217,9 +217,11 @@ class MbientResetPause(Task):
             if acq_results is None:
                 self.logger.warn('Received None response from ACQ reset_mbients.')
                 acq_results = {}
+            else:
+                acq_results = acq_results.result()
 
             stm_results = {stream_name: result.result() for stream_name, result in stm_results.items()}
-            
+
             print(f"ACQ Results: {acq_results}")
             print(f"STM Results: {stm_results}")
 
