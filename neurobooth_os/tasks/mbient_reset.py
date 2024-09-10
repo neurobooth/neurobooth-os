@@ -208,9 +208,10 @@ class MbientResetPause(Task):
                 stream_name: executor.submit(stream.reset_and_reconnect)
                 for stream_name, stream in self.mbients.items()
             }
-            print(stm_results)
             # Wait for all resets to complete, then resolve the futures
             wait([acq_results, *stm_results.values()])
+            print(f"ACQ Results: {acq_results}")
+            print(f"STM Results: {stm_results}")
 
             # Check result from ACQ
             if acq_results is None:
