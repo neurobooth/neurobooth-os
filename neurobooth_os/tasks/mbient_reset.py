@@ -1,12 +1,12 @@
-from datetime import datetime, time
+from datetime import datetime
+import time
 import os
 import json
-import asyncio
 from typing import Optional, Dict, List
 from enum import IntEnum, auto
 from concurrent.futures import ThreadPoolExecutor, wait
 
-from neurobooth_os.msg.messages import StatusMessage, Request, ResetMbients, MbientResetResults
+from neurobooth_os.msg.messages import StatusMessage, Request, ResetMbients
 from neurobooth_os.tasks.task import Task
 from neurobooth_os.tasks.utils import get_keys
 from psychopy import visual
@@ -20,7 +20,7 @@ def send_reset_msg() -> Dict[str, bool]:
 
     Returns
     -------
-    Reset results as dictionary
+    Reset results as dictionary of mbient device names to booleans
     """
     msg = ResetMbients()
     results = None
@@ -42,6 +42,7 @@ def send_reset_msg() -> Dict[str, bool]:
             print(f"No results from mbient reset after {attempts} attempts at {datetime.now().time()}.")
             time.sleep(1)
             attempts = attempts + 1
+    print(results)
     return results
 
 
@@ -183,7 +184,7 @@ class MbientResetPause(Task):
         get_keys([self.continue_key])  # Wait until continue key is pressed
 
     def update_message(self, contents: List[str] = ()):
-        """Update the message on the screen.
+        """Update the message on the STM screen.
         :param contents: A list of messages to be displayed on separate lines.
         """
         message = '\n'.join([self.header_message, *contents])
@@ -203,13 +204,15 @@ class MbientResetPause(Task):
             acq_results = executor.submit(send_reset_msg)
 
             # Begin reset of local Mbients
-            stm_results = {
-                stream_name: executor.submit(stream.reset_and_reconnect)
-                for stream_name, stream in self.mbients.items()
-            }
+            # stm_results = {
+            #     stream_name: executor.submit(stream.reset_and_reconnect)
+            #     for stream_name, stream in self.mbients.items()
+            # }
+            # print(stm_results)
+            # # Wait for all resets to complete, then resolve the futures
+            # wait([acq_results, *stm_results.values()])
 
-            # Wait for all resets to complete, then resolve the futures
-            wait([acq_results, *stm_results.values()])
+            wait([acq_results])
 
             # Parse result from ACQ
             acq_results = acq_results.result()
