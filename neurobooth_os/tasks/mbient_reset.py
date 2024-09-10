@@ -204,21 +204,16 @@ class MbientResetPause(Task):
             acq_results = executor.submit(send_reset_msg)
 
             # Begin reset of local Mbients
-            # stm_results = {
-            #     stream_name: executor.submit(stream.reset_and_reconnect)
-            #     for stream_name, stream in self.mbients.items()
-            # }
-            # print(stm_results)
-            # # Wait for all resets to complete, then resolve the futures
-            # wait([acq_results, *stm_results.values()])
+            stm_results = {
+                stream_name: executor.submit(stream.reset_and_reconnect)
+                for stream_name, stream in self.mbients.items()
+            }
+            print(stm_results)
+            # Wait for all resets to complete, then resolve the futures
+            wait([acq_results, *stm_results.values()])
 
-            wait([acq_results])
-
-            # Parse result from ACQ
-            acq_results = acq_results.result()
-            if acq_results is not None:
-                acq_results = json.loads(acq_results)
-            else:
+            # Check result from ACQ
+            if acq_results is None:
                 self.logger.warn('Received None response from ACQ reset_mbients.')
                 acq_results = {}
 
