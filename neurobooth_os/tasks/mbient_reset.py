@@ -24,8 +24,11 @@ def send_reset_msg() -> Dict[str, bool]:
     """
     msg = ResetMbients()
     results = None
+    
+    minutes_to_wait = 5
+    max_attempts = minutes_to_wait * 60
     attempts = 0
-    max_attempts = 300
+
     with meta.get_database_connection() as conn:
         req = Request(source='mbient_reset', destination='ACQ', body=msg)
         meta.post_message(req, conn)
@@ -34,10 +37,8 @@ def send_reset_msg() -> Dict[str, bool]:
                 destination="STM", conn=conn, msg_type="MbientResetResults")
             if reply is not None:
                 results = reply.body.results
-                print(results)
                 break
             elif attempts >= max_attempts:
-                print(f"No results message found for mbient reset after {max_attempts} seconds")
                 break
             print(f"No results from mbient reset after {attempts} attempts at {datetime.now().time()}.")
             time.sleep(1)
@@ -221,9 +222,6 @@ class MbientResetPause(Task):
                 acq_results = acq_results.result()
 
             stm_results = {stream_name: result.result() for stream_name, result in stm_results.items()}
-
-            print(f"ACQ Results: {acq_results}")
-            print(f"STM Results: {stm_results}")
 
             # Combine results from all serves
             results = {**acq_results, **stm_results}
