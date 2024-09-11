@@ -318,7 +318,7 @@ class FramePreviewRequest(MsgBody):
 
 
 class FramePreviewReply(MsgBody):
-    image: Optional[bytearray]
+    image: Optional[bytes]
     image_available: bool
 
     class Config:
