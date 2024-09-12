@@ -168,10 +168,10 @@ def iphone_frame_preview(db_conn, device_manager, logger):
         body = FramePreviewReply(image=None, image_available=False)
     else:
         frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
-        # frame_prefix = str(len(frame)).encode("utf-8")
         frame = frame_prefix + frame
         frame = base64.b64encode(frame).decode('utf-8')
         print(f"length of frame string is {len(frame)}")
+        print(frame)
         body = FramePreviewReply(image=frame, image_available=True)
     reply = Request(source="ACQ", destination="CTR", body=body)
     meta.post_message(reply, db_conn)
