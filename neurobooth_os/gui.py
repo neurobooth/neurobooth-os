@@ -2,7 +2,7 @@
 """
 Runs RC user interface for controlling a neurobooth session
 """
-
+import base64
 import os
 import os.path as op
 import logging
@@ -374,7 +374,7 @@ def handle_frame_preview_reply(window, frame_reply: FramePreviewReply):
         print("ERROR: no iphone in LSL streams")
         return
 
-    frame = frame_reply.image
+    frame = base64.b64decode(frame_reply.image)
     nparr = np.frombuffer(frame, np.uint8)
     img_np = cv2.imdecode(nparr, flags=1)
     img_rz = cv2.resize(img_np, (1080 // 4, 1920 // 4))

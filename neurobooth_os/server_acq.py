@@ -1,3 +1,4 @@
+import base64
 import os
 import sys
 from time import time, sleep
@@ -169,7 +170,7 @@ def iphone_frame_preview(db_conn, device_manager, logger):
         frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
         # frame_prefix = str(len(frame)).encode("utf-8")
         frame = frame_prefix + frame
-        frame = str(frame)
+        frame = base64.b64encode(frame).decode('utf-8')
         print(f"length of frame string is {len(frame)}")
         body = FramePreviewReply(image=frame, image_available=True)
     reply = Request(source="ACQ", destination="CTR", body=body)
