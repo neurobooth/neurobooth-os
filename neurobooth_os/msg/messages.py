@@ -13,7 +13,7 @@ from uuid import uuid4, UUID
 from datetime import datetime
 from typing import List, Optional, Any, Dict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Standard priority levels for messages, Higher priority messages are processed before lower priority messages
 # If two messages have equal priorities, the one created first (based on Message_Queue table's ID column value)
@@ -318,7 +318,7 @@ class FramePreviewRequest(MsgBody):
 
 
 class FramePreviewReply(MsgBody):
-    image: Optional[bytearray]
+    image: Optional[str]=None
     image_available: bool
 
     class Config:
