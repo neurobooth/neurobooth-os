@@ -373,8 +373,6 @@ def handle_frame_preview_reply(window, frame_reply: FramePreviewReply):
     if not frame_reply.image_available or len(frame_reply.image) < 100:
         print("ERROR: no iphone in LSL streams")
         return
-
-    print(frame_reply.image)
     frame = base64.b64decode(frame_reply.image)
     nparr = np.frombuffer(frame, dtype=np.uint8)
     img_np = cv2.imdecode(nparr, flags=1)
