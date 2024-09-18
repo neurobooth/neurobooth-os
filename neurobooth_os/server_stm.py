@@ -1,7 +1,6 @@
 import logging
 import sys
 import os
-from collections import OrderedDict  # This import is required for eval
 from time import time, sleep
 from datetime import datetime
 import copy
@@ -99,7 +98,6 @@ def run_stm(logger):
                 paused = False
                 break
             else:
-                print(f"Received an unexpected message while paused: {message.model_dump_json()}")
                 body = StatusMessage(text=f'"Received an unexpected message while paused: {message.model_dump_json()}')
 
                 err_msg = Request(source='STM', destination='CTR', body=body)
@@ -148,7 +146,6 @@ def run_stm(logger):
 
             else:
                 unex_msg = f'Unexpected message received: {message.model_dump_json()}'
-                print(unex_msg)
                 logger.error(unex_msg)
                 shutdown = True
 
@@ -219,18 +216,15 @@ def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, me
             # Signal CTR to stop LSL rec
             meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)),
                               db_conn)
-            print(f"Finished task: {task_id}")
             session.logger.info(f'FINISHED TASK: {task_id}')
-
             log_task(events, session, task_id, task_id, task_log_entry, task)
-
             elapsed_time = time() - t00
             session.logger.info(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
 
 
 def _create_tasks(logger, message, session, task_log_entry):
     msg_body: CreateTasksRequest = message.body
-    session.logger.info(f"Creating Tasks {msg_body.tasks}")
+    session.logger.debug(f"Creating Tasks {msg_body.tasks}")
     tasks = msg_body.tasks
     subj_id = msg_body.subj_id
     session_id = msg_body.session_id
@@ -242,14 +236,10 @@ def _create_tasks(logger, message, session, task_log_entry):
         if task_id in session.tasks():
             task_args: TaskArgs = _get_task_args(session, task_id)
             task_list.append(task_args)
-            logger.info(task_args)
             tsk_fun_obj: Callable = copy.copy(
                 task_args.task_constructor_callable)  # callable for Task constructor
-            logger.info(tsk_fun_obj)
             this_task_kwargs = create_task_kwargs(session, task_args)
-            logger.info(this_task_kwargs)
             task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
-            logger.info(task_args.task_instance)
     device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
     session.logger.info(f'Task media took {time() - t0:.2f}')
     session.win = welcome_screen(win=session.win)
@@ -434,7 +424,6 @@ def prepare_session(prepare_req: PrepareRequest, logger):
     stm_session.logger.info('LOGGER CREATED FOR SESSION')
     updator = Request(source="STM", destination="CTR", body=SessionPrepared())
     meta.post_message(updator, stm_session.db_conn)
-    print("UPDATOR:-Connect-")
     return stm_session, task_log_entry
 
 

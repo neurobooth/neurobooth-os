@@ -212,7 +212,7 @@ class VidRec_Flir:
             try:
                 self.outlet.push_sample([self.frame_counter, tsmp])
             except BaseException:
-                print(f"Reopening FLIR {self.device_index} stream already closed")
+                self.logger.debug(f"Reopening FLIR {self.device_index} stream already closed")
                 self.outlet = self.createOutlet(self.video_filename)
                 self.outlet.push_sample([self.frame_counter, tsmp])
 
@@ -220,17 +220,15 @@ class VidRec_Flir:
             self.frame_counter += 1
 
             if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
-                print(
+                self.logger.debug(
                     f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
                 )
 
-        # print(f"FLIR recording ended with {self.frame_counter} frames in {time.time()-t0}")
         self.cam.EndAcquisition()
         self.recording = False
         self.save_thread.join()
         self.video_out.release()
         self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
-        # print(f"FLIR video saving ended in {time.time()-t0} sec")
 
     def stop(self):
         if self.open and self.recording:

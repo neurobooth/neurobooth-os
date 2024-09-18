@@ -117,7 +117,7 @@ async def prepare(collection_id: str, database_name: str, subject_id: str, sessi
     if device_manager.streams:
         device_manager.reconnect_streams()
     else:
-        device_manager.create_streams(collection_id=collection_id, task_params=task_args)
+        device_manager.create_streams(task_params=task_args)
     return "UPDATOR:-Connect-"
 
 

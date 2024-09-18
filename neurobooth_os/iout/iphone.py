@@ -551,7 +551,6 @@ class IPhone:
         :returns: Whether the connection was successful
         """
         if self._state != "#DISCONNECTED":
-            print("Handshake is only available when disconnected")
             self.logger.error(f'iPhone [state={self._state}]: Attempted handshake in inappropriate state.')
             return False
 
@@ -580,7 +579,6 @@ class IPhone:
 
         # Send the configuration to the iPhone and wait for a response
         msg_camera_config = {"Message": json.dumps(config)}
-        print(msg_camera_config)
         try:
             self._send_and_wait_for_response(
                 "@STANDBY",
@@ -812,7 +810,7 @@ class IPhone:
         :param join_listener: Should be set to False if called from the listener thread, otherwise True.
         """
         if self._state == "#DISCONNECTED":
-            print("IPhone device is already disconnected")
+            self.logger.debug("IPhone device is already disconnected")
             return False
 
         # Send disconnect signal

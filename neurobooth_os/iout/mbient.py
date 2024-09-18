@@ -686,7 +686,6 @@ class Mbient:
                 self.outlet = self._create_outlet()
             self.setup()
             if not DISABLE_LSL:
-                print(f"-OUTLETID-:mbient_{self.dev_name}:{self.outlet_id}")  # Signal to GUI that everything is OK
                 body = DeviceInitialization(stream_name=self.dev_name, outlet_id=self.outlet_id)
                 msg = Request(source="Mbient", destination="CTR", body=body)
                 post_message(msg, get_database_connection())
@@ -820,7 +819,6 @@ class Mbient:
 
     @staticmethod
     def send_status_msg(txt, conn):
-        print(txt)
         body = StatusMessage(text=txt)
         msg = Request(source="Mbient", destination="CTR", body=body)
         post_message(msg, conn)

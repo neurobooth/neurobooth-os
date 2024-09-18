@@ -2,7 +2,6 @@ import base64
 import os
 import sys
 from time import time, sleep
-from collections import OrderedDict
 from typing import Dict, List, Optional
 
 from pylsl import local_clock
@@ -98,8 +97,7 @@ def run_acq(logger):
             if device_manager.streams:
                 device_manager.reconnect_streams()
             else:
-                device_manager.create_streams(collection_id=collection_id, task_params=task_args)
-            print("UPDATOR:-Connect-")
+                device_manager.create_streams(task_params=task_args)
             updator = Request(source="ACQ", destination="CTR", body=SessionPrepared())
             meta.post_message(updator, db_conn)
 
@@ -177,14 +175,10 @@ def iphone_frame_preview(db_conn, device_manager, logger):
 
 
 def start_recording(device_manager: DeviceManager, fname: str, task_devices: List[DeviceArgs]) -> float:
-    print("Starting recording")
-
     t0 = time()
     device_manager.start_cameras(fname, task_devices)
     device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
     elapsed_time = time() - t0
-
-    print(f"Device start took {elapsed_time:.2f}")
     return elapsed_time
 
 
@@ -192,8 +186,6 @@ def stop_recording(device_manager: DeviceManager, task_devices: List[DeviceArgs]
     t0 = time()
     device_manager.stop_cameras(task_devices)
     elapsed_time = time() - t0
-
-    print(f"Device stop took {elapsed_time:.2f}")
     return elapsed_time
 
 

@@ -180,8 +180,6 @@ class EyeTracker:
         if not op.exists(fname_asc):
             pout = subprocess.run(["edf2asc.exe", self.filename], shell=True)
             if not pout.stderr:
-
-                print(f"-new_filename-:{self.streamName}:{op.split(fname_asc)[-1]}")
                 body = NewVideoFile(event="-new_filename-", stream_name=self.streamName, filename=op.split(fname_asc)[-1])
                 msg = Request(source="EyeTracker", destination="CTR", body=body)
                 with get_database_connection() as conn:
@@ -193,7 +191,6 @@ class EyeTracker:
 
     def start(self, filename="TEST.edf"):
         self.filename = filename
-        print(f"-new_filename-:{self.streamName}:{op.split(filename)[-1]}")
         body = NewVideoFile(event="-new_filename-", stream_name=self.streamName, filename=op.split(filename)[-1])
         msg = Request(source="EyeTracker", destination="CTR", body=body)
         with get_database_connection() as conn:
@@ -264,7 +261,7 @@ class EyeTracker:
 
         fps_et = np.mean(1 / np.diff(self.timestamps_et))
         fps_lcl = np.mean(1 / np.diff(self.timestamps_local))
-        print(
+        self.logger.debug(
             f"ET number of samples {len(self.timestamps_et)}, fps et: {fps_et}, fps local: {fps_lcl}"
         )
         self.tk.stopRecording()
@@ -276,7 +273,6 @@ class EyeTracker:
         self.recording = False
         if self.streaming:
             self.stream_thread.join()
-            # print("Eyelink stopped recording, downloading edf")
             self.tk.receiveDataFile(self.fname_temp, self.filename)
             self.edf_to_ascii()
             self.streaming = False

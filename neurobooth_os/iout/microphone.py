@@ -84,7 +84,6 @@ class MicStream:
             fps=str(self.fps),
             device_name=device_args.device_name,
         )
-        print(f"-OUTLETID-:Audio:{self.oulet_id}")
         body = DeviceInitialization(stream_name='Audio', outlet_id=self.oulet_id)
         msg = Request(source="Audio", destination="CTR", body=body)
         with get_database_connection() as conn:
@@ -169,7 +168,7 @@ class MicStream:
             try:
                 self.outlet_audio.push_sample(decoded)
             except BaseException:  # "OSError" from C++
-                print("Reopening mic stream already closed")
+                self.logger.debug("Reopening mic stream already closed")
                 self.outlet_audio = StreamOutlet(self.stream_info_audio)
                 self.outlet_audio.push_sample(decoded)
             self.tic = time.time()

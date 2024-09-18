@@ -519,7 +519,6 @@ def send_prepare_request(database_name):
     log_sess["subject_id_date"] = req.session_name()
     _start_lsl_session(req.session_name())
     headers = {'Content-type': 'application/json'}
-    # nodes = ctr_rec._get_nodes(nodes)
 
     print("Sending STM prepare message")
 

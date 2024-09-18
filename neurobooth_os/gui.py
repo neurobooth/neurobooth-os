@@ -192,9 +192,7 @@ def _record_lsl(
         tsk_strt_time,
         conn
 ):
-    print(
-        f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}"
-    )
+    print(f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}")
 
     # Start LSL recording
     rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
@@ -213,7 +211,6 @@ def _record_lsl(
 
 
 def _create_lsl_inlet(stream_ids, outlet_values, inlets):
-    # event values -> f"['{outlet_name}', '{outlet_id}']
     outlet_name, outlet_id = eval(outlet_values)
 
     # update the inlet if new or different source_id
@@ -345,8 +342,8 @@ def _start_ctr_msg_reader(logger, window):
             )
         elif "StatusMessage" == message.msg_type:
             msg_body: StatusMessage = message.body
-            logger.debug(msg_body.text)
             print(msg_body.text)
+            logger.debug(msg_body.text)
         elif "FramePreviewReply" == message.msg_type:
             frame_reply: FramePreviewReply = message.body
             handle_frame_preview_reply(window, frame_reply)
@@ -369,7 +366,6 @@ def _plot_realtime(window, plttr, inlets):
 
 
 def handle_frame_preview_reply(window, frame_reply: FramePreviewReply):
-    # If frame just error massage, print message and return
     if not frame_reply.image_available or len(frame_reply.image) < 100:
         print("ERROR: no iphone in LSL streams")
         return
@@ -409,9 +405,9 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
 
     vidf_mrkr = marker_stream("videofiles")
     # Create event to capture outlet_id
-    window.write_event_value(
-        "-OUTLETID-", f"['{vidf_mrkr.name}', '{vidf_mrkr.oulet_id}']"
-    )
+    # window.write_event_value(
+    #     "-OUTLETID-", f"['{vidf_mrkr.name}', '{vidf_mrkr.oulet_id}']"
+    # )
 
     nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:
@@ -545,7 +541,6 @@ def gui(logger):
             )
 
         elif event == "tasks_created":
-            print('tasks created, now start performing')
             for task_id in tasks:
                 msg_body = PerformTaskRequest(task_id=task_id)
                 msg = Request(source="CTR", destination="STM", body=msg_body)
@@ -632,6 +627,7 @@ def gui(logger):
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
+            print(event, values[event])
             _create_lsl_inlet(stream_ids, values[event], inlets)
 
         elif event == "no_eyetracker":

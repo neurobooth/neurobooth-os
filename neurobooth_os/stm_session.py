@@ -60,10 +60,9 @@ class StmSession(BaseModel):
     def init_device_manager(self) -> DeviceManager:
         device_manager = DeviceManager(node_name='presentation')
         if device_manager.streams:
-            print("Checking prepared devices")
             device_manager.reconnect_streams()
         else:
-            device_manager.create_streams(collection_id=self.collection_id, win=self.win, task_params=self.task_func_dict)
+            device_manager.create_streams(win=self.win, task_params=self.task_func_dict)
         return device_manager
 
     @staticmethod
