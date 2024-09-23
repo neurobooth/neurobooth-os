@@ -33,7 +33,7 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         SessionPrepared, DeviceInitialization, StatusMessage, LslRecording,
                                         TasksFinished, FramePreviewRequest,
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
-                                        CancelSessionRequest, CalibrationRequest, ServerStarted)
+                                        CancelSessionRequest, CalibrationRequest, ServerStarted, MEDIUM_HIGH_PRIORITY)
 
 
 def setup_log(sg_handler=None):
@@ -134,7 +134,6 @@ def _start_task_presentation(window, tasks: List[str], subject_id: str, session_
 
 def _pause_tasks(steps, presentation_node, conn):
     cont_or_stop_msg = "Continue or Stop tasks"
-    calibrate_msg = "Calibrate"
     continue_msg = "Continue tasks"
     stop_msg = "Stop tasks"
 
@@ -145,27 +144,44 @@ def _pause_tasks(steps, presentation_node, conn):
         req = Request(source="CTR", destination="STM", body=msg_body)
         meta.post_message(req, conn)
         resp = sg.Popup(
-            "The next task will be paused. \n\nDon't respond until end current task",
-            custom_text=(cont_or_stop_msg, calibrate_msg),
+            "The session will pause after the current task.", title="Pausing session",
+            custom_text=(continue_msg, stop_msg),
         )
-        if resp == cont_or_stop_msg:
-            resp = sg.Popup(
-                custom_text=(
-                    continue_msg,
-                    stop_msg,
-                )
-            )
         # handle user closing either popup using 'x' instead of making a choice
         if resp == continue_msg or resp is None:
             body = ResumeSessionRequest()
         elif resp == stop_msg:
             body = CancelSessionRequest()
-        elif resp == calibrate_msg:
-            body = CalibrationRequest()
         else:
             raise RuntimeError("Unknown Response from Pause Session dialog")
         request = Request(source="CTR", destination="STM", body=body)
         meta.post_message(request, conn)
+
+
+def _stop_tasks(steps, conn):
+
+    if "task_started" not in steps:
+        sg.PopupError("Tasks not started")
+    else:
+        sg.Popup(
+            "The session will end after the current task.", title="Ending session"
+        )
+        body = CancelSessionRequest()
+        request = Request(source="CTR", destination="STM", body=body)
+        meta.post_message(request, conn)
+
+
+def _calibrate(steps, conn):
+
+    if "task_started" not in steps:
+        sg.PopupError("Tasks not started")
+    else:
+        resp = sg.Popup(
+            "Recalibration will start after the current task.",
+        )
+        msg_body = PerformTaskRequest(task_id="calibration_obs_1")
+        msg = Request(source="CTR", destination="STM", body=msg_body, priority=MEDIUM_HIGH_PRIORITY)
+        meta.post_message(msg, conn)
 
 
 ########## LSL functions ############
@@ -552,6 +568,12 @@ def gui(logger):
 
         elif event == "Pause tasks":
             _pause_tasks(steps, presentation_node=nodes[1], conn=conn)
+
+        elif event == "Stop tasks":
+            _stop_tasks(steps, conn=conn)
+
+        elif event == "Calibrate":
+            _calibrate(steps, presentation_node=nodes[1], conn=conn)
 
         # Save notes to a txt
         elif event == "_save_notes_":

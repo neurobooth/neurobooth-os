@@ -73,6 +73,8 @@ def run_stm(logger):
                 sleep(1)
                 continue
 
+            logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
+            logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
             current_msg_type: str = message.msg_type
 
             # Next message tells what to do now that we paused
@@ -85,16 +87,6 @@ def run_stm(logger):
                 break
             elif "CancelSessionRequest" == current_msg_type:
                 session_canceled = True
-                paused = False
-                break
-            elif "CalibrationRequest" == current_msg_type:
-                if not len(task_calib):
-                    continue
-                # TODO: Fix this line. There's no insert going on here. Just do the calib task
-                tasks.insert(0, task_calib[0])
-                calib_instructions = False
-
-                # TODO: validate this logic
                 paused = False
                 break
             else:
