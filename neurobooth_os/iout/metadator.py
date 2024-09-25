@@ -128,10 +128,8 @@ def post_message(msg: Message, conn: connection) -> str:
                                msg.source,
                                msg.destination,
                                msg.priority,
-                               msg.time_created,
                                body)],
-                             cols=["uuid", "msg_type", "full_msg_type", "source", "destination", 'priority',
-                                   'time_created', 'body'])
+                             cols=["uuid", "msg_type", "full_msg_type", "source", "destination", 'priority', 'body'])
 
 
 def read_next_message(destination: str, conn: connection, msg_type: str = None) -> Optional[Message]:
@@ -181,8 +179,7 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
         where message_queue.id = selection.id
         returning message_queue.id, message_queue.uuid, message_queue.msg_type, message_queue.full_msg_type, 
         message_queue.priority, message_queue.source, message_queue.destination, message_queue.time_created, 
-        message_queue.time_read, message_queue.body
-     '''
+        message_queue.time_read, message_queue.body     '''
     curs = conn.cursor()
     curs.execute(update_str)
     msg_df: DataFrame = pd.DataFrame(curs.fetchall())

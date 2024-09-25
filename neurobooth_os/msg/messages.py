@@ -13,7 +13,7 @@ from uuid import uuid4, UUID
 from datetime import datetime
 from typing import List, Optional, Any, Dict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 # Standard priority levels for messages, Higher priority messages are processed before lower priority messages
 # If two messages have equal priorities, the one created first (based on Message_Queue table's ID column value)
@@ -26,6 +26,9 @@ LOW_PRIORITY = 25
 
 
 class MsgBody(BaseModel):
+    """
+    Superclass of all message bodies. This defines the content of the message
+    """
 
     # These attributes are required, but should typically be set as constants in subclass init code,
     # rather than at Construction
@@ -41,12 +44,15 @@ class MsgBody(BaseModel):
 
 # TODO: Add string length constraints for source, destination, and type
 class Message(BaseModel):
+    """
+    Superclass of all messages. Message defines the attributes shared by all message types
+    """
     uuid: UUID = uuid4()                        # Unique id for message
     msg_type: Optional[str]                     # Filled-in automatically from the MsgBody subtype class name
     source: Optional[str]                       # Service sending request (e.g. 'CTR')
     destination: Optional[str]                  # Service handling the request
-    time_created: datetime = datetime.now()     # Time of message creation
-    time_read: Optional[datetime] = None        # Time when message was read
+    time_created: Optional[datetime] = None     # Database server-time of message creation
+    time_read: Optional[datetime] = None        # Database server-time when message was read
     priority: Optional[int]                     # message priority, filled-in automatically from MsgBody field
     body: Optional[MsgBody]                     # Message body
 
@@ -62,7 +68,8 @@ class Message(BaseModel):
 
 class Request(Message):
     """
-    A standard message.
+    A standard message. Extracts type specific information from the message body and puts it in the message itself,
+    so that it's easily queryable in the database.
     """
     def __init__(self, **data):
         body: MsgBody = data['body']
@@ -72,6 +79,9 @@ class Request(Message):
 
 
 class PrepareRequest(MsgBody):
+    """
+    Message sent from the controller to the backend services to tell them to connect all necessary devices
+    """
     database_name: str
     subject_id: str
     collection_id: str
@@ -86,16 +96,34 @@ class PrepareRequest(MsgBody):
         return f'{self.subject_id}_{self.date}'
 
 
-class TasksCreated(MsgBody):
+class SessionPrepared(MsgBody):
+    """
+    Message sent to controller in reply to PrepareRequest to tell it that that preparation is complete
+    """
+    elem_key: str ="-Connect-"
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
-class SessionPrepared(MsgBody):
-    elem_key: str ="-Connect-"
+class CreateTasksRequest(MsgBody):
+    """
+    Message sent from controller to tell the stimulus server to create all necessary task and load their media
+    """
+    tasks: List[str]
+    subj_id: str
+    session_id: int
 
+    def __init__(self, **data):
+        data['priority'] = MEDIUM_PRIORITY
+        super().__init__(**data)
+
+
+class TasksCreated(MsgBody):
+    f"""
+    Message sent to controller in reply to {CreateTasksRequest} to tell it that all necessary tasks were created along with their media
+    """
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
@@ -108,15 +136,6 @@ class ServerStarted(MsgBody):
         data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
-
-class CreateTasksRequest(MsgBody):
-    tasks: List[str]
-    subj_id: str
-    session_id: int
-
-    def __init__(self, **data):
-        data['priority'] = MEDIUM_PRIORITY
-        super().__init__(**data)
 
 
 class PerformTaskRequest(MsgBody):
