@@ -247,7 +247,7 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
                           pad=((50, 20), (5, 5))),
                 sg.Button("Connect devices", button_color=("white", "black"), key="-Connect-",
                           pad=pad),
-                sg.Button("Terminate servers", button_color=("white", "black"),
+                sg.Button("Terminate servers",
                           key="Shut Down",
                           tooltip="Terminate all servers. Presentation server will exit after current task (if any).",
                           pad=pad),

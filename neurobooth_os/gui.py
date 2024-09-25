@@ -573,7 +573,7 @@ def gui(logger):
             _stop_tasks(steps, conn=conn)
 
         elif event == "Calibrate":
-            _calibrate(steps, presentation_node=nodes[1], conn=conn)
+            _calibrate(steps, conn=conn)
 
         # Save notes to a txt
         elif event == "_save_notes_":
