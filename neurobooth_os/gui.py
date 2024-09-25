@@ -538,10 +538,12 @@ def gui(logger):
 
         # Start servers on STM, ACQ
         elif event == "-init_servs-":
+            # window['-init_servs-'].update(disabled=True)
             _start_servers(window, nodes)
 
         # Turn on devices
         elif event == "-Connect-":
+            # window['-Connect-'].update(disabled=True)
             vidf_mrkr, event, values = _prepare_devices(
                 window, nodes, collection_id, log_task, database, tasks
             )
