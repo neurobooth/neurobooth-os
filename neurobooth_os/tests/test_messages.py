@@ -3,7 +3,7 @@ import neurobooth_os.iout.metadator as meta
 from datetime import date, datetime
 
 from neurobooth_os.msg.messages import Request, PrepareRequest, CreateTasksRequest, PerformTaskRequest, \
-    MbientResetResults
+    MbientResetResults, MEDIUM_HIGH_PRIORITY
 
 database_name = "mock_neurobooth"
 dt = date.today()
@@ -93,3 +93,17 @@ class TestMessages(unittest.TestCase):
         self.assertEquals(log_task_id, message.body.log_task_id)
         self.assertEquals(start_time, message.body.task_start_time)
         print(message.body.model_dump_json())
+
+    def test_set_priority(self):
+        task_id: str = "ahh_obs_1"
+        stim_id: str = "ahhh_task_1"
+        start_time: str = datetime.now().isoformat()
+        log_task_id: str = "12345"
+        body_1 = PerformTaskRequest(
+            task_id=task_id,
+            stimulus_id=stim_id,
+            task_start_time=start_time,
+            log_task_id=log_task_id,
+            priority=MEDIUM_HIGH_PRIORITY
+        )
+        self.assertEquals(body_1.priority,65)

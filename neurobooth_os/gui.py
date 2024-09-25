@@ -33,7 +33,7 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         SessionPrepared, DeviceInitialization, StatusMessage, LslRecording,
                                         TasksFinished, FramePreviewRequest,
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
-                                        CancelSessionRequest, CalibrationRequest, ServerStarted, MEDIUM_HIGH_PRIORITY)
+                                        CancelSessionRequest, ServerStarted, MEDIUM_HIGH_PRIORITY)
 
 
 def setup_log(sg_handler=None):
@@ -179,8 +179,8 @@ def _calibrate(steps, conn):
         resp = sg.Popup(
             "Eyetracker Recalibration will start after the current task.",
         )
-        msg_body = PerformTaskRequest(task_id="calibration_obs_1")
-        msg = Request(source="CTR", destination="STM", body=msg_body, priority=MEDIUM_HIGH_PRIORITY)
+        msg_body = PerformTaskRequest(task_id="calibration_obs_1", priority=MEDIUM_HIGH_PRIORITY)
+        msg = Request(source="CTR", destination="STM", body=msg_body)
         meta.post_message(msg, conn)
 
 

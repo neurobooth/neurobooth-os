@@ -27,7 +27,8 @@ LOW_PRIORITY = 25
 
 class MsgBody(BaseModel):
 
-    # These attributes are required, but should be set as constants in subclass init code, rather than at Construction
+    # These attributes are required, but should typically be set as constants in subclass init code,
+    # rather than at Construction
     msg_type: Optional[str]
     module: Optional[str]
     priority: Optional[int]
