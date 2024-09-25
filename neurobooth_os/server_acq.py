@@ -16,7 +16,7 @@ from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
 from neurobooth_os.msg.messages import Message, MsgBody, PrepareRequest, RecordingStoppedMsg, StartRecording, \
-    RecordingStartedMsg, MbientResetResults, Reply, StatusMessage, Request, SessionPrepared, FramePreviewReply, \
+    RecordingStartedMsg, MbientResetResults, StatusMessage, Request, SessionPrepared, FramePreviewReply, \
     ServerStarted
 
 
@@ -109,11 +109,10 @@ def run_acq(logger):
 
             reset_results = device_manager.mbient_reset()
             reply_body = MbientResetResults(results=reset_results)
-            reply = Reply(
+            reply = Request(
                 source="ACQ",
                 destination="STM",
-                body=reply_body,
-                request_uuid=message.uuid
+                body=reply_body
             )
             meta.post_message(reply, db_conn)
             logger.debug('Reset results sent')
@@ -132,14 +131,14 @@ def run_acq(logger):
 
             elapsed_time = start_recording(device_manager, fname, task_args[task].device_args)
             logger.info(f'Device start took {elapsed_time:.2f}')
-            reply = RecordingStartedMsg(request_uuid=message.uuid)
+            reply = RecordingStartedMsg()
             meta.post_message(reply, db_conn)
             recording = True
 
         elif "StopRecording" == current_msg_type:
             elapsed_time = stop_recording(device_manager, task_args[task].device_args)
             logger.info(f'Device stop took {elapsed_time:.2f}')
-            reply = RecordingStoppedMsg(request_uuid=message.uuid)
+            reply = RecordingStoppedMsg()
             meta.post_message(reply, db_conn)
             recording = False
 

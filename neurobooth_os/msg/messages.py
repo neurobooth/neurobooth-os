@@ -61,19 +61,8 @@ class Message(BaseModel):
 
 class Request(Message):
     """
-    A Message that is not issued in reply to any other message. Used to either start a conversation or for messages that
-    require no reply. See also Reply
+    A standard message.
     """
-    def __init__(self, **data):
-        body: MsgBody = data['body']
-        data['msg_type'] = body.msg_type
-        data['priority'] = body.priority
-        super().__init__(**data)
-
-
-class Reply(Message):
-    request_uuid: UUID           # Unique id of message we are replying to
-
     def __init__(self, **data):
         body: MsgBody = data['body']
         data['msg_type'] = body.msg_type
@@ -133,7 +122,8 @@ class PerformTaskRequest(MsgBody):
     task_id: str
 
     def __init__(self, **data):
-        data['priority'] = MEDIUM_PRIORITY
+        if "priority" not in data:
+            data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
@@ -278,7 +268,7 @@ class RecordingStopped(MsgBody):
         super().__init__(**data)
 
 
-class RecordingStoppedMsg(Reply):
+class RecordingStoppedMsg(Request):
 
     def __init__(self, **data):
         data['source'] = 'ACQ'
@@ -287,7 +277,7 @@ class RecordingStoppedMsg(Reply):
         super().__init__(**data)
 
 
-class RecordingStartedMsg(Reply):
+class RecordingStartedMsg(Request):
 
     def __init__(self, **data):
         data['source'] = 'ACQ'

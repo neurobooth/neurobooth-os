@@ -11,7 +11,7 @@ from psychopy import prefs
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.msg.messages import Message, CreateTasksRequest, StatusMessage, \
     TaskInitialization, Request, TaskCompletion, StartRecordingMsg, StartRecording, SessionPrepared, \
-    PrepareRequest, TasksCreated, Reply, StopRecording, ServerStarted
+    PrepareRequest, TasksCreated, StopRecording, ServerStarted
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
@@ -239,7 +239,7 @@ def _create_tasks(logger, message, session, task_log_entry):
     # Show calibration instruction video only the first time
     calib_instructions = True
     reply_body = TasksCreated()
-    reply = Reply(source="STM", destination=message.source, body=reply_body, request_uuid=message.uuid)
+    reply = Request(source="STM", destination=message.source, body=reply_body)
     meta.post_message(reply, session.db_conn)
     return calib_instructions, device_log_entry_dict, subj_id, task_calib, tasks
 
