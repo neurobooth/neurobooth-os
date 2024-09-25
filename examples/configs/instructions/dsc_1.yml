@@ -1,5 +1,5 @@
 instruction_id: dsc_1
 instruction_text: null
 instruction_filetype: null
-instruction_file: cog_DSST_2022_04_20.mp4
+instruction_file: null
 arg_parser: iout.stim_param_reader.py::InstructionArgs()

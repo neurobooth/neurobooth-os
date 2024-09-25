@@ -1,5 +1,5 @@
 instruction_id: mot_1
 instruction_text: null
-instruction_filetype: mp4
-instruction_file: cog_MOT_2023_08_18_v0.2.mp4
+instruction_filetype: null
+instruction_file: null
 arg_parser: iout.stim_param_reader.py::InstructionArgs()
