@@ -226,22 +226,34 @@ def _create_tasks(logger, message, session, task_log_entry):
     task_list: List[TaskArgs] = []
     for task_id in tasks:
         if task_id in session.tasks():
-            task_args: TaskArgs = _get_task_args(session, task_id)
-            task_list.append(task_args)
-            tsk_fun_obj: Callable = copy.copy(
-                task_args.task_constructor_callable)  # callable for Task constructor
-            this_task_kwargs = create_task_kwargs(session, task_args)
-            task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
+            setup_task(session, task_id, task_list)
+
     device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
+    # make sure task_list contains calibration if there's an eyelink device
+    # TODO: This is very fragile, as it depends on the eyelink device name string
+    if "Eyelink_1" in device_log_entry_dict:
+        if "calibration_obs_1" not in tasks:
+            setup_task(session, "calibration_obs_1", task_list)
+
     session.logger.info(f'Task media took {time() - t0:.2f}')
     session.win = welcome_screen(win=session.win)
     task_calib = [t for t in tasks if "calibration_task" in t]
     # Show calibration instruction video only the first time
+    # TODO: Handle calibration_instruction (make sure only displayed once)
     calib_instructions = True
     reply_body = TasksCreated()
     reply = Request(source="STM", destination=message.source, body=reply_body)
     meta.post_message(reply, session.db_conn)
     return calib_instructions, device_log_entry_dict, subj_id, task_calib
+
+
+def setup_task(session, task_id, task_list):
+    task_args: TaskArgs = _get_task_args(session, task_id)
+    task_list.append(task_args)
+    tsk_fun_obj: Callable = copy.copy(
+        task_args.task_constructor_callable)  # callable for Task constructor
+    this_task_kwargs = create_task_kwargs(session, task_args)
+    task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
 
 
 def _wait_for_lsl_recording_to_start(db_conn, logger, session, t0):
