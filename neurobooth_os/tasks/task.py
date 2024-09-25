@@ -273,15 +273,15 @@ class Task:
                 waitKeys=False,
             )
 
-    def present_complete(self, last_task=False):
-        if last_task:
-            screen = self.end_tasks
-        else:
-            screen = self.end_screen
-        self.show_text(
-            screen=screen, msg="Completed-task", audio=None, wait_time=0, waitKeys=False
-        )
-        self.close()
+    # def present_complete(self, last_task=False):
+    #     if last_task:
+    #         screen = self.end_tasks
+    #     else:
+    #         screen = self.end_screen
+    #     self.show_text(
+    #         screen=screen, msg="Completed-task", audio=None, wait_time=0, waitKeys=False
+    #     )
+    #     self.close()
 
     # Close videos and win if just created for the task
     def close(self):
@@ -294,7 +294,7 @@ class Task:
     def run(self, prompt=True, duration=0, last_task=False, **kwargs):
         self.present_instructions(prompt)
         self.present_task(prompt, duration, **kwargs)
-        self.present_complete(last_task)
+        # self.present_complete(last_task)
         return self.events
 
     def check_if_aborted(self) -> None:

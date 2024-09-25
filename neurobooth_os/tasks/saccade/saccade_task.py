@@ -63,7 +63,7 @@ class Saccade(Eyelink_HostPC):
     def run(self, prompt=True, last_task=False, **kwarg):
         self.present_instructions(prompt)
         self.run_trials(prompt)
-        self.present_complete(last_task)
+        # self.present_complete(last_task)
         return self.events
 
     def run_trials(self, prompt=True):

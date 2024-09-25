@@ -43,7 +43,7 @@ class Pursuit(Eyelink_HostPC):
     def run(self, prompt=True, last_task=False, **kwarg):
         self.present_instructions(prompt)
         self.run_trial(prompt, self.mov_pars)
-        self.present_complete(last_task)
+        # self.present_complete(last_task)
         return self.events
 
     def run_trial(self, prompt, movement_pars):

@@ -122,12 +122,12 @@ def run_stm(logger):
 
             elif 'CreateTasksRequest' == current_msg_type:
                 # task_name can be list of tk1-task2-task3
-                calib_instructions, device_log_entry_dict, subj_id, task_calib, tasks = _create_tasks(logger, message,
+                calib_instructions, device_log_entry_dict, subj_id, task_calib = _create_tasks(logger, message,
                                                                                                       session,
                                                                                                       task_log_entry)
             elif "PerformTaskRequest" == current_msg_type:
                 _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id,
-                              task_log_entry, tasks)
+                              task_log_entry)
 
             elif "PauseSessionRequest" == current_msg_type:
                 paused = _pause(session)
@@ -147,8 +147,8 @@ def run_stm(logger):
     exit()
 
 
-def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id, task_log_entry,
-                  tasks):
+def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id:str,
+                  task_log_entry):
     msg_body = message.body
     task_id: str = msg_body.task_id
     session.logger.info(f'TASK: {task_id}')
@@ -192,14 +192,14 @@ def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, me
 
             _start_acq(calib_instructions, session, task_args, task_id, this_task_kwargs, tsk_start_time)
 
-            this_task_kwargs.update({"last_task": len(tasks) == 0})
+            # this_task_kwargs.update({"last_task": len(tasks) == 0})
             this_task_kwargs["task_name"] = task_id
             this_task_kwargs["subj_id"] += "_" + tsk_start_time
 
             elapsed_time = time() - t00
             session.logger.info(f"Total TASK WAIT start took: {elapsed_time:.2f}")
 
-            session.logger.debug(f"RUNNING TASK FUNCTION")
+            session.logger.debug(f"RUNNING TASK FUNCTION: {this_task_kwargs}")
             events = task.run(**this_task_kwargs)
             session.logger.debug(f"TASK FUNCTION RETURNED")
 
@@ -241,7 +241,7 @@ def _create_tasks(logger, message, session, task_log_entry):
     reply_body = TasksCreated()
     reply = Request(source="STM", destination=message.source, body=reply_body)
     meta.post_message(reply, session.db_conn)
-    return calib_instructions, device_log_entry_dict, subj_id, task_calib, tasks
+    return calib_instructions, device_log_entry_dict, subj_id, task_calib
 
 
 def _wait_for_lsl_recording_to_start(db_conn, logger, session, t0):
