@@ -250,7 +250,7 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
                 sg.Button("Terminate servers",
                           key="Shut Down",
                           tooltip="Terminate all servers. Presentation server will exit after current task (if any).",
-                          pad=pad),
+                          pad=((166, 20), (5, 5))),
             ],
             [_space()],
             [
@@ -259,7 +259,7 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
                 sg.Button("Pause", button_color=("white", "black"), key="Pause tasks",
                           tooltip="Pause session after current task completes", pad=pad),
                 sg.Button("Recalibrate", button_color=("white", "black"), key="Calibrate",
-                          tooltip="Recalibrate EyeTracker", pad=pad),
+                          tooltip="Recalibrate EyeTracker after current task", pad=pad),
                 sg.Button("Stop",button_color=("white", "black"), key="Stop tasks",
                           tooltip="End session after current task completes", pad=pad),
             ],
