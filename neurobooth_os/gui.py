@@ -177,7 +177,7 @@ def _calibrate(steps, conn):
         sg.PopupError("Tasks not started")
     else:
         resp = sg.Popup(
-            "Recalibration will start after the current task.",
+            "Eyetracker Recalibration will start after the current task.",
         )
         msg_body = PerformTaskRequest(task_id="calibration_obs_1")
         msg = Request(source="CTR", destination="STM", body=msg_body, priority=MEDIUM_HIGH_PRIORITY)
