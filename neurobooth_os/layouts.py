@@ -192,7 +192,7 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
         + f' {sess_info["last_name"]}'
     )
     row_1_pad = ((20, 20),(5, 5))
-    row_2_pad = ((20, 20),(0, 5))
+    row_2_pad = ((20, 20),(0, 0))
     layout_col1 = (
         [
             [
@@ -256,7 +256,7 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
             [_space()],
             [
                 sg.ReadFormButton("Start", button_color=("white", "black"), tooltip="Begin session",
-                                  pad=((50, 20), (0, 5))),
+                                  pad=((50, 20), (0, 0))),
                 sg.Button("Pause", button_color=("white", "black"), key="Pause tasks",
                           tooltip="Pause session after current task completes", pad=row_2_pad),
                 sg.Button("Recalibrate", button_color=("white", "black"), key="Calibrate",
