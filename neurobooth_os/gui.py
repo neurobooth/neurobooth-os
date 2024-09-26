@@ -596,7 +596,7 @@ def gui(logger):
             else:
                 response = sg.popup_ok_cancel("System will terminate!  \n\n"
                                               "Please ensure that any task in progress is completed and that STM and "
-                                              "ACQ shut down properly,", title="Warning", button_color=("white", "red"))
+                                              "ACQ shut down properly.\n", title="Warning", button_color=("white", "red"))
                 if response == "OK":
                     if sess_info and values:
                         _save_session_notes(sess_info, values, window)
