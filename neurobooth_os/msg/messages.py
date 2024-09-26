@@ -130,6 +130,9 @@ class TasksCreated(MsgBody):
 
 
 class ServerStarted(MsgBody):
+    """
+    Message sent from backend servers (e.g. ACQ, STM) to the controller to tell it they have started successfully
+    """
     elem_key: str = "-init_servs-"
 
     def __init__(self, **data):
@@ -137,8 +140,10 @@ class ServerStarted(MsgBody):
         super().__init__(**data)
 
 
-
 class PerformTaskRequest(MsgBody):
+    """
+    Message sent from controller to STM to tell it to run the task named in its task_id attribute
+    """
     task_id: str
 
     def __init__(self, **data):
@@ -148,13 +153,20 @@ class PerformTaskRequest(MsgBody):
 
 
 class TasksFinished(MsgBody):
+    """
+    Message sent from controller to STM to tell it that all tasks have been performed and it should display the
+    "Thank you for participating" message
+    """
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
 class PauseSessionRequest(MsgBody):
-
+    """
+    Message from controller to STM telling it to pause. It is received by the backend after the currently executing task
+     and before any remaining tasks due to its higher priority
+    """
     def __init__(self, **data):
         data['priority'] = MEDIUM_HIGH_PRIORITY
         super().__init__(**data)
@@ -171,13 +183,20 @@ class CancelSessionRequest(MsgBody):
 
 
 class ResumeSessionRequest(MsgBody):
-
+    f"""
+    Message from controller to STM telling it to resume processing tasks. This message is only valid after a 
+    {PauseSessionRequest} message.
+    """
     def __init__(self, **data):
         data['priority'] = MEDIUM_HIGH_PRIORITY
         super().__init__(**data)
 
 
 class StopSessionRequest(MsgBody):
+    f"""
+    Message from controller to STM telling it to stop processing tasks after the current task ends. 
+    This message is issued after a {PauseSessionRequest} message or when the Stop button is pushed.
+    """
 
     def __init__(self, **data):
         data['priority'] = HIGHEST_PRIORITY
@@ -185,6 +204,10 @@ class StopSessionRequest(MsgBody):
 
 
 class TerminateServerRequest(MsgBody):
+    f"""
+    Message from controller to STM and ACQ telling them to shut down. This message is issued 
+    when the Terminate Server button is pushed or if the GUI window is closed.
+    """
 
     def __init__(self, **data):
         data['priority'] = HIGHEST_PRIORITY
@@ -192,7 +215,9 @@ class TerminateServerRequest(MsgBody):
 
 
 class CalibrationRequest(MsgBody):
-
+    """
+    Message sent from controller to STM to indicate that Eyetracker should be calibrated after the current task
+    """
     def __init__(self, **data):
         data['priority'] = MEDIUM_HIGH_PRIORITY
         super().__init__(**data)
@@ -210,18 +235,9 @@ class DeviceInitialization(MsgBody):
         super().__init__(**data)
 
 
-class LslRecording(MsgBody):
-    """
-    Msg sent from CTR to STM when LSL recording has started
-    """
-    def __init__(self, **data):
-        data['priority'] = HIGH_PRIORITY
-        super().__init__(**data)
-
-
 class TaskInitialization(MsgBody):
     """
-    Msg sent from STM to CTR to tell CTR to start LSL
+    Message sent from STM to CTR to tell CTR to start LSL
     """
     task_id: str
     log_task_id: str
@@ -232,9 +248,18 @@ class TaskInitialization(MsgBody):
         super().__init__(**data)
 
 
+class LslRecording(MsgBody):
+    f"""
+    Message sent from CTR to STM in response to a {TaskInitialization} message confirming that LSL recording has started
+    """
+    def __init__(self, **data):
+        data['priority'] = HIGH_PRIORITY
+        super().__init__(**data)
+
+
 class TaskCompletion(MsgBody):
     """
-    Msg sent from STM to CTR to tell CTR to stop LSL
+    Message sent from STM to CTR to tell CTR to stop LSL
     """
     task_id: str
 
@@ -244,6 +269,9 @@ class TaskCompletion(MsgBody):
 
 
 class StatusMessage(MsgBody):
+    """
+    Message sent from backend servers to the controller with status information. The text is printed on the GUI
+    """
     text: str
 
     def __init__(self, **data):
@@ -252,6 +280,9 @@ class StatusMessage(MsgBody):
 
 
 class StartRecording(MsgBody):
+    """
+    Message sent from STM to ACQ telling it to start recording
+    """
     fname: str
     task_id: str
     session_name: str
@@ -262,7 +293,7 @@ class StartRecording(MsgBody):
 
 class StartRecordingMsg(Request):
     """
-    Request from STM to ACQ to start recording task data
+    Convenience Request subclass. Sets the source and destination to be STM and ACQ to start recording task data
     """
     def __init__(self, **data):
         data['source'] = 'STM'
@@ -271,25 +302,36 @@ class StartRecordingMsg(Request):
 
 
 class StopRecording(MsgBody):
+    """
+    Message sent from STM to ACQ telling it to stop recording LSL as the task being recorded has completed.
+    """
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
 class RecordingStarted(MsgBody):
+    f"""
+    Confirmation message sent from ACQ to STM in response to a {StartRecording} message
+    """
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
 
 
 class RecordingStopped(MsgBody):
+    f"""
+        Confirmation message sent from ACQ to STM in response to a {StopRecording} message
+    """
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
 
 
 class RecordingStoppedMsg(Request):
-
+    f"""
+    Specialized {Request} subclass wrapping a RecordingStopped {MsgBody}
+    """
     def __init__(self, **data):
         data['source'] = 'ACQ'
         data['destination'] = 'STM'
@@ -298,7 +340,9 @@ class RecordingStoppedMsg(Request):
 
 
 class RecordingStartedMsg(Request):
-
+    f"""
+    Specialized {Request} subclass wrapping a RecordingStarted {MsgBody}
+    """
     def __init__(self, **data):
         data['source'] = 'ACQ'
         data['destination'] = 'STM'
@@ -307,6 +351,9 @@ class RecordingStartedMsg(Request):
 
 
 class ResetMbients(MsgBody):
+    f"""
+    Message sent from the mbient_reset module to ACQ requesting that the mbients be reset
+    """
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
@@ -314,6 +361,9 @@ class ResetMbients(MsgBody):
 
 
 class MbientResetResults(MsgBody):
+    f"""
+    Message sent from ACQ to STM in reply to a {ResetMbients} request containing the results from the reset
+    """
     results: Dict[str, bool]
 
     def __init__(self, **data):
@@ -322,12 +372,18 @@ class MbientResetResults(MsgBody):
 
 
 class FramePreviewRequest(MsgBody):
+    """
+    Message from controller to ACQ asking for an iPhone frame preview image
+    """
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
 
 
 class FramePreviewReply(MsgBody):
+    f"""
+    Message from ACQ to controller/gui in response to {FramePreviewRequest} containing an iPhone frame preview image
+    """
     image: Optional[str]=None
     image_available: bool
 
@@ -340,6 +396,9 @@ class FramePreviewReply(MsgBody):
 
 
 class MbientDisconnected(MsgBody):
+    """
+    Message sent from mbient device module to GUI indicating that an Mbient was disconnected
+    """
     warning: str
 
     def __init__(self, **data):
@@ -348,6 +407,9 @@ class MbientDisconnected(MsgBody):
 
 
 class NoEyetracker(MsgBody):
+    """
+    Message sent from Eyelink device module (eyelink_tracker.py) to indicate that the Eyetracker isn't running
+    """
     warning: str
 
     def __init__(self, **data):
@@ -356,6 +418,9 @@ class NoEyetracker(MsgBody):
 
 
 class NewVideoFile(MsgBody):
+    """
+    Message sent by devices, or by the controller (for Marker streams) to indicate that a new VideoFile was created
+    """
     event: str
     stream_name: str
     filename: str

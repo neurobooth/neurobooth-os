@@ -16,7 +16,7 @@ from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings, Mo
 from neurobooth_os.iout.metadator import post_message, get_database_connection
 from neurobooth_os.iout.stim_param_reader import MbientDeviceArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
-from neurobooth_os.msg.messages import StatusMessage, Request, DeviceInitialization
+from neurobooth_os.msg.messages import StatusMessage, Request, DeviceInitialization, MbientDisconnected
 
 # --------------------------------------------------------------------------------
 # Module-level constants and debugging flags
@@ -554,7 +554,9 @@ class Mbient:
         if notify:
             txt = f"-WARNING mbient- {self.dev_name} disconnected prematurely"
             with get_database_connection() as conn:
-                self.send_status_msg(txt, conn)
+                body = MbientDisconnected(warning=txt)
+                msg = Request(source="Mbient", destination="CTR", body=body)
+                post_message(msg, conn)
             self.logger.warning(self.format_message(f'Disconnected Prematurely (status={status})'))
 
         self.device_wrapper.on_disconnect = lambda status_: self.logger.info(self.format_message(
