@@ -161,7 +161,7 @@ class DSC(Task_Eyetracker):
             )
 
         self.io.quit()
-        # self.present_complete()
+        self.present_complete()
         return self.events
 
     def wait_release(self, keys=None):

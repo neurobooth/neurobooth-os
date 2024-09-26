@@ -184,7 +184,7 @@ class MOT(Task_Eyetracker):
                 waitKeys=False,
             )
 
-        # self.present_complete(last_task)
+        self.present_complete()
         return self.events
 
     def run_chunk(self, chunk: List[MOTFrame]) -> None:

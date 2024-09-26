@@ -41,7 +41,7 @@ class Calibrate(Task_Eyetracker):
         # Download file
         self.eye_tracker.tk.receiveDataFile(self.fname_temp, self.fname)
 
-        # self.present_complete()
+        self.present_complete()
 
 
 if __name__ == "__main__":
