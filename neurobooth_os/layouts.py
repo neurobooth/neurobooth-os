@@ -191,7 +191,8 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
         f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}'
         + f' {sess_info["last_name"]}'
     )
-    pad = ((20, 20),(5, 5))
+    row_1_pad = ((20, 20),(5, 5))
+    row_2_pad = ((20, 20),(0, 5))
     layout_col1 = (
         [
             [
@@ -246,7 +247,7 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
                 sg.Button("Initiate servers", button_color=("white", "black"), key="-init_servs-",
                           pad=((50, 20), (5, 5))),
                 sg.Button("Connect devices", button_color=("white", "black"), key="-Connect-",
-                          pad=pad),
+                          pad=row_1_pad),
                 sg.Button("Terminate servers",
                           key="Shut Down",
                           tooltip="Terminate all servers. Presentation server will exit after current task (if any).",
@@ -255,13 +256,13 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
             [_space()],
             [
                 sg.ReadFormButton("Start", button_color=("white", "black"), tooltip="Begin session",
-                                  pad=((50, 20), (5, 5))),
+                                  pad=((50, 20), (0, 5))),
                 sg.Button("Pause", button_color=("white", "black"), key="Pause tasks",
-                          tooltip="Pause session after current task completes", pad=pad),
+                          tooltip="Pause session after current task completes", pad=row_2_pad),
                 sg.Button("Recalibrate", button_color=("white", "black"), key="Calibrate",
-                          tooltip="Recalibrate EyeTracker after current task", pad=pad),
+                          tooltip="Recalibrate EyeTracker after current task", pad=row_2_pad),
                 sg.Button("Stop",button_color=("white", "black"), key="Stop tasks",
-                          tooltip="End session after current task completes", pad=pad),
+                          tooltip="End session after current task completes", pad=row_2_pad),
             ],
             [_space()],
         ]
