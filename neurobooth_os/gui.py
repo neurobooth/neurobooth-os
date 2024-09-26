@@ -159,7 +159,6 @@ def _pause_tasks(steps, presentation_node, conn):
 
 
 def _stop_tasks(steps, conn):
-
     if "task_started" not in steps:
         sg.PopupError("Tasks not started")
     else:
@@ -172,7 +171,6 @@ def _stop_tasks(steps, conn):
 
 
 def _calibrate(steps, conn):
-
     if "task_started" not in steps:
         sg.PopupError("Tasks not started")
     else:
@@ -596,18 +594,23 @@ def gui(logger):
                 )
                 continue
             else:
-                if sess_info and values:
-                    _save_session_notes(sess_info, values, window)
-                plttr.stop()
-                shutdown_acq_msg: Message = Request(source="CTR",
-                                                    destination="STM",
-                                                    body=TerminateServerRequest())
-                shutdown_stm_msg: Message = Request(source="CTR",
-                                                    destination="ACQ",
-                                                    body=TerminateServerRequest())
-                meta.post_message(shutdown_acq_msg, conn)
-                meta.post_message(shutdown_stm_msg, conn)
-                break
+                response = sg.popup_ok_cancel("System will terminate!  \n\n"
+                                              "Please ensure that any task in progress is completed and that STM and "
+                                              "ACQ shut down properly,", title="Warning", button_color=("white", "red"))
+                if response == "OK":
+                    if sess_info and values:
+                        _save_session_notes(sess_info, values, window)
+                    plttr.stop()
+
+                    shutdown_acq_msg: Message = Request(source="CTR",
+                                                        destination="STM",
+                                                        body=TerminateServerRequest())
+                    shutdown_stm_msg: Message = Request(source="CTR",
+                                                        destination="ACQ",
+                                                        body=TerminateServerRequest())
+                    meta.post_message(shutdown_acq_msg, conn)
+                    meta.post_message(shutdown_stm_msg, conn)
+                    break
 
         ##################################################################################
         # Thread events from process_received_data -> received messages from other servers
