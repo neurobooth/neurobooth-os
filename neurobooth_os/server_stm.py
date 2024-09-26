@@ -25,7 +25,6 @@ from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_s
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.log_manager import make_db_logger
 
-
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
 
@@ -47,7 +46,6 @@ def main():
 
 
 def run_stm(logger):
-
     def _finish_tasks(session):
         session.logger.debug('FINISH SCREEN')
         finish_screen(session.win)
@@ -58,10 +56,10 @@ def run_stm(logger):
     task_log_entry: Optional[TaskLogEntry] = None
     db_conn = meta.get_database_connection(database=config.neurobooth_config.database.dbname)
 
-    paused: bool = False        # True if message received that RC requests a session pause
-    session_canceled = False    # True if message received that RC requests that the session be canceled
-    finished = False            # True if the "Thank you" screen has been displayed
-    shutdown: bool = False      # True if message received that this server should be terminated
+    paused: bool = False  # True if message received that RC requests a session pause
+    session_canceled = False  # True if message received that RC requests that the session be canceled
+    finished = False  # True if the "Thank you" screen has been displayed
+    shutdown: bool = False  # True if message received that this server should be terminated
     init_servers = Request(source="STM", destination="CTR", body=ServerStarted())
     meta.post_message(init_servers, db_conn)
 
@@ -122,9 +120,8 @@ def run_stm(logger):
 
             elif 'CreateTasksRequest' == current_msg_type:
                 # task_name can be list of tk1-task2-task3
-                calib_instructions, device_log_entry_dict, subj_id, task_calib = _create_tasks(logger, message,
-                                                                                                      session,
-                                                                                                      task_log_entry)
+                calib_instructions, device_log_entry_dict, subj_id, task_calib = _create_tasks(message, session,
+                                                                                               task_log_entry)
             elif "PerformTaskRequest" == current_msg_type:
                 _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id,
                               task_log_entry)
@@ -134,7 +131,6 @@ def run_stm(logger):
 
             elif "TasksFinished" == current_msg_type:
                 session_canceled = True
-                # TODO: Should there be an acknowledgement back to CTR
 
             else:
                 unex_msg = f'Unexpected message received: {message.model_dump_json()}'
@@ -147,7 +143,7 @@ def run_stm(logger):
     exit()
 
 
-def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id:str,
+def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id: str,
                   task_log_entry):
     msg_body = message.body
     task_id: str = msg_body.task_id
@@ -214,7 +210,7 @@ def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, me
             session.logger.info(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
 
 
-def _create_tasks(logger, message, session, task_log_entry):
+def _create_tasks(message, session, task_log_entry):
     msg_body: CreateTasksRequest = message.body
     session.logger.debug(f"Creating Tasks {msg_body.tasks}")
     tasks = msg_body.tasks
@@ -229,7 +225,7 @@ def _create_tasks(logger, message, session, task_log_entry):
             setup_task(session, task_id, task_list)
 
     device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
-    # make sure task_list contains calibration if there's an eyelink device
+    # ensure task_list contains calibration if there's an eyelink device, in case user presses calibrate button
     # TODO: This is very fragile, as it depends on the eyelink device name string
     if "Eyelink_1" in device_log_entry_dict:
         if "calibration_obs_1" not in tasks:
@@ -237,13 +233,16 @@ def _create_tasks(logger, message, session, task_log_entry):
 
     session.logger.info(f'Task media took {time() - t0:.2f}')
     session.win = welcome_screen(win=session.win)
-    task_calib = [t for t in tasks if "calibration_task" in t]
+    task_calib = [t for t in task_list if "calibration" in t.task_id]
     # Show calibration instruction video only the first time
     # TODO: Handle calibration_instruction (make sure only displayed once)
     calib_instructions = True
     reply_body = TasksCreated()
     reply = Request(source="STM", destination=message.source, body=reply_body)
     meta.post_message(reply, session.db_conn)
+    session.logger.debug(task_list)
+    session.logger.debug(task_calib)
+    session.logger.debug(f"calib_instruction: {calib_instructions}")
     return calib_instructions, device_log_entry_dict, subj_id, task_calib
 
 
@@ -285,8 +284,6 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
     body = StopRecording()
     sr_msg = Request(source="STM", destination='ACQ', body=body)
     meta.post_message(sr_msg, session.db_conn)
-
-    # acq_result = executor.submit(socket_message, "record_stop", "acquisition", wait_data=15)
 
     # Stop eyetracker
     device_ids = [x.device_id for x in task_args.device_args]

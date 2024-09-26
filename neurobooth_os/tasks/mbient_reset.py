@@ -39,8 +39,10 @@ def send_reset_msg() -> Dict[str, bool]:
                 results = reply.body.results
                 break
             elif attempts >= max_attempts:
+                txt = f"No results from mbient reset after {attempts} attempts at {datetime.now().time()}."
+                print(txt)
+                meta.post_message(Request(body=StatusMessage(text=txt), source="mbient_reset", destination="CTR"), conn)
                 break
-            print(f"No results from mbient reset after {attempts} attempts at {datetime.now().time()}.")
             time.sleep(1)
             attempts = attempts + 1
     print(results)

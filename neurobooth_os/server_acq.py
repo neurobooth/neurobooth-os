@@ -108,6 +108,7 @@ def run_acq(logger):
         elif "ResetMbients" == current_msg_type:
 
             reset_results = device_manager.mbient_reset()
+
             reply_body = MbientResetResults(results=reset_results)
             reply = Request(
                 source="ACQ",
