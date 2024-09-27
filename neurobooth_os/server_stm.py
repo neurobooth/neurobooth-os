@@ -132,6 +132,9 @@ def run_stm(logger):
             elif "TasksFinished" == current_msg_type:
                 session_canceled = True
 
+            elif "CancelSessionRequest" == current_msg_type:
+                session_canceled = True
+
             else:
                 unex_msg = f'Unexpected message received: {message.model_dump_json()}'
                 logger.error(unex_msg)

@@ -132,8 +132,7 @@ def _start_task_presentation(window, tasks: List[str], subject_id: str, session_
         sg.PopupError("No task selected")
 
 
-def _pause_tasks(steps, presentation_node, conn):
-    cont_or_stop_msg = "Continue or Stop tasks"
+def _pause_tasks(steps, conn):
     continue_msg = "Continue tasks"
     stop_msg = "Stop tasks"
 
@@ -162,12 +161,13 @@ def _stop_tasks(steps, conn):
     if "task_started" not in steps:
         sg.PopupError("Tasks not started")
     else:
-        sg.Popup(
-            "The session will end after the current task.", title="Ending session"
-        )
-        body = CancelSessionRequest()
-        request = Request(source="CTR", destination="STM", body=body)
-        meta.post_message(request, conn)
+        response = sg.popup_ok_cancel("Session will end after the current task completes!  \n\n"
+                                      "Press OK to end the session; Cancel to continue the session.\n",
+                                      title="Warning")
+        if response == "OK":
+            body = CancelSessionRequest()
+            request = Request(source="CTR", destination="STM", body=body)
+            meta.post_message(request, conn)
 
 
 def _calibrate(steps, conn):
@@ -567,7 +567,7 @@ def gui(logger):
             meta.post_message(msg, conn)
 
         elif event == "Pause tasks":
-            _pause_tasks(steps, presentation_node=nodes[1], conn=conn)
+            _pause_tasks(steps, conn=conn)
 
         elif event == "Stop tasks":
             _stop_tasks(steps, conn=conn)
