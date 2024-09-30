@@ -191,7 +191,6 @@ def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, me
 
             _start_acq(calib_instructions, session, task_args, task_id, this_task_kwargs, tsk_start_time)
 
-            # this_task_kwargs.update({"last_task": len(tasks) == 0})
             this_task_kwargs["task_name"] = task_id
             this_task_kwargs["subj_id"] += "_" + tsk_start_time
 

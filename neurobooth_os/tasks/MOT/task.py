@@ -145,7 +145,7 @@ class MOT(Task_Eyetracker):
         self.practice_chunks = [self._create_chunk(chunk) for chunk in practice_chunks]
         self.test_chunks = [self._create_chunk(chunk) for chunk in test_chunks]
 
-    def run(self, prompt=True, last_task=False, subj_id=None, **kwargs):
+    def run(self, prompt=True, subj_id=None, **kwargs):
         if subj_id is not None:  # The provided argument contains the full session timestamp...
             self.subject_id = subj_id
 

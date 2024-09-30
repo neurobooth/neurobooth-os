@@ -288,7 +288,7 @@ class Task:
         if self.win_temp:
             self.win.close()
 
-    def run(self, prompt=True, duration=0, last_task=False, **kwargs):
+    def run(self, prompt=True, duration=0, **kwargs):
         self.present_instructions(prompt)
         self.present_task(prompt, duration, **kwargs)
         self.present_complete()
