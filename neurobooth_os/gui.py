@@ -149,25 +149,29 @@ def _pause_tasks(steps, conn):
         # handle user closing either popup using 'x' instead of making a choice
         if resp == continue_msg or resp is None:
             body = ResumeSessionRequest()
+            request = Request(source="CTR", destination="STM", body=body)
+            meta.post_message(request, conn)
         elif resp == stop_msg:
-            body = CancelSessionRequest()
+            _stop_task_dialog(conn)
         else:
             raise RuntimeError("Unknown Response from Pause Session dialog")
-        request = Request(source="CTR", destination="STM", body=body)
-        meta.post_message(request, conn)
 
 
 def _stop_tasks(steps, conn):
     if "task_started" not in steps:
         sg.PopupError("Tasks not started")
     else:
-        response = sg.popup_ok_cancel("Session will end after the current task completes!  \n\n"
-                                      "Press OK to end the session; Cancel to continue the session.\n",
-                                      title="Warning")
-        if response == "OK":
-            body = CancelSessionRequest()
-            request = Request(source="CTR", destination="STM", body=body)
-            meta.post_message(request, conn)
+        _stop_task_dialog(conn)
+
+
+def _stop_task_dialog(conn):
+    response = sg.popup_ok_cancel("Session will end after the current task completes!  \n\n"
+                                  "Press OK to end the session; Cancel to continue the session.\n",
+                                  title="Warning")
+    if response == "OK":
+        body = CancelSessionRequest()
+        request = Request(source="CTR", destination="STM", body=body)
+        meta.post_message(request, conn)
 
 
 def _calibrate(steps, conn):
@@ -596,7 +600,7 @@ def gui(logger):
             else:
                 response = sg.popup_ok_cancel("System will terminate!  \n\n"
                                               "Please ensure that any task in progress is completed and that STM and "
-                                              "ACQ shut down properly.\n", title="Warning", button_color=("white", "red"))
+                                              "ACQ shut down properly.\n", title="Warning")
                 if response == "OK":
                     if sess_info and values:
                         _save_session_notes(sess_info, values, window)
