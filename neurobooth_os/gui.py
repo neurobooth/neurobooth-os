@@ -143,7 +143,7 @@ def _pause_tasks(steps, conn):
         req = Request(source="CTR", destination="STM", body=msg_body)
         meta.post_message(req, conn)
         resp = sg.Popup(
-            "The session will pause after the current task.", title="Pausing session",
+            "The session will pause after the current task.\n", title="Pausing session",
             custom_text=(continue_msg, stop_msg),
         )
         # handle user closing either popup using 'x' instead of making a choice
