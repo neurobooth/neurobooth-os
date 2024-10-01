@@ -216,8 +216,6 @@ def _record_lsl(
     rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
     session.start_recording(rec_fname)
 
-    # TODO: Replace with new message?
-    # socket_message("lsl_recording", presentation_node)
     msg_body = LslRecording()
     msg_req = Request(source="CTR", destination='STM', body=msg_body)
     meta.post_message(msg_req, conn=conn)
