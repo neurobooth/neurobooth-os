@@ -1,7 +1,6 @@
 from datetime import datetime
 import time
 import os
-import json
 from typing import Optional, Dict, List
 from enum import IntEnum, auto
 from concurrent.futures import ThreadPoolExecutor, wait
@@ -77,7 +76,7 @@ class MbientResetPause(Task):
     def __init__(
             self,
             mbients: Optional[Dict[str, Mbient]] = None,
-            continue_key: str = 'return',
+            continue_key: str = 'enter',
             repeat_key: str = 'r',
             skip_key: str = 'q',
             end_screen: Optional[str] = None,
