@@ -120,6 +120,12 @@ class MbientResetPause(Task):
                 units="deg",
             )
 
+    def continue_key_for_comparison(self):
+        """ We want the UI to say 'ENTER', but the system calls the enter key 'return'"""
+        if self.continue_key == 'enter':
+            return 'return'
+        return self.continue_key
+
     def run(self, **kwarg):
         self.task_state: TaskState = TaskState.RESET_NO_SUCCESS
         self.update_message()  # Present Intro Screen
@@ -137,10 +143,10 @@ class MbientResetPause(Task):
         text = f'Mbient Reset: {self.continue_key.upper()} to trigger reset, {self.skip_key.upper()} to skip.'
         self.send_status_msg(text)
 
-        keys = get_keys([self.continue_key, self.skip_key])
+        keys = get_keys([self.continue_key_for_comparison(), self.skip_key])
         if self.skip_key in keys:
             return TaskState.END_SCREEN
-        elif self.continue_key in keys:
+        elif self.continue_key_for_comparison() in keys:
             return self.reset_mbient_wrapper()
         else:
             self.logger.error(f'Unreachable case! keys={keys}')
@@ -159,8 +165,8 @@ class MbientResetPause(Task):
                 f' {self.repeat_key.upper()} to repeat reset.')
         self.send_status_msg(text)
 
-        keys = get_keys([self.continue_key, self.skip_key, self.repeat_key])
-        if (self.continue_key in keys) or (self.skip_key in keys):  # Also accept skip key for convenience
+        keys = get_keys([self.continue_key_for_comparison(), self.skip_key, self.repeat_key])
+        if (self.continue_key_for_comparison() in keys) or (self.skip_key in keys):  # Also accept skip key for convenience
             return TaskState.END_SCREEN
         elif self.repeat_key in keys:
             return self.reset_mbient_wrapper()
@@ -183,7 +189,7 @@ class MbientResetPause(Task):
         self.end_screen.draw()
         self.win.flip()
         self.send_status_msg(f'Pause: Press {self.continue_key.upper()} to continue.')  # Send message to GUI terminal
-        get_keys([self.continue_key])  # Wait until continue key is pressed
+        get_keys([self.continue_key_for_comparison()])  # Wait until continue key is pressed
 
     def update_message(self, contents: List[str] = ()):
         """Update the message on the STM screen.
