@@ -8,5 +8,5 @@ arg_parser: iout.stim_param_reader.py::CoordPauseStimArgs()
 stimulus_file_type: psychopy
 stimulus_file: tasks.mbient_reset.py::MbientResetPause()
 end_screen: please_wait_slide.jpg
-continue_key: return
+continue_key: enter
 reset_key: r
