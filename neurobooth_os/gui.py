@@ -35,6 +35,8 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
                                         CancelSessionRequest, ServerStarted, MEDIUM_HIGH_PRIORITY)
 
+devices_connected: bool = False
+
 
 def setup_log(sg_handler=None):
     logger = make_db_logger("", "")
@@ -196,7 +198,6 @@ def _start_lsl_session(window, inlets, folder=""):
     session = liesl.Session(
         prefix=folder, streamargs=streamargs, mainfolder=cfg.neurobooth_config.control.local_data_dir
     )
-    print("LSL session with: ", list(inlets))
     return session
 
 
@@ -239,10 +240,8 @@ def _stop_lsl_and_save(
         window, session, conn, rec_fname, task_id, obs_log_id, t_obs_id, folder
 ):
     """Stop LSL stream and save"""
-    t0 = time.time()
     # Stop LSL recording
     session.stop_recording()
-    print(f"CTR Stop session took: {time.time() - t0}")
     window["task_running"].update(task_id, background_color="green")
     window["Start"].Update(button_color=("black", "green"))
 
@@ -400,6 +399,7 @@ def _request_frame_preview(window, conn):
 
 
 def _update_button_status(window, statecolors, button_name, inlets, folder_session):
+    global devices_connected
     if button_name in list(statecolors):
         # 2 colors for init_servers and Connect, 1 connected, 2 connected
         if len(statecolors[button_name]):
@@ -407,6 +407,7 @@ def _update_button_status(window, statecolors, button_name, inlets, folder_sessi
             session = None
             # Signal start LSL session if both servers devices are ready:
             if button_name == "-Connect-" and color == "green":
+                devices_connected = True
                 session = _start_lsl_session(window, inlets, folder_session)
                 window["-frame_preview-"].update(visible=True)
             window[button_name].Update(button_color=("black", color))
@@ -420,10 +421,6 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
     print("Connecting devices")
 
     vidf_mrkr = marker_stream("videofiles")
-    # Create event to capture outlet_id
-    # window.write_event_value(
-    #     "-OUTLETID-", f"['{vidf_mrkr.name}', '{vidf_mrkr.oulet_id}']"
-    # )
 
     nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:
@@ -448,8 +445,6 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
 
 def _get_nodes():
     return ("acquisition", "presentation")
-    # host_ctr, port_ctr = node_info("control")
-    # return nodes, host_ctr, port_ctr
 
 
 def gui(logger):
@@ -543,7 +538,6 @@ def gui(logger):
 
         # Turn on devices
         elif event == "-Connect-":
-            # window['-Connect-'].update(disabled=True)
             vidf_mrkr, event, values = _prepare_devices(
                 window, nodes, collection_id, log_task, database, tasks
             )
@@ -552,11 +546,12 @@ def gui(logger):
             _plot_realtime(window, plttr, inlets)
 
         elif event == "Start":
-            session_id = meta._make_session_id(conn, log_sess)
-            tasks = [k for k, v in values.items() if "obs" in k and v is True]
-            _start_task_presentation(
-                window, tasks, sess_info["subject_id"], session_id, steps
-            )
+            if devices_connected:
+                session_id = meta._make_session_id(conn, log_sess)
+                tasks = [k for k, v in values.items() if "obs" in k and v is True]
+                _start_task_presentation(window, tasks, sess_info["subject_id"], session_id, steps)
+            else:
+                sg.PopupError("Devices not connected. Please connect devices before starting session.")
 
         elif event == "tasks_created":
             for task_id in tasks:
