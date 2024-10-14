@@ -35,6 +35,8 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
                                         CancelSessionRequest, ServerStarted, MEDIUM_HIGH_PRIORITY)
 
+#  state variables used to help ensure in-order GUI steps
+servers_initialized: bool = False
 devices_connected: bool = False
 
 
@@ -267,13 +269,14 @@ def _stop_lsl_and_save(
 
 
 def _start_servers(window, nodes):
+    global servers_initialized
     print("GUI starting servers")
     window["-init_servs-"].Update(button_color=("black", "red"))
     event, values = window.read(0.1)
     ctr_rec.start_servers(nodes=nodes)
     time.sleep(1)
     print("GUI servers started")
-
+    servers_initialized = True
     return event, values
 
 
@@ -538,9 +541,12 @@ def gui(logger):
 
         # Turn on devices
         elif event == "-Connect-":
-            vidf_mrkr, event, values = _prepare_devices(
-                window, nodes, collection_id, log_task, database, tasks
-            )
+            if servers_initialized:
+                vidf_mrkr, event, values = _prepare_devices(
+                    window, nodes, collection_id, log_task, database, tasks
+                )
+            else:
+                sg.PopupError("Servers not started. Please initiate servers before connecting.")
 
         elif event == "plot":
             _plot_realtime(window, plttr, inlets)
