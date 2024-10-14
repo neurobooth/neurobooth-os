@@ -66,7 +66,7 @@ def run_stm(logger):
     while not shutdown:
 
         while paused:
-            message: Message = meta.read_next_message_while_paused("STM", conn=db_conn)
+            message: Message = meta.read_next_message("STM", msg_type='paused_msg_types', conn=db_conn)
             if message is None:
                 sleep(1)
                 continue

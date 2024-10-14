@@ -86,8 +86,6 @@ class VidRec_Intel:
         self.name = name
         self.video_filename = "{}_intel{}.bag".format(name, self.device_index)
         self.config.enable_record_to_file(self.video_filename)
-        # print(f"-new_filename-:{self.streamName}:{op.split(self.video_filename)[-1]}")
-        # TODO: This was commented out, but do we need a NewVideoFile message here
 
     def createOutlet(self):
         self.streamName = f"IntelFrameIndex_cam{self.device_index}"

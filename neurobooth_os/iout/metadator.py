@@ -146,7 +146,8 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
     destination: str    The identifier for the process that is the intended receiver of the message
     conn: connection    A database connection
     msg_type: str       The type of message (a string representation of the message's body class, 
-                        e.g. 'FramePreviewRequest'). Defaults to None
+                        e.g. 'FramePreviewRequest') or another string indicating the type of messages to read. 
+                        Defaults to None
 
 
     Returns a Message or None. Clients should check for None before trying to use the results. 
@@ -154,9 +155,11 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
 
     """
     if msg_type is None:
-        # TODO: Make sure no other non-standard messages should be excluded
         msg_type_stmt = \
             " and msg_type NOT IN ('LslRecording', 'RecordingStarted', 'RecordingStopped', 'MbientResetResults') "
+    elif msg_type == 'paused_msg_types':
+        msg_type_stmt = (" and msg_type IN ('ResumeSessionRequest', 'CancelSessionRequest', 'CalibrationRequest', "
+                         "'TerminateServerRequest', 'MbientResetResults') ")
     else:
         msg_type_stmt = f" and msg_type = '{msg_type}' "
 
@@ -179,69 +182,7 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
         where message_queue.id = selection.id
         returning message_queue.id, message_queue.uuid, message_queue.msg_type, message_queue.full_msg_type, 
         message_queue.priority, message_queue.source, message_queue.destination, message_queue.time_created, 
-        message_queue.time_read, message_queue.body     '''
-    curs = conn.cursor()
-    curs.execute(update_str)
-    msg_df: DataFrame = pd.DataFrame(curs.fetchall())
-    conn.commit()
-    curs.close()
-    if msg_df.empty:
-        return None
-    field_names = [i[0] for i in curs.description]
-    msg_df = msg_df.set_axis(field_names, axis='columns')
-    body = msg_df['body'].iloc[0]
-    uuid = msg_df['uuid'].iloc[0]
-    msg_type = msg_df['msg_type'].iloc[0]
-    msg_type_full = msg_df['full_msg_type'].iloc[0]
-    priority = msg_df['priority'].iloc[0]
-    source = msg_df['source'].iloc[0]
-    destination = msg_df['destination'].iloc[0]
-    body_constructor = str_fileid_to_eval(msg_type_full)
-    msg_body: MsgBody = body_constructor(**body)
-    msg = Message(body=msg_body, uuid=uuid, msg_type=msg_type, source=source, destination=destination, priority=priority)
-    return msg
-
-
-def read_next_message_while_paused(destination: str, conn: connection) -> Optional[Message]:
-    f"""
-    Returns a Pandas dataframe containing one row representing the next message to be handled by 
-    the calling process. Code representing the message {destination} would call this message to check for new messages.
-    
-    NOTE: A MESSAGE CAN ONLY BE READ ONCE using this method as the message's time_read value is updated before 
-    returning the query results. Only rows where time_read is NULL are returned here. 
-    
-    Parameters
-    ----------
-    destination: str    The identifier for the process that is the intended receiver of the message
-    conn: connection    A database connection
-
-    Returns a Message or None. Clients should check for None before trying to use the results. 
-    -------
-
-    """
-    msg_type_stmt = (" and msg_type IN ('ResumeSessionRequest', 'CancelSessionRequest', 'CalibrationRequest', "
-                     "'TerminateServerRequest', 'MbientResetResults') ")
-
-    time_read = datetime.now()
-    update_str = \
-        f''' 
-        with selection as
-            (
-            select *  
-            from message_queue
-            where time_read is NULL
-            and destination = '{destination}'
-            {msg_type_stmt}
-            order by priority desc, id asc
-            limit 1
-            )
-        UPDATE message_queue
-        SET time_read = '{time_read}' 
-        from selection
-        where message_queue.id = selection.id
-        returning message_queue.id, message_queue.uuid, message_queue.msg_type, message_queue.full_msg_type, 
-        message_queue.priority, message_queue.source, message_queue.destination, message_queue.time_created, 
-        message_queue.time_read, message_queue.body
+        message_queue.time_read, message_queue.body     
      '''
 
     curs = conn.cursor()
@@ -262,7 +203,8 @@ def read_next_message_while_paused(destination: str, conn: connection) -> Option
     destination = msg_df['destination'].iloc[0]
     body_constructor = str_fileid_to_eval(msg_type_full)
     msg_body: MsgBody = body_constructor(**body)
-    msg = Message(body=msg_body, uuid=uuid, msg_type=msg_type, source=source, destination=destination, priority=priority)
+    msg = Message(body=msg_body, uuid=uuid, msg_type=msg_type, source=source, destination=destination,
+                  priority=priority)
     return msg
 
 
@@ -281,8 +223,7 @@ def get_subject_ids(conn: connection, first_name, last_name):
     return subject_df
 
 
-def get_subject_by_id(conn: connection, subject_id:str):
-
+def get_subject_by_id(conn: connection, subject_id: str):
     class Subject(BaseModel):
         subject_id: str
         first_name_birth: str
@@ -425,12 +366,12 @@ def fill_task_row(task_log_entry: TaskLogEntry, conn: connection) -> None:
 
 
 def get_stimulus_id(task_id: str) -> str:
-    task : RawTaskParams = read_tasks()[task_id]
+    task: RawTaskParams = read_tasks()[task_id]
     return task.stimulus_id
 
 
 def get_device_ids(task_id: str) -> List[str]:
-    task : RawTaskParams = read_tasks()[task_id]
+    task: RawTaskParams = read_tasks()[task_id]
     return task.device_id_array
 
 
@@ -458,7 +399,7 @@ def _fill_device_param_row(conn: connection, device: DeviceArgs) -> Optional[str
     # log the remaining data, skipping anything that already gets its own column
     # Note: The dictionary key in dict_val must match the database column name,
     # so we're stuck with names like "wearable_bool"
-    handled_keys = list (log_device.keys())
+    handled_keys = list(log_device.keys())
     for key in handled_keys:
         if key in dict_vals:
             del dict_vals[key]
@@ -541,7 +482,7 @@ def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict: D
 
     # log the remaining data, skipping anything that already gets its own column
     # Note: The dictionary key in dict_val must match the database column name.
-    handled_keys = list (log_task.keys())
+    handled_keys = list(log_task.keys())
     for key in list(dict_vals.keys()):
         if key in handled_keys:
             del dict_vals[key]
@@ -566,7 +507,6 @@ def read_sensors() -> Dict[str, SensorArgs]:
 
 
 def _dynamic_parse(file: str, param_type: str, env_dict: Dict[str, Any]) -> BaseModel:
-
     param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, param_type)
     param_dict.update(env_dict)
     param_parser: str = param_dict['arg_parser']
@@ -625,7 +565,7 @@ def read_collections() -> Dict[str, CollectionArgs]:
     return _parse_files(folder)
 
 
-def get_task(task_id:str) -> RawTaskParams:
+def get_task(task_id: str) -> RawTaskParams:
     tasks = read_tasks()
     return tasks[task_id]
 
@@ -662,7 +602,7 @@ def build_tasks_for_collection(collection_id: str) -> Dict[str, TaskArgs]:
     return task_dict
 
 
-def build_task(param_dictionary, task_id:str) -> TaskArgs:
+def build_task(param_dictionary, task_id: str) -> TaskArgs:
     raw_task_args: RawTaskParams = param_dictionary["tasks"][task_id]
     stim_args: StimulusArgs = param_dictionary["stimuli"][raw_task_args.stimulus_id]
     task_constructor = stim_args.stimulus_file
@@ -689,7 +629,6 @@ def build_task(param_dictionary, task_id:str) -> TaskArgs:
         instr_args=instr_args,
         device_args=device_args,
         arg_parser=arg_parser,
-        feature_of_interest= feature_of_interest
+        feature_of_interest=feature_of_interest
     )
     return task_args
-
