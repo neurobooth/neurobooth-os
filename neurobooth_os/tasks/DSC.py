@@ -129,7 +129,7 @@ class DSC(Task_Eyetracker):
             units="deg",
         )
 
-    def run(self, prompt=True, last_task=False, subj_id="test", **kwarg):
+    def run(self, prompt=True, subj_id="test", **kwarg):
 
         self.results = []  # array to store trials details and responses
         self.outcomes = {}  # object containing outcome variables
@@ -161,7 +161,7 @@ class DSC(Task_Eyetracker):
             )
 
         self.io.quit()
-        self.present_complete(last_task)
+        self.present_complete()
         return self.events
 
     def wait_release(self, keys=None):

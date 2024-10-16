@@ -15,9 +15,11 @@ import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
 
 
-def _lay_butt(name, key=None):
+def _lay_butt(name, key=None, tooltip=None, pad=None):
     if key is None:
         key = name
+    if tooltip:
+        return sg.Button(name, button_color=("white", "black"), key=key, tooltip=tooltip)
     return sg.Button(name, button_color=("white", "black"), key=key)
 
 
@@ -189,6 +191,8 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
         f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}'
         + f' {sess_info["last_name"]}'
     )
+    row_1_pad = ((20, 20),(5, 5))
+    row_2_pad = ((20, 20),(0, 0))
     layout_col1 = (
         [
             [
@@ -240,19 +244,25 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
             console_output,
             [_space()],
             [
-                _space(1),
-                _lay_butt("Initiate servers", "-init_servs-"),
-                _space(5),
-                _lay_butt("Connect Devices", "-Connect-"),
+                sg.Button("Initiate servers", button_color=("white", "black"), key="-init_servs-",
+                          pad=((50, 20), (5, 5))),
+                sg.Button("Connect devices", button_color=("white", "black"), key="-Connect-",
+                          pad=row_1_pad),
+                sg.Button("Terminate servers",
+                          key="Shut Down",
+                          tooltip="Terminate all servers. Presentation server will exit after current task (if any).",
+                          pad=((166, 20), (5, 5))),
             ],
             [_space()],
             [
-                _space(5),
-                sg.ReadFormButton("Start", button_color=("white", "black")),
-                _space(5),
-                _lay_butt("Pause", "Pause tasks"),
-                _space(5),
-                _lay_butt("Terminate servers", "Shut Down"),
+                sg.ReadFormButton("Start", button_color=("white", "black"), tooltip="Begin session",
+                                  pad=((50, 20), (0, 0))),
+                sg.Button("Pause", button_color=("white", "black"), key="Pause tasks",
+                          tooltip="Pause session after current task completes", pad=row_2_pad),
+                sg.Button("Recalibrate", button_color=("white", "black"), key="Calibrate",
+                          tooltip="Recalibrate EyeTracker after current task", pad=row_2_pad),
+                sg.Button("Stop",button_color=("white", "black"), key="Stop tasks",
+                          tooltip="End session after current task completes", pad=row_2_pad),
             ],
             [_space()],
         ]
@@ -287,7 +297,7 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
 
     layout = [
         [
-            sg.Column(layout_col1, pad=(0, 0)),
+            sg.Column(layout_col1, pad=(5, 5)),
             sg.Column(layout_col2, pad=(0, 0), element_justification="c"),
         ]
     ]

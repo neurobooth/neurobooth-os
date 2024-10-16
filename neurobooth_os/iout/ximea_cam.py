@@ -12,7 +12,8 @@ from pylsl import StreamInfo, StreamOutlet
 import cv2
 import time
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
-
+from neurobooth_os.msg.messages import DeviceInitialization, Request
+import  neurobooth_os.iout.metadator as meta
 
 class VidRec_Ximea:
     def __init__(
@@ -78,7 +79,10 @@ class VidRec_Ximea:
             fps_rgb=str(self.fps),
             device_model_id=self.cam.get_device_name().decode(),
         )
-        print(f"-OUTLETID-:{streamName}:{self.oulet_id}")
+        msg_body = DeviceInitialization(stream_name=streamName, outlet_id=self.oulet_id)
+        with meta.get_database_connection() as conn:
+            meta.post_message(Request(source='VidRec_Ximea', destination='CTR', body=msg_body), conn=conn)
+
         return StreamOutlet(info)
 
     def start(self, name="temp_video"):

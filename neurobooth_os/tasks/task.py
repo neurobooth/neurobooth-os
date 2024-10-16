@@ -273,11 +273,8 @@ class Task:
                 waitKeys=False,
             )
 
-    def present_complete(self, last_task=False):
-        if last_task:
-            screen = self.end_tasks
-        else:
-            screen = self.end_screen
+    def present_complete(self):
+        screen = self.end_screen
         self.show_text(
             screen=screen, msg="Completed-task", audio=None, wait_time=0, waitKeys=False
         )
@@ -291,10 +288,10 @@ class Task:
         if self.win_temp:
             self.win.close()
 
-    def run(self, prompt=True, duration=0, last_task=False, **kwargs):
+    def run(self, prompt=True, duration=0, **kwargs):
         self.present_instructions(prompt)
         self.present_task(prompt, duration, **kwargs)
-        self.present_complete(last_task)
+        self.present_complete()
         return self.events
 
     def check_if_aborted(self) -> None:
