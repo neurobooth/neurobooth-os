@@ -47,9 +47,6 @@ def main():
 
 
 def run_acq(logger):
-    # s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # port = config.neurobooth_config.acquisition.port
-    # host = ''  # Listen on all network interfaces
 
     db_conn = meta.get_database_connection()
 
@@ -61,7 +58,6 @@ def run_acq(logger):
     init_servers = Request(source="ACQ", destination="CTR", body=ServerStarted())
     meta.post_message(init_servers, db_conn)
 
-    # for data, connx in get_client_messages(s1, port, host)
     while not shutdown_flag:
 
         message: Message = meta.read_next_message("ACQ", conn=db_conn)
@@ -74,7 +70,6 @@ def run_acq(logger):
         current_msg_type : str = message.msg_type
         if "PrepareRequest" == current_msg_type:
             msg_body: PrepareRequest = message.body
-            database_name = msg_body.database_name
 
             subject_id: str = msg_body.subject_id
             session_name: str = msg_body.session_name()
