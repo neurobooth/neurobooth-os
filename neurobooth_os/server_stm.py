@@ -51,7 +51,6 @@ def run_stm(logger):
         finish_screen(session.win)
         return True
 
-    presented: bool = False
     session: Optional[StmSession] = None
     task_log_entry: Optional[TaskLogEntry] = None
     db_conn = meta.get_database_connection(database=config.neurobooth_config.database.dbname)
@@ -333,14 +332,6 @@ def _start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, tas
     sr_msg = StartRecordingMsg(body=body)
     meta.post_message(sr_msg, session.db_conn)
 
-    # acq_result = executor.submit(
-    #     # TODO: Replace with new message
-    #     # socket_message,
-    #     f"record_start::{session.session_name}_{tsk_start_time}_{task_id}::{task_id}",
-    #     "acquisition",
-    #     wait_data=10,
-    # )
-
     # Start eyetracker if device in task
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
@@ -357,9 +348,6 @@ def _start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, tas
         # TODO: Handle higher priority msgs
         # TODO: Handle error conditions reported by ACQ  -> Consider adding an error field to the RecordingStarted msg
         sleep(1)
-
-    # wait([acq_result])  # Wait for ACQ to finish
-    # acq_result.result()  # Raise any exceptions swallowed by the executor
 
 
 def _pause(session):
