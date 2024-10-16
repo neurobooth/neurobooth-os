@@ -39,12 +39,10 @@ def send_reset_msg() -> Dict[str, bool]:
                 break
             elif attempts >= max_attempts:
                 txt = f"No results from mbient reset after {attempts} attempts at {datetime.now().time()}."
-                print(txt)
                 meta.post_message(Request(body=StatusMessage(text=txt), source="mbient_reset", destination="CTR"), conn)
                 break
             time.sleep(1)
             attempts = attempts + 1
-    print(results)
     return results
 
 
@@ -218,8 +216,6 @@ class MbientResetPause(Task):
             }
             # Wait for all resets to complete, then resolve the futures
             wait([acq_results, *stm_results.values()])
-            print(f"ACQ Results: {acq_results}")
-            print(f"STM Results: {stm_results}")
 
             # Check result from ACQ
             if acq_results is None:
@@ -232,7 +228,6 @@ class MbientResetPause(Task):
 
             # Combine results from all serves
             results = {**acq_results, **stm_results}
-            print(results)
 
         all_success = all([connected for _, connected in results.items()])
 
