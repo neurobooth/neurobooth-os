@@ -1,3 +1,3 @@
 """Neurobooth OS"""
 
-__version__ = "0.0.35"
+__version__ = "0.0.36.1"
