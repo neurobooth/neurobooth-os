@@ -182,12 +182,12 @@ def _calibrate(steps, conn):
     if "task_started" not in steps:
         sg.PopupError("Tasks not started")
     else:
-        resp = sg.Popup(
-            "Eyetracker Recalibration will start after the current task.",
-        )
         msg_body = PerformTaskRequest(task_id="calibration_obs_1", priority=MEDIUM_HIGH_PRIORITY)
         msg = Request(source="CTR", destination="STM", body=msg_body)
         meta.post_message(msg, conn)
+        resp = sg.Popup(
+            "Eyetracker Recalibration will start after the current task.",
+        )
 
 
 ########## LSL functions ############
