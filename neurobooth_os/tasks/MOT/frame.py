@@ -516,7 +516,7 @@ class PracticeFrame(TrialFrame):
         self._log_results = False  # This class will handle result logging after calling super.run()
 
         # Set a different message to display at the bottom of the stimulus area
-        self.click_message = f'Click the {self.n_targets} dots that were cyan'
+        self.click_message = f'Click the {self.n_targets} dots that were blue'
         self.animation_message = ''
         self.score_message = ''
         self.trial_count_message = ''
