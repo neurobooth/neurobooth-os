@@ -30,15 +30,13 @@ import neurobooth_os.config as cfg
 from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest,
                                         TerminateServerRequest, MsgBody, MbientDisconnected, NewVideoFile,
                                         TaskCompletion, TaskInitialization,
-                                        SessionPrepared, DeviceInitialization, StatusMessage, LslRecording,
+                                        DeviceInitialization, StatusMessage, LslRecording,
                                         TasksFinished, FramePreviewRequest,
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
-                                        CancelSessionRequest, ServerStarted, MEDIUM_HIGH_PRIORITY)
+                                        CancelSessionRequest, MEDIUM_HIGH_PRIORITY)
 
 #  state variables used to help ensure in-order GUI steps
 servers_initialized: bool = False
-devices_connected: bool = False
-
 
 def setup_log(sg_handler=None):
     logger = make_db_logger("", "")
@@ -121,8 +119,9 @@ def _create_session_dict(window, log_task, staff_id, subject_id, first_name, las
 
 def _start_task_presentation(window, tasks: List[str], subject_id: str, session_id: int, steps):
     """Present tasks"""
-    window["Start"].Update(button_color=("black", "yellow"))
     conn = meta.get_database_connection()
+    window['Start'].update(disabled=True)
+
     if len(tasks) > 0:
         msg_body = CreateTasksRequest(tasks=tasks, subj_id=subject_id, session_id=session_id)
         msg = Request(
@@ -136,39 +135,29 @@ def _start_task_presentation(window, tasks: List[str], subject_id: str, session_
         sg.PopupError("No task selected")
 
 
-def _pause_tasks(steps, conn):
+def _pause_tasks(window, steps, conn):
     continue_msg = "Continue tasks"
     stop_msg = "Stop tasks"
 
-    if "task_started" not in steps:
-        sg.PopupError("Tasks not started")
+    msg_body = PauseSessionRequest()
+    req = Request(source="CTR", destination="STM", body=msg_body)
+    meta.post_message(req, conn)
+    resp = sg.Popup(
+        "The session will pause after the current task.\n", title="Pausing session",
+        custom_text=(continue_msg, stop_msg),
+    )
+    # handle user closing either popup using 'x' instead of making a choice
+    if resp == continue_msg or resp is None:
+        body = ResumeSessionRequest()
+        request = Request(source="CTR", destination="STM", body=body)
+        meta.post_message(request, conn)
+    elif resp == stop_msg:
+        _stop_task_dialog(window, conn)
     else:
-        msg_body = PauseSessionRequest()
-        req = Request(source="CTR", destination="STM", body=msg_body)
-        meta.post_message(req, conn)
-        resp = sg.Popup(
-            "The session will pause after the current task.\n", title="Pausing session",
-            custom_text=(continue_msg, stop_msg),
-        )
-        # handle user closing either popup using 'x' instead of making a choice
-        if resp == continue_msg or resp is None:
-            body = ResumeSessionRequest()
-            request = Request(source="CTR", destination="STM", body=body)
-            meta.post_message(request, conn)
-        elif resp == stop_msg:
-            _stop_task_dialog(conn)
-        else:
-            raise RuntimeError("Unknown Response from Pause Session dialog")
+        raise RuntimeError("Unknown Response from Pause Session dialog")
 
 
-def _stop_tasks(steps, conn):
-    if "task_started" not in steps:
-        sg.PopupError("Tasks not started")
-    else:
-        _stop_task_dialog(conn)
-
-
-def _stop_task_dialog(conn):
+def _stop_task_dialog(window, conn):
     response = sg.popup_ok_cancel("Session will end after the current task completes!  \n\n"
                                   "Press OK to end the session; Cancel to continue the session.\n",
                                   title="Warning")
@@ -176,6 +165,7 @@ def _stop_task_dialog(conn):
         body = CancelSessionRequest()
         request = Request(source="CTR", destination="STM", body=body)
         meta.post_message(request, conn)
+        _session_button_state(window, disabled=True)
 
 
 def _calibrate(steps, conn):
@@ -225,7 +215,7 @@ def _record_lsl(
 
     window["task_title"].update("Running Task:")
     window["task_running"].update(task_id, background_color="red")
-    window["Start"].Update(button_color=("black", "red"))
+    print("Session started")
     return rec_fname
 
 
@@ -245,7 +235,6 @@ def _stop_lsl_and_save(
     # Stop LSL recording
     session.stop_recording()
     window["task_running"].update(task_id, background_color="green")
-    window["Start"].Update(button_color=("black", "green"))
 
     xdf_fname = get_xdf_name(session, rec_fname)
     xdf_path = op.join(folder, xdf_fname)
@@ -270,13 +259,17 @@ def _stop_lsl_and_save(
 
 def _start_servers(window, nodes):
     global servers_initialized
+    window["-init_servs-"].Update(disabled=True)
+
     print("GUI starting servers")
-    window["-init_servs-"].Update(button_color=("black", "red"))
     event, values = window.read(0.1)
     ctr_rec.start_servers(nodes=nodes)
     time.sleep(1)
     print("GUI servers started")
     servers_initialized = True
+    # This happens before the serves are ready to handle it, but that should be ok, since they will read it
+    # when they're ready.
+    window["-Connect-"].Update(disabled=False)
     return event, values
 
 
@@ -315,13 +308,11 @@ def _start_ctr_msg_reader(logger, window):
             outlet_values = f"['{outlet_name}', '{outlet_id}']"
             window.write_event_value("-OUTLETID-", outlet_values)
         elif "SessionPrepared" == message.msg_type:
-            msg_body: SessionPrepared = message.body
-            elem: str = msg_body.elem_key
-            window.write_event_value("-update_butt-", elem)
+            window["Start"].Update(disabled=False)
+            window.write_event_value("devices_connected", True)
+
         elif "ServerStarted" == message.msg_type:
-            msg_body: ServerStarted = message.body
-            elem: str = msg_body.elem_key
-            window.write_event_value("-update_butt-", elem)
+            pass
         elif "TasksCreated" == message.msg_type:
             window.write_event_value("tasks_created", "")
         elif "TaskInitialization" == message.msg_type:
@@ -401,25 +392,12 @@ def _request_frame_preview(window, conn):
     meta.post_message(req, conn)
 
 
-def _update_button_status(window, statecolors, button_name, inlets, folder_session):
-    global devices_connected
-    if button_name in list(statecolors):
-        # 2 colors for init_servers and Connect, 1 connected, 2 connected
-        if len(statecolors[button_name]):
-            color = statecolors[button_name].pop()
-            session = None
-            # Signal start LSL session if both servers devices are ready:
-            if button_name == "-Connect-" and color == "green":
-                devices_connected = True
-                session = _start_lsl_session(window, inlets, folder_session)
-                window["-frame_preview-"].update(visible=True)
-            window[button_name].Update(button_color=("black", color))
-            return session
-
-
-def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dict, database, tasks: str):
+def _prepare_devices(window, inlets, folder_session,
+                     nodes: List[str], collection_id: str,
+                     log_task: Dict, database, tasks: str):
     """Prepare devices"""
-    window["-Connect-"].Update(button_color=("black", "red"))
+    window["-Connect-"].Update(disabled=True)
+
     event, values = window.read(0.1)
     print("Connecting devices")
 
@@ -442,7 +420,6 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
                       body=body)
 
         meta.post_message(msg, conn=meta.get_database_connection())
-
     return vidf_mrkr, event, values
 
 
@@ -474,11 +451,6 @@ def gui(logger):
     log_sess = meta._new_session_log_dict()
     stream_ids, inlets = {}, {}
     plot_elem, inlet_keys = [], []
-
-    statecolors = {
-        "-init_servs-": ["green", "yellow"],
-        "-Connect-": ["green", "yellow"],
-    }
     steps = list()  # keep track of steps done
     event, values = window.read(0.1)
     sess_info = None
@@ -536,14 +508,13 @@ def gui(logger):
 
         # Start servers on STM, ACQ
         elif event == "-init_servs-":
-            # window['-init_servs-'].update(disabled=True)
             _start_servers(window, nodes)
 
         # Turn on devices
         elif event == "-Connect-":
             if servers_initialized:
-                vidf_mrkr, event, values = _prepare_devices(
-                    window, nodes, collection_id, log_task, database, tasks
+                vidf_mrkr, event, values = _prepare_devices(window, inlets, sess_info["subject_id_date"],
+                    nodes, collection_id, log_task, database, tasks
                 )
             else:
                 sg.PopupError("Servers not started. Please initiate servers before connecting.")
@@ -552,14 +523,13 @@ def gui(logger):
             _plot_realtime(window, plttr, inlets)
 
         elif event == "Start":
-            if devices_connected:
-                session_id = meta._make_session_id(conn, log_sess)
-                tasks = [k for k, v in values.items() if "obs" in k and v is True]
-                _start_task_presentation(window, tasks, sess_info["subject_id"], session_id, steps)
-            else:
-                sg.PopupError("Devices not connected. Please connect devices before starting session.")
+            window["Start"].Update(disabled=True)
+            session_id = meta._make_session_id(conn, log_sess)
+            tasks = [k for k, v in values.items() if "obs" in k and v is True]
+            _start_task_presentation(window, tasks, sess_info["subject_id"], session_id, steps)
 
         elif event == "tasks_created":
+            _session_button_state(window, disabled=False)
             for task_id in tasks:
                 msg_body = PerformTaskRequest(task_id=task_id)
                 msg = Request(source="CTR", destination="STM", body=msg_body)
@@ -570,10 +540,10 @@ def gui(logger):
             meta.post_message(msg, conn)
 
         elif event == "Pause tasks":
-            _pause_tasks(steps, conn=conn)
+            _pause_tasks(window, steps, conn=conn)
 
         elif event == "Stop tasks":
-            _stop_tasks(steps, conn=conn)
+            _stop_task_dialog(window, conn=conn)
 
         elif event == "Calibrate":
             _calibrate(steps, conn=conn)
@@ -604,7 +574,7 @@ def gui(logger):
                     if sess_info and values:
                         _save_session_notes(sess_info, values, window)
                     plttr.stop()
-
+                    _session_button_state(window, disabled=True)
                     shutdown_acq_msg: Message = Request(source="CTR",
                                                         destination="STM",
                                                         body=TerminateServerRequest())
@@ -645,15 +615,9 @@ def gui(logger):
         elif event == "-new_filename-":
             vidf_mrkr.push_sample([values[event]])
 
-        # Update colors for: -init_servs-, -Connect-, Start buttons
-        elif event == "-update_butt-":
-            session = _update_button_status(
-                window,
-                statecolors,
-                values["-update_butt-"],
-                inlets,
-                sess_info["subject_id_date"],
-            )
+        elif event == 'devices_connected':
+            session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
+            window["-frame_preview-"].update(visible=True)
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
@@ -674,7 +638,7 @@ def gui(logger):
         elif event == "-frame_preview-":
             _request_frame_preview(window, conn)
 
-        # Print LSL inlet names in GUI
+        # Print LSL inlet names in GUI # TODO: Here's where the inlet names get printed to their own window
         if inlet_keys != list(inlets):
             inlet_keys = list(inlets)
             window["inlet_State"].update("\n".join(inlet_keys))
@@ -729,6 +693,12 @@ def _make_session_folder(sess_info):
     session_dir = op.join(cfg.neurobooth_config.control.local_data_dir, sess_info['subject_id_date'])
     if not op.exists(session_dir):
         os.mkdir(session_dir)
+
+
+def _session_button_state(window: object, disabled: bool) -> None:
+    window["Pause tasks"].update(disabled=disabled)
+    window["Stop tasks"].update(disabled=disabled)
+    window["Calibrate"].update(disabled=disabled)
 
 
 def main():
