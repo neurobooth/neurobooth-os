@@ -150,16 +150,8 @@ class Task:
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
-        task_complete_img = op.join(self.root_pckg, "tasks", "assets", "task_complete.png")
-        if not op.isfile(task_complete_img):
-            raise IOError(f'Required image file {task_complete_img} does not exist')
+        self.end_screen = utils.get_end_screen(self.win, self.root_pckg)
 
-        self.end_screen = visual.ImageStim(
-            self.win,
-            image=task_complete_img,
-            pos=(0, 0),
-            units="deg",
-        )
         end_slide = op.join(self.root_pckg, "tasks", "assets", "end_slide_3_7_22.jpg")
         if not op.isfile(end_slide):
             raise IOError(f'Required image file {end_slide} does not exist')
@@ -273,11 +265,8 @@ class Task:
                 waitKeys=False,
             )
 
-    def present_complete(self, last_task=False):
-        if last_task:
-            screen = self.end_tasks
-        else:
-            screen = self.end_screen
+    def present_complete(self):
+        screen = self.end_screen
         self.show_text(
             screen=screen, msg="Completed-task", audio=None, wait_time=0, waitKeys=False
         )
@@ -291,10 +280,10 @@ class Task:
         if self.win_temp:
             self.win.close()
 
-    def run(self, prompt=True, duration=0, last_task=False, **kwargs):
+    def run(self, prompt=True, duration=0, **kwargs):
         self.present_instructions(prompt)
         self.present_task(prompt, duration, **kwargs)
-        self.present_complete(last_task)
+        self.present_complete()
         return self.events
 
     def check_if_aborted(self) -> None:

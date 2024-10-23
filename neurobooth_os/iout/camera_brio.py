@@ -10,8 +10,11 @@ from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout import dshowcapture
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+import neurobooth_os.iout.metadator as meta
 
 import warnings
+
+from neurobooth_os.msg.messages import Request, DeviceInitialization
 
 warnings.filterwarnings("ignore")
 
@@ -74,7 +77,10 @@ class VidRec_Brio:
                 self.preview_outlet_id,
             )
             self.outlet_preview = StreamOutlet(self.info_stream)
-            print(f"-OUTLETID-:Webcam:{self.preview_outlet_id}")
+            msg_body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.outlet_id)
+            with meta.get_database_connection() as conn:
+                meta.post_message(Request(source='VidRec_Brio', destination='CTR', body=msg_body), conn=conn)
+
             self.preview_start()
             self.preview_relFps = round(fps / self.preview_fps)
 
@@ -106,7 +112,10 @@ class VidRec_Brio:
             fps_rgb=str(self.fps),
             device_name=self.device_name,
         )
-        print(f"-OUTLETID-:{streamName}:{self.oulet_id}")
+        msg_body = DeviceInitialization(stream_name=streamName, outlet_id=self.oulet_id)
+        with meta.get_database_connection() as conn:
+            meta.post_message(Request(source='VidRec_Brio', destination='CTR', body=msg_body), conn=conn)
+
         return StreamOutlet(info)
 
     @catch_exception
