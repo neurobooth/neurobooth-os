@@ -152,12 +152,25 @@ def _pause_tasks(window, steps, conn):
         request = Request(source="CTR", destination="STM", body=body)
         meta.post_message(request, conn)
     elif resp == stop_msg:
-        _stop_task_dialog(window, conn)
+        _stop_task_dialog(window, conn, resume_on_cancel=True)
     else:
         raise RuntimeError("Unknown Response from Pause Session dialog")
 
 
-def _stop_task_dialog(window, conn):
+def _stop_task_dialog(window, conn, resume_on_cancel: bool):
+    """
+
+    Parameters
+    ----------
+    window  The main pysimplegui window
+    conn    a database connection
+    resume_on_cancel    if false, cancel only closes the dialog. If true, a ResumeSession message is sent to the backend
+                        This is for situations where the stop dialog is entered from a Pause dialog
+
+    Returns
+    -------
+
+    """
     response = sg.popup_ok_cancel("Session will end after the current task completes!  \n\n"
                                   "Press OK to end the session; Cancel to continue the session.\n",
                                   title="Warning")
@@ -166,6 +179,12 @@ def _stop_task_dialog(window, conn):
         request = Request(source="CTR", destination="STM", body=body)
         meta.post_message(request, conn)
         _session_button_state(window, disabled=True)
+    else:
+        if resume_on_cancel:
+            body = ResumeSessionRequest()
+            request = Request(source="CTR", destination="STM", body=body)
+            meta.post_message(request, conn)
+            _session_button_state(window, disabled=False)
 
 
 def _calibrate(steps, conn):
@@ -526,7 +545,6 @@ def gui(logger):
             session_id = meta._make_session_id(conn, log_sess)
             tasks = [k for k, v in values.items() if "obs" in k and v is True]
             _start_task_presentation(window, tasks, sess_info["subject_id"], session_id, steps)
-            # window["Start"].Update(disabled=True)  # TODO try to ensure it's disabled?
 
         elif event == "tasks_created":
             _session_button_state(window, disabled=False)
@@ -543,7 +561,7 @@ def gui(logger):
             _pause_tasks(window, steps, conn=conn)
 
         elif event == "Stop tasks":
-            _stop_task_dialog(window, conn=conn)
+            _stop_task_dialog(window, conn=conn, resume_on_cancel=False)
 
         elif event == "Calibrate":
             _calibrate(steps, conn=conn)
