@@ -542,6 +542,7 @@ def gui(logger):
 
         elif event == "Start":
             window["Start"].Update(disabled=True)
+            print("start clicked")
             session_id = meta._make_session_id(conn, log_sess)
             tasks = [k for k, v in values.items() if "obs" in k and v is True]
             _start_task_presentation(window, tasks, sess_info["subject_id"], session_id, steps)
@@ -644,8 +645,10 @@ def gui(logger):
             _create_lsl_inlet(stream_ids, values[event], inlets)
 
         elif event == "no_eyetracker":
-            sg.PopupError(values[event], non_blocking=True)
-            window.write_event_value("Shut Down", "Shut Down")
+            result = sg.PopupError(values[event], non_blocking=True)
+            if result == 'Error':
+                window.write_event_value("Shut Down", "Shut Down")
+
 
         elif event == "mbient_disconnected":
             sg.PopupError(values[event], non_blocking=True)
