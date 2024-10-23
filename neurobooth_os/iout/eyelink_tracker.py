@@ -92,11 +92,6 @@ class EyeTracker:
         self.paused = True
         self.connect_tracker()
 
-        body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
-        msg = Request(source="EyeTracker", destination="CTR", body=body)
-        with get_database_connection() as conn:
-            post_message(msg, conn)
-
     def connect_tracker(self):
         try:
             self.tk = pylink.EyeLink(self.IP)
@@ -108,6 +103,7 @@ class EyeTracker:
             with get_database_connection() as conn:
                 post_message(msg, conn)
             self.logger.error(msg_text)
+            return
 
         self.tk.setAddress(self.IP)
         # # Open an EDF data file on the Host PC
@@ -153,6 +149,12 @@ class EyeTracker:
 
         self.tk.sendCommand("calibration_area_proportion = 0.80 0.78")
         self.tk.sendCommand("validation_area_proportion = 0.80 0.78")
+
+        body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
+        msg = Request(source="EyeTracker", destination="CTR", body=body)
+        with get_database_connection() as conn:
+            post_message(msg, conn)
+
 
     def calibrate(self):
         self.logger.debug('EyeLink: Performing Calibration')
