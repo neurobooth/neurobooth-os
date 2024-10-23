@@ -308,9 +308,7 @@ def _start_ctr_msg_reader(logger, window):
             outlet_values = f"['{outlet_name}', '{outlet_id}']"
             window.write_event_value("-OUTLETID-", outlet_values)
         elif "SessionPrepared" == message.msg_type:
-            window["Start"].Update(disabled=False)
             window.write_event_value("devices_connected", True)
-
         elif "ServerStarted" == message.msg_type:
             pass
         elif "TasksCreated" == message.msg_type:
@@ -324,6 +322,7 @@ def _start_ctr_msg_reader(logger, window):
                 "task_initiated",
                 f"['{task_id}', '{task_id}', '{log_task_id}', '{tsk_strt_time}']",
             )
+
         elif "TaskCompletion" == message.msg_type:
             msg_body: TaskCompletion = message.body
             task_id = msg_body.task_id
@@ -527,6 +526,7 @@ def gui(logger):
             session_id = meta._make_session_id(conn, log_sess)
             tasks = [k for k, v in values.items() if "obs" in k and v is True]
             _start_task_presentation(window, tasks, sess_info["subject_id"], session_id, steps)
+            # window["Start"].Update(disabled=True)  # TODO try to ensure it's disabled?
 
         elif event == "tasks_created":
             _session_button_state(window, disabled=False)
@@ -618,6 +618,7 @@ def gui(logger):
         elif event == 'devices_connected':
             session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
             window["-frame_preview-"].update(visible=True)
+            window['Start'].update(disabled=False)
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
