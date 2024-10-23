@@ -645,7 +645,7 @@ def gui(logger):
             _create_lsl_inlet(stream_ids, values[event], inlets)
 
         elif event == "no_eyetracker":
-            result = sg.PopupError(values[event], non_blocking=True)
+            result = sg.PopupError(values[event])
             if result == 'Error':
                 window.write_event_value("Shut Down", "Shut Down")
 
