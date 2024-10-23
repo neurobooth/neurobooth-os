@@ -81,7 +81,25 @@ def run_stm(logger):
                 break
             if "ResumeSessionRequest" == current_msg_type:
                 paused = False
+
+                # display 'preparing next task'
+                root_pckg = neurobooth_os.__path__[0]
+                end_screen = utl.get_end_screen(session.win, root_pckg)
+
+                # TODO: msg is only needed if we need to do markers around this prepare step.
+                # See task.show_text()
+                msg = "Completed-task"
+
+                utl.present(
+                    session.win,
+                    end_screen,
+                    audio=None,
+                    wait_time=0,
+                    win_color=(0, 0, 0),
+                    waitKeys=False,
+                )
                 break
+
             elif "CancelSessionRequest" == current_msg_type:
                 session_canceled = True
                 paused = False

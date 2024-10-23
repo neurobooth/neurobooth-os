@@ -150,16 +150,8 @@ class Task:
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
-        task_complete_img = op.join(self.root_pckg, "tasks", "assets", "task_complete.png")
-        if not op.isfile(task_complete_img):
-            raise IOError(f'Required image file {task_complete_img} does not exist')
+        self.end_screen = utils.get_end_screen(self.win, self.root_pckg)
 
-        self.end_screen = visual.ImageStim(
-            self.win,
-            image=task_complete_img,
-            pos=(0, 0),
-            units="deg",
-        )
         end_slide = op.join(self.root_pckg, "tasks", "assets", "end_slide_3_7_22.jpg")
         if not op.isfile(end_slide):
             raise IOError(f'Required image file {end_slide} does not exist')
