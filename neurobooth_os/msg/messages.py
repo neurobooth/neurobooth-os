@@ -273,9 +273,22 @@ class StatusMessage(MsgBody):
     Message sent from backend servers to the controller with status information. The text is printed on the GUI
     """
     text: str
+    status: Optional[str] = "INFO"
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
+        super().__init__(**data)
+
+
+class ErrorMessage(StatusMessage):
+    """
+    Message sent from backend servers to the controller with error information. The text is printed on the GUI
+    """
+
+    def __init__(self, **data):
+        data['priority'] = MEDIUM_PRIORITY
+        if "status" not in data:
+            data['status'] = "ERROR"
         super().__init__(**data)
 
 
@@ -286,6 +299,7 @@ class StartRecording(MsgBody):
     fname: str
     task_id: str
     session_name: str
+
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)

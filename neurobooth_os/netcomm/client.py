@@ -9,6 +9,8 @@ import pandas as pd
 from io import StringIO
 
 import neurobooth_os.config as cfg
+from neurobooth_os.gui import write_output
+
 
 def setup_log(name):
     logger = logging.getLogger(name)

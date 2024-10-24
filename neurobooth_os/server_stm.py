@@ -105,7 +105,8 @@ def run_stm(logger):
                 paused = False
                 break
             else:
-                body = StatusMessage(text=f'"Received an unexpected message while paused: {message.model_dump_json()}')
+                body = ErrorMessage(text=f'"Received an unexpected message while paused: {message.model_dump_json()}',
+                                     status="Error")
 
                 err_msg = Request(source='STM', destination='CTR', body=body)
                 meta.post_message(err_msg, session.db_conn)

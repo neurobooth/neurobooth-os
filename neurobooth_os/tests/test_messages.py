@@ -3,7 +3,7 @@ import neurobooth_os.iout.metadator as meta
 from datetime import date, datetime
 
 from neurobooth_os.msg.messages import Request, PrepareRequest, CreateTasksRequest, PerformTaskRequest, \
-    MbientResetResults, MEDIUM_HIGH_PRIORITY
+    MbientResetResults, MEDIUM_HIGH_PRIORITY, StatusMessage
 
 database_name = "mock_neurobooth"
 dt = date.today()
@@ -107,3 +107,10 @@ class TestMessages(unittest.TestCase):
             priority=MEDIUM_HIGH_PRIORITY
         )
         self.assertEquals(body_1.priority,65)
+
+    def test_status_message(self):
+        body_1 = StatusMessage(
+            text="Testing",
+            status="WARNING"
+        )
+        self.assertEquals(body_1.status,"WARNING")

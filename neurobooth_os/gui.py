@@ -17,6 +17,7 @@ import numpy as np
 
 import PySimpleGUI as sg
 import liesl
+from PySimpleGUI import Multiline
 
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
@@ -33,7 +34,7 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         DeviceInitialization, StatusMessage, LslRecording,
                                         TasksFinished, FramePreviewRequest,
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
-                                        CancelSessionRequest, MEDIUM_HIGH_PRIORITY)
+                                        CancelSessionRequest, MEDIUM_HIGH_PRIORITY, ErrorMessage)
 
 #  state variables used to help ensure in-order GUI steps
 servers_initialized: bool = False
@@ -121,6 +122,7 @@ def _start_task_presentation(window, tasks: List[str], subject_id: str, session_
     """Present tasks"""
     conn = meta.get_database_connection()
     window['Start'].update(disabled=True)
+    write_output(window, "\nSession started")
 
     if len(tasks) > 0:
         msg_body = CreateTasksRequest(tasks=tasks, subj_id=subject_id, session_id=session_id)
@@ -136,6 +138,7 @@ def _start_task_presentation(window, tasks: List[str], subject_id: str, session_
 
 
 def _pause_tasks(window, steps, conn):
+    write_output(window, "Pause scheduled. Session will pause after the current task.")
     continue_msg = "Continue tasks"
     stop_msg = "Stop tasks"
 
@@ -151,8 +154,10 @@ def _pause_tasks(window, steps, conn):
         body = ResumeSessionRequest()
         request = Request(source="CTR", destination="STM", body=body)
         meta.post_message(request, conn)
+        write_output(window, "Continue session scheduled")
     elif resp == stop_msg:
         _stop_task_dialog(window, conn, resume_on_cancel=True)
+
     else:
         raise RuntimeError("Unknown Response from Pause Session dialog")
 
@@ -175,6 +180,7 @@ def _stop_task_dialog(window, conn, resume_on_cancel: bool):
                                   "Press OK to end the session; Cancel to continue the session.\n",
                                   title="Warning")
     if response == "OK":
+        write_output(window, "Stop session scheduled. Session will end after the current task.")
         body = CancelSessionRequest()
         request = Request(source="CTR", destination="STM", body=body)
         meta.post_message(request, conn)
@@ -187,16 +193,14 @@ def _stop_task_dialog(window, conn, resume_on_cancel: bool):
             _session_button_state(window, disabled=False)
 
 
-def _calibrate(steps, conn):
-    if "task_started" not in steps:
-        sg.PopupError("Tasks not started")
-    else:
-        msg_body = PerformTaskRequest(task_id="calibration_obs_1", priority=MEDIUM_HIGH_PRIORITY)
-        msg = Request(source="CTR", destination="STM", body=msg_body)
-        meta.post_message(msg, conn)
-        resp = sg.Popup(
-            "Eyetracker Recalibration will start after the current task.",
-        )
+def _calibrate(window, conn):
+    write_output(window, "Eyetracker recalibration scheduled. Calibration will start after the current task.")
+    msg_body = PerformTaskRequest(task_id="calibration_obs_1", priority=MEDIUM_HIGH_PRIORITY)
+    msg = Request(source="CTR", destination="STM", body=msg_body)
+    meta.post_message(msg, conn)
+    resp = sg.Popup(
+        "Eyetracker Recalibration will start after the current task.",
+    )
 
 
 ########## LSL functions ############
@@ -212,6 +216,11 @@ def _start_lsl_session(window, inlets, folder=""):
     return session
 
 
+def write_output(window, text: str, text_color: Optional[str] =None):
+    elem: Multiline = window["-OUTPUT-"]
+    elem.print(text, text_color=text_color)
+
+
 def _record_lsl(
         window,
         session,
@@ -222,8 +231,6 @@ def _record_lsl(
         tsk_strt_time,
         conn
 ):
-    print(f"task initiated: task_id {task_id}, t_obs_id {t_obs_id}, obs_log_id :{obs_log_id}")
-
     # Start LSL recording
     rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
     session.start_recording(rec_fname)
@@ -234,7 +241,6 @@ def _record_lsl(
 
     window["task_title"].update("Running Task:")
     window["task_running"].update(task_id, background_color="red")
-    print("Session started")
     return rec_fname
 
 
@@ -261,7 +267,7 @@ def _stop_lsl_and_save(
     if any([tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]]):
         # Don't split large files now, just add to a backlog to handle post-session
         postpone_xdf_split(xdf_path, t_obs_id, obs_log_id, cfg.neurobooth_config.split_xdf_backlog)
-        print(f"SPLIT XDF {t_obs_id} took: {time.time() - t0}")
+        write_output(window, f"SPLIT XDF {t_obs_id} took: {time.time() - t0}")
     else:
         # Split XDF in a thread
         xdf_split = threading.Thread(
@@ -270,6 +276,8 @@ def _stop_lsl_and_save(
             daemon=True,
         )
         xdf_split.start()
+        write_output(window, f"SPLIT XDF {task_id} took: {time.time() - t0}")
+
         print(f"CTR xdf_split threading took: {time.time() - t0}")
 
 
@@ -280,11 +288,10 @@ def _start_servers(window, nodes):
     global servers_initialized
     window["-init_servs-"].Update(disabled=True)
 
-    print("GUI starting servers")
+    write_output(window, "CTR starting servers")
     event, values = window.read(0.1)
     ctr_rec.start_servers(nodes=nodes)
     time.sleep(1)
-    print("GUI servers started")
     servers_initialized = True
     # This happens before the serves are ready to handle it, but that should be ok, since they will read it
     # when they're ready.
@@ -329,7 +336,7 @@ def _start_ctr_msg_reader(logger, window):
         elif "SessionPrepared" == message.msg_type:
             window.write_event_value("devices_connected", True)
         elif "ServerStarted" == message.msg_type:
-            pass
+            window.write_event_value("server_started", message.source)
         elif "TasksCreated" == message.msg_type:
             window.write_event_value("tasks_created", "")
         elif "TaskInitialization" == message.msg_type:
@@ -369,13 +376,33 @@ def _start_ctr_msg_reader(logger, window):
             )
         elif "StatusMessage" == message.msg_type:
             msg_body: StatusMessage = message.body
-            print(msg_body.text)
-            logger.debug(msg_body.text)
+            write_message_to_output(logger, msg_body, window)
+        elif "ErrorMessage" == message.msg_type:
+            msg_body: ErrorMessage = message.body
+            write_message_to_output(logger, msg_body, window)
+            # TODO: put in a warning dialog that shuts down if the error is CRITICAL
+
         elif "FramePreviewReply" == message.msg_type:
             frame_reply: FramePreviewReply = message.body
             handle_frame_preview_reply(window, frame_reply)
         else:
             logger.debug(f"Unhandled message: {message.msg_type}")
+
+
+def write_message_to_output(logger, msg_body, window):
+    text_color: Optional[str]
+    if msg_body.status is None:
+        text_color = "black"
+    elif msg_body.status.upper() == "CRITICAL":
+        text_color = "red"
+    elif msg_body.status.upper() == "ERROR":
+        text_color = "red"
+    elif msg_body.status == "WARNING":
+        text_color = "orange red"
+    else:
+        text_color = None
+    write_output(window=window, text=f"Status: {msg_body.text}", text_color=text_color)
+    logger.debug(msg_body.text)
 
 
 ######### Visualization ############
@@ -394,7 +421,7 @@ def _plot_realtime(window, plttr, inlets):
 
 def handle_frame_preview_reply(window, frame_reply: FramePreviewReply):
     if not frame_reply.image_available or len(frame_reply.image) < 100:
-        print("ERROR: no iphone in LSL streams")
+        write_output(window, "ERROR: no iphone in LSL streams", text_color="red")
         return
     frame = base64.b64decode(frame_reply.image)
     nparr = np.frombuffer(frame, dtype=np.uint8)
@@ -417,7 +444,7 @@ def _prepare_devices(window, inlets, folder_session,
     window["-Connect-"].Update(disabled=True)
 
     event, values = window.read(0.1)
-    print("Connecting devices")
+    write_output(window, "\nConnecting devices. Please wait...")
 
     vidf_mrkr = marker_stream("videofiles")
 
@@ -542,7 +569,6 @@ def gui(logger):
 
         elif event == "Start":
             window["Start"].Update(disabled=True)
-            print("start clicked")
             session_id = meta._make_session_id(conn, log_sess)
             tasks = [k for k, v in values.items() if "obs" in k and v is True]
             _start_task_presentation(window, tasks, sess_info["subject_id"], session_id, steps)
@@ -590,6 +616,9 @@ def gui(logger):
                                               "Please ensure that any task in progress is completed and that STM and "
                                               "ACQ shut down properly.\n", title="Warning")
                 if response == "OK":
+                    write_output(window, "System termination scheduled. "
+                                         "Servers will shut down after the current task.")
+
                     if sess_info and values:
                         _save_session_notes(sess_info, values, window)
                     plttr.stop()
@@ -611,8 +640,11 @@ def gui(logger):
         # Signal a task started: record LSL data and update gui
         elif event == "task_initiated":
             # event values -> f"['{task_id}', '{t_obs_id}', '{log_task_id}, '{tsk_strt_time}']
+            # event values -> f"['{task_id}', '{t_obs_id}', '{log_task_id}, '{tsk_strt_time}']
             window["-frame_preview-"].update(visible=False)
             task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
+            write_output(window, f"\nTask initiated: {task_id}")
+
             logger.debug(f"Starting LSL for task: {t_obs_id}")
             rec_fname = _record_lsl(
                 window,
@@ -641,14 +673,16 @@ def gui(logger):
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
-            print(event, values[event])
+            # write_output(window, f"{event}:, {values[event]}")
             _create_lsl_inlet(stream_ids, values[event], inlets)
+
+        elif event == "server_started":
+            write_output(window, f"{values[event]} server started")
 
         elif event == "no_eyetracker":
             result = sg.PopupError(values[event])
             if result == 'Error':
                 window.write_event_value("Shut Down", "Shut Down")
-
 
         elif event == "mbient_disconnected":
             sg.PopupError(values[event], non_blocking=True)
@@ -660,10 +694,10 @@ def gui(logger):
         elif event == "-frame_preview-":
             _request_frame_preview(window, conn)
 
-        # Print LSL inlet names in GUI # TODO: Here's where the inlet names get printed to their own window
+        # Print LSL inlet names in GUI
         if inlet_keys != list(inlets):
-            inlet_keys = list(inlets)
-            window["inlet_State"].update("\n".join(inlet_keys))
+             inlet_keys = list(inlets)
+             window["inlet_State"].update("\n".join(inlet_keys))
     window.close()
     if "-OUTPUT-" in window.AllKeysDict:
         window["-OUTPUT-"].__del__()
@@ -718,9 +752,13 @@ def _make_session_folder(sess_info):
 
 
 def _session_button_state(window: object, disabled: bool) -> None:
-    window["Pause tasks"].update(disabled=disabled)
-    window["Stop tasks"].update(disabled=disabled)
-    window["Calibrate"].update(disabled=disabled)
+
+    # Ensure that we don't try to disable page 2 widgets if they're not yet constructed
+    if "Pause tasks" in window.AllKeysDict:
+
+        window["Pause tasks"].update(disabled=disabled)
+        window["Stop tasks"].update(disabled=disabled)
+        window["Calibrate"].update(disabled=disabled)
 
 
 def main():
