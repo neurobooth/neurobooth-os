@@ -9,9 +9,9 @@ from typing import Dict, Optional, Callable, List
 from psychopy import prefs
 
 from neurobooth_os.iout.stim_param_reader import TaskArgs
-from neurobooth_os.msg.messages import Message, CreateTasksRequest, StatusMessage, \
+from neurobooth_os.msg.messages import Message, CreateTasksRequest, \
     TaskInitialization, Request, TaskCompletion, StartRecordingMsg, StartRecording, SessionPrepared, \
-    PrepareRequest, TasksCreated, StopRecording, ServerStarted
+    PrepareRequest, TasksCreated, StopRecording, ServerStarted, ErrorMessage
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry

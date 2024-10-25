@@ -36,8 +36,8 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
                                         CancelSessionRequest, MEDIUM_HIGH_PRIORITY, ErrorMessage)
 
-#  state variables used to help ensure in-order GUI steps
-servers_initialized: bool = False
+#  State variables used to help ensure in-order GUI steps
+running_servers = []
 
 def setup_log(sg_handler=None):
     logger = make_db_logger("", "")
@@ -157,7 +157,6 @@ def _pause_tasks(window, steps, conn):
         write_output(window, "Continue session scheduled")
     elif resp == stop_msg:
         _stop_task_dialog(window, conn, resume_on_cancel=True)
-
     else:
         raise RuntimeError("Unknown Response from Pause Session dialog")
 
@@ -287,15 +286,12 @@ def _stop_lsl_and_save(
 def _start_servers(window, nodes):
     global servers_initialized
     window["-init_servs-"].Update(disabled=True)
+    write_output(window, "Starting servers. Please wait....")
 
-    write_output(window, "CTR starting servers")
     event, values = window.read(0.1)
     ctr_rec.start_servers(nodes=nodes)
     time.sleep(1)
     servers_initialized = True
-    # This happens before the serves are ready to handle it, but that should be ok, since they will read it
-    # when they're ready.
-    window["-Connect-"].Update(disabled=False)
     return event, values
 
 
@@ -431,20 +427,20 @@ def handle_frame_preview_reply(window, frame_reply: FramePreviewReply):
     window["iphone"].update(data=img_b)
 
 
-def _request_frame_preview(window, conn):
+def _request_frame_preview(conn):
     msg = FramePreviewRequest()
     req = Request(source="CTR", destination="ACQ", body=msg)
     meta.post_message(req, conn)
 
 
-def _prepare_devices(window, inlets, folder_session,
-                     nodes: List[str], collection_id: str,
-                     log_task: Dict, database, tasks: str):
-    """Prepare devices"""
+def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dict, database, tasks: str):
+    """Prepare devices. Mainly ensuring devices are connected"""
+
+    # disable button so it can't be pushed twice
     window["-Connect-"].Update(disabled=True)
 
     event, values = window.read(0.1)
-    write_output(window, "\nConnecting devices. Please wait...")
+    write_output(window, "\nConnecting devices. Please wait....")
 
     vidf_mrkr = marker_stream("videofiles")
 
@@ -469,12 +465,13 @@ def _prepare_devices(window, inlets, folder_session,
 
 
 def _get_nodes():
-    return ("acquisition", "presentation")
+    return ["acquisition", "presentation"]
 
 
 def gui(logger):
     """Start the Graphical User Interface.
     """
+    global running_servers
 
     database = cfg.neurobooth_config.database.dbname
 
@@ -558,7 +555,7 @@ def gui(logger):
         # Turn on devices
         elif event == "-Connect-":
             if servers_initialized:
-                vidf_mrkr, event, values = _prepare_devices(window, inlets, sess_info["subject_id_date"],
+                vidf_mrkr, event, values = _prepare_devices(window,
                     nodes, collection_id, log_task, database, tasks
                 )
             else:
@@ -673,11 +670,24 @@ def gui(logger):
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
-            # write_output(window, f"{event}:, {values[event]}")
             _create_lsl_inlet(stream_ids, values[event], inlets)
 
         elif event == "server_started":
-            write_output(window, f"{values[event]} server started")
+            server = values[event]
+            write_output(window, f"{server} server started")
+
+            if server == "ACQ":
+                node_name = "acquisition"
+            elif server == "STM":
+                node_name = "presentation"
+            else:
+                raise RuntimeError(f"Unknown server type: {server} as source of ServerStarted message")
+
+            running_servers.append(node_name)
+            expected_servers = _get_nodes()
+            check = all(e in running_servers for e in expected_servers)
+            if check:
+                window["-Connect-"].Update(disabled=False)
 
         elif event == "no_eyetracker":
             result = sg.PopupError(values[event])
@@ -692,7 +702,7 @@ def gui(logger):
         ##################################################################################
 
         elif event == "-frame_preview-":
-            _request_frame_preview(window, conn)
+            _request_frame_preview(conn)
 
         # Print LSL inlet names in GUI
         if inlet_keys != list(inlets):
