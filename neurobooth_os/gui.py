@@ -134,7 +134,7 @@ def _start_task_presentation(window, tasks: List[str], subject_id: str, session_
         meta.post_message(msg, conn), conn
         steps.append("task_started")
     else:
-        sg.PopupError("No task selected")
+        sg.PopupError("No task selected", location=get_popup_location(window))
 
 
 def _pause_tasks(window, steps, conn):
@@ -148,6 +148,7 @@ def _pause_tasks(window, steps, conn):
     resp = sg.Popup(
         "The session will pause after the current task.\n", title="Pausing session",
         custom_text=(continue_msg, stop_msg),
+        location=get_popup_location(window)
     )
     # handle user closing either popup using 'x' instead of making a choice
     if resp == continue_msg or resp is None:
@@ -177,7 +178,8 @@ def _stop_task_dialog(window, conn, resume_on_cancel: bool):
     """
     response = sg.popup_ok_cancel("Session will end after the current task completes!  \n\n"
                                   "Press OK to end the session; Cancel to continue the session.\n",
-                                  title="Warning")
+                                  title="Warning",
+                                  location=get_popup_location(window))
     if response == "OK":
         write_output(window, "Stop session scheduled. Session will end after the current task.")
         body = CancelSessionRequest()
@@ -198,7 +200,7 @@ def _calibrate(window, conn):
     msg = Request(source="CTR", destination="STM", body=msg_body)
     meta.post_message(msg, conn)
     resp = sg.Popup(
-        "Eyetracker Recalibration will start after the current task.",
+        "Eyetracker Recalibration will start after the current task.", location=get_popup_location(window)
     )
 
 
@@ -405,7 +407,8 @@ def _plot_realtime(window, plttr, inlets):
     # if no inlets send event to prepare devices and make popup error
     if len(inlets) == 0:
         window.write_event_value("-Connect-")
-        sg.PopupError("No inlet devices detected, preparing. Press plot once prepared")
+        sg.PopupError("No inlet devices detected, preparing. Press plot once prepared",
+                      location=get_popup_location(window))
 
     if plttr.pltotting_ts is True:
         plttr.inlets = inlets
@@ -514,7 +517,7 @@ def gui(logger):
                 first_name, last_name, subject_id = _select_subject(window, subject_df)
                 log_sess["subject_id"] = subject_id
             else:
-                sg.popup("No subject selected")
+                sg.popup("No subject selected", location=get_popup_location(window))
 
         elif event == "collection_id":
             collection_id: str = values[event]
@@ -523,9 +526,9 @@ def gui(logger):
 
         elif event == "_init_sess_save_":
             if values["tasks"] == "":
-                sg.PopupError("No task combo")
+                sg.PopupError("No task combo", location=get_popup_location(window))
             elif values["staff_id"] == "":
-                sg.PopupError("No staff ID")
+                sg.PopupError("No staff ID", location=get_popup_location(window))
             else:
                 log_sess["staff_id"] = values["staff_id"]
                 sess_info = _create_session_dict(
@@ -590,7 +593,8 @@ def gui(logger):
                 _save_session_notes(sess_info, values, window)
             else:
                 sg.PopupError(
-                    "Pressed save notes without task, select one in the dropdown list"
+                    "Pressed save notes without task, select one in the dropdown list",
+                    location=get_popup_location(window)
                 )
                 continue
 
@@ -599,13 +603,15 @@ def gui(logger):
             if values is not None and 'notes' in values and "_notes_taskname_" not in values:
                 sg.PopupError(
                     "Unsaved notes without task. Before exiting, "
-                    "select a task in the dropdown list or delete the note text."
+                    "select a task in the dropdown list or delete the note text.",
+                    location=get_popup_location(window)
                 )
                 continue
             else:
                 response = sg.popup_ok_cancel("System will terminate!  \n\n"
                                               "Please ensure that any task in progress is completed and that STM and "
-                                              "ACQ shut down properly.\n", title="Warning")
+                                              "ACQ shut down properly.\n", title="Warning",
+                                              location=get_popup_location(window))
                 if response == "OK":
                     write_output(window, "System termination scheduled. "
                                          "Servers will shut down after the current task.")
@@ -685,12 +691,12 @@ def gui(logger):
                 window["-Connect-"].Update(disabled=False)
 
         elif event == "no_eyetracker":
-            result = sg.PopupError(values[event])
+            result = sg.PopupError(values[event], location=get_popup_location(window))
             if result == 'Error':
                 window.write_event_value("Shut Down", "Shut Down")
 
         elif event == "mbient_disconnected":
-            sg.PopupError(values[event], non_blocking=True)
+            sg.PopupError(values[event], non_blocking=True, location=get_popup_location(window))
 
         ##################################################################################
         # Conditionals handling inlets for plotting and recording
@@ -764,6 +770,14 @@ def _session_button_state(window: object, disabled: bool) -> None:
         window["Pause tasks"].update(disabled=disabled)
         window["Stop tasks"].update(disabled=disabled)
         window["Calibrate"].update(disabled=disabled)
+
+
+def get_popup_location(window):
+    x, y = window.get_screen_size()
+    window_x, window_y = window.current_location()
+    center_x = window_x + window.size[0] // 2
+    center_y = window_y + window.size[1] // 2
+    return center_x, center_y
 
 
 def main():
