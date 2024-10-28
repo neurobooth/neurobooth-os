@@ -758,7 +758,7 @@ class Mbient:
         libmetawear.mbl_mw_datasignal_subscribe(processor, None, self.callback)
         self.subscribed_signals.append(processor)
 
-        txt = f"Mbient {self.dev_name} setup"  # Send message to GUI terminal
+        txt = f"Mbient {self.dev_name} is connected"  # Send message to GUI terminal
         with get_database_connection() as conn:
             self.send_status_msg(txt, conn, "INFO")
         self.logger.debug(self.format_message('Setup Completed'))

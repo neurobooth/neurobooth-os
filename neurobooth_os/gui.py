@@ -154,7 +154,7 @@ def _pause_tasks(window, steps, conn):
         body = ResumeSessionRequest()
         request = Request(source="CTR", destination="STM", body=body)
         meta.post_message(request, conn)
-        write_output(window, "Continue session scheduled")
+        write_output(window, "Continue scheduled")
     elif resp == stop_msg:
         _stop_task_dialog(window, conn, resume_on_cancel=True)
     else:
@@ -284,14 +284,12 @@ def _stop_lsl_and_save(
 
 
 def _start_servers(window, nodes):
-    global servers_initialized
     window["-init_servs-"].Update(disabled=True)
     write_output(window, "Starting servers. Please wait....")
 
     event, values = window.read(0.1)
     ctr_rec.start_servers(nodes=nodes)
     time.sleep(1)
-    servers_initialized = True
     return event, values
 
 
@@ -554,12 +552,8 @@ def gui(logger):
 
         # Turn on devices
         elif event == "-Connect-":
-            if servers_initialized:
-                vidf_mrkr, event, values = _prepare_devices(window,
-                    nodes, collection_id, log_task, database, tasks
-                )
-            else:
-                sg.PopupError("Servers not started. Please initiate servers before connecting.")
+            vidf_mrkr, event, values = _prepare_devices(window,
+                nodes, collection_id, log_task, database, tasks)
 
         elif event == "plot":
             _plot_realtime(window, plttr, inlets)
@@ -588,7 +582,7 @@ def gui(logger):
             _stop_task_dialog(window, conn=conn, resume_on_cancel=False)
 
         elif event == "Calibrate":
-            _calibrate(steps, conn=conn)
+            _calibrate(window, conn=conn)
 
         # Save notes to a txt
         elif event == "_save_notes_":
@@ -687,6 +681,7 @@ def gui(logger):
             expected_servers = _get_nodes()
             check = all(e in running_servers for e in expected_servers)
             if check:
+                write_output(window, "Servers initiated. OK to connect devices.")
                 window["-Connect-"].Update(disabled=False)
 
         elif event == "no_eyetracker":
