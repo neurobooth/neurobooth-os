@@ -371,12 +371,10 @@ def _start_ctr_msg_reader(logger, window):
                 "mbient_disconnected", f"{msg_body.warning}, \nconsider repeating the task"
             )
         elif "StatusMessage" == message.msg_type:
-            msg_body: StatusMessage = message.body
-            write_message_to_output(logger, msg_body, window)
+            write_message_to_output(logger, message, window)
 
         elif "ErrorMessage" == message.msg_type:
-            msg_body: ErrorMessage = message.body
-            write_message_to_output(logger, msg_body, window)
+            write_message_to_output(logger, message, window)
 
         elif "FramePreviewReply" == message.msg_type:
             frame_reply: FramePreviewReply = message.body
