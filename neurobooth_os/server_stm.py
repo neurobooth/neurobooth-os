@@ -63,9 +63,57 @@ def run_stm(logger):
     meta.post_message(init_servers, db_conn)
 
     while not shutdown:
+        try:
+            while paused:
+                message: Message = meta.read_next_message("STM", msg_type='paused_msg_types', conn=db_conn)
+                if message is None:
+                    sleep(1)
+                    continue
 
-        while paused:
-            message: Message = meta.read_next_message("STM", msg_type='paused_msg_types', conn=db_conn)
+                logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
+                logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
+                current_msg_type: str = message.msg_type
+
+                # Next message tells what to do now that we paused
+                if "TerminateServerRequest" == current_msg_type:
+                    paused = False
+                    shutdown = True
+                    break
+                if "ResumeSessionRequest" == current_msg_type:
+                    paused = False
+
+                    # display 'preparing next task'
+                    root_pckg = neurobooth_os.__path__[0]
+                    end_screen = utl.get_end_screen(session.win, root_pckg)
+
+                    # TODO: msg is only needed if we need to do markers around this prepare step.
+                    # See task.show_text()
+                    msg = "Completed-task"
+
+                    utl.present(
+                        session.win,
+                        end_screen,
+                        audio=None,
+                        wait_time=0,
+                        win_color=(0, 0, 0),
+                        waitKeys=False,
+                    )
+                    break
+
+                elif "CancelSessionRequest" == current_msg_type:
+                    session_canceled = True
+                    paused = False
+                    break
+                else:
+                    text = (f'"Received an unexpected message while paused: '
+                            f'{message.model_dump_json()}')
+                    body = ErrorMessage(text=text, status="CRITICAL")
+                    err_msg = Request(source='STM', destination='CTR', body=body)
+                    meta.post_message(err_msg, session.db_conn)
+                    logger.error(f"Received an unexpected message while paused {current_msg_type}")
+                    raise RuntimeError(text)
+
+            message: Message = meta.read_next_message("STM", conn=db_conn)
             if message is None:
                 sleep(1)
                 continue
@@ -74,92 +122,48 @@ def run_stm(logger):
             logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
             current_msg_type: str = message.msg_type
 
-            # Next message tells what to do now that we paused
             if "TerminateServerRequest" == current_msg_type:
-                paused = False
+                if session is not None:
+                    session.shutdown()
                 shutdown = True
-                break
-            if "ResumeSessionRequest" == current_msg_type:
-                paused = False
+                continue
 
-                # display 'preparing next task'
-                root_pckg = neurobooth_os.__path__[0]
-                end_screen = utl.get_end_screen(session.win, root_pckg)
+            if not session_canceled:
 
-                # TODO: msg is only needed if we need to do markers around this prepare step.
-                # See task.show_text()
-                msg = "Completed-task"
+                if "PrepareRequest" == current_msg_type:
+                    request: PrepareRequest = message.body
+                    session, task_log_entry = prepare_session(request, logger)
 
-                utl.present(
-                    session.win,
-                    end_screen,
-                    audio=None,
-                    wait_time=0,
-                    win_color=(0, 0, 0),
-                    waitKeys=False,
-                )
-                break
+                elif 'CreateTasksRequest' == current_msg_type:
+                    # task_name can be list of tk1-task2-task3
+                    calib_instructions, device_log_entry_dict, subj_id, task_calib = _create_tasks(message, session,
+                                                                                                   task_log_entry)
+                elif "PerformTaskRequest" == current_msg_type:
+                    _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id,
+                                  task_log_entry)
 
-            elif "CancelSessionRequest" == current_msg_type:
-                session_canceled = True
-                paused = False
-                break
-            else:
-                body = ErrorMessage(text=f'"Received an unexpected message while paused: {message.model_dump_json()}',
-                                     status="Error")
+                elif "PauseSessionRequest" == current_msg_type:
+                    paused = _pause(session)
 
-                err_msg = Request(source='STM', destination='CTR', body=body)
-                meta.post_message(err_msg, session.db_conn)
-                logger.warn(f"Received an unexpected message while paused {current_msg_type}")
-                shutdown = True
-                paused = False
-                break
+                elif "TasksFinished" == current_msg_type:
+                    session_canceled = True
 
-        message: Message = meta.read_next_message("STM", conn=db_conn)
-        if message is None:
-            sleep(1)
-            continue
+                elif "CancelSessionRequest" == current_msg_type:
+                    session_canceled = True
 
-        logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
-        logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
-        current_msg_type: str = message.msg_type
+                else:
+                    unex_msg = f'Unexpected message received: {message.model_dump_json()}'
+                    logger.error(unex_msg)
+                    raise RuntimeError(unex_msg)
 
-        if "TerminateServerRequest" == current_msg_type:
-            if session is not None:
-                session.shutdown()
-            shutdown = True
-            continue
-
-        if not session_canceled:
-
-            if "PrepareRequest" == current_msg_type:
-                request: PrepareRequest = message.body
-                session, task_log_entry = prepare_session(request, logger)
-
-            elif 'CreateTasksRequest' == current_msg_type:
-                # task_name can be list of tk1-task2-task3
-                calib_instructions, device_log_entry_dict, subj_id, task_calib = _create_tasks(message, session,
-                                                                                               task_log_entry)
-            elif "PerformTaskRequest" == current_msg_type:
-                _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id,
-                              task_log_entry)
-
-            elif "PauseSessionRequest" == current_msg_type:
-                paused = _pause(session)
-
-            elif "TasksFinished" == current_msg_type:
-                session_canceled = True
-
-            elif "CancelSessionRequest" == current_msg_type:
-                session_canceled = True
-
-            else:
-                unex_msg = f'Unexpected message received: {message.model_dump_json()}'
-                logger.error(unex_msg)
-                shutdown = True
-
-        if session_canceled and not finished:
-            finished = _finish_tasks(session)
+            if session_canceled and not finished:
+                finished = _finish_tasks(session)
+        except Exception as argument:
+            with meta.get_database_connection() as db_conn:
+                err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
+                req = Request(body=err_msg, source="STM", destination="CTR")
+                meta.post_message(req, db_conn)
+            raise argument
 
     exit()
 

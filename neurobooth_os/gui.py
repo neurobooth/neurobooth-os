@@ -373,10 +373,10 @@ def _start_ctr_msg_reader(logger, window):
         elif "StatusMessage" == message.msg_type:
             msg_body: StatusMessage = message.body
             write_message_to_output(logger, msg_body, window)
+
         elif "ErrorMessage" == message.msg_type:
             msg_body: ErrorMessage = message.body
             write_message_to_output(logger, msg_body, window)
-            # TODO: put in a warning dialog that shuts down if the error is CRITICAL
 
         elif "FramePreviewReply" == message.msg_type:
             frame_reply: FramePreviewReply = message.body
@@ -385,19 +385,27 @@ def _start_ctr_msg_reader(logger, window):
             logger.debug(f"Unhandled message: {message.msg_type}")
 
 
-def write_message_to_output(logger, msg_body, window):
+def write_message_to_output(logger, message: Request, window):
+    msg_body = message.body
     text_color: Optional[str]
+    heading = "Status: "
+    msg = msg_body.text
     if msg_body.status is None:
         text_color = "black"
     elif msg_body.status.upper() == "CRITICAL":
-        text_color = "red"
+        heading = "Critical Error: "
+        msg = (f"A critical error has occurred on sever '{message.source}'. "
+               f"The system must shutdown. Please make sure the servers have shut-down correctly "
+               f"before restarting the session.\n\n"
+               f"The error was: '{msg_body.text}'")
+
     elif msg_body.status.upper() == "ERROR":
         text_color = "red"
     elif msg_body.status == "WARNING":
         text_color = "orange red"
     else:
         text_color = None
-    write_output(window=window, text=f"Status: {msg_body.text}", text_color=text_color)
+    write_output(window=window, text=f"{heading}: {msg}", text_color=text_color)
     logger.debug(msg_body.text)
 
 
@@ -616,18 +624,7 @@ def gui(logger):
                     write_output(window, "System termination scheduled. "
                                          "Servers will shut down after the current task.")
 
-                    if sess_info and values:
-                        _save_session_notes(sess_info, values, window)
-                    plttr.stop()
-                    _session_button_state(window, disabled=True)
-                    shutdown_acq_msg: Message = Request(source="CTR",
-                                                        destination="STM",
-                                                        body=TerminateServerRequest())
-                    shutdown_stm_msg: Message = Request(source="CTR",
-                                                        destination="ACQ",
-                                                        body=TerminateServerRequest())
-                    meta.post_message(shutdown_acq_msg, conn)
-                    meta.post_message(shutdown_stm_msg, conn)
+                    terminate_system(conn, plttr, sess_info, values, window)
                     break
 
         ##################################################################################
@@ -713,6 +710,21 @@ def gui(logger):
     if "-OUTPUT-" in window.AllKeysDict:
         window["-OUTPUT-"].__del__()
     print("Session terminated")
+
+
+def terminate_system(conn, plttr, sess_info, values, window):
+    if sess_info and values:
+        _save_session_notes(sess_info, values, window)
+    plttr.stop()
+    _session_button_state(window, disabled=True)
+    shutdown_acq_msg: Message = Request(source="CTR",
+                                        destination="STM",
+                                        body=TerminateServerRequest())
+    shutdown_stm_msg: Message = Request(source="CTR",
+                                        destination="ACQ",
+                                        body=TerminateServerRequest())
+    meta.post_message(shutdown_acq_msg, conn)
+    meta.post_message(shutdown_stm_msg, conn)
 
 
 def handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window):
