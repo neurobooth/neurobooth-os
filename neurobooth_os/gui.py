@@ -393,9 +393,10 @@ def write_message_to_output(logger, message: Request, window):
     elif msg_body.status.upper() == "CRITICAL":
         heading = "Critical Error: "
         msg = (f"A critical error has occurred on sever '{message.source}'. "
-               f"The system must shutdown. Please make sure the servers have shut-down correctly "
+               f"The system must shutdown. Please make sure ACQ and STM have shut-down correctly "
                f"before restarting the session.\n\n"
                f"The error was: '{msg_body.text}'")
+        text_color = "red"
 
     elif msg_body.status.upper() == "ERROR":
         text_color = "red"
