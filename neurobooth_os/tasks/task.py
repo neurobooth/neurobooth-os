@@ -102,11 +102,8 @@ class Task:
             self.win = win
             self.win_temp = False
 
-        if instruction_file is not None:
-            self.instruction_file = instruction_file
-            self.load_instruction_video()
-        else:
-            self.instruction_video = None
+        self.instruction_file = instruction_file
+        self.load_instruction_video()
 
         # Create mouse and set not visible
         self.Mouse = event.Mouse(visible=False, win=self.win)
@@ -177,6 +174,8 @@ class Task:
                 self.instruction_video = visual.MovieStim3(
                     win=self.win, filename=path_instruction_video, noAudio=False
                 )
+        else:
+            self.instruction_video = None
 
     def render_image(self):
         '''
