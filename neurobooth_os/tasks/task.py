@@ -5,7 +5,7 @@
 
 from __future__ import absolute_import, division
 
-from typing import List, Union
+from typing import List, Union, Optional
 from enum import Enum
 
 from psychopy import logging as psychopy_logging
@@ -39,9 +39,12 @@ class Task:
     # These file paths must be checked before passing and an appropriate error raised, and so they
     # are checked inline below.
     # We cannot check paths with pydantic when loading the params because the path strings there are partial.
+
+    instruction_video = None
+
     def __init__(
             self,
-            instruction_file=None,
+            instruction_file: Optional[str]=None,
             marker_outlet=None,
             win=None,
             full_screen: bool = False,
@@ -55,6 +58,7 @@ class Task:
             **kwargs,
     ):
         super().__init__()
+        self.path_instruction_video = None
         self.logger = logging.getLogger(APP_LOG_NAME)
 
         # Common markers
@@ -68,7 +72,6 @@ class Task:
         self.marker_response_end = "Response_end"
 
         self.task_files: List[str] = []
-        self.path_instruction_video = instruction_file
         self.full_screen = full_screen
         self.events = []
 
@@ -99,14 +102,9 @@ class Task:
             self.win = win
             self.win_temp = False
 
-        if self.path_instruction_video is not None:
-            self.path_instruction_video = op.join(
-                cfg.neurobooth_config.video_task_dir, self.path_instruction_video
-            )
-
-            self.instruction_video = visual.MovieStim3(
-                win=self.win, filename=self.path_instruction_video, noAudio=False
-            )
+        if instruction_file is not None:
+            self.instruction_file = instruction_file
+            self.load_instruction_video()
         else:
             self.instruction_video = None
 
@@ -162,6 +160,23 @@ class Task:
             pos=(0, 0),
             units="deg",
         )
+
+    def load_instruction_video(self):
+        """
+        Loads instruction video if not previously loaded or if previously loaded but currently stopped.
+        Returns
+        -------
+
+        """
+        if self.instruction_file is not None:
+            video = self.instruction_video
+            if video is None or video.status == "STOPPED":
+                path_instruction_video = op.join(
+                    cfg.neurobooth_config.video_task_dir, self.instruction_file
+                )
+                self.instruction_video = visual.MovieStim3(
+                    win=self.win, filename=path_instruction_video, noAudio=False
+                )
 
     def render_image(self):
         '''
@@ -245,6 +260,7 @@ class Task:
         utils.countdown(0.22)
 
     def present_instructions(self, prompt=True):
+        self.load_instruction_video()
         self.show_video(video=self.instruction_video, msg="Intructions")
         if prompt:
             self.show_text(
