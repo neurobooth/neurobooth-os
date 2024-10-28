@@ -156,7 +156,7 @@ def run_acq(logger):
         except Exception as argument:
             with meta.get_database_connection() as db_conn:
                 err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
-                req = Request(body=err_msg, source="STM", destination="CTR")
+                req = Request(body=err_msg, source="ACQ", destination="CTR")
                 meta.post_message(req, db_conn)
             raise argument
 
