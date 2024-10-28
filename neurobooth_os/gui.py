@@ -660,6 +660,7 @@ def gui(logger):
         elif event == 'devices_connected':
             session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
             window["-frame_preview-"].update(visible=True)
+            write_output(window, "Finished device connection process.")
             window['Start'].update(disabled=False)
 
         # Create LSL inlet stream
