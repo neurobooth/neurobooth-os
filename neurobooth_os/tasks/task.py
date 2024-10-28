@@ -45,6 +45,7 @@ class Task:
 
     def __init__(
             self,
+            instruction_file=None,
             marker_outlet=None,
             win=None,
             full_screen: bool = False,
@@ -58,7 +59,6 @@ class Task:
             **kwargs,
     ):
         super().__init__()
-        self.path_instruction_video = None
         self.logger = logging.getLogger(APP_LOG_NAME)
 
         # Common markers
