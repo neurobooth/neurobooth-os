@@ -41,10 +41,10 @@ class Task:
     # We cannot check paths with pydantic when loading the params because the path strings there are partial.
 
     instruction_video = None
+    instruction_file: Optional[str] = None,
 
     def __init__(
             self,
-            instruction_file: Optional[str]=None,
             marker_outlet=None,
             win=None,
             full_screen: bool = False,
