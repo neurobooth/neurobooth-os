@@ -74,7 +74,8 @@ def _get_subject_by_id(window, log_sess, conn, subject_id: str):
         )
 
         window["subject_info"].update(subject_text)
-        window["subject_info"].set_tooltip(subject.date_of_birth.strftime("%Y-%m-%d"))
+        tooltip = f"Birth date: {subject.date_of_birth.strftime('%Y-%m-%d')}"
+        window["subject_info"].set_tooltip(tooltip)
         return subject
     else:
         sg.PopupError(f"Subject {subject_id} not found", location=get_popup_location(window))
@@ -488,10 +489,6 @@ def gui(logger):
 
     # declare and initialize vars
     subject: Subject
-    subject_id = None
-    subject_dob: Optional[datetime] = None
-    first_name = None
-    last_name = None
     tasks = None
 
     conn = meta.get_database_connection()

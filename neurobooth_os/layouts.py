@@ -185,7 +185,7 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
                     font=("Arial", 12, "bold"),
                     text_color="black",
                     background_color="white",
-                    tooltip=sess_info["subject_dob"],
+                    tooltip=f"Birth date: {sess_info['subject_dob']}",
                     k="_sbj_id_",
                 ),
                 sg.Text(
