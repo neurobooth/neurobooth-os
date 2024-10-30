@@ -136,11 +136,9 @@ def run_stm(logger):
 
                 elif 'CreateTasksRequest' == current_msg_type:
                     # task_name can be list of tk1-task2-task3
-                    calib_instructions, device_log_entry_dict, subj_id, task_calib = _create_tasks(message, session,
-                                                                                                   task_log_entry)
+                    device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
                 elif "PerformTaskRequest" == current_msg_type:
-                    _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id,
-                                  task_log_entry)
+                    _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj_id, task_log_entry)
 
                 elif "PauseSessionRequest" == current_msg_type:
                     paused = _pause(session)
@@ -168,10 +166,11 @@ def run_stm(logger):
     exit()
 
 
-def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id: str,
+def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj_id: str,
                   task_log_entry):
     msg_body = message.body
     task_id: str = msg_body.task_id
+
     session.logger.info(f'TASK: {task_id}')
     tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
     if task_id not in session.tasks():
@@ -180,6 +179,8 @@ def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, me
         t00 = time()
         # get task and params
         task_args: TaskArgs = _get_task_args(session, task_id)
+        load_task_media(session, task_args)
+
         task: Task = task_args.task_instance
         this_task_kwargs = create_task_kwargs(session, task_args)
 
@@ -211,7 +212,7 @@ def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, me
 
             _wait_for_lsl_recording_to_start(db_conn, logger, session, t0)
 
-            _start_acq(calib_instructions, session, task_args, task_id, this_task_kwargs, tsk_start_time)
+            _start_acq(session, task_args, task_id, this_task_kwargs, tsk_start_time)
 
             this_task_kwargs["task_name"] = task_id
             this_task_kwargs["subj_id"] += "_" + tsk_start_time
@@ -242,37 +243,28 @@ def _create_tasks(message, session, task_log_entry):
     session_id = msg_body.session_id
     task_log_entry.log_session_id = session_id
     # Preload tasks media
-    t0 = time()
+
     task_list: List[TaskArgs] = []
     for task_id in tasks:
         if task_id in session.tasks():
             setup_task(session, task_id, task_list)
 
     device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
-    # ensure task_list contains calibration if there's an eyelink device, in case user presses calibrate button
-    # TODO: This is very fragile, as it depends on the eyelink device name string
-    if "Eyelink_1" in device_log_entry_dict:
-        if "calibration_obs_1" not in tasks:
-            setup_task(session, "calibration_obs_1", task_list)
 
-    session.logger.info(f'Task media took {time() - t0:.2f}')
     session.win = welcome_screen(win=session.win)
-    task_calib = [t for t in task_list if "calibration" in t.task_id]
-    # Show calibration instruction video only the first time
-    # TODO: Handle calibration_instruction (make sure only displayed once)
-    calib_instructions = True
     reply_body = TasksCreated()
     reply = Request(source="STM", destination=message.source, body=reply_body)
     meta.post_message(reply, session.db_conn)
     session.logger.debug(task_list)
-    session.logger.debug(task_calib)
-    session.logger.debug(f"calib_instruction: {calib_instructions}")
-    return calib_instructions, device_log_entry_dict, subj_id, task_calib
+    return device_log_entry_dict, subj_id
 
 
 def setup_task(session, task_id, task_list):
     task_args: TaskArgs = _get_task_args(session, task_id)
     task_list.append(task_args)
+
+
+def load_task_media(session: StmSession, task_args: TaskArgs):
     tsk_fun_obj: Callable = copy.copy(
         task_args.task_constructor_callable)  # callable for Task constructor
     this_task_kwargs = create_task_kwargs(session, task_args)
@@ -325,14 +317,13 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
         attempts = attempts + 1
 
 
-def _start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, task_id: str, this_task_kwargs,
+def _start_acq(session: StmSession, task_args: TaskArgs, task_id: str, this_task_kwargs,
                tsk_start_time):
     """
     Start recording on ACQ in parallel to starting on STM
 
     Parameters
     ----------
-    calib_instructions
     session
     task_args
     task_id
@@ -359,11 +350,8 @@ def _start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, tas
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
-        if "calibration_task" in stimulus_id:  # if not calibration record with start method
-            this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
-        else:
-            task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
-            session.eye_tracker.start(fname)
+        task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
+        session.eye_tracker.start(fname)
     session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
     acq_reply = None
     while acq_reply is None:

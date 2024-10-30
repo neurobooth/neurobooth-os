@@ -167,15 +167,10 @@ class Task:
         """
         if self.instruction_file is not None:
             video = self.instruction_video
-            print(f"instruction video {video}")
-            if video is not None:
-                print(f"Instruction video status: {video.status}")
             if video is None or video.status == "STOPPED":
                 path_instruction_video = op.join(
                     cfg.neurobooth_config.video_task_dir, self.instruction_file
                 )
-                print(f"video file path: {path_instruction_video}")
-                print(f"File exists {os.path.isfile(path_instruction_video)}")
                 self.instruction_video = visual.MovieStim3(
                     win=self.win, filename=path_instruction_video, noAudio=False
                 )
