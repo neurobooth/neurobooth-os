@@ -247,7 +247,6 @@ def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
         curs.execute(contact_query)
         results = curs.fetchall()
         column_names = [desc[0] for desc in curs.description]
-        print(column_names)
 
         # Create the DataFrame
         contact_df = pd.DataFrame(results, columns=column_names)
@@ -264,18 +263,12 @@ def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
             preferred_first_name="",
             preferred_last_name="",
         )
-        pref_first_name = contact_df['first_name_contact'].iloc[0]
-        pref_last_name = contact_df['last_name_contact'].iloc[0]
-        print(1)
-        print(pref_first_name)
-        print(pref_last_name)
-        if not contact_df.empty:
-            subj.preferred_first_name = pref_first_name,
-            subj.preferred_last_name = pref_last_name,
-            print(2)
-            print(subj.preferred_first_name)
-            print(subj.preferred_last_name)
+        pref_first_name = str(contact_df['first_name_contact'].iloc[0])
+        pref_last_name = str(contact_df['last_name_contact'].iloc[0])
 
+        if not contact_df.empty:
+            subj.preferred_first_name = pref_first_name
+            subj.preferred_last_name = pref_last_name
         return subj
 
 

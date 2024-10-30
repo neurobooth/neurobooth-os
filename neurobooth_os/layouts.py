@@ -30,6 +30,7 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
         element_padding=(0, 0),
     )
     layout = [
+        [_space()],
         [
             sg.Text("Subject ID:", pad=((0, 0), 0), justification="left"),
             sg.Input(
@@ -168,8 +169,8 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
         )
     ]
     subject_text = (
-        f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}'
-        + f' {sess_info["last_name"]} - {sess_info["subject_dob"]}'
+        f'ID: {sess_info["subject_id"]}, {sess_info["first_name"]}'
+        + f' {sess_info["last_name"]} - ({sess_info["pref_first_name"]} {sess_info["pref_last_name"]})'
     )
     row_1_pad = ((20, 20),(5, 5))
     row_2_pad = ((20, 20),(0, 0))

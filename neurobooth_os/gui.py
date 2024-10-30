@@ -67,8 +67,6 @@ def _get_subject_by_id(window, log_sess, conn, subject_id: str):
     """Returns the subject record corresponding to the provided subject ID"""
     log_sess["subject_id"] = subject_id.strip()
     subject = meta.get_subject_by_id(conn, subject_id)
-    print(subject.preferred_first_name)
-    print(subject.preferred_last_name)
     if subject is not None:
         subject_text = (
                 f'Subject ID: {subject.subject_id}, {subject.first_name_birth}'
