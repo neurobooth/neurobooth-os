@@ -34,6 +34,7 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         TasksFinished, FramePreviewRequest,
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
                                         CancelSessionRequest, ServerStarted, MEDIUM_HIGH_PRIORITY)
+from neurobooth_os.util.nb_types import Subject
 
 #  state variables used to help ensure in-order GUI steps
 servers_initialized: bool = False
@@ -58,35 +59,32 @@ class Handler(logging.StreamHandler):
         buffer = str(record).strip()
         window['log'].update(value=buffer)
 
-
 ########## Database functions ############
 
 
-def _find_subject(window, conn, first_name, last_name):
-    """Find subject from database"""
-    subject_df = meta.get_subject_ids(conn, first_name, last_name)
-    window["dob"].update(values=subject_df["date_of_birth_subject"])
-    window["select_subject"].update("Select subject")
-    return subject_df
+def _get_subject_by_id(window, log_sess, conn, subject_id: str):
+    """Returns the subject record corresponding to the provided subject ID"""
+    log_sess["subject_id"] = subject_id.strip()
+    subject = meta.get_subject_by_id(conn, subject_id)
+    print(subject.preferred_first_name)
+    print(subject.preferred_last_name)
+    if subject is not None:
+        subject_text = (
+                f'Subject ID: {subject.subject_id}, {subject.first_name_birth}'
+                + f' {subject.last_name_birth} [ {subject.preferred_first_name} {subject.preferred_last_name} ]'
+        )
 
-
-def _select_subject(window, subject_df):
-    """Select subject from the DOB window"""
-    subject = subject_df.iloc[window["dob"].get_indexes()]
-    subject_id = subject.name
-    first_name = subject["first_name_birth"]
-    last_name = subject["last_name_birth"]
-
-    # Update GUI
-    window["dob"].update(values=[""])
-    window["select_subject"].update(f"Subject ID: {subject_id}")
-    return first_name, last_name, subject_id
+        window["subject_info"].update(subject_text)
+        window["subject_info"].set_tooltip(subject.date_of_birth.strftime("%Y-%m-%d"))
+        return subject
+    else:
+        sg.PopupError(f"Subject {subject_id} not found")
 
 
 def _get_tasks(window, collection_id: str):
     task_obs = meta.get_task_ids_for_collection(collection_id)
     tasks = ", ".join(task_obs)
-    window["tasks"].update(value=tasks)
+    window["tasks"].update(task_obs)
     return tasks
 
 
@@ -96,20 +94,23 @@ def _get_collections(window, study_id: str):
     return collection_ids
 
 
-def _create_session_dict(window, log_task, staff_id, subject_id, first_name, last_name, tasks):
+def _create_session_dict(window, log_task, staff_id, subject: Subject, tasks):
     """Create session dictionary."""
-    log_task["subject_id"] = subject_id
+    log_task["subject_id"] = subject.subject_id
     dt = datetime.now().strftime("%Y-%m-%d")
-    log_task["subject_id-date"] = f'{subject_id}_{dt}'
+    log_task["subject_id-date"] = f'{subject.subject_id}_{dt}'
     log_task["date"] = dt
     subject_id_date = log_task["subject_id-date"]
 
     window.close()
 
     return {
-        "subject_id": subject_id,
-        "first_name": first_name,
-        "last_name": last_name,
+        "subject_id": subject.subject_id,
+        "subject_dob": subject.date_of_birth.date().isoformat(),
+        "first_name": subject.first_name_birth,
+        "last_name": subject.last_name_birth,
+        "pref_first_name": subject.preferred_first_name,
+        "pref_last_name": subject.preferred_last_name,
         "tasks": tasks,
         "staff_id": staff_id,
         "subject_id_date": subject_id_date,
@@ -459,7 +460,9 @@ def gui(logger):
     nodes = _get_nodes()
 
     # declare and initialize vars
+    subject: Subject
     subject_id = None
+    subject_dob: Optional[datetime] = None
     first_name = None
     last_name = None
     tasks = None
@@ -493,16 +496,7 @@ def gui(logger):
             collection_ids = _get_collections(window, study_id)
 
         elif event == "find_subject":
-            subject_df = _find_subject(
-                window, conn, values["first_name"], values["last_name"]
-            )
-
-        elif event == "select_subject":
-            if window["dob"].get_indexes():
-                first_name, last_name, subject_id = _select_subject(window, subject_df)
-                log_sess["subject_id"] = subject_id
-            else:
-                sg.popup("No subject selected")
+            subject: Subject = _get_subject_by_id(window, log_sess, conn, values["subject_id"])
 
         elif event == "collection_id":
             collection_id: str = values[event]
@@ -511,7 +505,7 @@ def gui(logger):
 
         elif event == "_init_sess_save_":
             if values["tasks"] == "":
-                sg.PopupError("No task combo")
+                sg.PopupError("No task list")
             elif values["staff_id"] == "":
                 sg.PopupError("No staff ID")
             else:
@@ -520,9 +514,7 @@ def gui(logger):
                     window,
                     log_task,
                     values["staff_id"],
-                    subject_id,
-                    first_name,
-                    last_name,
+                    subject,
                     tasks,
                 )
                 # Open new layout with main window

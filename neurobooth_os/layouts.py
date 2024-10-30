@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Apr  2 08:01:51 2021
-
-@author: neurobooth
+Layouts for RC User Interface
 """
 from datetime import datetime
 import os.path as op
@@ -13,7 +11,6 @@ import cv2
 
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
-
 
 def _lay_butt(name, key=None, tooltip=None, pad=None):
     if key is None:
@@ -34,19 +31,9 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
     )
     layout = [
         [
-            sg.Text("First name:", pad=((0, 0), 0), justification="left"),
+            sg.Text("Subject ID:", pad=((0, 0), 0), justification="left"),
             sg.Input(
-                key="first_name",
-                size=(44, 1),
-                background_color="white",
-                text_color="black",
-            ),
-        ],
-        [_space()],
-        [
-            sg.Text("Last name:", pad=((0, 0), 0), justification="left"),
-            sg.Input(
-                key="last_name",
+                key="subject_id",
                 size=(44, 1),
                 background_color="white",
                 text_color="black",
@@ -62,16 +49,10 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
             )
         ],
         [_space()],
-        [sg.Listbox([], size=(30, 10), key="dob")],
-        [_space()],
         [
-            sg.Button(
-                "Select subject",
-                button_color="white",
-                key="select_subject",
-                size=(30, 1),
-                enable_events=True,
-            )
+            sg.Text("", pad=((0, 0), 0), size=(60, 1), justification="left", key="subject_info",
+                background_color="slate gray",
+                text_color="white")
         ],
         [_space()],
         [
@@ -103,8 +84,8 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
         ],
         [_space()],
         [
-            sg.Text("Task combo: "),
-            sg.Combo("", size=(64, 1), key="tasks", readonly=True),
+            sg.Text("Tasks: "),
+            sg.Listbox([], size=(64, 7), key="tasks", no_scrollbar=False),
         ],
         [_space()],
         [
@@ -133,15 +114,7 @@ def task_mapping(task_name):
     input : str
         task_name
     """
-
-    # tasks = {"DSC_task_1": 'Symbol Digit Matching Task',
-    #          "mouse_task_1": 'Mouse Task',
-    #          'timing_test_1': 'Time testing',
-    #          "pursuit_task_1": "Pursuit",
-    #          "sit_to_stand_task_1": "Sit to stand"
-    #          }
-
-    tasks = {}  # Don't map as notes finelanme changes
+    tasks = {}  # Don't map as notes filename changes
     if tasks.get(task_name):
         name_present = tasks[task_name]
     else:
@@ -189,7 +162,7 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
     ]
     subject_text = (
         f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}'
-        + f' {sess_info["last_name"]}'
+        + f' {sess_info["last_name"]} - {sess_info["subject_dob"]}'
     )
     row_1_pad = ((20, 20),(5, 5))
     row_2_pad = ((20, 20),(0, 0))
@@ -199,11 +172,12 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
                 _space(),
                 sg.Text(
                     subject_text,
-                    pad=(20, 0),
-                    size=(30, 1),
+                    pad=(10, 0),
+                    size=(40, 1),
                     font=("Arial", 12, "bold"),
                     text_color="black",
                     background_color="white",
+                    tooltip=sess_info["subject_dob"],
                     k="_sbj_id_",
                 ),
                 sg.Text(

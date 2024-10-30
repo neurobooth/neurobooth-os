@@ -6,6 +6,7 @@ import os
 from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, Any, Optional, List
+from neurobooth_os.util.nb_types import Subject
 
 import pandas as pd
 from pandas import DataFrame
@@ -223,27 +224,59 @@ def get_subject_ids(conn: connection, first_name, last_name):
     return subject_df
 
 
-def get_subject_by_id(conn: connection, subject_id: str):
-    class Subject(BaseModel):
-        subject_id: str
-        first_name_birth: str
-        middle_name_birth: str
-        last_name_birth: str
-        date_of_birth: datetime
+def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
 
+    # We do two separate queries in case the contact table doesn't have any matching records,
+    # due to, for example, an issue with the REDCap update timing.  We always want a result if there's a matching
+    # record in the subject table.  Hitting both tables with a single join query would cause zero records to be returned
     table_subject = Table("subject", conn=conn)
     subject_df = table_subject.query(where=f"LOWER(subject_id)=LOWER('{subject_id}')")
 
-    if not subject_df.empty:
+    contact_query = f"""select first_name_contact, last_name_contact 
+        from rc_contact 
+        where LOWER(subject_id) = Lower('{subject_id}')
+        order by start_time_contact desc
+        limit 1
+    """
+
+    if subject_df.empty:
+        return None
+    else:
+        # Get the column names from the cursor description
+        curs = conn.cursor()
+        curs.execute(contact_query)
+        results = curs.fetchall()
+        column_names = [desc[0] for desc in curs.description]
+        print(column_names)
+
+        # Create the DataFrame
+        contact_df = pd.DataFrame(results, columns=column_names)
+
+        conn.commit()
+        curs.close()
+
         subj = Subject(
             subject_id=subject_id,
             first_name_birth=subject_df['first_name_birth'].iloc[0],
             middle_name_birth=subject_df['middle_name_birth'].iloc[0],
             last_name_birth=subject_df['last_name_birth'].iloc[0],
             date_of_birth=subject_df['date_of_birth_subject'].iloc[0],
+            preferred_first_name="",
+            preferred_last_name="",
         )
-        return subj.model_dump_json()
-    return None
+        pref_first_name = contact_df['first_name_contact'].iloc[0]
+        pref_last_name = contact_df['last_name_contact'].iloc[0]
+        print(1)
+        print(pref_first_name)
+        print(pref_last_name)
+        if not contact_df.empty:
+            subj.preferred_first_name = pref_first_name,
+            subj.preferred_last_name = pref_last_name,
+            print(2)
+            print(subj.preferred_first_name)
+            print(subj.preferred_last_name)
+
+        return subj
 
 
 def _escape_name_string(name: str) -> str:
