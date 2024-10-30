@@ -35,6 +35,7 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         TasksFinished, FramePreviewRequest,
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
                                         CancelSessionRequest, MEDIUM_HIGH_PRIORITY)
+from util.nb_types import Subject
 
 #  State variables used to help ensure in-order GUI steps
 running_servers = []
@@ -78,7 +79,7 @@ def _get_subject_by_id(window, log_sess, conn, subject_id: str):
         window["subject_info"].set_tooltip(subject.date_of_birth.strftime("%Y-%m-%d"))
         return subject
     else:
-        sg.PopupError(f"Subject {subject_id} not found", location=)
+        sg.PopupError(f"Subject {subject_id} not found", location=get_popup_location(window))
 
 
 def _get_tasks(window, collection_id: str):
