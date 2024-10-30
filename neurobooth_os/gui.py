@@ -39,6 +39,7 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
 #  State variables used to help ensure in-order GUI steps
 running_servers = []
 
+
 def setup_log(sg_handler=None):
     logger = make_db_logger("", "")
     logger.setLevel(logging.DEBUG)
@@ -313,8 +314,7 @@ def _start_ctr_server(window, logger):
 
 def _start_ctr_msg_reader(logger, window):
     db_conn = meta.get_database_connection()
-    shutdown_flag = False
-    while not shutdown_flag:
+    while True:
         message: Message = meta.read_next_message("CTR", conn=db_conn)
         if message is None:
             time.sleep(1)
