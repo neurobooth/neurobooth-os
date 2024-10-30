@@ -168,7 +168,8 @@ class Task:
         if self.instruction_file is not None:
             video = self.instruction_video
             print(f"instruction video {video}")
-            print(f"Instruction video status: {video.status}")
+            if video is not None:
+                print(f"Instruction video status: {video.status}")
             if video is None or video.status == "STOPPED":
                 path_instruction_video = op.join(
                     cfg.neurobooth_config.video_task_dir, self.instruction_file
