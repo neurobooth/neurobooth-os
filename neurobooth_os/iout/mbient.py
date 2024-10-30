@@ -572,13 +572,14 @@ class Mbient:
             self.logger.info(self.format_message('Reconnect Completed'))
         except MbientFailedConnection as e:
             txt = f"Failed to reconnect {self.dev_name}"
+            status = "Error"
             with get_database_connection() as conn:
-                self.send_status_msg(txt, conn)
+                self.send_status_msg(txt, conn, status)
             self.logger.error(self.format_message(f'Failed to Reconnect: {e}'))
         except Exception as e:
             txt = f"Couldn't setup for {self.dev_name}"
             with get_database_connection() as conn:
-                self.send_status_msg(txt, conn)
+                self.send_status_msg(txt, conn, status)
             self.logger.error(self.format_message(f'Error during reconnect: {e}'), exc_info=sys.exc_info())
         finally:
             self.logger.debug(self.format_message(f'attempt_reconnect took {time() - t0} seconds.'))
@@ -597,7 +598,7 @@ class Mbient:
         device_names = [dev.dev_name for dev in disconnected_devices]
         txt = f'The following Mbients are disconnected: {device_names}. Attempting to reconnect...'
         with get_database_connection() as conn:
-            Mbient.send_status_msg(txt, conn)
+            Mbient.send_status_msg(txt, conn, "WARNING")
 
         # Attempt reconnection in parallel
         with ThreadPoolExecutor(max_workers=len(disconnected_devices)) as executor:
@@ -608,7 +609,7 @@ class Mbient:
 
         txt = 'Pre-task reconnect attempts complete.'
         with get_database_connection() as conn:
-            Mbient.send_status_msg(txt, conn)
+            Mbient.send_status_msg(txt, conn, "INFO")
 
     def reset(self, timeout_sec: float = 10) -> None:
         """
@@ -642,7 +643,7 @@ class Mbient:
         """
         txt = f'Resetting {self.dev_name}.'
         with get_database_connection() as conn:
-            Mbient.send_status_msg(txt, conn)
+            Mbient.send_status_msg(txt, conn, "INFO")
 
         self.logger.info(self.format_message('Resetting'))
 
@@ -696,7 +697,7 @@ class Mbient:
         except (MbientFailedConnection, MbientResetTimeout) as e:
             txt = f"Failed to connect mbient {self.dev_name}"
             with get_database_connection() as conn:
-                self.send_status_msg(txt, conn)
+                self.send_status_msg(txt, conn, "ERROR")
             self.logger.error(self.format_message(str(e)))
             return False
         except Exception as e:
@@ -757,9 +758,9 @@ class Mbient:
         libmetawear.mbl_mw_datasignal_subscribe(processor, None, self.callback)
         self.subscribed_signals.append(processor)
 
-        txt = f"Mbient {self.dev_name} setup"  # Send message to GUI terminal
+        txt = f"Mbient {self.dev_name} is connected"  # Send message to GUI terminal
         with get_database_connection() as conn:
-            self.send_status_msg(txt, conn)
+            self.send_status_msg(txt, conn, "INFO")
         self.logger.debug(self.format_message('Setup Completed'))
 
     def log_battery_info(self) -> None:
@@ -820,8 +821,8 @@ class Mbient:
             self.disconnect()
 
     @staticmethod
-    def send_status_msg(txt, conn):
-        body = StatusMessage(text=txt)
+    def send_status_msg(txt: str, conn, status: Optional[str] = None):
+        body = StatusMessage(text=txt, status=status)
         msg = Request(source="Mbient", destination="CTR", body=body)
         post_message(msg, conn)
 
@@ -887,7 +888,7 @@ def test_script() -> None:
         if (device.n_samples_streamed - 1) % args.decimate == 0:
             txt = f'Epoch={epoch}, Accel={acc}, Gyro={gyro}'
             with get_database_connection() as conn:
-                Mbient.send_status_msg(txt, conn)
+                Mbient.send_status_msg(txt, conn, "INFO")
 
     device.register_data_handler(_test_data_handler)
     success = device.prepare()

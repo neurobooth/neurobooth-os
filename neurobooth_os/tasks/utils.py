@@ -117,6 +117,29 @@ def present(
         get_keys()
 
 
+def get_end_screen(win, root_pckg):
+    """
+    Parameters
+    ----------
+    win
+    root_pckg
+
+    Returns
+    -------
+        screen "Preparing next task" shown between tasks
+    """
+    task_complete_img = op.join(root_pckg, "tasks", "assets", "task_complete.png")
+    if not op.isfile(task_complete_img):
+        raise IOError(f'Required image file {task_complete_img} does not exist')
+
+    end_screen = visual.ImageStim(
+        win,
+        image=task_complete_img,
+        pos=(0, 0),
+        units="deg",
+    )
+    return end_screen
+
 def countdown(period):
     t1 = local_clock()
     t2 = t1

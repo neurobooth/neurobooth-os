@@ -9,9 +9,9 @@ from typing import Dict, Optional, Callable, List
 from psychopy import prefs
 
 from neurobooth_os.iout.stim_param_reader import TaskArgs
-from neurobooth_os.msg.messages import Message, CreateTasksRequest, StatusMessage, \
+from neurobooth_os.msg.messages import Message, CreateTasksRequest, \
     TaskInitialization, Request, TaskCompletion, StartRecordingMsg, StartRecording, SessionPrepared, \
-    PrepareRequest, TasksCreated, StopRecording, ServerStarted
+    PrepareRequest, TasksCreated, StopRecording, ServerStarted, ErrorMessage
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
@@ -63,9 +63,57 @@ def run_stm(logger):
     meta.post_message(init_servers, db_conn)
 
     while not shutdown:
+        try:
+            while paused:
+                message: Message = meta.read_next_message("STM", msg_type='paused_msg_types', conn=db_conn)
+                if message is None:
+                    sleep(1)
+                    continue
 
-        while paused:
-            message: Message = meta.read_next_message("STM", msg_type='paused_msg_types', conn=db_conn)
+                logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
+                logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
+                current_msg_type: str = message.msg_type
+
+                # Next message tells what to do now that we paused
+                if "TerminateServerRequest" == current_msg_type:
+                    paused = False
+                    shutdown = True
+                    break
+                if "ResumeSessionRequest" == current_msg_type:
+                    paused = False
+
+                    # display 'preparing next task'
+                    root_pckg = neurobooth_os.__path__[0]
+                    end_screen = utl.get_end_screen(session.win, root_pckg)
+
+                    # TODO: msg is only needed if we need to do markers around this prepare step.
+                    # See task.show_text()
+                    msg = "Completed-task"
+
+                    utl.present(
+                        session.win,
+                        end_screen,
+                        audio=None,
+                        wait_time=0,
+                        win_color=(0, 0, 0),
+                        waitKeys=False,
+                    )
+                    break
+
+                elif "CancelSessionRequest" == current_msg_type:
+                    session_canceled = True
+                    paused = False
+                    break
+                else:
+                    text = (f'"Received an unexpected message while paused: '
+                            f'{message.model_dump_json()}')
+                    body = ErrorMessage(text=text, status="CRITICAL")
+                    err_msg = Request(source='STM', destination='CTR', body=body)
+                    meta.post_message(err_msg, session.db_conn)
+                    logger.error(f"Received an unexpected message while paused {current_msg_type}")
+                    raise RuntimeError(text)
+
+            message: Message = meta.read_next_message("STM", conn=db_conn)
             if message is None:
                 sleep(1)
                 continue
@@ -74,81 +122,55 @@ def run_stm(logger):
             logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
             current_msg_type: str = message.msg_type
 
-            # Next message tells what to do now that we paused
             if "TerminateServerRequest" == current_msg_type:
-                paused = False
+                if session is not None:
+                    session.shutdown()
                 shutdown = True
-                break
-            if "ResumeSessionRequest" == current_msg_type:
-                paused = False
-                break
-            elif "CancelSessionRequest" == current_msg_type:
-                session_canceled = True
-                paused = False
-                break
-            else:
-                body = StatusMessage(text=f'"Received an unexpected message while paused: {message.model_dump_json()}')
+                continue
 
-                err_msg = Request(source='STM', destination='CTR', body=body)
-                meta.post_message(err_msg, session.db_conn)
-                logger.warn(f"Received an unexpected message while paused {current_msg_type}")
-                shutdown = True
-                paused = False
-                break
+            if not session_canceled:
 
-        message: Message = meta.read_next_message("STM", conn=db_conn)
-        if message is None:
-            sleep(1)
-            continue
+                if "PrepareRequest" == current_msg_type:
+                    request: PrepareRequest = message.body
+                    session, task_log_entry = prepare_session(request, logger)
 
-        logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
-        logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
-        current_msg_type: str = message.msg_type
+                elif 'CreateTasksRequest' == current_msg_type:
+                    # task_name can be list of tk1-task2-task3
+                    device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
+                elif "PerformTaskRequest" == current_msg_type:
+                    _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj_id, task_log_entry)
 
-        if "TerminateServerRequest" == current_msg_type:
-            if session is not None:
-                session.shutdown()
-            shutdown = True
-            continue
+                elif "PauseSessionRequest" == current_msg_type:
+                    paused = _pause(session)
 
-        if not session_canceled:
+                elif "TasksFinished" == current_msg_type:
+                    session_canceled = True
 
-            if "PrepareRequest" == current_msg_type:
-                request: PrepareRequest = message.body
-                session, task_log_entry = prepare_session(request, logger)
+                elif "CancelSessionRequest" == current_msg_type:
+                    session_canceled = True
 
-            elif 'CreateTasksRequest' == current_msg_type:
-                # task_name can be list of tk1-task2-task3
-                calib_instructions, device_log_entry_dict, subj_id, task_calib = _create_tasks(message, session,
-                                                                                               task_log_entry)
-            elif "PerformTaskRequest" == current_msg_type:
-                _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id,
-                              task_log_entry)
+                else:
+                    unex_msg = f'Unexpected message received: {message.model_dump_json()}'
+                    logger.error(unex_msg)
+                    raise RuntimeError(unex_msg)
 
-            elif "PauseSessionRequest" == current_msg_type:
-                paused = _pause(session)
-
-            elif "TasksFinished" == current_msg_type:
-                session_canceled = True
-
-            elif "CancelSessionRequest" == current_msg_type:
-                session_canceled = True
-
-            else:
-                unex_msg = f'Unexpected message received: {message.model_dump_json()}'
-                logger.error(unex_msg)
-                shutdown = True
-
-        if session_canceled and not finished:
-            finished = _finish_tasks(session)
+            if session_canceled and not finished:
+                finished = _finish_tasks(session)
+        except Exception as argument:
+            with meta.get_database_connection() as db_conn:
+                err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
+                req = Request(body=err_msg, source="STM", destination="CTR")
+                meta.post_message(req, db_conn)
+            raise argument
 
     exit()
 
 
-def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, message, session, subj_id: str,
+def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj_id: str,
                   task_log_entry):
     msg_body = message.body
     task_id: str = msg_body.task_id
+
     session.logger.info(f'TASK: {task_id}')
     tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
     if task_id not in session.tasks():
@@ -157,6 +179,8 @@ def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, me
         t00 = time()
         # get task and params
         task_args: TaskArgs = _get_task_args(session, task_id)
+        load_task_media(session, task_args)
+
         task: Task = task_args.task_instance
         this_task_kwargs = create_task_kwargs(session, task_args)
 
@@ -188,7 +212,7 @@ def _perform_task(calib_instructions, db_conn, device_log_entry_dict, logger, me
 
             _wait_for_lsl_recording_to_start(db_conn, logger, session, t0)
 
-            _start_acq(calib_instructions, session, task_args, task_id, this_task_kwargs, tsk_start_time)
+            _start_acq(session, task_args, task_id, this_task_kwargs, tsk_start_time)
 
             this_task_kwargs["task_name"] = task_id
             this_task_kwargs["subj_id"] += "_" + tsk_start_time
@@ -219,37 +243,28 @@ def _create_tasks(message, session, task_log_entry):
     session_id = msg_body.session_id
     task_log_entry.log_session_id = session_id
     # Preload tasks media
-    t0 = time()
+
     task_list: List[TaskArgs] = []
     for task_id in tasks:
         if task_id in session.tasks():
             setup_task(session, task_id, task_list)
 
     device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
-    # ensure task_list contains calibration if there's an eyelink device, in case user presses calibrate button
-    # TODO: This is very fragile, as it depends on the eyelink device name string
-    if "Eyelink_1" in device_log_entry_dict:
-        if "calibration_obs_1" not in tasks:
-            setup_task(session, "calibration_obs_1", task_list)
 
-    session.logger.info(f'Task media took {time() - t0:.2f}')
     session.win = welcome_screen(win=session.win)
-    task_calib = [t for t in task_list if "calibration" in t.task_id]
-    # Show calibration instruction video only the first time
-    # TODO: Handle calibration_instruction (make sure only displayed once)
-    calib_instructions = True
     reply_body = TasksCreated()
     reply = Request(source="STM", destination=message.source, body=reply_body)
     meta.post_message(reply, session.db_conn)
     session.logger.debug(task_list)
-    session.logger.debug(task_calib)
-    session.logger.debug(f"calib_instruction: {calib_instructions}")
-    return calib_instructions, device_log_entry_dict, subj_id, task_calib
+    return device_log_entry_dict, subj_id
 
 
 def setup_task(session, task_id, task_list):
     task_args: TaskArgs = _get_task_args(session, task_id)
     task_list.append(task_args)
+
+
+def load_task_media(session: StmSession, task_args: TaskArgs):
     tsk_fun_obj: Callable = copy.copy(
         task_args.task_constructor_callable)  # callable for Task constructor
     this_task_kwargs = create_task_kwargs(session, task_args)
@@ -302,14 +317,13 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
         attempts = attempts + 1
 
 
-def _start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, task_id: str, this_task_kwargs,
+def _start_acq(session: StmSession, task_args: TaskArgs, task_id: str, this_task_kwargs,
                tsk_start_time):
     """
     Start recording on ACQ in parallel to starting on STM
 
     Parameters
     ----------
-    calib_instructions
     session
     task_args
     task_id
@@ -336,11 +350,8 @@ def _start_acq(calib_instructions, session: StmSession, task_args: TaskArgs, tas
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
-        if "calibration_task" in stimulus_id:  # if not calibration record with start method
-            this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
-        else:
-            task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
-            session.eye_tracker.start(fname)
+        task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
+        session.eye_tracker.start(fname)
     session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
     acq_reply = None
     while acq_reply is None:

@@ -158,7 +158,14 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
             justification="left",
             auto_size_text=True,
         ),
-        sg.Output(key="-OUTPUT-", size=(90, 28)),
+        sg.Multiline(
+            size=(80, 20),
+            key='-OUTPUT-',
+            autoscroll=True,
+            disabled=True,
+            background_color="grey80",
+            text_color='black'
+        )
     ]
     subject_text = (
         f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}'
@@ -219,8 +226,10 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
             [_space()],
             [
                 sg.Button("Initiate servers", button_color=("white", "black"), key="-init_servs-",
+                          tooltip="Begin running Neurobooth presentation & data acquisition servers.",
                           pad=((50, 20), (5, 5))),
-                sg.Button("Connect devices", button_color=("white", "black"), key="-Connect-",
+                sg.Button("Connect devices", button_color=("white", "black"), key="-Connect-", disabled=True,
+                          tooltip="Connect data acquisition devices to Neurobooth.",
                           pad=row_1_pad),
                 sg.Button("Terminate servers",
                           key="Shut Down",
@@ -230,12 +239,13 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
             [_space()],
             [
                 sg.ReadFormButton("Start", button_color=("white", "black"), tooltip="Begin session",
+                                  disabled=True,
                                   pad=((50, 20), (0, 0))),
-                sg.Button("Pause", button_color=("white", "black"), key="Pause tasks",
+                sg.Button("Pause", button_color=("white", "black"), key="Pause tasks", disabled=True,
                           tooltip="Pause session after current task completes", pad=row_2_pad),
-                sg.Button("Recalibrate", button_color=("white", "black"), key="Calibrate",
+                sg.Button("Recalibrate", button_color=("white", "black"), key="Calibrate", disabled=True,
                           tooltip="Recalibrate EyeTracker after current task", pad=row_2_pad),
-                sg.Button("Stop",button_color=("white", "black"), key="Stop tasks",
+                sg.Button("Stop",button_color=("white", "black"), key="Stop tasks", disabled=True,
                           tooltip="End session after current task completes", pad=row_2_pad),
             ],
             [_space()],
