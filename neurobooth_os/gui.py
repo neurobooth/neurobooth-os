@@ -31,10 +31,10 @@ import neurobooth_os.config as cfg
 from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest,
                                         TerminateServerRequest, MsgBody, MbientDisconnected, NewVideoFile,
                                         TaskCompletion, TaskInitialization,
-                                        DeviceInitialization, StatusMessage, LslRecording,
+                                        DeviceInitialization, LslRecording,
                                         TasksFinished, FramePreviewRequest,
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
-                                        CancelSessionRequest, MEDIUM_HIGH_PRIORITY, ErrorMessage)
+                                        CancelSessionRequest, MEDIUM_HIGH_PRIORITY)
 
 #  State variables used to help ensure in-order GUI steps
 running_servers = []
