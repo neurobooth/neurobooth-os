@@ -242,7 +242,6 @@ def _create_tasks(message, session, task_log_entry):
     subj_id = msg_body.subj_id
     session_id = msg_body.session_id
     task_log_entry.log_session_id = session_id
-    # Preload tasks media
 
     task_list: List[TaskArgs] = []
     for task_id in tasks:
