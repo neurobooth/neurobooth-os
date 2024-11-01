@@ -135,8 +135,8 @@ def run_stm(logger):
                     session, task_log_entry = prepare_session(request, logger)
 
                 elif 'CreateTasksRequest' == current_msg_type:
-                    # task_name can be list of tk1-task2-task3
                     device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
+
                 elif "PerformTaskRequest" == current_msg_type:
                     _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj_id, task_log_entry)
 
@@ -171,7 +171,6 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
     msg_body = message.body
     task_id: str = msg_body.task_id
 
-    session.logger.info(f'TASK: {task_id}')
     tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
     if task_id not in session.tasks():
         session.logger.warning(f'Task {task_id} not implemented')
@@ -184,9 +183,8 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
         task: Task = task_args.task_instance
         this_task_kwargs = create_task_kwargs(session, task_args)
 
-        # Do not record if intro instructions"
+        # Do not record if intro instructions
         if "intro_" in task_id or "pause_" in task_id:
-            session.logger.debug(f"RUNNING PAUSE/INTRO (No Recording)")
             task.run(**this_task_kwargs)
         else:
             log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
@@ -196,34 +194,30 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
                 device_log_entry_dict,
                 session.task_func_dict[task_id]
             )
-            task_log_entry.date_times = (
-                    "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","
-            )
+            task_log_entry.date_times = ("{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ",")
             task_log_entry.log_task_id = log_task_id
 
             # Signal CTR to start LSL rec and wait for start confirmation
             session.logger.info(f'STARTING TASK: {task_id}')
-            t0 = time()
             init_task_body = TaskInitialization(task_id=task_id,
                                                 log_task_id=log_task_id,
                                                 tsk_start_time=tsk_start_time)
             meta.post_message(Request(source='STM', destination='CTR', body=init_task_body), conn=db_conn)
             session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
 
-            _wait_for_lsl_recording_to_start(db_conn, logger, session, t0)
+            _wait_for_lsl_recording_to_start(db_conn, session)
 
-            _start_acq(session, task_args, task_id, this_task_kwargs, tsk_start_time)
+            _start_acq(session, task_args, task_id, tsk_start_time)
 
             this_task_kwargs["task_name"] = task_id
             this_task_kwargs["subj_id"] += "_" + tsk_start_time
 
             elapsed_time = time() - t00
-            session.logger.info(f"Total TASK WAIT start took: {elapsed_time:.2f}")
-
-            session.logger.debug(f"RUNNING TASK FUNCTION: {this_task_kwargs}")
+            session.logger.info(f"Total task WAIT took: {elapsed_time:.2f}")
+            t01 = time()
             events = task.run(**this_task_kwargs)
-            session.logger.debug(f"TASK FUNCTION RETURNED")
-
+            elapsed_time = time() - t01
+            session.logger.info(f"Total task RUN took: {elapsed_time:.2f}")
             stop_acq(session, task_args)
 
             # Signal CTR to stop LSL rec
@@ -231,8 +225,9 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
                               db_conn)
             session.logger.info(f'FINISHED TASK: {task_id}')
             log_task(events, session, task_id, task_id, task_log_entry, task)
+
             elapsed_time = time() - t00
-            session.logger.info(f"Total TASK WAIT stop took: {elapsed_time:.2f}")
+            session.logger.info(f"Total TASK took: {elapsed_time:.2f}")
 
 
 def _create_tasks(message, session, task_log_entry):
@@ -264,13 +259,31 @@ def setup_task(session, task_id, task_list):
 
 
 def load_task_media(session: StmSession, task_args: TaskArgs):
+    t1 = time()
     tsk_fun_obj: Callable = copy.copy(
         task_args.task_constructor_callable)  # callable for Task constructor
     this_task_kwargs = create_task_kwargs(session, task_args)
     task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
+    elapsed_time = time() - t1
+    session.logger.info(f'Waiting for media to load took: {elapsed_time:.2f}')
 
 
-def _wait_for_lsl_recording_to_start(db_conn, logger, session, t0):
+def _wait_for_lsl_recording_to_start(db_conn, session):
+    """
+    Polls the database waiting for a message from the GUI saying LSL is recording
+
+    # TODO: Run this in its own thread
+    Parameters
+    ----------
+    db_conn
+    logger
+    session
+
+    Returns
+    -------
+
+    """
+    t1 = time()
     ctr_msg_found: bool = False
     attempt = 0
     while not ctr_msg_found and attempt < 30:
@@ -278,10 +291,10 @@ def _wait_for_lsl_recording_to_start(db_conn, logger, session, t0):
         sleep(1)
         attempt = attempt + 1
     if not ctr_msg_found:
-        logger.info("Message LsLRecording not received in STM")
+        session.logger.info("Message LsLRecording not received in STM")
     else:
-        logger.info("Message LsLRecording received in STM")
-    elapsed_time = time() - t0
+        session.logger.info("Message LsLRecording received in STM")
+    elapsed_time = time() - t1
     session.logger.info(f'Waiting for LSL startup took: {elapsed_time:.2f}')
 
 
@@ -316,8 +329,7 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
         attempts = attempts + 1
 
 
-def _start_acq(session: StmSession, task_args: TaskArgs, task_id: str, this_task_kwargs,
-               tsk_start_time):
+def _start_acq(session: StmSession, task_args: TaskArgs, task_id: str, tsk_start_time):
     """
     Start recording on ACQ in parallel to starting on STM
 
@@ -326,15 +338,14 @@ def _start_acq(session: StmSession, task_args: TaskArgs, task_id: str, this_task
     session
     task_args
     task_id
-    this_task_kwargs
     tsk_start_time
 
     Returns
     -------
 
     """
+    t1 = time()
     session.logger.info(f'SENDING record_start TO ACQ')
-    stimulus_id = task_args.stim_args.stimulus_id
 
     fname = f"{session.session_name}_{tsk_start_time}_{task_id}"
     body = StartRecording(
@@ -358,6 +369,8 @@ def _start_acq(session: StmSession, task_args: TaskArgs, task_id: str, this_task
         # TODO: Handle higher priority msgs
         # TODO: Handle error conditions reported by ACQ  -> Consider adding an error field to the RecordingStarted msg
         sleep(1)
+    elapsed_time = time() - t1
+    session.logger.info(f'Waiting for ACQ to start took: {elapsed_time:.2f}')
 
 
 def _pause(session):
