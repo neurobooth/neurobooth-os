@@ -1,6 +1,7 @@
 import logging
 import sys
 import os
+import concurrent.futures
 from time import time, sleep
 from datetime import datetime
 import copy
@@ -178,13 +179,12 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
         t00 = time()
         # get task and params
         task_args: TaskArgs = _get_task_args(session, task_id)
-        load_task_media(session, task_args)
-
-        task: Task = task_args.task_instance
         this_task_kwargs = create_task_kwargs(session, task_args)
 
         # Do not record if intro instructions
         if "intro_" in task_id or "pause_" in task_id:
+            load_task_media(session, task_args)
+            task: Task = task_args.task_instance
             task.run(**this_task_kwargs)
         else:
             log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
@@ -204,10 +204,13 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
                                                 tsk_start_time=tsk_start_time)
             meta.post_message(Request(source='STM', destination='CTR', body=init_task_body), conn=db_conn)
             session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                future1 = executor.submit(_wait_for_lsl_recording_to_start, db_conn, session)
+                future2 = executor.submit(_start_acq, session, task_args, task_id, tsk_start_time)
+                # Wait for all futures to complete
+                concurrent.futures.wait([future1, future2])
 
-            _wait_for_lsl_recording_to_start(db_conn, session)
-
-            _start_acq(session, task_args, task_id, tsk_start_time)
+            task = _get_task_instance(session, task_args)
 
             this_task_kwargs["task_name"] = task_id
             this_task_kwargs["subj_id"] += "_" + tsk_start_time
@@ -228,6 +231,11 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
 
             elapsed_time = time() - t00
             session.logger.info(f"Total TASK took: {elapsed_time:.2f}")
+
+
+def _get_task_instance(session: StmSession, task_args: TaskArgs) -> Task:
+    load_task_media(session, task_args)
+    return task_args.task_instance
 
 
 def _create_tasks(message, session, task_log_entry):
