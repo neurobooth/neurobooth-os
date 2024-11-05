@@ -204,13 +204,13 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
                                                 tsk_start_time=tsk_start_time)
             meta.post_message(Request(source='STM', destination='CTR', body=init_task_body), conn=db_conn)
             session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                 future1 = executor.submit(_wait_for_lsl_recording_to_start, db_conn, session)
-                future2 = executor.submit(_start_acq, session, task_args, task_id, tsk_start_time)
+                future2 = executor.submit(_start_acq, session, task_id, tsk_start_time)
                 # Wait for all futures to complete
                 concurrent.futures.wait([future1, future2])
-
-            task = _get_task_instance(session, task_args)
+            _get_task_instance(session, task_args, task_id, tsk_start_time)
 
             this_task_kwargs["task_name"] = task_id
             this_task_kwargs["subj_id"] += "_" + tsk_start_time
@@ -218,7 +218,7 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
             elapsed_time = time() - t00
             session.logger.info(f"Total task WAIT took: {elapsed_time:.2f}")
             t01 = time()
-            events = task.run(**this_task_kwargs)
+            events = task_args.task_instance.run(**this_task_kwargs)
             elapsed_time = time() - t01
             session.logger.info(f"Total task RUN took: {elapsed_time:.2f}")
             stop_acq(session, task_args)
@@ -227,18 +227,32 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
             meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)),
                               db_conn)
             session.logger.info(f'FINISHED TASK: {task_id}')
-            log_task(events, session, task_id, task_id, task_log_entry, task)
+            log_task(events, session, task_id, task_id, task_log_entry, task_args.task_instance)
 
             elapsed_time = time() - t00
             session.logger.info(f"Total TASK took: {elapsed_time:.2f}")
 
 
-def _get_task_instance(session: StmSession, task_args: TaskArgs) -> Task:
-    load_task_media(session, task_args)
-    return task_args.task_instance
+def _get_task_instance(session: StmSession, task_args: TaskArgs, task_id, tsk_start_time):
+    # Create task instance and load media
+    try:
+        t1 = time()
+        tsk_fun_obj: Callable = copy.copy(
+            task_args.task_constructor_callable)  # callable for Task constructor
+        this_task_kwargs = create_task_kwargs(session, task_args)
+        task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
+        elapsed_time = time() - t1
+        session.logger.info(f'Waiting for media to load took: {elapsed_time:.2f}')
+        # Start eyetracker if device in task
+        device_ids = [x.device_id for x in task_args.device_args]
+        if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
+            fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
+            task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
+            session.eye_tracker.start(fname)
+    except Exception as e:
+        session.logger.exception(e)
 
-
-def _create_tasks(message, session, task_log_entry):
+def _create_tasks(message , session, task_log_entry):
     msg_body: CreateTasksRequest = message.body
     session.logger.debug(f"Creating Tasks {msg_body.tasks}")
     tasks = msg_body.tasks
@@ -299,7 +313,7 @@ def _wait_for_lsl_recording_to_start(db_conn, session):
         sleep(1)
         attempt = attempt + 1
     if not ctr_msg_found:
-        session.logger.info("Message LsLRecording not received in STM")
+        session.logger.warning("Message LsLRecording not received in STM")
     else:
         session.logger.info("Message LsLRecording received in STM")
     elapsed_time = time() - t1
@@ -337,14 +351,13 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
         attempts = attempts + 1
 
 
-def _start_acq(session: StmSession, task_args: TaskArgs, task_id: str, tsk_start_time):
+def _start_acq(session: StmSession, task_id: str, tsk_start_time):
     """
     Start recording on ACQ in parallel to starting on STM
 
     Parameters
     ----------
     session
-    task_args
     task_id
     tsk_start_time
 
@@ -352,9 +365,12 @@ def _start_acq(session: StmSession, task_args: TaskArgs, task_id: str, tsk_start
     -------
 
     """
-    t1 = time()
-    session.logger.info(f'SENDING record_start TO ACQ')
+    t0 = time()
+    session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
+    elapsed_time = time() - t0
+    session.logger.info(f'Waiting for mbient_reconnect took: {elapsed_time:.2f}')
 
+    t1 = time()
     fname = f"{session.session_name}_{tsk_start_time}_{task_id}"
     body = StartRecording(
         session_name=session.session_name,
@@ -364,13 +380,6 @@ def _start_acq(session: StmSession, task_args: TaskArgs, task_id: str, tsk_start
     sr_msg = StartRecordingMsg(body=body)
     meta.post_message(sr_msg, session.db_conn)
 
-    # Start eyetracker if device in task
-    device_ids = [x.device_id for x in task_args.device_args]
-    if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
-        fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
-        task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
-        session.eye_tracker.start(fname)
-    session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
     acq_reply = None
     while acq_reply is None:
         acq_reply = meta.read_next_message("STM", session.db_conn, msg_type="RecordingStarted")

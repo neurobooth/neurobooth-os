@@ -103,7 +103,7 @@ class Task:
             self.win_temp = False
 
         self.instruction_file = instruction_file
-        self.load_instruction_video()
+        # self.load_instruction_video()
 
         # Create mouse and set not visible
         self.Mouse = event.Mouse(visible=False, win=self.win)
