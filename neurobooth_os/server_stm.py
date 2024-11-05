@@ -224,8 +224,7 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
             stop_acq(session, task_args)
 
             # Signal CTR to stop LSL rec
-            meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)),
-                              db_conn)
+            meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)), db_conn)
             session.logger.info(f'FINISHED TASK: {task_id}')
             log_task(events, session, task_id, task_id, task_log_entry, task_args.task_instance)
 
@@ -235,22 +234,22 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
 
 def _get_task_instance(session: StmSession, task_args: TaskArgs, task_id, tsk_start_time):
     # Create task instance and load media
-    try:
-        t1 = time()
-        tsk_fun_obj: Callable = copy.copy(
-            task_args.task_constructor_callable)  # callable for Task constructor
-        this_task_kwargs = create_task_kwargs(session, task_args)
-        task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
-        elapsed_time = time() - t1
-        session.logger.info(f'Waiting for media to load took: {elapsed_time:.2f}')
-        # Start eyetracker if device in task
-        device_ids = [x.device_id for x in task_args.device_args]
-        if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
-            fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
-            task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
-            session.eye_tracker.start(fname)
-    except Exception as e:
-        session.logger.exception(e)
+    t1 = time()
+    tsk_fun_obj: Callable = copy.copy(
+        task_args.task_constructor_callable)  # callable for Task constructor
+    this_task_kwargs = create_task_kwargs(session, task_args)
+    task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
+    elapsed_time = time() - t1
+    session.logger.info(f'Waiting for task instance creation took: {elapsed_time:.2f}')
+
+    # Start eyetracker if device in task
+    # Eyetracker has to start after instance creation so we can render an image to the eyetracker output device
+    device_ids = [x.device_id for x in task_args.device_args]
+    if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
+        fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
+        task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
+        session.eye_tracker.start(fname)
+
 
 def _create_tasks(message , session, task_log_entry):
     msg_body: CreateTasksRequest = message.body
