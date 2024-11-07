@@ -39,6 +39,7 @@ from util.nb_types import Subject
 
 #  State variables used to help ensure in-order GUI steps
 running_servers = []
+last_task = None
 
 
 def setup_log(sg_handler=None):
@@ -122,10 +123,11 @@ def _create_session_dict(window, log_task, staff_id, subject: Subject, tasks):
 
 def _start_task_presentation(window, tasks: List[str], subject_id: str, session_id: int, steps):
     """Present tasks"""
+    global last_task
     conn = meta.get_database_connection()
     window['Start'].update(disabled=True)
     write_output(window, "\nSession started")
-
+    last_task = tasks[-1]
     if len(tasks) > 0:
         msg_body = CreateTasksRequest(tasks=tasks, subj_id=subject_id, session_id=session_id)
         msg = Request(
@@ -280,8 +282,9 @@ def _stop_lsl_and_save(
         )
         xdf_split.start()
         write_output(window, f"SPLIT XDF {task_id} took: {time.time() - t0}")
-
-        print(f"CTR xdf_split threading took: {time.time() - t0}")
+    if task_id == last_task:
+        _session_button_state(window, disabled=True)
+        write_output(window, "\nSession complete: OK to terminate", 'blue')
 
 
 ######### Server communication ############
@@ -290,7 +293,6 @@ def _stop_lsl_and_save(
 def _start_servers(window, nodes):
     window["-init_servs-"].Update(disabled=True)
     write_output(window, "Starting servers. Please wait....")
-
     event, values = window.read(0.1)
     ctr_rec.start_servers(nodes=nodes)
     time.sleep(1)
@@ -448,7 +450,9 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
 
     # disable button so it can't be pushed twice
     window["-Connect-"].Update(disabled=True)
-
+    for task in tasks.split(", "):
+        task_checkbox: sg.Checkbox = window.find_element(task, silent_on_error=True)
+        task_checkbox.update(disabled=True)
     event, values = window.read(0.1)
     write_output(window, "\nConnecting devices. Please wait....")
 
