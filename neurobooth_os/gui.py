@@ -142,7 +142,7 @@ def _start_task_presentation(window, tasks: List[str], subject_id: str, session_
 
 
 def _pause_tasks(window, steps, conn):
-    write_output(window, "Pause scheduled. Session will pause after the current task.")
+    write_output(window, "Pause scheduled. Session will pause after the current task.", 'blue')
     continue_msg = "Continue tasks"
     stop_msg = "Stop tasks"
 
@@ -159,7 +159,7 @@ def _pause_tasks(window, steps, conn):
         body = ResumeSessionRequest()
         request = Request(source="CTR", destination="STM", body=body)
         meta.post_message(request, conn)
-        write_output(window, "Continue scheduled")
+        write_output(window, "Continue scheduled", 'blue')
     elif resp == stop_msg:
         _stop_task_dialog(window, conn, resume_on_cancel=True)
     else:
@@ -185,7 +185,7 @@ def _stop_task_dialog(window, conn, resume_on_cancel: bool):
                                   title="Warning",
                                   location=get_popup_location(window))
     if response == "OK":
-        write_output(window, "Stop session scheduled. Session will end after the current task.")
+        write_output(window, "Stop session scheduled. Session will end after the current task.", 'blue')
         body = CancelSessionRequest()
         request = Request(source="CTR", destination="STM", body=body)
         meta.post_message(request, conn)
@@ -199,7 +199,7 @@ def _stop_task_dialog(window, conn, resume_on_cancel: bool):
 
 
 def _calibrate(window, conn):
-    write_output(window, "Eyetracker recalibration scheduled. Calibration will start after the current task.")
+    write_output(window, "Eyetracker recalibration scheduled. Calibration will start after the current task.", 'blue')
     msg_body = PerformTaskRequest(task_id="calibration_obs_1", priority=MEDIUM_HIGH_PRIORITY)
     msg = Request(source="CTR", destination="STM", body=msg_body)
     meta.post_message(msg, conn)
