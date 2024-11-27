@@ -1,7 +1,5 @@
 stimulus_id: coord_pause_task_2
-stimulus_description: 'pause
-
-  '
+stimulus_description: 'pause'
 num_iterations: 1
 duration: null
 arg_parser: iout.stim_param_reader.py::CoordPause2StimArgs()
