@@ -40,10 +40,10 @@ class Pursuit(Eyelink_HostPC):
             self.angular_freq,
         ]
 
-    def run(self, prompt=True, last_task=False, **kwarg):
+    def run(self, prompt=True, **kwarg):
         self.present_instructions(prompt)
         self.run_trial(prompt, self.mov_pars)
-        self.present_complete(last_task)
+        self.present_complete()
         return self.events
 
     def run_trial(self, prompt, movement_pars):

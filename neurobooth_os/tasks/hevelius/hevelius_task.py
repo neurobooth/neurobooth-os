@@ -99,7 +99,7 @@ class hevelius_task(Task_Eyetracker):
                 func_kwargs=func_kwargs_func,
                 waitKeys=False,
             )
-        self.present_complete(last_Task)
+        self.present_complete()
         return self.events
 
     def run_blocks(self, blocks, block_type):

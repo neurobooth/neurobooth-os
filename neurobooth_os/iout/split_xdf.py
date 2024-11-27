@@ -38,11 +38,9 @@ def split_sens_files(
     # We import this here so that it is not a dependency for the external split_xdf script.
     from neurobooth_os.iout import metadator as meta
 
-    t0 = time.time()
     device_data = parse_xdf(xdf_path, meta.get_device_ids(task_id))
     write_device_hdf5(device_data)
     log_to_database(device_data, conn, log_task_id)
-    print(f"SPLIT XDF {task_id} took: {time.time() - t0}")
     return [d.hdf5_path for d in device_data]
 
 

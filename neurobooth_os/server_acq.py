@@ -1,24 +1,23 @@
-import socket
+import base64
 import os
 import sys
 from time import time, sleep
-from collections import OrderedDict
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from pylsl import local_clock
 import logging
-import json
 
 import neurobooth_os
-from neurobooth_os.iout.camera_brio import VidRec_Brio
 
 from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs, DeviceArgs
 from neurobooth_os.log_manager import make_db_logger
-from neurobooth_os.netcomm import NewStdout, get_client_messages
 from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
+from neurobooth_os.msg.messages import Message, MsgBody, PrepareRequest, RecordingStoppedMsg, StartRecording, \
+    RecordingStartedMsg, MbientResetResults, StatusMessage, Request, SessionPrepared, FramePreviewReply, \
+    ServerStarted, ErrorMessage
 
 
 def countdown(period):
@@ -35,7 +34,6 @@ def main():
     try:
         logger.debug("Starting ACQ")
         os.chdir(neurobooth_os.__path__[0])
-        sys.stdout = NewStdout("ACQ", target_node="control", terminal_print=True)
         run_acq(logger)
         logger.debug("Stopping ACQ")
 
@@ -49,142 +47,141 @@ def main():
 
 
 def run_acq(logger):
-    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    port = config.neurobooth_config.acquisition.port
-    host = ''  # Listen on all network interfaces
+
+    db_conn = meta.get_database_connection()
 
     device_manager = None
-    lowFeed_running = False
     recording = False
     system_resource_logger = None
     task_args: Dict[str, TaskArgs] = {}
+    shutdown_flag = False
+    init_servers = Request(source="ACQ", destination="CTR", body=ServerStarted())
+    meta.post_message(init_servers, db_conn)
 
-    for data, connx in get_client_messages(s1, port, host):
-        logger.info(f'MESSAGE RECEIVED: {data}')
+    while not shutdown_flag:
 
-        if "vis_stream" in data:
-            if not lowFeed_running:
-                lowFeed = VidRec_Brio(
-                    camindex=config.neurobooth_config.cam_inx_lowfeed, doPreview=True
+        try:
+            message: Message = meta.read_next_message("ACQ", conn=db_conn)
+            if message is None:
+                sleep(1)
+                continue
+            msg_body: Optional[MsgBody] = None
+            logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
+
+            current_msg_type : str = message.msg_type
+            if "PrepareRequest" == current_msg_type:
+                msg_body: PrepareRequest = message.body
+
+                subject_id: str = msg_body.subject_id
+                session_name: str = msg_body.session_name()
+                collection_id: str = msg_body.collection_id
+
+                ses_folder = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name)
+                if not os.path.exists(ses_folder):
+                    os.mkdir(ses_folder)
+
+                logger = make_db_logger(subject_id, session_name)
+                logger.info('LOGGER CREATED')
+
+                if system_resource_logger is None:
+                    system_resource_logger = SystemResourceLogger(ses_folder, 'ACQ')
+                    system_resource_logger.start()
+
+                task_args = meta.build_tasks_for_collection(collection_id)
+
+                device_manager = DeviceManager(node_name='acquisition')
+                if device_manager.streams:
+                    device_manager.reconnect_streams()
+                else:
+                    device_manager.create_streams(task_params=task_args)
+                updator = Request(source="ACQ", destination="CTR", body=SessionPrepared())
+                meta.post_message(updator, db_conn)
+
+            elif "FramePreviewRequest" == current_msg_type and not recording:
+                iphone_frame_preview(db_conn, device_manager, logger)
+
+            # TODO: Both reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
+            elif "ResetMbients" == current_msg_type:
+
+                reset_results = device_manager.mbient_reset()
+
+                reply_body = MbientResetResults(results=reset_results)
+                reply = Request(
+                    source="ACQ",
+                    destination="STM",
+                    body=reply_body
                 )
-                print("LowFeed running")
-                lowFeed_running = True
-            else:
-                print(f"-OUTLETID-:Webcam:{lowFeed.preview_outlet_id}")
-                print("Already running low feed video streaming")
+                meta.post_message(reply, db_conn)
+                logger.debug('Reset results sent')
 
-        elif "prepare" in data:
-            # data = "prepare:collection_id:database:str(log_task_dict)"
-            collection_id = data.split(":")[1]
-            database_name = data.split(":")[2]
-            log_task = eval(
-                data.replace(f"prepare:{collection_id}:{database_name}:", "")
-            )
-            subject_id: str = log_task["subject_id"]
-            session_name: str = log_task["subject_id-date"]
+            elif "StartRecording" == current_msg_type:
+                msg_body: StartRecording = message.body
 
-            ses_folder = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name)
-            if not os.path.exists(ses_folder):
-                os.mkdir(ses_folder)
+                status_msg = StatusMessage(text="Starting recording", status="Info")
+                status_req = Request(source="ACQ", destination="CTR", body=status_msg)
+                meta.post_message(status_req, conn=db_conn)
 
-            logger = make_db_logger(subject_id, session_name)
-            logger.info('LOGGER CREATED')
+                task = msg_body.task_id
+                fname = msg_body.fname
+                session_name = msg_body.session_name
+                fname = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name, fname)
 
-            if system_resource_logger is None:
-                system_resource_logger = SystemResourceLogger(ses_folder, 'ACQ')
-                system_resource_logger.start()
+                elapsed_time = start_recording(device_manager, fname, task_args[task].device_args)
+                logger.info(f'Device start took {elapsed_time:.2f}')
+                reply = RecordingStartedMsg()
+                meta.post_message(reply, db_conn)
+                recording = True
 
-            task_args = meta.build_tasks_for_collection(collection_id)
-            
-            device_manager = DeviceManager(node_name='acquisition')
-            if device_manager.streams:
-                device_manager.reconnect_streams()
-            else:
-                device_manager.create_streams(collection_id=collection_id, task_params=task_args)
-            print("UPDATOR:-Connect-")
-
-        elif "frame_preview" in data and not recording:
-            iphone_frame_preview(connx, device_manager, logger)
-
-        # TODO: Both reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
-        elif "reset_mbients" in data:
-            reset_results = device_manager.mbient_reset()
-            connx.send(json.dumps(reset_results).encode('utf-8'))
-            logger.debug('Reset results sent')
-
-        elif "record_start" in data:
-            # "record_start::filename::task_id" FILENAME = {subj_id}_{obs_id}
-            print("Starting recording")
-            t0 = time()
-            fname, task = data.split("::")[1:]
-            fname = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name, fname)
-
-            elapsed_time = start_recording(device_manager, fname, task_args[task].device_args)
-            logger.info(f'Device start took {elapsed_time:.2f}')
-            msg = "ACQ_devices_ready"
-            connx.send(msg.encode("ascii"))
-            recording = True
-
-        elif "record_stop" in data:
-            elapsed_time = stop_recording(device_manager, task_args[task].device_args)
-            logger.info(f'Device stop took {elapsed_time:.2f}')
-            msg = "ACQ_devices_stopped"
-            connx.send(msg.encode("ascii"))
-            recording = False
-
-        elif "shutdown" in data:
-            if recording:
+            elif "StopRecording" == current_msg_type:
                 elapsed_time = stop_recording(device_manager, task_args[task].device_args)
                 logger.info(f'Device stop took {elapsed_time:.2f}')
+                reply = RecordingStoppedMsg()
+                meta.post_message(reply, db_conn)
                 recording = False
 
-            sys.stdout = sys.stdout.terminal
-            s1.close()
+            elif "TerminateServerRequest" == current_msg_type:
+                if recording:
+                    elapsed_time = stop_recording(device_manager, task_args[task].device_args)
+                    logger.info(f'Device stop took {elapsed_time:.2f}')
 
-            if device_manager is not None:
-                device_manager.close_streams()
+                if device_manager is not None:
+                    device_manager.close_streams()
 
-            if lowFeed_running:
-                lowFeed.close()
-                lowFeed_running = False
-                print("Closing RTD cam")
-
-            if system_resource_logger is not None:
-                system_resource_logger.stop()
-            logging.shutdown()
-
-            break
-
-        elif "time_test" in data:
-            msg = f"ping_{time()}"
-            connx.send(msg.encode("ascii"))
-
-        else:
-            logger.error(f'Unexpected message received: {data}')
+                if system_resource_logger is not None:
+                    system_resource_logger.stop()
+                logging.shutdown()
+                shutdown_flag = True
+            else:
+                logger.error(f'Unexpected message received: {message.model_dump_json()}')
+        except Exception as argument:
+            with meta.get_database_connection() as db_conn:
+                err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
+                req = Request(body=err_msg, source="ACQ", destination="CTR")
+                meta.post_message(req, db_conn)
+            raise argument
 
 
-def iphone_frame_preview(connx, device_manager, logger):
+
+def iphone_frame_preview(db_conn, device_manager, logger):
     frame = device_manager.iphone_frame_preview()
     if frame is None:
-        print("no iphone")
-        connx.send("ERROR: no iphone in LSL streams".encode("ascii"))
-        logger.debug('Frame preview unavailable')
+        body = FramePreviewReply(image=None, image_available=False)
     else:
-        frame_prefix = b"::BYTES::" + str(len(frame)).encode("utf-8") + b"::"
-        frame = frame_prefix + frame
-        connx.send(frame)
+        b64_frame = base64.b64encode(frame).decode('utf-8')
+        body = FramePreviewReply(image=b64_frame, image_available=True)
+    reply = Request(source="ACQ", destination="CTR", body=body)
+    meta.post_message(reply, db_conn)
+    if body.image_available:
         logger.debug('Frame preview sent')
+    else:
+        logger.debug('Frame preview unavailable')
 
 
 def start_recording(device_manager: DeviceManager, fname: str, task_devices: List[DeviceArgs]) -> float:
-    print("Starting recording")
-
     t0 = time()
     device_manager.start_cameras(fname, task_devices)
     device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
     elapsed_time = time() - t0
-
-    print(f"Device start took {elapsed_time:.2f}")
     return elapsed_time
 
 
@@ -192,8 +189,6 @@ def stop_recording(device_manager: DeviceManager, task_devices: List[DeviceArgs]
     t0 = time()
     device_manager.stop_cameras(task_devices)
     elapsed_time = time() - t0
-
-    print(f"Device stop took {elapsed_time:.2f}")
     return elapsed_time
 
 
