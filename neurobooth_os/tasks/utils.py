@@ -17,10 +17,8 @@ import os.path as op
 from pylsl import local_clock
 from psychopy import visual
 
-
-
 text_continue_repeat = (
-    'Please press:\n\t"Continue" to advance' + '\n\t"Repeat" to go back'
+        'Please press:\n\t"Continue" to advance' + '\n\t"Repeat" to go back'
 )
 text_continue = 'Please press:\n\t"Continue" to advance'
 text_practice_screen = "Please practice the task \n\tPress any button when done"
@@ -38,9 +36,10 @@ def send_marker(marker, msg):
 
 
 def make_win(
-    full_screen=True,
-    monitor_width=55,
-    subj_screendist_cm=60,  # in centimeters from subject head to middle of the screen in our setup. The eye tracker distance measured is from head to center of eye tracker
+        full_screen=True,
+        monitor_width=55,
+        subj_screendist_cm=60,
+        # in centimeters from subject head to middle of the screen in our setup. The eye tracker distance measured is from head to center of eye tracker
 ):
     mon = monitors.getAllMonitors()[0]
     custom_mon = monitors.Monitor(
@@ -55,8 +54,11 @@ def make_win(
     )
     print("Monitor Set Refresh Rate:{:.2f} Hz".format(1 / win.monitorFramePeriod))
     actual_frame_rate = win.getActualFrameRate(
-                nIdentical=30, nMaxFrames=300, nWarmUpFrames=10, threshold=1
-            )
+        nIdentical=30, nMaxFrames=300, nWarmUpFrames=10, threshold=1
+    )
+    if actual_frame_rate is None:
+        raise RuntimeError("Window returned 'None' instead of frame rate.")
+
     print(
         "Monitor Actual Refresh Rate:{:.2f} Hz".format(actual_frame_rate)
     )
@@ -94,13 +96,13 @@ def create_image_screen(win, path_image, pos=(0, 0)):
 
 
 def present(
-    win,
-    screen,
-    audio=None,
-    wait_time=0,
-    win_color=(0, 0, 0),
-    waitKeys=True,
-    first_screen=False,
+        win,
+        screen,
+        audio=None,
+        wait_time=0,
+        win_color=(0, 0, 0),
+        waitKeys=True,
+        first_screen=False,
 ):
     win.color = win_color
     if screen is not None:
@@ -114,6 +116,29 @@ def present(
     if waitKeys:
         get_keys()
 
+
+def get_end_screen(win, root_pckg):
+    """
+    Parameters
+    ----------
+    win
+    root_pckg
+
+    Returns
+    -------
+        screen "Preparing next task" shown between tasks
+    """
+    task_complete_img = op.join(root_pckg, "tasks", "assets", "task_complete.png")
+    if not op.isfile(task_complete_img):
+        raise IOError(f'Required image file {task_complete_img} does not exist')
+
+    end_screen = visual.ImageStim(
+        win,
+        image=task_complete_img,
+        pos=(0, 0),
+        units="deg",
+    )
+    return end_screen
 
 def countdown(period):
     t1 = local_clock()

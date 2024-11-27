@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Apr  2 08:01:51 2021
-
-@author: neurobooth
+Layouts for RC User Interface
 """
 from datetime import datetime
 import os.path as op
@@ -14,10 +12,11 @@ import cv2
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
 
-
-def _lay_butt(name, key=None):
+def _lay_butt(name, key=None, tooltip=None, pad=None):
     if key is None:
         key = name
+    if tooltip:
+        return sg.Button(name, button_color=("white", "black"), key=key, tooltip=tooltip)
     return sg.Button(name, button_color=("white", "black"), key=key)
 
 
@@ -31,20 +30,11 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
         element_padding=(0, 0),
     )
     layout = [
-        [
-            sg.Text("First name:", pad=((0, 0), 0), justification="left"),
-            sg.Input(
-                key="first_name",
-                size=(44, 1),
-                background_color="white",
-                text_color="black",
-            ),
-        ],
         [_space()],
         [
-            sg.Text("Last name:", pad=((0, 0), 0), justification="left"),
+            sg.Text("Subject ID:", pad=((0, 0), 0), justification="left"),
             sg.Input(
-                key="last_name",
+                key="subject_id",
                 size=(44, 1),
                 background_color="white",
                 text_color="black",
@@ -60,16 +50,10 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
             )
         ],
         [_space()],
-        [sg.Listbox([], size=(30, 10), key="dob")],
-        [_space()],
         [
-            sg.Button(
-                "Select subject",
-                button_color="white",
-                key="select_subject",
-                size=(30, 1),
-                enable_events=True,
-            )
+            sg.Text("", pad=((0, 0), 0), size=(60, 1), justification="left", key="subject_info",
+                background_color="slate gray",
+                text_color="white")
         ],
         [_space()],
         [
@@ -101,8 +85,8 @@ def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
         ],
         [_space()],
         [
-            sg.Text("Task combo: "),
-            sg.Combo("", size=(64, 1), key="tasks", readonly=True),
+            sg.Text("Tasks: "),
+            sg.Listbox([], size=(64, 7), key="tasks", no_scrollbar=False),
         ],
         [_space()],
         [
@@ -131,15 +115,7 @@ def task_mapping(task_name):
     input : str
         task_name
     """
-
-    # tasks = {"DSC_task_1": 'Symbol Digit Matching Task',
-    #          "mouse_task_1": 'Mouse Task',
-    #          'timing_test_1': 'Time testing',
-    #          "pursuit_task_1": "Pursuit",
-    #          "sit_to_stand_task_1": "Sit to stand"
-    #          }
-
-    tasks = {}  # Don't map as notes finelanme changes
+    tasks = {}  # Don't map as notes filename changes
     if tasks.get(task_name):
         name_present = tasks[task_name]
     else:
@@ -183,23 +159,33 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
             justification="left",
             auto_size_text=True,
         ),
-        sg.Output(key="-OUTPUT-", size=(90, 28)),
+        sg.Multiline(
+            size=(80, 20),
+            key='-OUTPUT-',
+            autoscroll=True,
+            disabled=True,
+            background_color="grey80",
+            text_color='black'
+        )
     ]
     subject_text = (
-        f'Subject ID: {sess_info["subject_id"]}, {sess_info["first_name"]}'
-        + f' {sess_info["last_name"]}'
+        f'ID: {sess_info["subject_id"]}, {sess_info["first_name"]}'
+        + f' {sess_info["last_name"]} - ({sess_info["pref_first_name"]} {sess_info["pref_last_name"]})'
     )
+    row_1_pad = ((20, 20),(5, 5))
+    row_2_pad = ((20, 20),(0, 0))
     layout_col1 = (
         [
             [
                 _space(),
                 sg.Text(
                     subject_text,
-                    pad=(20, 0),
-                    size=(30, 1),
+                    pad=(10, 0),
+                    size=(40, 1),
                     font=("Arial", 12, "bold"),
                     text_color="black",
                     background_color="white",
+                    tooltip=f"Birth date: {sess_info['subject_dob']}",
                     k="_sbj_id_",
                 ),
                 sg.Text(
@@ -240,19 +226,28 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
             console_output,
             [_space()],
             [
-                _space(1),
-                _lay_butt("Initiate servers", "-init_servs-"),
-                _space(5),
-                _lay_butt("Connect Devices", "-Connect-"),
+                sg.Button("Initiate servers", button_color=("white", "black"), key="-init_servs-",
+                          tooltip="Begin running Neurobooth presentation & data acquisition servers.",
+                          pad=((50, 20), (5, 5))),
+                sg.Button("Connect devices", button_color=("white", "black"), key="-Connect-", disabled=True,
+                          tooltip="Connect data acquisition devices to Neurobooth.",
+                          pad=row_1_pad),
+                sg.Button("Terminate servers",
+                          key="Shut Down",
+                          tooltip="Terminate all servers. Presentation server will exit after current task (if any).",
+                          pad=((166, 20), (5, 5))),
             ],
             [_space()],
             [
-                _space(5),
-                sg.ReadFormButton("Start", button_color=("white", "black")),
-                _space(5),
-                _lay_butt("Pause", "Pause tasks"),
-                _space(5),
-                _lay_butt("Terminate servers", "Shut Down"),
+                sg.ReadFormButton("Start", button_color=("white", "black"), tooltip="Begin session",
+                                  disabled=True,
+                                  pad=((50, 20), (0, 0))),
+                sg.Button("Pause", button_color=("white", "black"), key="Pause tasks", disabled=True,
+                          tooltip="Pause session after current task completes", pad=row_2_pad),
+                sg.Button("Recalibrate", button_color=("white", "black"), key="Calibrate", disabled=True,
+                          tooltip="Recalibrate EyeTracker after current task", pad=row_2_pad),
+                sg.Button("Stop",button_color=("white", "black"), key="Stop tasks", disabled=True,
+                          tooltip="End session after current task completes", pad=row_2_pad),
             ],
             [_space()],
         ]
@@ -287,7 +282,7 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
 
     layout = [
         [
-            sg.Column(layout_col1, pad=(0, 0)),
+            sg.Column(layout_col1, pad=(5, 5)),
             sg.Column(layout_col2, pad=(0, 0), element_justification="c"),
         ]
     ]

@@ -1,6 +1,5 @@
 import logging
 import threading
-from neurobooth_os.iout import metadator as meta
 from neurobooth_os.iout.stim_param_reader import DeviceArgs, TaskArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 from typing import Any, Dict, List, Callable
@@ -10,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 # Device class imports
 # TODO: These need to be handled in a more flexible/extensible yet thread-safe way during device rework
 # --------------------------------------------------------------------------------
+import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.eyelink_tracker import EyeTracker
 from neurobooth_os.iout.mouse_tracker import MouseStream
 from neurobooth_os.iout.microphone import MicStream
@@ -17,6 +17,7 @@ from neurobooth_os.iout.mbient import Mbient
 from neurobooth_os.iout.camera_intel import VidRec_Intel
 from neurobooth_os.iout.flir_cam import VidRec_Flir
 from neurobooth_os.iout.iphone import IPhone
+from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 
 # --------------------------------------------------------------------------------
@@ -135,13 +136,12 @@ class DeviceManager:
         self.assigned_devices = SERVER_ASSIGNMENTS[node_name]
         self.logger.debug(f'Devices assigned to {node_name}: {self.assigned_devices}')
 
-        self.marker_stream = node_name in ['presentation', 'dummy_stm']
+        self.marker_stream = node_name in ['presentation']
 
-    def create_streams(self, collection_id: str = "mvp_030", win=None, task_params=None) -> None:
+    def create_streams(self, win=None, task_params=None) -> None:
         """
         Initialize devices and LSL streams.
 
-        :param collection_id: Name of study collection in the database.
         :param win: PsychoPy window
         :param task_params: task configuration parameters
         """
@@ -165,7 +165,7 @@ class DeviceManager:
 
         with ThreadPoolExecutor(max_workers=N_ASYNC_THREADS) as executor:
             futures = []
-            kwargs: Dict[str, DeviceArgs] = DeviceManager._get_unique_devices(collection_id, task_params)
+            kwargs: Dict[str, DeviceArgs] = DeviceManager._get_unique_devices(task_params)
             for device_key, device_args in kwargs.items():
                 if device_key not in self.assigned_devices:
                     continue
@@ -180,7 +180,7 @@ class DeviceManager:
         self.logger.info(f'LOADED DEVICES: {list(self.streams.keys())}')
 
     @staticmethod
-    def _get_unique_devices(collection_id: str, task_params: Dict) -> Dict[str, DeviceArgs]:
+    def _get_unique_devices(task_params: Dict) -> Dict[str, DeviceArgs]:
         """
         Fetch the DeviceArgs for each device used in the collection, eliminating any duplicates
 
@@ -268,9 +268,7 @@ class DeviceManager:
 
     def close_streams(self) -> None:
         for stream_name, stream in self.streams.items():
-            print(f"Closing stream {stream_name}")
             self.logger.debug(f'Device Manager Closing: {stream_name}')
-
             if DeviceManager.is_camera(stream_name):
                 stream.close()
             else:
@@ -282,7 +280,9 @@ class DeviceManager:
                 continue
 
             if not stream.streaming:
-                print(f"Re-streaming {stream_name} stream")
                 self.logger.debug(f'Device Manager Reconnecting: {stream_name}')
                 stream.start()
-            print(f"-OUTLETID-:{stream_name}:{stream.outlet_id}")
+            msg_body = DeviceInitialization(stream_name=stream_name, outlet_id=stream.outlet_id)
+            msg = Request(source="lsl_streamer", destination="CTR", body=msg_body)
+            with meta.get_database_connection() as conn:
+                meta.post_message(msg, conn)

@@ -1,4 +1,3 @@
-import os
 
 from pylsl import StreamInfo, StreamOutlet, local_clock
 import pyaudio
@@ -10,9 +9,11 @@ import wave
 import logging
 from typing import NamedTuple, List, Optional
 
+from neurobooth_os.iout.metadator import get_database_connection, post_message
 from neurobooth_os.iout.stim_param_reader import MicYetiDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
+from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 
 class AudioDeviceInfo(NamedTuple):
@@ -83,7 +84,11 @@ class MicStream:
             fps=str(self.fps),
             device_name=device_args.device_name,
         )
-        print(f"-OUTLETID-:Audio:{self.oulet_id}")
+        body = DeviceInitialization(stream_name='Audio', outlet_id=self.oulet_id)
+        msg = Request(source="Audio", destination="CTR", body=body)
+        with get_database_connection() as conn:
+            post_message(msg, conn)
+
         self.logger.debug(
             f'Microphone: sample_rate={str(self.fps)}; save_on_disk={self.save_on_disk}; channels={self.CHANNELS}'
         )
@@ -163,7 +168,7 @@ class MicStream:
             try:
                 self.outlet_audio.push_sample(decoded)
             except BaseException:  # "OSError" from C++
-                print("Reopening mic stream already closed")
+                self.logger.debug("Reopening mic stream already closed")
                 self.outlet_audio = StreamOutlet(self.stream_info_audio)
                 self.outlet_audio.push_sample(decoded)
             self.tic = time.time()

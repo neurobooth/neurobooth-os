@@ -13,9 +13,11 @@ from pylsl import local_clock
 import pyrealsense2 as rs
 from pylsl import StreamInfo, StreamOutlet
 
+import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.stim_param_reader import IntelDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
+from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 warnings.filterwarnings("ignore")
 
@@ -84,7 +86,6 @@ class VidRec_Intel:
         self.name = name
         self.video_filename = "{}_intel{}.bag".format(name, self.device_index)
         self.config.enable_record_to_file(self.video_filename)
-        print(f"-new_filename-:{self.streamName}:{op.split(self.video_filename)[-1]}")
 
     def createOutlet(self):
         self.streamName = f"IntelFrameIndex_cam{self.device_index}"
@@ -113,7 +114,9 @@ class VidRec_Intel:
             fps_rgb=str(self.device_args.sample_rate()[0]),
             fps_depth=str(self.device_args.sample_rate()[1]),
         )
-        print(f"-OUTLETID-:{self.streamName}:{self.outlet_id}")
+        msg_body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.outlet_id)
+        with meta.get_database_connection() as conn:
+            meta.post_message(Request(source='VidRec_Intel', destination='CTR', body=msg_body), conn=conn)
         return StreamOutlet(info)
 
     def record(self):

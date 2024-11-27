@@ -8,12 +8,12 @@ class TaskLogEntry(BaseModel):
     """
     log_task_id: str = ''
     subject_id: str
-    task_id: str
+    task_id: Optional[str] = None
     log_session_id: Optional[NonNegativeInt] = None
-    task_notes_file: str
+    task_notes_file: Optional[str] = ''
     task_output_files: Optional[List[str]] = []
-    date_times: str
-    event_array: List[str]
+    date_times: Optional[str] = ''
+    event_array: Optional[List[str]] = []
     subject_id_date: str
 
 

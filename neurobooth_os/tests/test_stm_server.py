@@ -2,11 +2,11 @@ import logging
 import unittest
 
 from neurobooth_os.iout.stim_param_reader import TaskArgs
+from neurobooth_os.msg.messages import PrepareRequest
 from neurobooth_os.server_stm import extract_task_log_entry
 from neurobooth_os.util.task_log_entry import TaskLogEntry
 import neurobooth_os.iout.metadator as meta
-import socket
-from neurobooth_os.server_stm import prepare_session
+from neurobooth_os.server_stm import prepare_session, _create_tasks
 
 
 class TestTaskParamReader(unittest.TestCase):
@@ -52,25 +52,25 @@ class TestTaskParamReader(unittest.TestCase):
         from neurobooth_os.log_manager import make_default_logger
         logger = make_default_logger(log_path, logging.DEBUG, False)
         msg = f"prepare:{collection_id}:{database_name}:{str(log_task)}"
-        sock: socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        stm_session, task_log_entry = prepare_session(msg, sock, logger)
+        stm_session, task_log_entry = prepare_session(msg, logger)
         print(stm_session)
         print(task_log_entry)
         stm_session.shutdown()
 
-    def test_create_task_kwargs(self):
+    def test_create_tasks(self):
         log_path = r"C:\neurobooth\test_data\test_logs"
 
         collection_id = 'testing'
-        database_name = 'mock_neurobooth_1'
+        database_name = 'mock_neurobooth'
+        subject_id = "72"
+        selected_tasks = ['task_1']
         log_task = meta._new_tech_log_dict()
         log_task["subject_id-date"] = "foobar"
         from neurobooth_os.log_manager import make_default_logger
         logger = make_default_logger(log_path, logging.DEBUG, False)
-        msg = f"prepare:{collection_id}:{database_name}:{str(log_task)}"
+        msg = PrepareRequest(database_name=database_name, subject_id=subject_id, collection_id=collection_id,
+                       selected_tasks=selected_tasks, date="2024-08-28")
         stm_session, task_log_entry = prepare_session(msg, logger)
-        print(stm_session)
-        print(stm_session.as_dict())
+        calib_instructions, device_log_entry_dict, subj_id, task_calib = _create_tasks(msg, stm_session, task_log_entry)
 
-        task_args: TaskArgs = TaskArgs()
         stm_session.shutdown()

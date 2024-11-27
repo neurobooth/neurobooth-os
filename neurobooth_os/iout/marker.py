@@ -4,6 +4,8 @@ import uuid
 from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+from neurobooth_os.msg.messages import DeviceInitialization, Request
+import neurobooth_os.iout.metadator as meta
 
 
 def marker_stream(name="Marker", outlet_id=None):
@@ -41,7 +43,12 @@ def marker_stream(name="Marker", outlet_id=None):
     outlet_marker.oulet_id = outlet_id
     outlet_marker.name = name
     outlet_marker.push_sample([f"Stream-created_0_{time.time()}"])
-    print(f"-OUTLETID-:{name}:{outlet_id}")
+
+    msg_body = DeviceInitialization(stream_name=name, outlet_id=outlet_id)
+    message = Request(source="marker", destination='CTR', body=msg_body)
+    with meta.get_database_connection() as conn:
+        meta.post_message(message, conn)
+
     outlet_marker.stop = outlet_marker.__del__
     outlet_marker.streaming = True
 

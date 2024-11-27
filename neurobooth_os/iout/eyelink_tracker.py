@@ -3,12 +3,15 @@ import uuid
 import threading
 import subprocess
 import logging
+import numpy as np
 
 import pylink
 from psychopy import visual, monitors
 from pylsl import StreamInfo, StreamOutlet, local_clock
 
+from neurobooth_os.iout.metadator import get_database_connection, post_message
 from neurobooth_os.iout.stim_param_reader import EyelinkDeviceArgs
+from neurobooth_os.msg.messages import NoEyetracker, Request, DeviceInitialization, NewVideoFile
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
     EyeLinkCoreGraphicsPsychoPy,
 )
@@ -88,7 +91,6 @@ class EyeTracker:
         self.recording = False
         self.paused = True
         self.connect_tracker()
-        print(f"-OUTLETID-:{self.streamName}:{self.oulet_id}")
 
     def connect_tracker(self):
         try:
@@ -96,8 +98,12 @@ class EyeTracker:
         except RuntimeError:
             msg_text = f"RuntimeError: Could not connect to tracker at %s. " \
                        "Please be sure to start Eyetracker before starting Neurobooth." % self.IP
-            print(msg_text)
+            body = NoEyetracker(warning=msg_text)
+            msg = Request(source="EyeTracker", destination="CTR", body=body)
+            with get_database_connection() as conn:
+                post_message(msg, conn)
             self.logger.error(msg_text)
+            return
 
         self.tk.setAddress(self.IP)
         # # Open an EDF data file on the Host PC
@@ -144,6 +150,12 @@ class EyeTracker:
         self.tk.sendCommand("calibration_area_proportion = 0.80 0.78")
         self.tk.sendCommand("validation_area_proportion = 0.80 0.78")
 
+        body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
+        msg = Request(source="EyeTracker", destination="CTR", body=body)
+        with get_database_connection() as conn:
+            post_message(msg, conn)
+
+
     def calibrate(self):
         self.logger.debug('EyeLink: Performing Calibration')
         calib_prompt = "You will see dots on the screen, please gaze at them"
@@ -170,28 +182,34 @@ class EyeTracker:
         if not op.exists(fname_asc):
             pout = subprocess.run(["edf2asc.exe", self.filename], shell=True)
             if not pout.stderr:
-                print(f"-new_filename-:{self.streamName}:{op.split(fname_asc)[-1]}")
+                body = NewVideoFile(event="-new_filename-", stream_name=self.streamName, filename=op.split(fname_asc)[-1])
+                msg = Request(source="EyeTracker", destination="CTR", body=body)
+                with get_database_connection() as conn:
+                    post_message(msg, conn)
+
         else:
             print(f"FILE {fname_asc} already exists")
         return
 
     def start(self, filename="TEST.edf"):
         self.filename = filename
-        print(f"-new_filename-:{self.streamName}:{op.split(filename)[-1]}")
+        body = NewVideoFile(event="-new_filename-", stream_name=self.streamName, filename=op.split(filename)[-1])
+        msg = Request(source="EyeTracker", destination="CTR", body=body)
+        with get_database_connection() as conn:
+            post_message(msg, conn)
+
         self.fname_temp = "name8chr.edf"
         self.tk.openDataFile(self.fname_temp)
         self.streaming = True
 
         pylink.beginRealTimeMode(100)
         self.tk.startRecording(1, 1, 1, 1)
-        # print("Eyetracker recording")
         self.recording = True
         self.stream_thread = threading.Thread(target=self.record)
         self.logger.debug('EyeLink: Starting Record Thread')
         self.stream_thread.start()
 
     def record(self):
-        # print("Eyetracker LSL recording")
         self.paused = False
         old_sample = None
         values = []
@@ -245,7 +263,7 @@ class EyeTracker:
 
         fps_et = np.mean(1 / np.diff(self.timestamps_et))
         fps_lcl = np.mean(1 / np.diff(self.timestamps_local))
-        print(
+        self.logger.debug(
             f"ET number of samples {len(self.timestamps_et)}, fps et: {fps_et}, fps local: {fps_lcl}"
         )
         self.tk.stopRecording()
@@ -257,7 +275,6 @@ class EyeTracker:
         self.recording = False
         if self.streaming:
             self.stream_thread.join()
-            # print("Eyelink stoped recording, downaloading edf")
             self.tk.receiveDataFile(self.fname_temp, self.filename)
             self.edf_to_ascii()
             self.streaming = False
@@ -279,7 +296,6 @@ if __name__ == "__main__":
     et.win.close()
 
     import matplotlib.pyplot as plt
-    import numpy as np
 
     timestamps_et = [e / 1000 for e in et.timestamps_et]
     plt.figure()

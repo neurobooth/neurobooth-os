@@ -14,6 +14,9 @@ import cv2
 import win32gui
 from pylsl import StreamInfo, StreamOutlet
 
+import neurobooth_os.iout.metadator as meta
+from neurobooth_os.msg.messages import DeviceInitialization, Request
+
 
 class ScreenMirror:
     def __init__(
@@ -64,7 +67,10 @@ class ScreenMirror:
         )
         self.info_stream = info_stream
         self.outlet_screen = StreamOutlet(info_stream)
-        print(f"-OUTLETID-:Screen:{self.oulet_id}")
+        msg_body = DeviceInitialization(stream_name="Screen", outlet_id=self.oulet_id)
+        with meta.get_database_connection() as db_conn:
+            meta.post_message(Request(source='ScreenMirror', destination='CTR', body=msg_body), conn=db_conn)
+
 
     def start(self):
         self.streaming = True

@@ -60,10 +60,10 @@ class Saccade(Eyelink_HostPC):
         else:
             raise ValueError("Only horizontal and vertical saccade is supported")
 
-    def run(self, prompt=True, last_task=False, **kwarg):
+    def run(self, prompt=True, **kwarg):
         self.present_instructions(prompt)
         self.run_trials(prompt)
-        self.present_complete(last_task)
+        self.present_complete()
         return self.events
 
     def run_trials(self, prompt=True):

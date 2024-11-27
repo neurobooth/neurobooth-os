@@ -6,7 +6,10 @@ import os
 from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, Any, Optional, List
+from neurobooth_os.util.nb_types import Subject
 
+import pandas as pd
+from pandas import DataFrame
 from pydantic import BaseModel
 from sshtunnel import SSHTunnelForwarder
 import psycopg2
@@ -17,6 +20,7 @@ import neurobooth_os.config as cfg
 from neurobooth_os.iout import stim_param_reader
 from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, get_cfg_path, DeviceArgs, StimulusArgs, \
     RawTaskParams, TaskArgs, StudyArgs, CollectionArgs
+from neurobooth_os.msg.messages import Message, MsgBody
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
 
@@ -72,14 +76,137 @@ def get_database_connection(database: Optional[str] = None, validate_config_path
         host = database_info.host
         port = database_info.port
 
+    db = database_info.dbname if database is None else database
+
     conn = psycopg2.connect(
-        database=database_info.dbname if database is None else database,
+        database=db,
         user=database_info.user,
         password=database_info.password,
         host=host,
         port=port,
     )
     return conn
+
+
+def clear_msg_queue(conn):
+    """
+    Clears message_queue table. Intended for use at the start of a session so errors in prior session don't leave
+    unhandled messages.
+    TODO: Copy messages to log before clearing
+    Parameters
+    ----------
+    conn: connection    A database connection
+
+    Returns
+    -------
+    None
+    """
+    table = Table("message_queue", conn=conn)
+    table.delete_row()
+
+
+def post_message(msg: Message, conn: connection) -> str:
+    """
+    Posts a new message to the database that mediates between message senders and receivers
+
+    Parameters
+    ----------
+    msg: Message        The Message to be posted
+    conn: connection    A database connection
+
+    Returns
+    -------
+    pk_val : str | None
+            The primary keys of the row inserted into.
+            If multiple rows are inserted, returns None.
+
+    """
+    table = Table("message_queue", conn=conn)
+    body = msg.body.model_dump_json()
+    return table.insert_rows([(str(msg.uuid),
+                               msg.msg_type,
+                               msg.full_msg_type(),
+                               msg.source,
+                               msg.destination,
+                               msg.priority,
+                               body)],
+                             cols=["uuid", "msg_type", "full_msg_type", "source", "destination", 'priority', 'body'])
+
+
+def read_next_message(destination: str, conn: connection, msg_type: str = None) -> Optional[Message]:
+    f"""
+    Returns a Message representing the next message to be handled by 
+    the calling process. Code representing the message {destination} would call this message to check for new messages.
+    If msg_type is None, LslRecording messages and some others are skipped as they have their own message handling loop.
+    
+    NOTE: A MESSAGE CAN ONLY BE READ ONCE using this method as the message's time_read value is updated before 
+    returning the query results. Only rows where time_read is NULL are returned here. 
+    
+    Parameters
+    ----------
+    destination: str    The identifier for the process that is the intended receiver of the message
+    conn: connection    A database connection
+    msg_type: str       The type of message (a string representation of the message's body class, 
+                        e.g. 'FramePreviewRequest') or another string indicating the type of messages to read. 
+                        Defaults to None
+
+
+    Returns a Message or None. Clients should check for None before trying to use the results. 
+    -------
+
+    """
+    if msg_type is None:
+        msg_type_stmt = \
+            " and msg_type NOT IN ('LslRecording', 'RecordingStarted', 'RecordingStopped', 'MbientResetResults') "
+    elif msg_type == 'paused_msg_types':
+        msg_type_stmt = (" and msg_type IN ('ResumeSessionRequest', 'CancelSessionRequest', 'CalibrationRequest', "
+                         "'TerminateServerRequest', 'MbientResetResults') ")
+    else:
+        msg_type_stmt = f" and msg_type = '{msg_type}' "
+
+    time_read = datetime.now()
+    update_str = \
+        f''' 
+        with selection as
+            (
+            select *  
+            from message_queue
+            where time_read is NULL
+            and destination = '{destination}'
+            {msg_type_stmt}
+            order by priority desc, id asc
+            limit 1
+            )
+        UPDATE message_queue
+        SET time_read = '{time_read}' 
+        from selection
+        where message_queue.id = selection.id
+        returning message_queue.id, message_queue.uuid, message_queue.msg_type, message_queue.full_msg_type, 
+        message_queue.priority, message_queue.source, message_queue.destination, message_queue.time_created, 
+        message_queue.time_read, message_queue.body     
+     '''
+
+    curs = conn.cursor()
+    curs.execute(update_str)
+    msg_df: DataFrame = pd.DataFrame(curs.fetchall())
+    conn.commit()
+    curs.close()
+    if msg_df.empty:
+        return None
+    field_names = [i[0] for i in curs.description]
+    msg_df = msg_df.set_axis(field_names, axis='columns')
+    body = msg_df['body'].iloc[0]
+    uuid = msg_df['uuid'].iloc[0]
+    msg_type = msg_df['msg_type'].iloc[0]
+    msg_type_full = msg_df['full_msg_type'].iloc[0]
+    priority = msg_df['priority'].iloc[0]
+    source = msg_df['source'].iloc[0]
+    destination = msg_df['destination'].iloc[0]
+    body_constructor = str_fileid_to_eval(msg_type_full)
+    msg_body: MsgBody = body_constructor(**body)
+    msg = Message(body=msg_body, uuid=uuid, msg_type=msg_type, source=source, destination=destination,
+                  priority=priority)
+    return msg
 
 
 def get_study_ids() -> List[str]:
@@ -95,6 +222,54 @@ def get_subject_ids(conn: connection, first_name, last_name):
         where=f"LOWER(first_name_birth)=LOWER('{f_name}') AND LOWER(last_name_birth)=LOWER('{l_name}')"
     )
     return subject_df
+
+
+def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
+
+    # We do two separate queries in case the contact table doesn't have any matching records,
+    # due to, for example, an issue with the REDCap update timing.  We always want a result if there's a matching
+    # record in the subject table.  Hitting both tables with a single join query would cause zero records to be returned
+    table_subject = Table("subject", conn=conn)
+    subject_df = table_subject.query(where=f"LOWER(subject_id)=LOWER('{subject_id}')")
+
+    contact_query = f"""select first_name_contact, last_name_contact 
+        from rc_contact 
+        where LOWER(subject_id) = Lower('{subject_id}')
+        order by start_time_contact desc
+        limit 1
+    """
+
+    if subject_df.empty:
+        return None
+    else:
+        # Get the column names from the cursor description
+        curs = conn.cursor()
+        curs.execute(contact_query)
+        results = curs.fetchall()
+        column_names = [desc[0] for desc in curs.description]
+
+        # Create the DataFrame
+        contact_df = pd.DataFrame(results, columns=column_names)
+
+        conn.commit()
+        curs.close()
+
+        subj = Subject(
+            subject_id=subject_id,
+            first_name_birth=subject_df['first_name_birth'].iloc[0],
+            middle_name_birth=subject_df['middle_name_birth'].iloc[0],
+            last_name_birth=subject_df['last_name_birth'].iloc[0],
+            date_of_birth=subject_df['date_of_birth_subject'].iloc[0],
+            preferred_first_name="",
+            preferred_last_name="",
+        )
+        pref_first_name = str(contact_df['first_name_contact'].iloc[0])
+        pref_last_name = str(contact_df['last_name_contact'].iloc[0])
+
+        if not contact_df.empty:
+            subj.preferred_first_name = pref_first_name
+            subj.preferred_last_name = pref_last_name
+        return subj
 
 
 def _escape_name_string(name: str) -> str:
@@ -217,12 +392,12 @@ def fill_task_row(task_log_entry: TaskLogEntry, conn: connection) -> None:
 
 
 def get_stimulus_id(task_id: str) -> str:
-    task : RawTaskParams = read_tasks()[task_id]
+    task: RawTaskParams = read_tasks()[task_id]
     return task.stimulus_id
 
 
 def get_device_ids(task_id: str) -> List[str]:
-    task : RawTaskParams = read_tasks()[task_id]
+    task: RawTaskParams = read_tasks()[task_id]
     return task.device_id_array
 
 
@@ -250,7 +425,7 @@ def _fill_device_param_row(conn: connection, device: DeviceArgs) -> Optional[str
     # log the remaining data, skipping anything that already gets its own column
     # Note: The dictionary key in dict_val must match the database column name,
     # so we're stuck with names like "wearable_bool"
-    handled_keys = list (log_device.keys())
+    handled_keys = list(log_device.keys())
     for key in handled_keys:
         if key in dict_vals:
             del dict_vals[key]
@@ -333,7 +508,7 @@ def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict: D
 
     # log the remaining data, skipping anything that already gets its own column
     # Note: The dictionary key in dict_val must match the database column name.
-    handled_keys = list (log_task.keys())
+    handled_keys = list(log_task.keys())
     for key in list(dict_vals.keys()):
         if key in handled_keys:
             del dict_vals[key]
@@ -358,7 +533,6 @@ def read_sensors() -> Dict[str, SensorArgs]:
 
 
 def _dynamic_parse(file: str, param_type: str, env_dict: Dict[str, Any]) -> BaseModel:
-
     param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, param_type)
     param_dict.update(env_dict)
     param_parser: str = param_dict['arg_parser']
@@ -417,7 +591,7 @@ def read_collections() -> Dict[str, CollectionArgs]:
     return _parse_files(folder)
 
 
-def get_task(task_id:str) -> RawTaskParams:
+def get_task(task_id: str) -> RawTaskParams:
     tasks = read_tasks()
     return tasks[task_id]
 
@@ -454,7 +628,7 @@ def build_tasks_for_collection(collection_id: str) -> Dict[str, TaskArgs]:
     return task_dict
 
 
-def build_task(param_dictionary, task_id:str) -> TaskArgs:
+def build_task(param_dictionary, task_id: str) -> TaskArgs:
     raw_task_args: RawTaskParams = param_dictionary["tasks"][task_id]
     stim_args: StimulusArgs = param_dictionary["stimuli"][raw_task_args.stimulus_id]
     task_constructor = stim_args.stimulus_file
@@ -481,7 +655,6 @@ def build_task(param_dictionary, task_id:str) -> TaskArgs:
         instr_args=instr_args,
         device_args=device_args,
         arg_parser=arg_parser,
-        feature_of_interest= feature_of_interest
+        feature_of_interest=feature_of_interest
     )
     return task_args
-

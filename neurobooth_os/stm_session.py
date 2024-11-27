@@ -3,6 +3,7 @@ import os
 
 from typing import Optional, Dict
 from pydantic import BaseModel
+from psycopg2.extensions import connection
 
 from neurobooth_os import config
 from neurobooth_os.iout.eyelink_tracker import EyeTracker
@@ -18,10 +19,9 @@ class StmSession(BaseModel):
     """
 
     session_name: str = ''
-    socket: object
     collection_id: str
     logger: logging.Logger
-    db_conn: object
+    db_conn: connection
     win: Optional[object] = None
     session_folder: Optional[str] = None
     system_resource_logger: Optional[object] = None
@@ -41,7 +41,6 @@ class StmSession(BaseModel):
         self.collection_id = kwargs["collection_id"]
         self.db_conn = kwargs["db_conn"]
         self.logger = kwargs["logger"]
-        self.socket = kwargs["socket"]
         self.session_folder = self.create_session_folder(self.logger, self.session_name)
         self.system_resource_logger: SystemResourceLogger = self.create_sys_resource_logger()
         self.task_func_dict = build_tasks_for_collection(self.collection_id)
@@ -61,10 +60,9 @@ class StmSession(BaseModel):
     def init_device_manager(self) -> DeviceManager:
         device_manager = DeviceManager(node_name='presentation')
         if device_manager.streams:
-            print("Checking prepared devices")
             device_manager.reconnect_streams()
         else:
-            device_manager.create_streams(collection_id=self.collection_id, win=self.win, task_params=self.task_func_dict)
+            device_manager.create_streams(win=self.win, task_params=self.task_func_dict)
         return device_manager
 
     @staticmethod
@@ -91,8 +89,6 @@ class StmSession(BaseModel):
         self.win.close()
         if self.device_manager is not None:
             self.device_manager.close_streams()
-        if self.socket is not None:
-            self.socket.close()
 
     def as_dict(self):
 
