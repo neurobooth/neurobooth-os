@@ -125,6 +125,7 @@ def _start_task_presentation(window, tasks: List[str], subject_id: str, session_
     conn = meta.get_database_connection()
     window['Start'].update(disabled=True)
     write_output(window, "\nSession started")
+    write_output(window, "\nPlease wait for all inlet streams to load before proceeding", text_color='red')
 
     if len(tasks) > 0:
         msg_body = CreateTasksRequest(tasks=tasks, subj_id=subject_id, session_id=session_id)
