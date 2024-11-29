@@ -651,7 +651,7 @@ def gui(logger):
             session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
             window["-frame_preview-"].update(visible=True)
             window['Start'].update(disabled=False)
-            write_output(window, "\nPlease wait for all inlet streams to load before proceeding", text_color='red')
+            write_output(window, "\n\nPlease wait for all inlet streams to load before proceeding", text_color='red')
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
