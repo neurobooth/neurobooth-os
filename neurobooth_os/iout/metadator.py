@@ -263,12 +263,9 @@ def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
             preferred_first_name="",
             preferred_last_name="",
         )
-        pref_first_name = str(contact_df['first_name_contact'].iloc[0])
-        pref_last_name = str(contact_df['last_name_contact'].iloc[0])
-
         if not contact_df.empty:
-            subj.preferred_first_name = pref_first_name
-            subj.preferred_last_name = pref_last_name
+            subj.preferred_first_name = str(contact_df['first_name_contact'].iloc[0])
+            subj.preferred_last_name = str(contact_df['last_name_contact'].iloc[0])
         return subj
 
 
