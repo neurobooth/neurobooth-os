@@ -39,6 +39,8 @@ from util.nb_types import Subject
 
 #  State variables used to help ensure in-order GUI steps
 running_servers = []
+last_task = None
+start_pressed = False
 
 
 def setup_log(sg_handler=None):
@@ -122,10 +124,11 @@ def _create_session_dict(window, log_task, staff_id, subject: Subject, tasks):
 
 def _start_task_presentation(window, tasks: List[str], subject_id: str, session_id: int, steps):
     """Present tasks"""
+    global last_task
     conn = meta.get_database_connection()
     window['Start'].update(disabled=True)
     write_output(window, "\nSession started")
-
+    last_task = tasks[-1]
     if len(tasks) > 0:
         msg_body = CreateTasksRequest(tasks=tasks, subj_id=subject_id, session_id=session_id)
         msg = Request(
@@ -281,8 +284,6 @@ def _stop_lsl_and_save(
         xdf_split.start()
         write_output(window, f"SPLIT XDF {task_id} took: {time.time() - t0}")
 
-        print(f"CTR xdf_split threading took: {time.time() - t0}")
-
 
 ######### Server communication ############
 
@@ -349,8 +350,11 @@ def _start_ctr_msg_reader(logger, window):
         elif "TaskCompletion" == message.msg_type:
             msg_body: TaskCompletion = message.body
             task_id = msg_body.task_id
+            has_lsl_stream = msg_body.has_lsl_stream
+            event_value = f"['{task_id}', '{has_lsl_stream}']"
             logger.debug(f"TaskCompletion msg for {task_id}")
-            window.write_event_value("task_finished", task_id)
+            window.write_event_value("task_finished", event_value)
+            print(f"Received task completion with has_lsl_stream = {has_lsl_stream}")
 
         elif "NewVideoFile" == message.msg_type:
             msg_body: NewVideoFile = message.body
@@ -448,7 +452,9 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
 
     # disable button so it can't be pushed twice
     window["-Connect-"].Update(disabled=True)
-
+    for task in tasks.split(","):
+        task_checkbox: sg.Checkbox = window.find_element(task.strip())
+        task_checkbox.update(disabled=True)
     event, values = window.read(0.1)
     write_output(window, "\nConnecting devices. Please wait....")
 
@@ -481,7 +487,7 @@ def _get_nodes():
 def gui(logger):
     """Start the Graphical User Interface.
     """
-    global running_servers
+    global running_servers, start_pressed
 
     database = cfg.neurobooth_config.database.dbname
 
@@ -558,10 +564,12 @@ def gui(logger):
             _plot_realtime(window, plttr, inlets)
 
         elif event == "Start":
-            window["Start"].Update(disabled=True)
-            session_id = meta._make_session_id(conn, log_sess)
-            tasks = [k for k, v in values.items() if "obs" in k and v is True]
-            _start_task_presentation(window, tasks, sess_info["subject_id"], session_id, steps)
+            if not start_pressed:
+                window["Start"].Update(disabled=True)
+                start_pressed = True
+                session_id = meta._make_session_id(conn, log_sess)
+                tasks = [k for k, v in values.items() if "obs" in k and v is True]
+                _start_task_presentation(window, tasks, sess_info["subject_id"], session_id, steps)
 
         elif event == "tasks_created":
             _session_button_state(window, disabled=False)
@@ -640,8 +648,14 @@ def gui(logger):
 
         # Signal a task ended: stop LSL recording and update gui
         elif event == "task_finished":
-            logger.debug(f"Stopping LSL for task: {t_obs_id}")
-            handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window)
+            task_id, has_lsl_stream = eval(values['task_finished'])
+            boolean_value = has_lsl_stream.lower() == 'true'
+            if boolean_value:
+                logger.debug(f"Stopping LSL for task: {task_id}")
+                handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, task_id, values, window)
+            if task_id == last_task:
+                _session_button_state(window, disabled=True)
+                write_output(window, "\nSession complete: OK to terminate", 'blue')
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":
@@ -650,8 +664,10 @@ def gui(logger):
         elif event == 'devices_connected':
             session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
             window["-frame_preview-"].update(visible=True)
-            window['Start'].update(disabled=False)
-            write_output(window, "\nPlease wait for all inlet streams to load before proceeding", text_color='red')
+            if not start_pressed:
+                window['Start'].update(disabled=False)
+            # TODO: Remove
+            # write_output(window, "\nPlease ensure all inlet streams are loaded before proceeding.\n")
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
@@ -716,19 +732,18 @@ def terminate_system(conn, plttr, sess_info, values, window):
 
 
 def handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window):
-    task_id = values["task_finished"]
     _stop_lsl_and_save(
         window,
         session,
         conn,
         rec_fname,
-        task_id,
+        t_obs_id,
         obs_log_id,
         t_obs_id,
         sess_info["subject_id_date"],
     )
     write_task_notes(
-        sess_info["subject_id_date"], sess_info["staff_id"], task_id, ""
+        sess_info["subject_id_date"], sess_info["staff_id"], t_obs_id, ""
     )
     window["-frame_preview-"].update(visible=True)
 

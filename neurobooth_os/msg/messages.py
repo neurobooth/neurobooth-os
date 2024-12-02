@@ -262,6 +262,7 @@ class TaskCompletion(MsgBody):
     Message sent from STM to CTR to tell CTR to stop LSL
     """
     task_id: str
+    has_lsl_stream: bool = True  # True if the task has associated LSL streams (False for instructions, pauses)
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY

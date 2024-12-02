@@ -186,6 +186,9 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
             load_task_media(session, task_args)
             task: Task = task_args.task_instance
             task.run(**this_task_kwargs)
+            # Signal CTR to stop LSL rec
+            meta.post_message(Request(source='STM', destination='CTR',
+                                      body=TaskCompletion(task_id=task_id, has_lsl_stream=False)), db_conn)
         else:
             log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
             meta.log_task_params(
