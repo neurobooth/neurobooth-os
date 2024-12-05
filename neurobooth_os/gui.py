@@ -41,6 +41,7 @@ from util.nb_types import Subject
 running_servers = []
 last_task = None
 start_pressed = False
+session_prepared_count = 0      # How many SessionPrepared messages were received. the number required = node count
 
 
 def setup_log(sg_handler=None):
@@ -81,6 +82,8 @@ def _get_subject_by_id(window, log_sess, conn, subject_id: str):
         return subject
     else:
         sg.PopupError(f"Subject {subject_id} not found", location=get_popup_location(window))
+        window["subject_info"].update('')
+
 
 
 def _get_tasks(window, collection_id: str):
@@ -223,8 +226,10 @@ def _start_lsl_session(window, inlets, folder=""):
 
 
 def write_output(window, text: str, text_color: Optional[str] =None):
-    elem: Multiline = window["-OUTPUT-"]
-    elem.print(text, text_color=text_color)
+    key = "-OUTPUT-"
+    if key in window.AllKeysDict:
+        elem: Multiline = window.find_element(key)
+        elem.print(text, text_color=text_color)
 
 
 def _record_lsl(
@@ -269,6 +274,7 @@ def _stop_lsl_and_save(
 
     xdf_fname = get_xdf_name(session, rec_fname)
     xdf_path = op.join(folder, xdf_fname)
+    print(f'xdf_path: {xdf_path}')
     t0 = time.time()
     if any([tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]]):
         # Don't split large files now, just add to a backlog to handle post-session
@@ -354,7 +360,6 @@ def _start_ctr_msg_reader(logger, window):
             event_value = f"['{task_id}', '{has_lsl_stream}']"
             logger.debug(f"TaskCompletion msg for {task_id}")
             window.write_event_value("task_finished", event_value)
-            print(f"Received task completion with has_lsl_stream = {has_lsl_stream}")
 
         elif "NewVideoFile" == message.msg_type:
             msg_body: NewVideoFile = message.body
@@ -458,7 +463,7 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
     event, values = window.read(0.1)
     write_output(window, "\nConnecting devices. Please wait....")
 
-    vidf_mrkr = marker_stream("videofiles")
+    video_marker_stream = marker_stream("videofiles")
 
     nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:
@@ -477,7 +482,7 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
                       body=body)
 
         meta.post_message(msg, conn=meta.get_database_connection())
-    return vidf_mrkr, event, values
+    return video_marker_stream, event, values
 
 
 def _get_nodes():
@@ -557,7 +562,7 @@ def gui(logger):
 
         # Turn on devices
         elif event == "-Connect-":
-            vidf_mrkr, event, values = _prepare_devices(window,
+            video_marker_stream, event, values = _prepare_devices(window,
                 nodes, collection_id, log_task, database, tasks)
 
         elif event == "plot":
@@ -602,9 +607,14 @@ def gui(logger):
                 )
                 continue
 
+        elif event == sg.WIN_CLOSED:
+            break
+
         # Shut down the other servers and stops plotting
-        elif event == "Shut Down" or event == sg.WINDOW_CLOSED:
-            if values is not None and 'notes' in values and "_notes_taskname_" not in values:
+        elif event == "Shut Down" or event == sg.WINDOW_CLOSE_ATTEMPTED_EVENT:
+            if (values is not None
+                    and ('notes' in values and values['notes'] != '')
+                    and ("_notes_taskname_" not in values or values['_notes_taskname_'] == '')):
                 sg.PopupError(
                     "Unsaved notes without task. Before exiting, "
                     "select a task in the dropdown list or delete the note text.",
@@ -659,15 +669,16 @@ def gui(logger):
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":
-            vidf_mrkr.push_sample([values[event]])
+            video_marker_stream.push_sample([values[event]])
 
         elif event == 'devices_connected':
-            session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
-            window["-frame_preview-"].update(visible=True)
-            if not start_pressed:
-                window['Start'].update(disabled=False)
-            # TODO: Remove
-            # write_output(window, "\nPlease ensure all inlet streams are loaded before proceeding.\n")
+            global session_prepared_count
+            session_prepared_count += 1
+            if session_prepared_count == len(_get_nodes()):
+                session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
+                window["-frame_preview-"].update(visible=True)
+                if not start_pressed:
+                    window['Start'].update(disabled=False)
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
@@ -710,11 +721,14 @@ def gui(logger):
         if inlet_keys != list(inlets):
              inlet_keys = list(inlets)
              window["inlet_State"].update("\n".join(inlet_keys))
+    close(window)
+
+
+def close(window):
     window.close()
     if "-OUTPUT-" in window.AllKeysDict:
         window["-OUTPUT-"].__del__()
     print("Session terminated")
-
 
 def terminate_system(conn, plttr, sess_info, values, window):
     if sess_info and values:
@@ -788,7 +802,8 @@ def _session_button_state(window: object, disabled: bool) -> None:
 
 
 def get_popup_location(window):
-    x, y = window.get_screen_size()
+    if window.was_closed():
+        return None
     window_x, window_y = window.current_location()
     center_x = window_x + window.size[0] // 2
     center_y = window_y + window.size[1] // 2

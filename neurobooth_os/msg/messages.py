@@ -244,7 +244,7 @@ class TaskInitialization(MsgBody):
     tsk_start_time: str
 
     def __init__(self, **data):
-        data['priority'] = MEDIUM_PRIORITY
+        data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
 
 
@@ -265,7 +265,7 @@ class TaskCompletion(MsgBody):
     has_lsl_stream: bool = True  # True if the task has associated LSL streams (False for instructions, pauses)
 
     def __init__(self, **data):
-        data['priority'] = MEDIUM_PRIORITY
+        data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
 
 
@@ -436,7 +436,7 @@ class NewVideoFile(MsgBody):
     """
     Message sent by devices, or by the controller (for Marker streams) to indicate that a new VideoFile was created
     """
-    event: str
+    event: str = "-new_filename-"
     stream_name: str
     filename: str
 

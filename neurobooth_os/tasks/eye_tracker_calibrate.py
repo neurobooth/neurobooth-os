@@ -23,7 +23,7 @@ class Calibrate(Task_Eyetracker):
         if instructions:
             self.present_instructions(prompt)
 
-        body = NewVideoFile(event="-new_filename-", stream_name=self.eye_tracker.streamName, filename=op.split(fname)[-1])
+        body = NewVideoFile(stream_name=self.eye_tracker.streamName, filename=op.split(fname)[-1])
         msg = Request(source="EyeTracker", destination="CTR", body=body)
         post_message(msg, get_database_connection())
 
