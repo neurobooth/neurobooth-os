@@ -679,6 +679,7 @@ def gui(logger):
                 window["-frame_preview-"].update(visible=True)
                 if not start_pressed:
                     window['Start'].update(disabled=False)
+                    write_output(window, "Please wait for inlet streams to load before pressing 'Start'", 'blue')
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
