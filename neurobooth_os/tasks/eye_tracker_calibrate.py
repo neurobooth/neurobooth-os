@@ -19,8 +19,7 @@ class Calibrate(Task_Eyetracker):
 
         super().__init__(**kwargs)
 
-    def run(self, prompt=True, instructions=True, **kwargs):
-        fname = kwargs['fname']
+    def run(self, prompt=True, fname="test", instructions=True, **kwargs):
         if instructions:
             self.present_instructions(prompt)
 
@@ -42,3 +41,17 @@ class Calibrate(Task_Eyetracker):
         self.eye_tracker.tk.receiveDataFile(self.fname_temp, self.fname)
 
         self.present_complete()
+
+
+if __name__ == "__main__":
+    from neurobooth_os.iout.eyelink_tracker import EyeTracker
+    from neurobooth_os.tasks import utils
+
+    win = utils.make_win(False)
+    eye_tracker = EyeTracker(win=win, ip="192.168.100.15")
+    config.load_config()
+    server_config = config.neurobooth_config.current_server()
+    fname = f"{server_config.local_data_dir}calibration.edf"
+    cal = Calibrate(eye_tracker=eye_tracker, win=win, fname=fname)
+    cal.run()
+    cal.win.close()
