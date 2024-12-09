@@ -678,7 +678,7 @@ def gui(logger):
                 window["-frame_preview-"].update(visible=True)
                 if not start_pressed:
                     window['Start'].update(disabled=False)
-                    write_output(window, "Device connection complete. Ok to Start session")
+                    write_output(window, "Device connection complete. OK to start session")
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
