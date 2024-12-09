@@ -274,7 +274,6 @@ def _stop_lsl_and_save(
 
     xdf_fname = get_xdf_name(session, rec_fname)
     xdf_path = op.join(folder, xdf_fname)
-    print(f'xdf_path: {xdf_path}')
     t0 = time.time()
     if any([tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]]):
         # Don't split large files now, just add to a backlog to handle post-session
@@ -679,7 +678,6 @@ def gui(logger):
                 window["-frame_preview-"].update(visible=True)
                 if not start_pressed:
                     window['Start'].update(disabled=False)
-                    write_output(window, "Please wait for inlet streams to load before pressing 'Start'", 'blue')
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
@@ -730,6 +728,7 @@ def close(window):
     if "-OUTPUT-" in window.AllKeysDict:
         window["-OUTPUT-"].__del__()
     print("Session terminated")
+
 
 def terminate_system(conn, plttr, sess_info, values, window):
     if sess_info and values:
