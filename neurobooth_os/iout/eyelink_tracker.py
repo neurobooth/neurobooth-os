@@ -26,7 +26,6 @@ class EyeTracker:
         win=None,
         with_lsl=True,
     ):
-        self.filename = None
         self.IP = device_args.ip
         self.sample_rate = device_args.sample_rate()
         self.device_id = device_args.device_id
@@ -192,7 +191,7 @@ class EyeTracker:
             print(f"FILE {fname_asc} already exists")
         return
 
-    def start(self, filename):
+    def start(self, filename="TEST.edf"):
         self.filename = filename
         body = NewVideoFile(stream_name=self.streamName, filename=op.split(filename)[-1])
         msg = Request(source="EyeTracker", destination="CTR", body=body)
