@@ -28,6 +28,7 @@ from neurobooth_os.log_manager import make_db_logger
 
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
+calib_instructions: bool = True  # True if we have not yet performed an eyetracker calibration task
 
 
 def main():
@@ -57,8 +58,8 @@ def run_stm(logger):
     db_conn = meta.get_database_connection(database=config.neurobooth_config.database.dbname)
 
     paused: bool = False  # True if message received that RC requests a session pause
-    session_canceled = False  # True if message received that RC requests that the session be canceled
-    finished = False  # True if the "Thank you" screen has been displayed
+    session_canceled: bool = False  # True if message received that RC requests that the session be canceled
+    finished: bool = False  # True if the "Thank you" screen has been displayed
     shutdown: bool = False  # True if message received that this server should be terminated
     init_servers = Request(source="STM", destination="CTR", body=ServerStarted())
     meta.post_message(init_servers, db_conn)
@@ -236,6 +237,7 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
 
 
 def _get_task_instance(session: StmSession, task_args: TaskArgs, task_id, tsk_start_time):
+    global calib_instructions
     # Create task instance and load media
     t1 = time()
     tsk_fun_obj: Callable = copy.copy(
@@ -250,11 +252,16 @@ def _get_task_instance(session: StmSession, task_args: TaskArgs, task_id, tsk_st
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
-        task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
-        session.eye_tracker.start(fname)
+        stimulus_id = task_args.stim_args.stimulus_id
+        if "calibration_task" in stimulus_id:  # if not calibration record with start method
+            this_task_kwargs.update({"fname": fname, "instructions": calib_instructions})
+            calib_instructions = False      # Only show the instructions the first time
+        else:
+            task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
+            session.eye_tracker.start(fname)
 
 
-def _create_tasks(message , session, task_log_entry):
+def _create_tasks(message, session, task_log_entry):
     msg_body: CreateTasksRequest = message.body
     session.logger.debug(f"Creating Tasks {msg_body.tasks}")
     tasks = msg_body.tasks
