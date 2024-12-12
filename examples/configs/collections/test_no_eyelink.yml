@@ -1,6 +1,8 @@
 collection_id: test_no_eyelink
 is_active: true
 task_ids:
+- intro_sess_obs_1
+- gogogo_test_obs_1
 - altern_hand_test_obs_1
 - foot_tapping_test_obs_1
 - sit_to_stand_test_obs
