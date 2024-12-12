@@ -533,10 +533,12 @@ def gui(logger):
             tasks = _get_tasks(window, collection_id)
 
         elif event == "_init_sess_save_":
-            if values["tasks"] == "":
-                sg.PopupError("No task combo", location=get_popup_location(window))
+            if values["study_id"] == "" or values['collection_id'] == "":
+                sg.PopupError("Study and Collection are required fields", location=get_popup_location(window))
             elif values["staff_id"] == "":
-                sg.PopupError("No staff ID", location=get_popup_location(window))
+                sg.PopupError("Staff ID is required", location=get_popup_location(window))
+            elif window["subject_info"].get() == "":
+                sg.PopupError("Please select a Subject", location=get_popup_location(window))
             else:
                 log_sess["staff_id"] = values["staff_id"]
                 sess_info = _create_session_dict(
