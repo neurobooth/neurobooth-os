@@ -1,0 +1,7 @@
+task_id: gogogo_test_obs_1
+feature_of_interest: speech
+stimulus_id: GoGoGo_task_1
+instruction_id: gogo_1
+device_id_array:
+- Intel_D455_1
+arg_parser: iout.stim_param_reader.py::RawTaskParams()

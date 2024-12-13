@@ -28,6 +28,7 @@ from neurobooth_os.log_manager import make_db_logger
 
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
+calib_instructions: bool = True  # True if we have not yet performed an eyetracker calibration task
 
 
 def main():
@@ -57,8 +58,8 @@ def run_stm(logger):
     db_conn = meta.get_database_connection(database=config.neurobooth_config.database.dbname)
 
     paused: bool = False  # True if message received that RC requests a session pause
-    session_canceled = False  # True if message received that RC requests that the session be canceled
-    finished = False  # True if the "Thank you" screen has been displayed
+    session_canceled: bool = False  # True if message received that RC requests that the session be canceled
+    finished: bool = False  # True if the "Thank you" screen has been displayed
     shutdown: bool = False  # True if message received that this server should be terminated
     init_servers = Request(source="STM", destination="CTR", body=ServerStarted())
     meta.post_message(init_servers, db_conn)
@@ -68,7 +69,7 @@ def run_stm(logger):
             while paused:
                 message: Message = meta.read_next_message("STM", msg_type='paused_msg_types', conn=db_conn)
                 if message is None:
-                    sleep(1)
+                    sleep(.5)
                     continue
 
                 logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
@@ -139,7 +140,7 @@ def run_stm(logger):
                     device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
 
                 elif "PerformTaskRequest" == current_msg_type:
-                    _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj_id, task_log_entry)
+                    _perform_task(db_conn, device_log_entry_dict, message, session, subj_id, task_log_entry)
 
                 elif "PauseSessionRequest" == current_msg_type:
                     paused = _pause(session)
@@ -167,12 +168,14 @@ def run_stm(logger):
     exit()
 
 
-def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj_id: str,
+def _perform_task(db_conn, device_log_entry_dict, message, session, subj_id: str,
                   task_log_entry):
+    global calib_instructions
     msg_body = message.body
     task_id: str = msg_body.task_id
-
     tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
+    edf_fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
+
     if task_id not in session.tasks():
         session.logger.warning(f'Task {task_id} not implemented')
     else:
@@ -186,6 +189,9 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
             load_task_media(session, task_args)
             task: Task = task_args.task_instance
             task.run(**this_task_kwargs)
+            # Signal CTR to stop LSL rec
+            meta.post_message(Request(source='STM', destination='CTR',
+                                      body=TaskCompletion(task_id=task_id, has_lsl_stream=False)), db_conn)
         else:
             log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
             meta.log_task_params(
@@ -210,7 +216,7 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
                 future2 = executor.submit(_start_acq, session, task_id, tsk_start_time)
                 # Wait for all futures to complete
                 concurrent.futures.wait([future1, future2])
-            _get_task_instance(session, task_args, task_id, tsk_start_time)
+            _get_task_instance(session, task_args, edf_fname)
 
             this_task_kwargs["task_name"] = task_id
             this_task_kwargs["subj_id"] += "_" + tsk_start_time
@@ -218,6 +224,11 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
             elapsed_time = time() - t00
             session.logger.info(f"Total task WAIT took: {elapsed_time:.2f}")
             t01 = time()
+            stimulus_id = task_args.stim_args.stimulus_id
+            if "calibration_task" in stimulus_id:  # if not calibration record with start method
+                this_task_kwargs.update({"fname": edf_fname, "instructions": calib_instructions})
+                calib_instructions = False  # Only show the instructions the first time
+
             events = task_args.task_instance.run(**this_task_kwargs)
             elapsed_time = time() - t01
             session.logger.info(f"Total task RUN took: {elapsed_time:.2f}")
@@ -232,7 +243,8 @@ def _perform_task(db_conn, device_log_entry_dict, logger, message, session, subj
             session.logger.info(f"Total TASK took: {elapsed_time:.2f}")
 
 
-def _get_task_instance(session: StmSession, task_args: TaskArgs, task_id, tsk_start_time):
+def _get_task_instance(session: StmSession, task_args: TaskArgs, edf_fname):
+    global calib_instructions
     # Create task instance and load media
     t1 = time()
     tsk_fun_obj: Callable = copy.copy(
@@ -246,12 +258,12 @@ def _get_task_instance(session: StmSession, task_args: TaskArgs, task_id, tsk_st
     # Eyetracker has to start after instance creation so we can render an image to the eyetracker output device
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
-        fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
-        task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
-        session.eye_tracker.start(fname)
+        stimulus_id = task_args.stim_args.stimulus_id
+        if "calibration_task" not in stimulus_id:  # if not calibration record with start method
+            task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
+            session.eye_tracker.start(edf_fname)
 
-
-def _create_tasks(message , session, task_log_entry):
+def _create_tasks(message, session, task_log_entry):
     msg_body: CreateTasksRequest = message.body
     session.logger.debug(f"Creating Tasks {msg_body.tasks}")
     tasks = msg_body.tasks
@@ -370,10 +382,10 @@ def _start_acq(session: StmSession, task_id: str, tsk_start_time):
     session.logger.info(f'Waiting for mbient_reconnect took: {elapsed_time:.2f}')
 
     t1 = time()
-    fname = f"{session.session_name}_{tsk_start_time}_{task_id}"
+    file_name = f"{session.session_name}_{tsk_start_time}_{task_id}"
     body = StartRecording(
         session_name=session.session_name,
-        fname=fname,
+        fname=file_name,
         task_id=task_id
     )
     sr_msg = StartRecordingMsg(body=body)

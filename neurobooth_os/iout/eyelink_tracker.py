@@ -182,7 +182,7 @@ class EyeTracker:
         if not op.exists(fname_asc):
             pout = subprocess.run(["edf2asc.exe", self.filename], shell=True)
             if not pout.stderr:
-                body = NewVideoFile(event="-new_filename-", stream_name=self.streamName, filename=op.split(fname_asc)[-1])
+                body = NewVideoFile(stream_name=self.streamName, filename=op.split(fname_asc)[-1])
                 msg = Request(source="EyeTracker", destination="CTR", body=body)
                 with get_database_connection() as conn:
                     post_message(msg, conn)
@@ -193,7 +193,7 @@ class EyeTracker:
 
     def start(self, filename="TEST.edf"):
         self.filename = filename
-        body = NewVideoFile(event="-new_filename-", stream_name=self.streamName, filename=op.split(filename)[-1])
+        body = NewVideoFile(stream_name=self.streamName, filename=op.split(filename)[-1])
         msg = Request(source="EyeTracker", destination="CTR", body=body)
         with get_database_connection() as conn:
             post_message(msg, conn)

@@ -63,7 +63,7 @@ def run_acq(logger):
         try:
             message: Message = meta.read_next_message("ACQ", conn=db_conn)
             if message is None:
-                sleep(1)
+                sleep(.5)
                 continue
             msg_body: Optional[MsgBody] = None
             logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
@@ -116,10 +116,6 @@ def run_acq(logger):
 
             elif "StartRecording" == current_msg_type:
                 msg_body: StartRecording = message.body
-
-                status_msg = StatusMessage(text="Starting recording", status="Info")
-                status_req = Request(source="ACQ", destination="CTR", body=status_msg)
-                meta.post_message(status_req, conn=db_conn)
 
                 task = msg_body.task_id
                 fname = msg_body.fname

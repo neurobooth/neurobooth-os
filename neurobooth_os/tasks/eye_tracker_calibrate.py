@@ -19,11 +19,13 @@ class Calibrate(Task_Eyetracker):
 
         super().__init__(**kwargs)
 
-    def run(self, prompt=True, fname="test", instructions=True, **kwarg):
+    def run(self, prompt=True, instructions=True, **kwargs):
         if instructions:
             self.present_instructions(prompt)
 
-        body = NewVideoFile(event="-new_filename-", stream_name=self.eye_tracker.streamName, filename=op.split(fname)[-1])
+        fname = kwargs["fname"]
+
+        body = NewVideoFile(stream_name=self.eye_tracker.streamName, filename=op.split(fname)[-1])
         msg = Request(source="EyeTracker", destination="CTR", body=body)
         post_message(msg, get_database_connection())
 
@@ -51,7 +53,7 @@ if __name__ == "__main__":
     eye_tracker = EyeTracker(win=win, ip="192.168.100.15")
     config.load_config()
     server_config = config.neurobooth_config.current_server()
-    fname = f"{server_config.local_data_dir}calibration.edf"
-    cal = Calibrate(eye_tracker=eye_tracker, win=win, fname=fname)
+    file_name = f"{server_config.local_data_dir}calibration.edf"
+    cal = Calibrate(eye_tracker=eye_tracker, win=win, fname=file_name)
     cal.run()
     cal.win.close()

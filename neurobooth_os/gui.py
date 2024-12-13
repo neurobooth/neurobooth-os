@@ -39,6 +39,9 @@ from util.nb_types import Subject
 
 #  State variables used to help ensure in-order GUI steps
 running_servers = []
+last_task = None
+start_pressed = False
+session_prepared_count = 0      # How many SessionPrepared messages were received. the number required = node count
 
 
 def setup_log(sg_handler=None):
@@ -79,6 +82,8 @@ def _get_subject_by_id(window, log_sess, conn, subject_id: str):
         return subject
     else:
         sg.PopupError(f"Subject {subject_id} not found", location=get_popup_location(window))
+        window["subject_info"].update('')
+
 
 
 def _get_tasks(window, collection_id: str):
@@ -122,10 +127,11 @@ def _create_session_dict(window, log_task, staff_id, subject: Subject, tasks):
 
 def _start_task_presentation(window, tasks: List[str], subject_id: str, session_id: int, steps):
     """Present tasks"""
+    global last_task
     conn = meta.get_database_connection()
     window['Start'].update(disabled=True)
     write_output(window, "\nSession started")
-
+    last_task = tasks[-1]
     if len(tasks) > 0:
         msg_body = CreateTasksRequest(tasks=tasks, subj_id=subject_id, session_id=session_id)
         msg = Request(
@@ -220,8 +226,10 @@ def _start_lsl_session(window, inlets, folder=""):
 
 
 def write_output(window, text: str, text_color: Optional[str] =None):
-    elem: Multiline = window["-OUTPUT-"]
-    elem.print(text, text_color=text_color)
+    key = "-OUTPUT-"
+    if key in window.AllKeysDict:
+        elem: Multiline = window.find_element(key)
+        elem.print(text, text_color=text_color)
 
 
 def _record_lsl(
@@ -281,8 +289,6 @@ def _stop_lsl_and_save(
         xdf_split.start()
         write_output(window, f"SPLIT XDF {task_id} took: {time.time() - t0}")
 
-        print(f"CTR xdf_split threading took: {time.time() - t0}")
-
 
 ######### Server communication ############
 
@@ -318,7 +324,7 @@ def _start_ctr_msg_reader(logger, window):
     while True:
         message: Message = meta.read_next_message("CTR", conn=db_conn)
         if message is None:
-            time.sleep(1)
+            time.sleep(.5)
             continue
         msg_body: Optional[MsgBody] = None
         logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
@@ -349,8 +355,10 @@ def _start_ctr_msg_reader(logger, window):
         elif "TaskCompletion" == message.msg_type:
             msg_body: TaskCompletion = message.body
             task_id = msg_body.task_id
+            has_lsl_stream = msg_body.has_lsl_stream
+            event_value = f"['{task_id}', '{has_lsl_stream}']"
             logger.debug(f"TaskCompletion msg for {task_id}")
-            window.write_event_value("task_finished", task_id)
+            window.write_event_value("task_finished", event_value)
 
         elif "NewVideoFile" == message.msg_type:
             msg_body: NewVideoFile = message.body
@@ -448,11 +456,13 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
 
     # disable button so it can't be pushed twice
     window["-Connect-"].Update(disabled=True)
-
+    for task in tasks.split(","):
+        task_checkbox: sg.Checkbox = window.find_element(task.strip())
+        task_checkbox.update(disabled=True)
     event, values = window.read(0.1)
     write_output(window, "\nConnecting devices. Please wait....")
 
-    vidf_mrkr = marker_stream("videofiles")
+    video_marker_stream = marker_stream("videofiles")
 
     nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:
@@ -471,7 +481,7 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
                       body=body)
 
         meta.post_message(msg, conn=meta.get_database_connection())
-    return vidf_mrkr, event, values
+    return video_marker_stream, event, values
 
 
 def _get_nodes():
@@ -481,7 +491,7 @@ def _get_nodes():
 def gui(logger):
     """Start the Graphical User Interface.
     """
-    global running_servers
+    global running_servers, start_pressed
 
     database = cfg.neurobooth_config.database.dbname
 
@@ -523,10 +533,12 @@ def gui(logger):
             tasks = _get_tasks(window, collection_id)
 
         elif event == "_init_sess_save_":
-            if values["tasks"] == "":
-                sg.PopupError("No task combo", location=get_popup_location(window))
+            if values["study_id"] == "" or values['collection_id'] == "":
+                sg.PopupError("Study and Collection are required fields", location=get_popup_location(window))
             elif values["staff_id"] == "":
-                sg.PopupError("No staff ID", location=get_popup_location(window))
+                sg.PopupError("Staff ID is required", location=get_popup_location(window))
+            elif window["subject_info"].get() == "":
+                sg.PopupError("Please select a Subject", location=get_popup_location(window))
             else:
                 log_sess["staff_id"] = values["staff_id"]
                 sess_info = _create_session_dict(
@@ -551,17 +563,19 @@ def gui(logger):
 
         # Turn on devices
         elif event == "-Connect-":
-            vidf_mrkr, event, values = _prepare_devices(window,
+            video_marker_stream, event, values = _prepare_devices(window,
                 nodes, collection_id, log_task, database, tasks)
 
         elif event == "plot":
             _plot_realtime(window, plttr, inlets)
 
         elif event == "Start":
-            window["Start"].Update(disabled=True)
-            session_id = meta._make_session_id(conn, log_sess)
-            tasks = [k for k, v in values.items() if "obs" in k and v is True]
-            _start_task_presentation(window, tasks, sess_info["subject_id"], session_id, steps)
+            if not start_pressed:
+                window["Start"].Update(disabled=True)
+                start_pressed = True
+                session_id = meta._make_session_id(conn, log_sess)
+                tasks = [k for k, v in values.items() if "obs" in k and v is True]
+                _start_task_presentation(window, tasks, sess_info["subject_id"], session_id, steps)
 
         elif event == "tasks_created":
             _session_button_state(window, disabled=False)
@@ -594,9 +608,14 @@ def gui(logger):
                 )
                 continue
 
+        elif event == sg.WIN_CLOSED:
+            break
+
         # Shut down the other servers and stops plotting
-        elif event == "Shut Down" or event == sg.WINDOW_CLOSED:
-            if values is not None and 'notes' in values and "_notes_taskname_" not in values:
+        elif event == "Shut Down" or event == sg.WINDOW_CLOSE_ATTEMPTED_EVENT:
+            if (values is not None
+                    and ('notes' in values and values['notes'] != '')
+                    and ("_notes_taskname_" not in values or values['_notes_taskname_'] == '')):
                 sg.PopupError(
                     "Unsaved notes without task. Before exiting, "
                     "select a task in the dropdown list or delete the note text.",
@@ -640,18 +659,28 @@ def gui(logger):
 
         # Signal a task ended: stop LSL recording and update gui
         elif event == "task_finished":
-            logger.debug(f"Stopping LSL for task: {t_obs_id}")
-            handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window)
+            task_id, has_lsl_stream = eval(values['task_finished'])
+            boolean_value = has_lsl_stream.lower() == 'true'
+            if boolean_value:
+                logger.debug(f"Stopping LSL for task: {task_id}")
+                handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, task_id, values, window)
+            if task_id == last_task:
+                _session_button_state(window, disabled=True)
+                write_output(window, "\nSession complete: OK to terminate", 'blue')
 
         # Send a marker string with the name of the new video file created
         elif event == "-new_filename-":
-            vidf_mrkr.push_sample([values[event]])
+            video_marker_stream.push_sample([values[event]])
 
         elif event == 'devices_connected':
-            session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
-            window["-frame_preview-"].update(visible=True)
-            window['Start'].update(disabled=False)
-            write_output(window, "\n\nPlease wait for all inlet streams to load before proceeding", text_color='red')
+            global session_prepared_count
+            session_prepared_count += 1
+            if session_prepared_count == len(_get_nodes()):
+                session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
+                window["-frame_preview-"].update(visible=True)
+                if not start_pressed:
+                    window['Start'].update(disabled=False)
+                    write_output(window, "Device connection complete. OK to start session")
 
         # Create LSL inlet stream
         elif event == "-OUTLETID-":
@@ -694,6 +723,10 @@ def gui(logger):
         if inlet_keys != list(inlets):
              inlet_keys = list(inlets)
              window["inlet_State"].update("\n".join(inlet_keys))
+    close(window)
+
+
+def close(window):
     window.close()
     if "-OUTPUT-" in window.AllKeysDict:
         window["-OUTPUT-"].__del__()
@@ -716,19 +749,18 @@ def terminate_system(conn, plttr, sess_info, values, window):
 
 
 def handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window):
-    task_id = values["task_finished"]
     _stop_lsl_and_save(
         window,
         session,
         conn,
         rec_fname,
-        task_id,
+        t_obs_id,
         obs_log_id,
         t_obs_id,
         sess_info["subject_id_date"],
     )
     write_task_notes(
-        sess_info["subject_id_date"], sess_info["staff_id"], task_id, ""
+        sess_info["subject_id_date"], sess_info["staff_id"], t_obs_id, ""
     )
     window["-frame_preview-"].update(visible=True)
 
@@ -773,7 +805,8 @@ def _session_button_state(window: object, disabled: bool) -> None:
 
 
 def get_popup_location(window):
-    x, y = window.get_screen_size()
+    if window.was_closed():
+        return None
     window_x, window_y = window.current_location()
     center_x = window_x + window.size[0] // 2
     center_y = window_y + window.size[1] // 2
