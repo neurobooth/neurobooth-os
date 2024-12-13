@@ -185,7 +185,7 @@ class VidRec_Flir:
         self.video_out = cv2.VideoWriter(
             self.video_filename, fourcc, self.FRAME_RATE_OUT, self.frameSize
         )
-        msg_body = NewVideoFile(event='-new_filename-', stream_name=self.streamName,
+        msg_body = NewVideoFile(stream_name=self.streamName,
                                 filename=op.split(self.video_filename)[-1])
         with meta.get_database_connection() as db_conn:
             meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)

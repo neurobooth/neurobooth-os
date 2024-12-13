@@ -297,8 +297,11 @@ class Task:
 
     def run(self, prompt=True, duration=0, **kwargs):
         self.present_instructions(prompt)
+        event.clearEvents(eventType='keyboard')
         self.present_task(prompt, duration, **kwargs)
+        event.clearEvents(eventType='keyboard')
         self.present_complete()
+        event.clearEvents(eventType='keyboard')
         return self.events
 
     def check_if_aborted(self) -> None:

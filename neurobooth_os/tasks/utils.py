@@ -149,6 +149,7 @@ def countdown(period):
 
 
 def get_keys(keyList=()):
+    event.clearEvents(eventType='keyboard')
     # Wait for keys checking every 5 ms
     while True:
         press = event.getKeys()

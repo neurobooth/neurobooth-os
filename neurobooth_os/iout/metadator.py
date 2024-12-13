@@ -226,6 +226,7 @@ def get_subject_ids(conn: connection, first_name, last_name):
 
 def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
 
+    subject_id = subject_id.strip()
     # We do two separate queries in case the contact table doesn't have any matching records,
     # due to, for example, an issue with the REDCap update timing.  We always want a result if there's a matching
     # record in the subject table.  Hitting both tables with a single join query would cause zero records to be returned
