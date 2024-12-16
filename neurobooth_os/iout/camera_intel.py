@@ -17,7 +17,7 @@ import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.stim_param_reader import IntelDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
-from neurobooth_os.msg.messages import DeviceInitialization, Request
+from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFile
 
 warnings.filterwarnings("ignore")
 
@@ -32,6 +32,10 @@ class VidRec_Intel:
         self,
         device_args: IntelDeviceArgs
     ):
+        self.name = None
+        self.video_filename = None
+        self.streamName = None
+        self.outlet_id = None
         self.device_args = device_args
         self.open = True
         self.recording = threading.Event()
@@ -71,7 +75,8 @@ class VidRec_Intel:
 
     def start(self, name="temp_video"):
         if self.video_thread is not None and self.video_thread.is_alive():
-            error_msg = f'RealSense [{self.device_index}]: Attempting to start new recording thread while old one is still alive!'
+            error_msg = (f'RealSense [{self.device_index}]: '
+                         f'Attempting to start new recording thread while old one is still alive!')
             self.logger.error(error_msg)
             raise RealSenseException(error_msg)
 
@@ -86,6 +91,10 @@ class VidRec_Intel:
         self.name = name
         self.video_filename = "{}_intel{}.bag".format(name, self.device_index)
         self.config.enable_record_to_file(self.video_filename)
+        msg_body = NewVideoFile(stream_name=self.streamName,
+                                filename=op.split(self.video_filename)[-1])
+        with meta.get_database_connection() as db_conn:
+            meta.post_message(Request(source='Intel', destination='CTR', body=msg_body), conn=db_conn)
 
     def createOutlet(self):
         self.streamName = f"IntelFrameIndex_cam{self.device_index}"
