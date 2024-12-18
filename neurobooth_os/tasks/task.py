@@ -258,6 +258,9 @@ class Task:
         self.send_marker(f"{msg}_end", True)
 
     def countdown_to_stimulus(self):
+        """
+        Displays countdown video prior to the start of stimulus
+        """
         mySound = sound.Sound(1000, 0.2, stereo=True)
         utils.play_video(self.win, self.countdown_video, wait_time=4, stop=False)
         mySound.play()
@@ -283,7 +286,6 @@ class Task:
                 msg="Task-continue-repeat",
                 func=self.present_task,
                 waitKeys=False,
-                abort_keys=self.abort_keys
             )
 
     def present_complete(self):
