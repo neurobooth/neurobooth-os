@@ -27,7 +27,7 @@ class Fixation_Target(Task_Eyetracker):
     def present_task(
         self, prompt=True, duration=3, target_pos=(-10, 5), target_size=0.7, **kwargs
     ):
-        self.countdown_to_stimulus()
+        self.countdown_task()
         self.target.pos = [self.deg_2_pix(target_pos[0]), self.deg_2_pix(target_pos[1])]
         self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
         if sum(self.target.size):
@@ -70,7 +70,7 @@ class Fixation_Target_Multiple(Eyelink_HostPC):
     ):
 
         self.sendMessage(self.marker_task_start)
-        self.countdown_to_stimulus()
+        self.countdown_task()
 
         for pos in trial_pos:
             self.target.pos = [self.deg_2_pix(pos[0]), self.deg_2_pix(pos[1])]
@@ -124,10 +124,33 @@ class Fixation_Target_sidetrials(Task_Eyetracker):
         self.sendMessage(self.marker_task_start)
 
         for nth, trl in enumerate(trial_intruct):
-            self.display_trial_instructions(trl)
-            self.countdown_to_stimulus()
-            self.perform_trial(duration, target_pos, target_size)
-            self.present_trial_ended_msg()
+            msg = utils.create_text_screen(self.win, trl + "\n\n\nPress CONTINUE")
+            utils.present(self.win, msg)
+            self.countdown_task()
+
+            self.target.pos = [
+                self.deg_2_pix(target_pos[0]),
+                self.deg_2_pix(target_pos[1]),
+            ]
+            self.target.size = self.deg_2_pix(
+                target_size
+            )  # target_size from deg to cms
+            if sum(self.target.size):
+                self.send_target_loc(self.target.pos)
+
+            # Send event to eyetracker and to LSL separately
+            self.sendMessage(self.marker_trial_start, False)
+            self.show_text(
+                screen=self.target,
+                msg="Trial",
+                audio=None,
+                wait_time=duration,
+                waitKeys=False,
+            )
+            self.sendMessage(self.marker_trial_end, False)
+
+            msg = utils.create_text_screen(self.win, "Task on one side ended")
+            utils.present(self.win, msg, wait_time=2, waitKeys=False)
 
         self.sendMessage(self.marker_task_end)
 
@@ -141,44 +164,6 @@ class Fixation_Target_sidetrials(Task_Eyetracker):
                 func_kwargs=func_kwargs,
                 waitKeys=False,
             )
-
-    def perform_trial(self, duration, target_pos, target_size):
-        self.calc_target_position_and_size(target_pos, target_size)
-        # Send event to eyetracker and to LSL separately
-        self.sendMessage(self.marker_trial_start, False)
-        self.show_text(
-            screen=self.target,
-            msg="Trial",
-            wait_time=duration,
-            abort_keys=self.abort_keys,
-            waitKeys=False
-        )
-        self.sendMessage(self.marker_trial_end, False)
-
-    def present_trial_ended_msg(self):
-        msg = utils.create_text_screen(self.win, "Task on one side ended")
-        utils.present(self.win, msg, wait_time=2, waitKeys=False)
-
-    def calc_target_position_and_size(self, target_pos, target_size):
-        self.target.pos = [
-            self.deg_2_pix(target_pos[0]),
-            self.deg_2_pix(target_pos[1]),
-        ]
-        self.target.size = self.deg_2_pix(
-            target_size
-        )  # target_size from deg to cms
-        if sum(self.target.size):
-            self.send_target_loc(self.target.pos)
-
-    def display_trial_instructions(self, trl_instructions) -> None:
-        """
-        Display the instructions for the current trial
-        Parameters
-        ----------
-        trl_instructions str: The instructions for the current trial
-        """
-        msg = utils.create_text_screen(self.win, trl_instructions + "\n\n\nPress CONTINUE")
-        utils.present(self.win, msg)
 
 
 if __name__ == "__main__":
