@@ -77,7 +77,7 @@ class Saccade(Eyelink_HostPC):
         # Take the tracker offline
         # self.setOfflineMode()
 
-        self.countdown_to_stimulus()
+        self.countdown_task()
 
         # Send a message to mark movement onset
         self.sendMessage(self.marker_task_start)

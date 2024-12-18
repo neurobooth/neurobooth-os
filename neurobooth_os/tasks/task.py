@@ -9,9 +9,6 @@ from typing import List, Union, Optional
 from enum import Enum
 
 from psychopy import logging as psychopy_logging
-
-from neurobooth_os.msg.messages import StatusMessage, Request
-
 psychopy_logging.console.setLevel(psychopy_logging.CRITICAL)
 
 import logging
@@ -28,7 +25,6 @@ from neurobooth_os.tasks import utils
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 from neurobooth_os.log_manager import APP_LOG_NAME
 import neurobooth_os.config as cfg
-import neurobooth_os.iout.metadator as meta
 
 from pylsl import local_clock
 
@@ -182,7 +178,7 @@ class Task:
             self.instruction_video = None
 
     def render_image(self):
-        """
+        '''
            Dummy method which does nothing.
 
            Tasks which need to render an image on HostPC/Tablet screen, need to
@@ -194,7 +190,7 @@ class Task:
            For tasks which do need to send an image to screen, a render_image
            method must be implemented inside the task script which will get called
            instead.
-        """
+        '''
         pass
 
     def repeat_advance(self):
@@ -230,8 +226,8 @@ class Task:
             win_color=(0, 0, 0),
             waitKeys=True,
             first_screen=False,
-            abort_keys=None,
     ):
+
         if func_kwargs is None:
             func_kwargs = {}
         self.send_marker(f"{msg}_start", True)
@@ -243,7 +239,6 @@ class Task:
             win_color=win_color,
             waitKeys=waitKeys,
             first_screen=first_screen,
-            abort_keys=abort_keys,
         )
         self.send_marker(f"{msg}_end", True)
 
@@ -257,7 +252,7 @@ class Task:
             utils.play_video(self.win, video, stop=stop)
         self.send_marker(f"{msg}_end", True)
 
-    def countdown_to_stimulus(self):
+    def countdown_task(self):
         mySound = sound.Sound(1000, 0.2, stereo=True)
         utils.play_video(self.win, self.countdown_video, wait_time=4, stop=False)
         mySound.play()
@@ -275,7 +270,7 @@ class Task:
             )
 
     def present_task(self, prompt=True, duration=0, **kwargs):
-        self.countdown_to_stimulus()
+        self.countdown_task()
         self.show_text(screen=self.task_screen, msg="Task", audio=None, wait_time=3)
         if prompt:
             self.show_text(
@@ -283,7 +278,6 @@ class Task:
                 msg="Task-continue-repeat",
                 func=self.present_task,
                 waitKeys=False,
-                abort_keys=self.abort_keys
             )
 
     def present_complete(self):
@@ -312,12 +306,8 @@ class Task:
 
     def check_if_aborted(self) -> None:
         """Check to see if a task has been aborted. If so, raise an exception."""
-        # TODO: add Task aborted message to appropriate places in utils
         if event.getKeys(keyList=self.abort_keys):
-            with meta.get_database_connection() as db_conn:
-                msg = StatusMessage(text="Task aborted")
-                req = Request(source="STM", destination="CTR", body=msg)
-                meta.post_message(req, db_conn)
+            print(f"Task Aborted.")  # Send message to CTR console if sysout has been redirected
             raise TaskAborted()
 
 
@@ -326,7 +316,7 @@ class Task_countdown(Task):
         super().__init__(**kwargs)
 
     def present_task(self, prompt, duration, **kwargs):
-        self.countdown_to_stimulus()
+        self.countdown_task()
 
         self.send_marker(self.marker_task_start, True)
         utils.present(self.win, self.task_screen, waitKeys=False)
