@@ -63,7 +63,7 @@ class Pursuit(Eyelink_HostPC):
         # self.sendCommand("record_status_message 'Pursuit task'")
         # self.startRecording()
 
-        self.countdown_to_stimulus()
+        self.countdown_task()
 
         # Send a message to mark movement onset
         self.sendMessage(self.marker_task_start)
