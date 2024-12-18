@@ -1,26 +1,9 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Nov 03 08:00:23 2021
-
-@author: Sheraz Khan: sheraz@khansheraz.com
-"""
-from math import sin, pi
-import os.path as op
-from psychopy import core
 import pylink
-import neurobooth_os
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
 from neurobooth_os.tasks.task import Eyelink_HostPC
 import numpy as np
-from pylsl import local_clock
-
-
-def countdown(period):
-    t1 = local_clock()
-    t2 = t1
-
-    while t2 - t1 < period:
-        t2 = local_clock()
+import neurobooth_os.tasks.utils as utils
 
 
 class Saccade(Eyelink_HostPC):
@@ -110,7 +93,7 @@ class Saccade(Eyelink_HostPC):
             self.send_target_loc(self.target.pos)
 
             # core.wait(self.wait_center + self.jitter_percent*self.wait_center*np.random.random(1)[0])
-            countdown(
+            utils.countdown(
                 self.wait_center
                 + self.jitter_percent * self.wait_center * np.random.random(1)[0]
             )
@@ -126,7 +109,7 @@ class Saccade(Eyelink_HostPC):
             tar_y = self.trial_sign[index] * amp_y
 
             # core.wait(self.wait_offset + self.jitter_percent*self.wait_offset*np.random.random(1)[0])
-            countdown(
+            utils.countdown(
                 self.wait_offset
                 + self.jitter_percent * self.wait_offset * np.random.random(1)[0]
             )
@@ -156,6 +139,7 @@ class Saccade(Eyelink_HostPC):
                 msg="Task-continue-repeat",
                 func=self.run_trials,
                 waitKeys=False,
+                abort_keys=self.abort_keys
             )
 
 

@@ -6,10 +6,8 @@ Created on Wed Nov 03 08:00:23 2021
 """
 import numpy as np
 from math import sin, pi
-import os.path as op
 from psychopy import core
 import pylink
-import neurobooth_os
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
 from neurobooth_os.tasks.task import Eyelink_HostPC
 
@@ -145,6 +143,7 @@ class Pursuit(Eyelink_HostPC):
                 func=self.run_trial,
                 func_kwargs=func_kwargs_func,
                 waitKeys=False,
+                abort_keys=self.abort_keys
             )
 
 
