@@ -252,7 +252,10 @@ class Task:
             utils.play_video(self.win, video, stop=stop)
         self.send_marker(f"{msg}_end", True)
 
-    def countdown_task(self):
+    def countdown_to_stimulus(self):
+        """
+        Displays countdown video prior to the start of stimulus
+        """
         mySound = sound.Sound(1000, 0.2, stereo=True)
         utils.play_video(self.win, self.countdown_video, wait_time=4, stop=False)
         mySound.play()
