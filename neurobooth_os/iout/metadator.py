@@ -178,7 +178,7 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
             limit 1
             )
         UPDATE message_queue
-        SET time_read = '{time_read}' 
+        SET time_read = now() 
         from selection
         where message_queue.id = selection.id
         returning message_queue.id, message_queue.uuid, message_queue.msg_type, message_queue.full_msg_type, 
