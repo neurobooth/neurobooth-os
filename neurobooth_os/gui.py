@@ -324,7 +324,7 @@ def _start_ctr_msg_reader(logger, window):
     while True:
         message: Message = meta.read_next_message("CTR", conn=db_conn)
         if message is None:
-            time.sleep(.5)
+            time.sleep(.25)
             continue
         msg_body: Optional[MsgBody] = None
         logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
