@@ -7,7 +7,7 @@ Created on Tue Jul 20 10:00:23 2021
 
 from __future__ import absolute_import, division
 
-from typing import List
+from typing import List, Optional
 
 from psychopy import core, event, monitors
 
@@ -103,6 +103,7 @@ def present(
         win_color=(0, 0, 0),
         waitKeys=True,
         first_screen=False,
+        abort_keys: Optional[List] = None,  # Pass a list of abort keys ('q') if you want to make a task quit-able.
 ):
     win.color = win_color
     if screen is not None:
@@ -112,7 +113,7 @@ def present(
             get_keys()
     if audio is not None:
         audio.play()
-    countdown(wait_time)
+    countdown(wait_time, abort_keys)
     if waitKeys:
         get_keys()
 
@@ -140,11 +141,15 @@ def get_end_screen(win, root_pckg):
     )
     return end_screen
 
-def countdown(period):
+
+def countdown(period: float, abort_keys: Optional[List] = None) -> None:
     t1 = local_clock()
     t2 = t1
 
     while t2 - t1 < period:
+        if abort_keys is not None and abort_keys:
+            if get_keys(abort_keys):
+                return
         t2 = local_clock()
 
 
