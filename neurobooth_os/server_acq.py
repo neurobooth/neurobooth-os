@@ -63,7 +63,7 @@ def run_acq(logger):
         try:
             message: Message = meta.read_next_message("ACQ", conn=db_conn)
             if message is None:
-                sleep(.5)
+                sleep(.25)
                 continue
             msg_body: Optional[MsgBody] = None
             logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
