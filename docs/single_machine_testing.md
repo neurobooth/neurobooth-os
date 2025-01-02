@@ -62,7 +62,7 @@ This is due to a known issue that occurs when running the PyCharm/python debugge
 The issue causes a python interpreter crash with the error message "Process finished with exit code -1073741819 (0xC0000005)"
 
 Given that Neurobooth itself starts ACQ and STM, only the gui process can be run directly in PyCharm's interactive debugger. 
-To attach the debugger on those servers, follow the instructions at https://www.jetbrains.com/help/pycharm/attach-to-process.html. 
-Pycharm can only attach debuggers to local processes so you would need to install it on each server in staging, 
-but all three serves can have debuggers attached from your dev environment when running locally. 
+To attach the debugger to those processes, follow the instructions at https://www.jetbrains.com/help/pycharm/attach-to-process.html. 
+Pycharm can only attach debuggers to local processes so you would need to install it on each server to perform debugging in staging, 
+but all three processes can have debuggers attached from your dev environment when running locally. 
  
