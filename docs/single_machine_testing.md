@@ -61,5 +61,8 @@ In order to run the GUI from within PyCharm, we must add PYDEVD_USE_FRAME_EVAL=N
 This is due to a known issue that occurs when running the PyCharm/python debugger on a QT based GUI.
 The issue causes a python interpreter crash with the error message "Process finished with exit code -1073741819 (0xC0000005)"
 
-Currently, only the gui process can be run in PyCharm's interactive debugger
+Given that Neurobooth itself starts ACQ and STM, only the gui process can be run directly in PyCharm's interactive debugger. 
+To attach the debugger on those servers, follow the instructions at https://www.jetbrains.com/help/pycharm/attach-to-process.html. 
+Pycharm can only attach debuggers to local processes so you would need to install it on each server in staging, 
+but all three serves can have debuggers attached from your dev environment when running locally. 
  
