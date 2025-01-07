@@ -113,7 +113,7 @@ def present(
             get_keys()
     if audio is not None:
         audio.play()
-    countdown(wait_time, abort_keys)
+    countdown(wait_time)  # TODO: add abort keys back after debugging
     if waitKeys:
         get_keys()
 
