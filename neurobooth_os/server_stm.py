@@ -211,7 +211,7 @@ def _perform_task(db_conn, device_log_entry_dict, message, session, subj_id: str
             meta.post_message(Request(source='STM', destination='CTR', body=init_task_body), conn=db_conn)
             session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 future1 = executor.submit(_wait_for_lsl_recording_to_start, db_conn, session)
                 future2 = executor.submit(_start_acq, session, task_id, tsk_start_time)
                 # Wait for all futures to complete
