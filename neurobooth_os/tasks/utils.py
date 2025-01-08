@@ -113,7 +113,7 @@ def present(
             get_keys()
     if audio is not None:
         audio.play()
-    countdown(wait_time, abort_keys)
+    countdown(wait_time, abort_keys)  # TODO: add abort keys back after debugging
     if waitKeys:
         get_keys()
 
@@ -143,17 +143,34 @@ def get_end_screen(win, root_pckg):
 
 
 def countdown(period: float, abort_keys: Optional[List] = None) -> None:
+
+    def get_abort_key(keyList=()):
+        press = event.getKeys()
+        if press:
+            if not keyList:
+                return press
+            elif any([k in keyList for k in press]):
+                return press
+        return None
+
     t1 = local_clock()
     t2 = t1
 
     while t2 - t1 < period:
         if abort_keys is not None and abort_keys:
-            if get_keys(abort_keys):
+            if get_abort_key(abort_keys):
                 return
         t2 = local_clock()
 
 
 def get_keys(keyList=()):
+
+    def delay(period: float) -> None:
+        t1 = local_clock()
+        t2 = t1
+        while t2 - t1 < period:
+            t2 = local_clock()
+
     event.clearEvents(eventType='keyboard')
     # Wait for keys checking every 5 ms
     while True:
@@ -163,8 +180,8 @@ def get_keys(keyList=()):
                 return press
             elif any([k in keyList for k in press]):
                 return press
+        delay(0.005)
 
-        countdown(0.005)
 
 
 def play_video(win, mov, wait_time=1, stop=True):
