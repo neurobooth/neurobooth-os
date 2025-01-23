@@ -150,7 +150,7 @@ class VidRec_Flir:
     # function to capture images, convert to numpy, send to queue, and release
     # from buffer in separate process
     def camCaptureVid(self):
-        self.logger.debug('FLIR: Save Thread Started')
+        self.logger.debug('FLIR: Save Process Started')
         while self.recording or self.image_queue.qsize():
             try:
                 dequeuedImage = self.image_queue.get(block=True, timeout=1)
@@ -191,12 +191,16 @@ class VidRec_Flir:
         self.streaming = True
 
     def record(self):
+
         self.logger.debug('FLIR: LSL Thread Started')
         self.recording = True
         self.frame_counter = 0
 
-        self.save_process = multiprocessing.Process(target = self.camCaptureVid())
-        self.save_process.start()
+        try:
+            self.save_process = multiprocessing.Process(target = self.camCaptureVid())
+            self.save_process.start()
+        except BaseException as e:
+            self.logger.error(f'Unable to start Flir save process; error={e}')
 
         self.stamp = []
         while self.recording:
@@ -206,7 +210,12 @@ class VidRec_Flir:
             except:
                 continue
 
-            self.image_queue.put(im)
+            try:
+                self.image_queue.put(im)
+            except BaseException as e:
+                self.logger.critical(f'Unable to enqueue Flir frame; error={e}')
+                raise e
+
             self.stamp.append(tsmp)
 
             try:
