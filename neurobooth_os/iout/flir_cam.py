@@ -6,17 +6,15 @@ import time
 import os
 import threading
 import uuid
-import neurobooth_os.iout.metadator as meta
 import logging
+import multiprocessing
 from typing import Callable, Any
 
 import cv2
 import PySpin
 from pylsl import StreamInfo, StreamOutlet
-import skvideo
-import skvideo.io
-import h5py
 
+import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -44,6 +42,8 @@ class VidRec_Flir:
         gamma=0.6,
         fd=1,
     ):
+        self.frame_counter = None
+        self.save_process = None
         self.device_args: FlirDeviceArgs = device_args
         # not currently using sizex, sizey --> need to update to use these parameters
         # need to read these parameters from database
@@ -65,8 +65,7 @@ class VidRec_Flir:
 
         self.get_cam()
         self.setup_cam()
-
-        self.image_queue = queue.Queue(0)
+        self.image_queue = multiprocessing.Queue(0)
         self.outlet = self.createOutlet()
 
         self.logger.debug(f'FLIR: fps={str(self.device_args.sample_rate())}; '
@@ -195,8 +194,9 @@ class VidRec_Flir:
         self.logger.debug('FLIR: LSL Thread Started')
         self.recording = True
         self.frame_counter = 0
-        self.save_thread = threading.Thread(target=self.camCaptureVid)
-        self.save_thread.start()
+
+        self.save_process = multiprocessing.Process(target = self.camCaptureVid())
+        self.save_process.start()
 
         self.stamp = []
         while self.recording:
@@ -216,17 +216,15 @@ class VidRec_Flir:
                 self.outlet = self.createOutlet(self.video_filename)
                 self.outlet.push_sample([self.frame_counter, tsmp])
 
-            # self.video_out.write(im_conv_d)
             self.frame_counter += 1
 
             if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
                 self.logger.debug(
                     f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
                 )
-
         self.cam.EndAcquisition()
         self.recording = False
-        self.save_thread.join()
+        self.save_process.join()
         self.video_out.release()
         self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
 
@@ -243,7 +241,7 @@ class VidRec_Flir:
 
     def ensure_stopped(self, timeout_seconds: float) -> None:
         """Check to make sure the recording is actually stopped."""
-        self.video_thread.join()
+        self.video_thread.join(timeout_seconds)
         if self.video_thread.is_alive():
             self.logger.error('FLIR: Potential Zombie Thread Detected!')
             raise FlirException('Potential Zombie Thread Detected!')
