@@ -151,7 +151,7 @@ class Task:
         self.task_screen = utils.create_text_screen(self.win, text_task)
         self.end_screen = utils.get_end_screen(self.win, self.root_pckg)
 
-        end_slide = op.join(self.root_pckg, "tasks", "assets", "end_slide_3_7_22.jpg")
+        end_slide = op.join(self.root_pckg, "tasks", "assets", "end_slide_01_23_25.jpg")
         if not op.isfile(end_slide):
             raise IOError(f'Required image file {end_slide} does not exist')
 
@@ -361,7 +361,7 @@ class Task_pause(Task):
         super().__init__(**kwargs)
         self.screen = None
 
-    def run(self, slide_image="end_slide_3_7_22.jpg", wait_key="return", **kwarg):
+    def run(self, slide_image="end_slide_01_23_25.jpg", wait_key="return", **kwarg):
         image_path = op.join(self.root_pckg, "tasks", "assets", slide_image)
         if not op.isfile(image_path):
             raise IOError(f'Required slide image file {image_path} does not exist.')
@@ -611,6 +611,18 @@ class Eyelink_HostPC(Task_Eyetracker):
                                            crop_x, crop_y, crop_width, crop_height,
                                            host_x, host_y,
                                            drawing_options)
+
+
+class Task_ShowProgressBar(Task):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.screen = None
+
+    def run(self, slide_image="", duration=0):
+        fpath = op.join(neurobooth_os.__path__[0], "tasks", "assets", slide_image)
+        self.screen = utils.create_image_screen(self.win, fpath)
+        self.show_text(screen=self.screen, msg="Task", audio=None, wait_time=duration)
+        self.clear_screen()
 
 
 class Introduction_Task(Task):

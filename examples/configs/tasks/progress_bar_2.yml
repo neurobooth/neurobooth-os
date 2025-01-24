@@ -1,0 +1,5 @@
+task_id: progress_bar_2
+feature_of_interest: progress
+stimulus_id: progress_bar_2
+instruction_id: null
+arg_parser: iout.stim_param_reader.py::RawTaskParams()
