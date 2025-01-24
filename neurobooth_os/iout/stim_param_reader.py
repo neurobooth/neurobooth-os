@@ -396,7 +396,7 @@ class TimingTestStimArgs(EyeTrackerStimArgs):
 
 
 def get_cfg_path(folder_name: str) -> str:
-    folder = path.join(environ.get("NB_CONFIG"), folder_name)
+    folder = path.join(environ.get("NB_CONFIG_TEST"), folder_name)
     return _get_cfg_path(folder)
 
 
