@@ -29,18 +29,13 @@ class FlirException(Exception):
 
 
 class VidRec_Flir:
-    # def __init__(self,
-    #              sizex=round(1936 / 2), sizey=round(1216 / 2), fps=196,
-    #              camSN="20522874", exposure=4500, gain=20, gamma=.6,
-    #              device_id="FLIR_blackfly_1", sensor_ids=['FLIR_rgb_1'], fd= .5):
-    # Staging FLIR SN is 22348141
     def __init__(
-        self,
-        device_args: FlirDeviceArgs,
-        exposure=4500,
-        gain=20,
-        gamma=0.6,
-        fd=1,
+            self,
+            device_args: FlirDeviceArgs,
+            exposure=4500,
+            gain=20,
+            gamma=0.6,
+            fd=1,
     ):
         self.frame_counter = None
         self.save_process = None
@@ -149,26 +144,24 @@ class VidRec_Flir:
 
     # function to capture images, convert to numpy, send to queue, and release
     # from buffer in separate process
-    def camCaptureVid(self):
+    def camCaptureVid(self, video_filename, frame_rate, frame_size, image_queue, manager):
+        logger = logging.getLogger(APP_LOG_NAME)
         try:
             fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-            video_out = cv2.VideoWriter(
-                self.video_filename, fourcc,
-                self.FRAME_RATE_OUT, self.frameSize
-            )
-            self.logger.debug('FLIR: Save Process Started')
+            video_out = cv2.VideoWriter(video_filename, fourcc, frame_rate, frame_size)
+            logger.debug('FLIR: Save Process Started')
 
-            while self.recording or not self.image_queue.empty():
+            while manager.recording or not image_queue.empty():
                 try:
-                    dequeuedImage = self.image_queue.get(block=True, timeout=1)
+                    dequeuedImage = image_queue.get(block=True, timeout=1)
                     video_out.write(dequeuedImage)
                 except queue.Empty:
                     continue
         except Exception as e:
-            self.logger.error(f'FLIR: Error in save process: {e}')
+            logger.error(f'FLIR: Error in save process: {e}')
         finally:
             video_out.release()
-            self.logger.debug('FLIR: Video File Released; Exiting Save Process')
+            logger.debug('FLIR: Video File Released; Exiting Save Process')
 
     def start(self, name="temp_video"):
         self.prepare(name)
@@ -202,44 +195,50 @@ class VidRec_Flir:
         self.logger.debug('FLIR: LSL Thread Started')
         self.recording = True
         self.frame_counter = 0
-
-        try:
-            self.save_process = multiprocessing.Process(target=self.camCaptureVid)
-            self.save_process.start()
-        except BaseException as e:
-            self.logger.error(f'Unable to start Flir save process; error={e}')
-
-        self.stamp = []
-        while self.recording:
-            # Exception for failed waiting self.cam.GetNextImage(1000)
-            try:
-                im, tsmp = self.imgage_proc()
-            except:
-                continue
+        with multiprocessing.Manager() as manager:
 
             try:
-                self.image_queue.put(im)
+                self.save_process = multiprocessing.Process(target=self.camCaptureVid,
+                                                            args=(self.video_filename,
+                                                                  self.FRAME_RATE_OUT,
+                                                                  self.frameSize))
+                self.save_process.start()
             except BaseException as e:
-                self.logger.critical(f'Unable to enqueue Flir frame; error={e}')
-                raise e
+                self.logger.error(f'Unable to start Flir save process; error={e}')
 
-            self.stamp.append(tsmp)
+            self.stamp = []
+            manager.recording = self.recording
+            while self.recording:
+                # Exception for failed waiting self.cam.GetNextImage(1000)
+                try:
+                    im, tsmp = self.imgage_proc()
+                except:
+                    continue
 
-            try:
-                self.outlet.push_sample([self.frame_counter, tsmp])
-            except BaseException:
-                self.logger.debug(f"Reopening FLIR {self.device_index} stream already closed")
-                self.outlet = self.createOutlet(self.video_filename)
-                self.outlet.push_sample([self.frame_counter, tsmp])
+                try:
+                    self.image_queue.put(im)
+                except BaseException as e:
+                    self.logger.critical(f'Unable to enqueue Flir frame; error={e}')
+                    raise e
 
-            self.frame_counter += 1
+                self.stamp.append(tsmp)
 
-            if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
-                self.logger.debug(
-                    f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
-                )
+                try:
+                    self.outlet.push_sample([self.frame_counter, tsmp])
+                except BaseException:
+                    self.logger.debug(f"Reopening FLIR {self.device_index} stream already closed")
+                    self.outlet = self.createOutlet(self.video_filename)
+                    self.outlet.push_sample([self.frame_counter, tsmp])
+
+                self.frame_counter += 1
+
+                if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
+                    self.logger.debug(
+                        f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
+                    )
         self.cam.EndAcquisition()
         self.recording = False
+        manager.recording = False
         self.save_process.join()
         self.logger.debug('FLIR: Exiting LSL Thread')
 
