@@ -144,14 +144,14 @@ class VidRec_Flir:
 
     # function to capture images, convert to numpy, send to queue, and release
     # from buffer in separate process
-    def camCaptureVid(self, video_filename, frame_rate, frame_size, image_queue, manager):
+    def camCaptureVid(self, video_filename, frame_rate, frame_size, image_queue, recording):
         logger = logging.getLogger(APP_LOG_NAME)
         try:
             fourcc = cv2.VideoWriter_fourcc(*"MJPG")
             video_out = cv2.VideoWriter(video_filename, fourcc, frame_rate, frame_size)
             logger.debug('FLIR: Save Process Started')
 
-            while manager.recording or not image_queue.empty():
+            while recording or not image_queue.empty():
                 try:
                     dequeuedImage = image_queue.get(block=True, timeout=1)
                     video_out.write(dequeuedImage)
@@ -191,23 +191,23 @@ class VidRec_Flir:
         self.streaming = True
 
     def record(self):
-
         self.logger.debug('FLIR: LSL Thread Started')
         self.recording = True
         self.frame_counter = 0
         with multiprocessing.Manager() as manager:
-
+            recording = manager.Value('b', True)
             try:
                 self.save_process = multiprocessing.Process(target=self.camCaptureVid,
                                                             args=(self.video_filename,
                                                                   self.FRAME_RATE_OUT,
-                                                                  self.frameSize))
+                                                                  self.frameSize,
+                                                                  queue,
+                                                                  recording))
                 self.save_process.start()
             except BaseException as e:
                 self.logger.error(f'Unable to start Flir save process; error={e}')
 
             self.stamp = []
-            manager.recording = self.recording
             while self.recording:
                 # Exception for failed waiting self.cam.GetNextImage(1000)
                 try:
@@ -238,7 +238,7 @@ class VidRec_Flir:
                     )
         self.cam.EndAcquisition()
         self.recording = False
-        manager.recording = False
+        recording.value = False
         self.save_process.join()
         self.logger.debug('FLIR: Exiting LSL Thread')
 
