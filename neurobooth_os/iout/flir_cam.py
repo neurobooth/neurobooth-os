@@ -213,12 +213,7 @@ class VidRec_Flir:
                 except:
                     continue
 
-                try:
-                    self.image_queue.put(im)
-                except BaseException as e:
-                    self.logger.critical(f'Unable to enqueue Flir frame; error={e}')
-                    raise e
-
+                self.image_queue.put(im)
                 self.stamp.append(tsmp)
 
                 try:
@@ -234,11 +229,11 @@ class VidRec_Flir:
                     self.logger.debug(
                         f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
                     )
-        self.cam.EndAcquisition()
-        self.recording = False
-        recording.value = False
-        self.save_process.join()
-        self.logger.debug('FLIR: Exiting LSL Thread')
+            self.cam.EndAcquisition()
+            self.recording = False
+            recording.value = False
+            self.save_process.join()
+            self.logger.debug('FLIR: Exiting LSL Thread')
 
     def stop(self):
         if self.open and self.recording:
@@ -257,16 +252,3 @@ class VidRec_Flir:
         if self.video_thread.is_alive():
             self.logger.error('FLIR: Potential Zombie Thread Detected!')
             raise FlirException('Potential Zombie Thread Detected!')
-
-
-# if __name__ == "__main__":
-#     flir = VidRec_Flir()
-#     print('Recording...')
-#     flir.start()
-#     time.sleep(10)
-#     flir.stop()
-#     print('Stopping...')
-#     flir.ensure_stopped(timeout_seconds=5)
-#     flir.close()
-#     tdiff = np.diff(flir.stamp) / 1e6
-#     print(f"diff range {np.ptp(tdiff):.2e}")
