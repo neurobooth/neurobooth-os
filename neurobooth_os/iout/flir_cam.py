@@ -250,5 +250,6 @@ class VidRec_Flir:
         """Check to make sure the recording is actually stopped."""
         self.video_thread.join(timeout_seconds)
         if self.video_thread.is_alive():
-            self.logger.error('FLIR: Potential Zombie Thread Detected!')
-            raise FlirException('Potential Zombie Thread Detected!')
+            self.logger.error(f'FLIR: Potential Zombie Thread Detected!'
+                              f' Stop taking longer than {timeout_seconds} seconds')
+            # raise FlirException('Potential Zombie Thread Detected!')
