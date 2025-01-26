@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import os.path as op
-import numpy as np
 import queue
-import time
 import os
 import threading
 import uuid
@@ -163,28 +161,6 @@ class VidRec_Flir:
             meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)
         return StreamOutlet(info)
 
-    # function to capture images, convert to numpy, send to queue, and release
-    # from buffer in separate process
-    # def camCaptureVid(self, video_filename, frame_rate, frame_size, image_queue, recording):
-    #     logger = logging.getLogger(APP_LOG_NAME)
-    #     logger.debug('FLIR: Save Process Started')
-    #
-    #     try:
-    #         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-    #         video_out = cv2.VideoWriter(video_filename, fourcc, frame_rate, frame_size)
-    #
-    #         while recording or not image_queue.empty():
-    #             try:
-    #                 dequeuedImage = image_queue.get(block=True, timeout=1)
-    #                 video_out.write(dequeuedImage)
-    #             except queue.Empty:
-    #                 continue
-    #     except Exception as e:
-    #         logger.error(f'FLIR: Error in save process: {e}')
-    #     finally:
-    #         video_out.release()
-    #         logger.debug('FLIR: Video File Released; Exiting Save Process')
-
     def start(self, name="temp_video"):
         self.prepare(name)
         self.video_thread = threading.Thread(target=self.record)
@@ -283,14 +259,14 @@ class VidRec_Flir:
             raise FlirException('Potential Zombie Thread Detected!')
 
 
-if __name__ == "__main__":
-    flir = VidRec_Flir()
-    print('Recording...')
-    flir.start()
-    time.sleep(10)
-    flir.stop()
-    print('Stopping...')
-    flir.ensure_stopped(timeout_seconds=5)
-    flir.close()
-    tdiff = np.diff(flir.stamp) / 1e6
-    print(f"diff range {np.ptp(tdiff):.2e}")
+# if __name__ == "__main__":
+#     flir = VidRec_Flir()
+#     print('Recording...')
+#     flir.start()
+#     time.sleep(10)
+#     flir.stop()
+#     print('Stopping...')
+#     flir.ensure_stopped(timeout_seconds=5)
+#     flir.close()
+#     tdiff = np.diff(flir.stamp) / 1e6
+#     print(f"diff range {np.ptp(tdiff):.2e}")
