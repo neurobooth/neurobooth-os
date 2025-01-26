@@ -23,6 +23,27 @@ from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFi
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 
+def camCaptureVid(video_filename, frame_rate, frame_size, image_queue, recording):
+    logger = logging.getLogger(APP_LOG_NAME)
+    logger.debug('FLIR: Save Process Started')
+
+    try:
+        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+        video_out = cv2.VideoWriter(video_filename, fourcc, frame_rate, frame_size)
+
+        while recording or not image_queue.empty():
+            try:
+                dequeuedImage = image_queue.get(block=True, timeout=1)
+                video_out.write(dequeuedImage)
+            except queue.Empty:
+                continue
+    except Exception as e:
+        logger.error(f'FLIR: Error in save process: {e}')
+    finally:
+        video_out.release()
+        logger.debug('FLIR: Video File Released; Exiting Save Process')
+
+
 class FlirException(Exception):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -144,24 +165,25 @@ class VidRec_Flir:
 
     # function to capture images, convert to numpy, send to queue, and release
     # from buffer in separate process
-    def camCaptureVid(self, video_filename, frame_rate, frame_size, image_queue, recording):
-        logger = logging.getLogger(APP_LOG_NAME)
-        try:
-            fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-            video_out = cv2.VideoWriter(video_filename, fourcc, frame_rate, frame_size)
-            logger.debug('FLIR: Save Process Started')
-
-            while recording or not image_queue.empty():
-                try:
-                    dequeuedImage = image_queue.get(block=True, timeout=1)
-                    video_out.write(dequeuedImage)
-                except queue.Empty:
-                    continue
-        except Exception as e:
-            logger.error(f'FLIR: Error in save process: {e}')
-        finally:
-            video_out.release()
-            logger.debug('FLIR: Video File Released; Exiting Save Process')
+    # def camCaptureVid(self, video_filename, frame_rate, frame_size, image_queue, recording):
+    #     logger = logging.getLogger(APP_LOG_NAME)
+    #     logger.debug('FLIR: Save Process Started')
+    #
+    #     try:
+    #         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+    #         video_out = cv2.VideoWriter(video_filename, fourcc, frame_rate, frame_size)
+    #
+    #         while recording or not image_queue.empty():
+    #             try:
+    #                 dequeuedImage = image_queue.get(block=True, timeout=1)
+    #                 video_out.write(dequeuedImage)
+    #             except queue.Empty:
+    #                 continue
+    #     except Exception as e:
+    #         logger.error(f'FLIR: Error in save process: {e}')
+    #     finally:
+    #         video_out.release()
+    #         logger.debug('FLIR: Video File Released; Exiting Save Process')
 
     def start(self, name="temp_video"):
         self.prepare(name)
@@ -197,7 +219,7 @@ class VidRec_Flir:
         with multiprocessing.Manager() as manager:
             recording = manager.Value('b', True)
             try:
-                self.save_process = multiprocessing.Process(target=self.camCaptureVid,
+                self.save_process = multiprocessing.Process(target=camCaptureVid,
                                                             args=(self.video_filename,
                                                                   self.FRAME_RATE_OUT,
                                                                   self.frameSize,
