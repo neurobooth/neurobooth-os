@@ -150,14 +150,25 @@ class VidRec_Flir:
     # function to capture images, convert to numpy, send to queue, and release
     # from buffer in separate process
     def camCaptureVid(self):
-        self.logger.debug('FLIR: Save Process Started')
-        while self.recording or self.image_queue.qsize():
-            try:
-                dequeuedImage = self.image_queue.get(block=True, timeout=1)
-                self.video_out.write(dequeuedImage)
-            except queue.Empty:
-                continue
-        self.logger.debug('FLIR: Exiting Save Thread')
+        try:
+            fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+            video_out = cv2.VideoWriter(
+                self.video_filename, fourcc,
+                self.FRAME_RATE_OUT, self.frameSize
+            )
+            self.logger.debug('FLIR: Save Process Started')
+
+            while self.recording or not self.image_queue.empty():
+                try:
+                    dequeuedImage = self.image_queue.get(block=True, timeout=1)
+                    video_out.write(dequeuedImage)
+                except queue.Empty:
+                    continue
+        except Exception as e:
+            self.logger.error(f'FLIR: Error in save process: {e}')
+        finally:
+            video_out.release()
+            self.logger.debug('FLIR: Video File Released; Exiting Save Process')
 
     def start(self, name="temp_video"):
         self.prepare(name)
@@ -179,11 +190,7 @@ class VidRec_Flir:
         self.frameSize = (im.shape[1], im.shape[0])
         self.video_filename = "{}_flir.avi".format(name)
 
-        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
         self.FRAME_RATE_OUT = self.cam.AcquisitionResultingFrameRate()
-        self.video_out = cv2.VideoWriter(
-            self.video_filename, fourcc, self.FRAME_RATE_OUT, self.frameSize
-        )
         msg_body = NewVideoFile(stream_name=self.streamName,
                                 filename=op.split(self.video_filename)[-1])
         with meta.get_database_connection() as db_conn:
@@ -197,7 +204,7 @@ class VidRec_Flir:
         self.frame_counter = 0
 
         try:
-            self.save_process = multiprocessing.Process(target = self.camCaptureVid())
+            self.save_process = multiprocessing.Process(target=self.camCaptureVid)
             self.save_process.start()
         except BaseException as e:
             self.logger.error(f'Unable to start Flir save process; error={e}')
@@ -234,8 +241,7 @@ class VidRec_Flir:
         self.cam.EndAcquisition()
         self.recording = False
         self.save_process.join()
-        self.video_out.release()
-        self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
+        self.logger.debug('FLIR: Exiting LSL Thread')
 
     def stop(self):
         if self.open and self.recording:
