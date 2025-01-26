@@ -133,6 +133,7 @@ class VidRec_Flir:
         # cam.BalanceWhiteAuto.SetValue(0)
 
     def createOutlet(self):
+        self.logger.debug("Creating Outlet")
         self.streamName = "FlirFrameIndex"
         self.oulet_id = str(uuid.uuid4())
         info = set_stream_description(
@@ -156,7 +157,6 @@ class VidRec_Flir:
             exposure=str(self.exposure),
             gain=str(self.gain),
             gamma=str(self.gamma),
-            # device_model_id=self.cam.get_device_name().decode(),
         )
         msg_body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
         with meta.get_database_connection() as db_conn:
