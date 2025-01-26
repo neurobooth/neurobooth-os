@@ -199,7 +199,7 @@ class VidRec_Flir:
                                                             args=(self.video_filename,
                                                                   self.FRAME_RATE_OUT,
                                                                   self.frameSize,
-                                                                  queue,
+                                                                  self.image_queue,
                                                                   recording))
                 self.save_process.start()
             except BaseException as e:
