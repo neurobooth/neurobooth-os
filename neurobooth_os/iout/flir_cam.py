@@ -21,7 +21,18 @@ from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFi
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 
-def camCaptureVid(video_filename, frame_rate, frame_size, image_queue, recording):
+def camCaptureVid(video_filename, frame_rate, frame_size, image_queue, recording) -> None:
+    """
+    Takes Flir frames from a queue and writes them to a video file
+
+    Parameters
+    ----------
+    video_filename Name of file to write frames to
+    frame_rate      Frames per second
+    frame_size      Size of each frame
+    image_queue     Queue of Flir frames to write (multithreading.Queue)
+    recording       boolean value object (multithreading.Manager.Value) If True, the camera is recording
+    """
     logger = logging.getLogger(APP_LOG_NAME)
     logger.debug('FLIR: Save Process Started')
 
@@ -35,8 +46,6 @@ def camCaptureVid(video_filename, frame_rate, frame_size, image_queue, recording
                 video_out.write(dequeuedImage)
             except queue.Empty:
                 continue
-        if not recording.value:
-            logger.debug('FLIR: Recording.value is False; Ready to exit child process')
     except Exception as e:
         logger.error(f'FLIR: Error in save process: {e}')
     finally:
@@ -209,7 +218,7 @@ class VidRec_Flir:
 
             self.stamp = []
             while self.recording:
-                # Exception for failed waiting self.cam.GetNextImage(1000)
+                # Exception for failed waiting self.cam.GetNextImage(2000)
                 try:
                     im, tsmp = self.imgage_proc()
                 except:
@@ -229,10 +238,8 @@ class VidRec_Flir:
                     self.logger.debug(
                         f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
                     )
-            self.logger.debug("FLIR: Record loop has exited; Trying to stop.")
             self.cam.EndAcquisition()
             recording.value = False
-            self.logger.debug("FLIR: manager.recording is False; Trying to stop child process.")
             self.recording = False
             self.save_process.join()
             self.logger.debug('FLIR: Exiting LSL Thread')
