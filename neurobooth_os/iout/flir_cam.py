@@ -29,12 +29,14 @@ def camCaptureVid(video_filename, frame_rate, frame_size, image_queue, recording
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
         video_out = cv2.VideoWriter(video_filename, fourcc, frame_rate, frame_size)
 
-        while recording or not image_queue.empty():
+        while recording.value or not image_queue.empty():
             try:
                 dequeuedImage = image_queue.get(block=True, timeout=1)
                 video_out.write(dequeuedImage)
             except queue.Empty:
                 continue
+        if not recording.value:
+            logger.debug('FLIR: Recording.value is False; Ready to exit child process')
     except Exception as e:
         logger.error(f'FLIR: Error in save process: {e}')
     finally:
@@ -212,10 +214,8 @@ class VidRec_Flir:
                     im, tsmp = self.imgage_proc()
                 except:
                     continue
-
                 self.image_queue.put(im)
                 self.stamp.append(tsmp)
-
                 try:
                     self.outlet.push_sample([self.frame_counter, tsmp])
                 except BaseException:
@@ -229,9 +229,11 @@ class VidRec_Flir:
                     self.logger.debug(
                         f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
                     )
+            self.logger.debug("FLIR: Record loop has exited; Trying to stop.")
             self.cam.EndAcquisition()
-            self.recording = False
             recording.value = False
+            self.logger.debug("FLIR: manager.recording is False; Trying to stop child process.")
+            self.recording = False
             self.save_process.join()
             self.logger.debug('FLIR: Exiting LSL Thread')
 
@@ -249,7 +251,6 @@ class VidRec_Flir:
     def ensure_stopped(self, timeout_seconds: float) -> None:
         """Check to make sure the recording is actually stopped."""
         self.video_thread.join(timeout_seconds)
-        # self.video_thread.join()
         if self.video_thread.is_alive():
             self.logger.error(f'FLIR: Potential Zombie Thread Detected!'
                               f' Stop taking longer than {timeout_seconds} seconds')
