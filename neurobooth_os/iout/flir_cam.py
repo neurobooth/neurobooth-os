@@ -172,23 +172,6 @@ class VidRec_Flir:
             meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)
         return StreamOutlet(info)
 
-    # function to capture images, convert to numpy, send to queue, and release
-    # from buffer in separate process
-    def camCaptureVid(self):
-        self.logger.debug('FLIR: Save Thread Started')
-        while self.recording or self.image_queue.qsize():
-            try:
-                dequeuedImage = self.image_queue.get(block=True, timeout=1)
-                self.video_out.write(dequeuedImage)
-            except queue.Empty:
-                continue
-            if not self.recording:
-                if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
-                    self.logger.debug(
-                        f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
-                    )
-        self.logger.debug('FLIR: Exiting Save Thread')
-
     def start(self, name="temp_video"):
         self.prepare(name)
         self.video_thread = threading.Thread(target=self.record)
@@ -223,7 +206,7 @@ class VidRec_Flir:
         with multiprocessing.Manager() as manager:
             recording = manager.Value('b', True)
             try:
-                self.save_process = multiprocessing.Process(target=self.camCaptureVid,
+                self.save_process = multiprocessing.Process(target=camCaptureVid,
                                                             args=(self.video_filename,
                                                                   self.FRAME_RATE_OUT,
                                                                   self.frameSize,
