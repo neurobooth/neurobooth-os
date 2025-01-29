@@ -152,6 +152,7 @@ class VidRec_Flir:
     # from buffer in separate process
     def camCaptureVid(self):
         self.logger.debug('FLIR: Save Thread Started')
+        time.sleep(4)
         while self.recording or self.image_queue.qsize():
             try:
                 dequeuedImage = self.image_queue.get(block=True, timeout=1)
