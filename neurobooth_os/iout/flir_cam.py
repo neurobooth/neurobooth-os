@@ -193,9 +193,9 @@ class VidRec_Flir:
         self.video_filename = "{}_flir.avi".format(name)
 
         # TODO: REMOVE THESE NEXT 3 LINES
-        actual_fname = op.split(self.video_filename)[-1]
-        fname = os.path.join("D://", "neurobooth", "neurobooth_data", "100001_2025-01-29", actual_fname)
-        self.video_filename = fname
+        # actual_fname = op.split(self.video_filename)[-1]
+        # fname = os.path.join("D://", "neurobooth", "neurobooth_data", "100001_2025-01-29", actual_fname)
+        # self.video_filename = fname
 
         self.FRAME_RATE_OUT = self.cam.AcquisitionResultingFrameRate()
         msg_body = NewVideoFile(stream_name=self.streamName,
