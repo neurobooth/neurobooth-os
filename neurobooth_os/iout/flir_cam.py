@@ -179,7 +179,8 @@ class VidRec_Flir:
         self.cam.BeginAcquisition()
         im, _ = self.imgage_proc()
         self.frameSize = (im.shape[1], im.shape[0])
-        self.video_filename = "{}_flir.avi".format(name)
+        #self.video_filename = "{}_flir.avi".format(name)
+        self.video_filename = "{}_flir.images".format(name)
 
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
         self.FRAME_RATE_OUT = self.cam.AcquisitionResultingFrameRate()
@@ -200,30 +201,42 @@ class VidRec_Flir:
         self.save_thread.start()
 
         self.stamp = []
-        while self.recording:
-            # Exception for failed waiting self.cam.GetNextImage(1000)
-            try:
-                im, tsmp = self.imgage_proc()
-            except:
-                continue
+        first_frame = True
+        print(self.video_filename)
 
-            self.image_queue.put(im)
-            self.stamp.append(tsmp)
+        with open(self.video_filename, 'wb', buffering=43840000) as file:
+            while self.recording:
+                # Exception for failed waiting self.cam.GetNextImage(1000)
+                try:
+                    im, tsmp = self.imgage_proc()
+                    _, buffer = cv2.imencode('.jpg', im)
+                    bytes_data = np.array(buffer).tobytes()
+                    file.write(bytes_data)
+                    if first_frame:
+                        print(type(im))
+                        print(f"bytes in one frame: {len(bytes_data)}")
+                        first_frame = False
 
-            try:
-                self.outlet.push_sample([self.frame_counter, tsmp])
-            except BaseException:
-                self.logger.debug(f"Reopening FLIR {self.device_index} stream already closed")
-                self.outlet = self.createOutlet(self.video_filename)
-                self.outlet.push_sample([self.frame_counter, tsmp])
+                except:
+                    continue
 
-            # self.video_out.write(im_conv_d)
-            self.frame_counter += 1
+                # self.image_queue.put(im)
+                self.stamp.append(tsmp)
 
-            if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
-                self.logger.debug(
-                    f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
-                )
+                try:
+                    self.outlet.push_sample([self.frame_counter, tsmp])
+                except BaseException:
+                    self.logger.debug(f"Reopening FLIR {self.device_index} stream already closed")
+                    self.outlet = self.createOutlet(self.video_filename)
+                    self.outlet.push_sample([self.frame_counter, tsmp])
+
+                # self.video_out.write(im_conv_d)
+                self.frame_counter += 1
+
+                if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
+                    self.logger.debug(
+                        f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
+                    )
 
         self.cam.EndAcquisition()
         self.recording = False
