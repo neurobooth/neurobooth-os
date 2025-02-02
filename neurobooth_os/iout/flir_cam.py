@@ -207,16 +207,16 @@ class VidRec_Flir:
             while self.recording:
                 # Exception for failed waiting self.cam.GetNextImage(1000)
                 try:
-                    im, tsmp = self.imgage_proc()
-                    _, buffer = cv2.imencode('.jpg', im)
-                    bytes_data = np.array(buffer).tobytes()
-                    file.write(bytes_data)
+                    im, tsmp = self.imgage_proc() # im is an nd_array that represents the image
+                    arr_bytes = im.tobytes()
+                    # _, buffer = cv2.imencode('.jpg', im)
+                    # bytes_data = np.array(buffer).tobytes()
+                    file.write(arr_bytes)
                     if first_frame:
-                        print(type(im))
-                        print(f"bytes in one frame: {len(bytes_data)}")
-                        with open('first_frame.jpg', 'wb') as first_frame:
-                            first_frame.write(bytes_data)
-                        first_frame = False
+                         print(f"bytes in one frame: {len(arr_bytes)}")
+                         with open('first_frame.jpg', 'wb') as first_frame:
+                             first_frame.write(arr_bytes)
+                         first_frame = False
                 except:
                     continue
 
