@@ -152,7 +152,6 @@ class VidRec_Flir:
     # from buffer in separate process
     def camCaptureVid(self):
         self.logger.debug('FLIR: Save Thread Started')
-        time.sleep(10)
         while self.recording or self.image_queue.qsize():
             try:
                 dequeuedImage = self.image_queue.get(block=True, timeout=1)
@@ -196,12 +195,9 @@ class VidRec_Flir:
     def record(self):
         self.logger.debug('FLIR: LSL Thread Started')
         self.recording = True
-        self.frame_counter = 0
-        # self.save_thread = threading.Thread(target=self.camCaptureVid)
-        # self.save_thread.start()
-
         self.stamp = []
         first_frame = True
+        self.frame_counter = 0
 
         with open(self.video_filename, 'wb', buffering=43840000) as file:
             while self.recording:
@@ -209,18 +205,13 @@ class VidRec_Flir:
                 try:
                     im, tsmp = self.imgage_proc() # im is an nd_array that represents the image
                     arr_bytes = im.tobytes()
-                    # _, buffer = cv2.imencode('.jpg', im)
-                    # bytes_data = np.array(buffer).tobytes()
                     file.write(arr_bytes)
                     if first_frame:
-                         print(f"bytes in one frame: {len(arr_bytes)}")
-                         with open('first_frame.jpg', 'wb') as first_frame:
-                             first_frame.write(arr_bytes)
-                         first_frame = False
+                        print(f"bytes in one frame: {len(arr_bytes)}")
+                        first_frame = False
                 except:
                     continue
 
-                # self.image_queue.put(im)
                 self.stamp.append(tsmp)
 
                 try:
@@ -233,16 +224,9 @@ class VidRec_Flir:
                 # self.video_out.write(im_conv_d)
                 self.frame_counter += 1
 
-                # if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
-                #     self.logger.debug(
-                #         f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
-                #     )
-
         print(f"Total frames: {self.frame_counter}")
         self.cam.EndAcquisition()
         self.recording = False
-        # self.save_thread.join()
-        self.video_out.release()
         self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
 
     def stop(self):
@@ -263,6 +247,39 @@ class VidRec_Flir:
             self.logger.error('FLIR: Potential Zombie Thread Detected!')
             raise FlirException('Potential Zombie Thread Detected!')
 
+
+def read_bytes_to_avi(images_filename: str, video_filename: str, logger, video_out, byte_size: int):
+    with open(images_filename, "rb") as f:
+        while True:
+            chunk = f.read(byte_size)
+            if not chunk:
+                break
+            frame = np.frombuffer(chunk, dtype=np.uint8)
+            video_out.write(frame)
+        video_out.release()
+
+
+def run_conversion():
+    # TODO: Read these from manifest
+    images_filename: str = '' # TODO: supply name
+    vid_width = 548
+    vid_height = 800
+    vid_depth = 3
+    frame_rate_out = 195 
+
+    logger = logging.getLogger(APP_LOG_NAME)
+    logger.debug(f'FLIR: Starting conversion {images_filename}')
+    fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+    frame_size = (vid_width, vid_height)
+    video_filename = images_filename.replace(".images", ".avi")
+
+    video_out = cv2.VideoWriter(
+        video_filename, fourcc, frame_rate_out, frame_size
+    )
+
+    byte_size = vid_width*vid_height*vid_depth
+    read_bytes_to_avi(images_filename, video_filename, logger, video_out, byte_size)
+    logger.debug(f'FLIR: Finished conversion {video_filename}')
 
 if __name__ == "__main__":
     flir = VidRec_Flir()
