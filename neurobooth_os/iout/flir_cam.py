@@ -260,35 +260,46 @@ def read_bytes_to_avi(images_filename: str, video_filename: str, logger, video_o
 
 
 def run_conversion():
+    folder = "E:/neurobooth/neurobooth_data/100001_2025-02-02"
+
+    image_files = []
+    for file in os.listdir(folder):
+        if file.endswith(".images"):
+            image_files.append(os.path.join(folder, file))
+
     # TODO: Read these from manifest
-    images_filename: str = '' # TODO: supply name
     vid_width = 548
     vid_height = 800
     vid_depth = 3
-    frame_rate_out = 195 
+    # h x w x d = 1,315,200 currently
+    frame_rate_out = 195
+
 
     logger = logging.getLogger(APP_LOG_NAME)
-    logger.debug(f'FLIR: Starting conversion {images_filename}')
+    logger.debug(f'FLIR: Starting conversion in {folder}')
     fourcc = cv2.VideoWriter_fourcc(*"MJPG")
     frame_size = (vid_width, vid_height)
-    video_filename = images_filename.replace(".images", ".avi")
 
-    video_out = cv2.VideoWriter(
-        video_filename, fourcc, frame_rate_out, frame_size
-    )
 
     byte_size = vid_width*vid_height*vid_depth
-    read_bytes_to_avi(images_filename, video_filename, logger, video_out, byte_size)
-    logger.debug(f'FLIR: Finished conversion {video_filename}')
+    for image_filename in image_files:
+        video_filename = image_filename.replace(".images", ".avi")
+        video_out = cv2.VideoWriter(
+            video_filename, fourcc, frame_rate_out, frame_size
+        )
+        read_bytes_to_avi(image_filename, video_filename, logger, video_out, byte_size)
+    logger.debug(f'FLIR: Finished conversion in {folder}')
+
 
 if __name__ == "__main__":
-    flir = VidRec_Flir()
-    print('Recording...')
-    flir.start()
-    time.sleep(10)
-    flir.stop()
-    print('Stopping...')
-    flir.ensure_stopped(timeout_seconds=5)
-    flir.close()
-    tdiff = np.diff(flir.stamp) / 1e6
-    print(f"diff range {np.ptp(tdiff):.2e}")
+    run_conversion()
+    # flir = VidRec_Flir()
+    # print('Recording...')
+    # flir.start()
+    # time.sleep(10)
+    # flir.stop()
+    # print('Stopping...')
+    # flir.ensure_stopped(timeout_seconds=5)
+    # flir.close()
+    # tdiff = np.diff(flir.stamp) / 1e6
+    # print(f"diff range {np.ptp(tdiff):.2e}")
