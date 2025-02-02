@@ -2,7 +2,6 @@
 import os.path as op
 import numpy as np
 import queue
-import time
 import os
 import threading
 import uuid
@@ -13,9 +12,6 @@ from typing import Callable, Any
 import cv2
 import PySpin
 from pylsl import StreamInfo, StreamOutlet
-import skvideo
-import skvideo.io
-import h5py
 
 from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
@@ -248,7 +244,7 @@ class VidRec_Flir:
             raise FlirException('Potential Zombie Thread Detected!')
 
 
-def read_bytes_to_avi(images_filename: str, video_filename: str, logger, video_out, byte_size: int):
+def read_bytes_to_avi(images_filename: str, video_out, byte_size: int):
     with open(images_filename, "rb") as f:
         while True:
             chunk = f.read(byte_size)
@@ -256,7 +252,6 @@ def read_bytes_to_avi(images_filename: str, video_filename: str, logger, video_o
                 break
             frame = np.frombuffer(chunk, dtype=np.uint8)
             video_out.write(frame)
-        video_out.release()
 
 
 def run_conversion():
@@ -287,7 +282,8 @@ def run_conversion():
         video_out = cv2.VideoWriter(
             video_filename, fourcc, frame_rate_out, frame_size
         )
-        read_bytes_to_avi(image_filename, video_filename, logger, video_out, byte_size)
+        read_bytes_to_avi(image_filename, video_out, byte_size)
+        video_out.release()
     logger.debug(f'FLIR: Finished conversion in {folder}')
 
 
