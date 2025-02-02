@@ -197,12 +197,11 @@ class VidRec_Flir:
         self.logger.debug('FLIR: LSL Thread Started')
         self.recording = True
         self.frame_counter = 0
-        self.save_thread = threading.Thread(target=self.camCaptureVid)
-        self.save_thread.start()
+        # self.save_thread = threading.Thread(target=self.camCaptureVid)
+        # self.save_thread.start()
 
         self.stamp = []
         first_frame = True
-        print(self.video_filename)
 
         with open(self.video_filename, 'wb', buffering=43840000) as file:
             while self.recording:
@@ -215,8 +214,9 @@ class VidRec_Flir:
                     if first_frame:
                         print(type(im))
                         print(f"bytes in one frame: {len(bytes_data)}")
+                        with open('first_frame.jpg', 'wb') as first_frame:
+                            first_frame.write(bytes_data)
                         first_frame = False
-
                 except:
                     continue
 
@@ -233,14 +233,15 @@ class VidRec_Flir:
                 # self.video_out.write(im_conv_d)
                 self.frame_counter += 1
 
-                if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
-                    self.logger.debug(
-                        f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
-                    )
+                # if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
+                #     self.logger.debug(
+                #         f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
+                #     )
 
+        print(f"Total frames: {self.frame_counter}")
         self.cam.EndAcquisition()
         self.recording = False
-        self.save_thread.join()
+        # self.save_thread.join()
         self.video_out.release()
         self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
 
