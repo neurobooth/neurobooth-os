@@ -244,7 +244,9 @@ def read_bytes_to_avi(images_filename: str, video_out: cv2.VideoWriter, height, 
     ----------
     images_filename  Name of file used to store the row frame data
     video_out        CV2 video writer
-    byte_size        size of a single frame in bytes
+    height          frame height in pixels
+    width           frame depth in pixels
+    depth           frame depth
 
     Returns
     -------
@@ -252,7 +254,6 @@ def read_bytes_to_avi(images_filename: str, video_out: cv2.VideoWriter, height, 
     """
     with open(images_filename, "rb") as f:
         byte_size = height * width * depth
-        assert byte_size == 1315200
         while True:
             chunk = f.read(byte_size)
             if chunk:
