@@ -174,7 +174,6 @@ class VidRec_Flir:
         self.cam.BeginAcquisition()
         im, _ = self.imgage_proc()
         self.frameSize = (im.shape[1], im.shape[0])
-        #self.video_filename = "{}_flir.avi".format(name)
         self.video_filename = "{}_flir.images".format(name)
 
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
@@ -192,19 +191,16 @@ class VidRec_Flir:
         self.logger.debug('FLIR: LSL Thread Started')
         self.recording = True
         self.stamp = []
-        first_frame = True
         self.frame_counter = 0
 
-        with open(self.video_filename, 'wb', buffering=43840000) as file:
+        with open(self.video_filename, 'wb', buffering=4096) as file:
             while self.recording:
                 # Exception for failed waiting self.cam.GetNextImage(1000)
                 try:
-                    im, tsmp = self.imgage_proc() # im is an nd_array that represents the image
+                    im, tsmp = self.imgage_proc()  # im is an nd_array that represents the image
                     arr_bytes = im.tobytes()
+                    print(f'image_size = {len(arr_bytes)}')
                     file.write(arr_bytes)
-                    if first_frame:
-                        print(f"bytes in one frame: {len(arr_bytes)}")
-                        first_frame = False
                 except:
                     continue
 
@@ -244,18 +240,37 @@ class VidRec_Flir:
             raise FlirException('Potential Zombie Thread Detected!')
 
 
-def read_bytes_to_avi(images_filename: str, video_out, byte_size: int):
+def read_bytes_to_avi(images_filename: str, video_out: cv2.VideoWriter, byte_size: int) -> None:
+    """
+    Reads the file containing the raw images and produces an AVI file encoded as MJPEG
+    Parameters
+    ----------
+    images_filename  Name of file used to store the row frame data
+    video_out        CV2 video writer
+    byte_size        size of a single frame in bytes
+
+    Returns
+    -------
+    None
+    """
     with open(images_filename, "rb") as f:
         while True:
             chunk = f.read(byte_size)
-            if not chunk:
-                break
-            frame = np.frombuffer(chunk, dtype=np.uint8)
-            video_out.write(frame)
+            if chunk:
+                frame = np.frombuffer(chunk)
+                video_out.write(frame)
+            else:
+                return
 
 
-def run_conversion():
-    folder = "E:/neurobooth/neurobooth_data/100001_2025-02-02"
+def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-02") -> None:
+    """
+    Runs raw image file to AVI conversion for all image files in folder
+
+    Returns
+    -------
+    None
+    """
 
     image_files = []
     for file in os.listdir(folder):
@@ -266,17 +281,18 @@ def run_conversion():
     vid_width = 548
     vid_height = 800
     vid_depth = 3
-    # h x w x d = 1,315,200 currently
-    frame_rate_out = 195
 
+    # size in bytes of a single frame before any compression  (h * w * d ) = 1,315,200 currently
+    byte_size = vid_width*vid_height*vid_depth
+
+    frame_rate_out = 195  # TODO Read from manifest
 
     logger = logging.getLogger(APP_LOG_NAME)
     logger.debug(f'FLIR: Starting conversion in {folder}')
     fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-    frame_size = (vid_width, vid_height)
+    frame_size = (vid_width, vid_height)  # images size in pixels
 
 
-    byte_size = vid_width*vid_height*vid_depth
     for image_filename in image_files:
         video_filename = image_filename.replace(".images", ".avi")
         video_out = cv2.VideoWriter(
