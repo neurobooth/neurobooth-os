@@ -198,8 +198,9 @@ class VidRec_Flir:
                 # Exception for failed waiting self.cam.GetNextImage(1000)
                 try:
                     im, tsmp = self.imgage_proc()  # im is an nd_array that represents the image
+                    shape = im.shape
                     arr_bytes = im.tobytes()
-                    print(f'image_size = {len(arr_bytes)}')
+                    print(f'image shape = {shape}')
                     file.write(arr_bytes)
                 except:
                     continue
@@ -257,13 +258,14 @@ def read_bytes_to_avi(images_filename: str, video_out: cv2.VideoWriter, byte_siz
         while True:
             chunk = f.read(byte_size)
             if chunk:
-                frame = np.frombuffer(chunk)
+                bytes_1d = np.frombuffer(chunk)
+                frame = np.reshape(bytes_1d, newshape=(2, 2))
                 video_out.write(frame)
             else:
                 return
 
 
-def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-02") -> None:
+def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-03") -> None:
     """
     Runs raw image file to AVI conversion for all image files in folder
 
