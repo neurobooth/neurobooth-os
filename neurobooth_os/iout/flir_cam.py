@@ -200,7 +200,6 @@ class VidRec_Flir:
                     im, tsmp = self.imgage_proc()  # im is an nd_array that represents the image
                     shape = im.shape
                     arr_bytes = im.tobytes()
-                    print(f'image shape = {shape}, dtype = {im.dtype}')
                     file.write(arr_bytes)
                 except:
                     continue
@@ -213,11 +212,8 @@ class VidRec_Flir:
                     self.logger.debug(f"Reopening FLIR {self.device_index} stream already closed")
                     self.outlet = self.createOutlet(self.video_filename)
                     self.outlet.push_sample([self.frame_counter, tsmp])
-
-                # self.video_out.write(im_conv_d)
                 self.frame_counter += 1
 
-        print(f"Total frames: {self.frame_counter}")
         self.cam.EndAcquisition()
         self.recording = False
         self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
