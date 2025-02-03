@@ -241,7 +241,7 @@ class VidRec_Flir:
             raise FlirException('Potential Zombie Thread Detected!')
 
 
-def read_bytes_to_avi(images_filename: str, video_out: cv2.VideoWriter, byte_size: int) -> None:
+def read_bytes_to_avi(images_filename: str, video_out: cv2.VideoWriter, height, width, depth) -> None:
     """
     Reads the file containing the raw images and produces an AVI file encoded as MJPEG
     Parameters
@@ -256,10 +256,10 @@ def read_bytes_to_avi(images_filename: str, video_out: cv2.VideoWriter, byte_siz
     """
     with open(images_filename, "rb") as f:
         while True:
-            chunk = f.read(byte_size)
+            chunk = f.read(height * width * depth)
             if chunk:
                 bytes_1d = np.frombuffer(chunk)
-                frame = np.reshape(bytes_1d, newshape=(2, 2))
+                frame = np.reshape(bytes_1d, newshape=(height, width, depth))
                 video_out.write(frame)
             else:
                 return
@@ -284,9 +284,6 @@ def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-03") -> 
     vid_height = 800
     vid_depth = 3
 
-    # size in bytes of a single frame before any compression  (h * w * d ) = 1,315,200 currently
-    byte_size = vid_width*vid_height*vid_depth
-
     frame_rate_out = 195  # TODO Read from manifest
 
     logger = logging.getLogger(APP_LOG_NAME)
@@ -300,7 +297,7 @@ def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-03") -> 
         video_out = cv2.VideoWriter(
             video_filename, fourcc, frame_rate_out, frame_size
         )
-        read_bytes_to_avi(image_filename, video_out, byte_size)
+        read_bytes_to_avi(image_filename, video_out, vid_height, vid_width, vid_depth)
         video_out.release()
     logger.debug(f'FLIR: Finished conversion in {folder}')
 
