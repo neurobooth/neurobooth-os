@@ -33,12 +33,12 @@ class VidRec_Flir:
     #              device_id="FLIR_blackfly_1", sensor_ids=['FLIR_rgb_1'], fd= .5):
     # Staging FLIR SN is 22348141
     def __init__(
-        self,
-        device_args: FlirDeviceArgs,
-        exposure=4500,
-        gain=20,
-        gamma=0.6,
-        fd=1,
+            self,
+            device_args: FlirDeviceArgs,
+            exposure=4500,
+            gain=20,
+            gamma=0.6,
+            fd=1,
     ):
         self.device_args: FlirDeviceArgs = device_args
         # not currently using sizex, sizey --> need to update to use these parameters
@@ -200,7 +200,7 @@ class VidRec_Flir:
                     im, tsmp = self.imgage_proc()  # im is an nd_array that represents the image
                     shape = im.shape
                     arr_bytes = im.tobytes()
-                    print(f'image shape = {shape}')
+                    print(f'image shape = {shape}, dtype = {im.dtype}')
                     file.write(arr_bytes)
                 except:
                     continue
@@ -255,10 +255,12 @@ def read_bytes_to_avi(images_filename: str, video_out: cv2.VideoWriter, height, 
     None
     """
     with open(images_filename, "rb") as f:
+        byte_size = height * width * depth
+        assert byte_size == 1315200
         while True:
-            chunk = f.read(height * width * depth)
+            chunk = f.read(byte_size)
             if chunk:
-                bytes_1d = np.frombuffer(chunk)
+                bytes_1d = np.frombuffer(chunk, dtype=np.uint8)
                 frame = np.reshape(bytes_1d, newshape=(height, width, depth))
                 video_out.write(frame)
             else:
@@ -290,7 +292,6 @@ def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-03") -> 
     logger.debug(f'FLIR: Starting conversion in {folder}')
     fourcc = cv2.VideoWriter_fourcc(*"MJPG")
     frame_size = (vid_width, vid_height)  # images size in pixels
-
 
     for image_filename in image_files:
         video_filename = image_filename.replace(".images", ".avi")
