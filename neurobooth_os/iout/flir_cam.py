@@ -200,7 +200,7 @@ class VidRec_Flir:
         self.frame_counter = 0
 
         # write flir manifest
-        manifest_file_name = self.video_filename.replace(".images", "_flir_manifest.yaml")
+        manifest_file_name = self.video_filename.replace(".images", "_manifest.yaml")
         self.manifest_dict["image_file"] = self.video_filename
         with open(manifest_file_name, "w") as file:
             yaml.dump(self.manifest_dict, file)
@@ -292,7 +292,7 @@ def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-05") -> 
     manifests = []
 
     for file in os.listdir(folder):
-        if file.endswith("_flir_manifest.yaml"):
+        if file.endswith("flir_manifest.yaml"):
             manifests.append(os.path.join(folder, file))
 
         for manifest_file in manifests:
