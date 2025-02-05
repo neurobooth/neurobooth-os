@@ -277,7 +277,7 @@ def read_bytes_to_avi(images_filename: str, video_out: cv2.VideoWriter, height, 
                 return
 
 
-def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-03") -> None:
+def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-05") -> None:
     """
     Runs raw image file to AVI conversion for all image files in folder
 
