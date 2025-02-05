@@ -1,6 +1,6 @@
-task_id: progress_bar_1
+task_id: progress_bar_obs_2
 feature_of_interest: progress
-stimulus_id: progress_bar_1
+stimulus_id: progress_bar_obs_2
 instruction_id: null
 device_id_array:
 - Mic_Yeti_dev_1
