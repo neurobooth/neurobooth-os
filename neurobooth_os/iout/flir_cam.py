@@ -7,7 +7,8 @@ import threading
 import uuid
 import neurobooth_os.iout.metadator as meta
 import logging
-from typing import Callable, Any
+from typing import Callable, Any, Dict
+import yaml
 
 import cv2
 import PySpin
@@ -58,6 +59,7 @@ class VidRec_Flir:
         self.sensor_ids = device_args.sensor_ids
         self.fd = fd
         self.recording = False
+        self.manifest_dict = {}
 
         self.get_cam()
         self.setup_cam()
@@ -186,6 +188,10 @@ class VidRec_Flir:
         with meta.get_database_connection() as db_conn:
             meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)
         self.streaming = True
+        self.manifest_dict["frame_rate"] = self.FRAME_RATE_OUT
+        self.manifest_dict['frame_height'] = im.shape[0]
+        self.manifest_dict['frame_width'] = im.shape[1]
+        self.manifest_dict['frame_depth'] = im.shape[2]
 
     def record(self):
         self.logger.debug('FLIR: LSL Thread Started')
@@ -193,12 +199,19 @@ class VidRec_Flir:
         self.stamp = []
         self.frame_counter = 0
 
+        # write flir manifest
+        manifest_file_name = self.video_filename.replace(".images", "_flir_manifest.yaml")
+        self.manifest_dict["image_file"] = self.video_filename
+        with open(manifest_file_name, "w") as file:
+            yaml.dump(self.manifest_dict, file)
+
         with open(self.video_filename, 'wb', buffering=4096) as file:
             while self.recording:
                 # Exception for failed waiting self.cam.GetNextImage(1000)
                 try:
                     im, tsmp = self.imgage_proc()  # im is an nd_array that represents the image
-                    shape = im.shape
+                    self.manifest_dict['array_shape'] = im.shape
+
                     arr_bytes = im.tobytes()
                     file.write(arr_bytes)
                 except:
@@ -244,9 +257,9 @@ def read_bytes_to_avi(images_filename: str, video_out: cv2.VideoWriter, height, 
     ----------
     images_filename  Name of file used to store the row frame data
     video_out        CV2 video writer
-    height          frame height in pixels
-    width           frame depth in pixels
-    depth           frame depth
+    height           frame height in pixels
+    width            frame depth in pixels
+    depth            frame depth
 
     Returns
     -------
@@ -273,31 +286,41 @@ def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-03") -> 
     None
     """
 
-    image_files = []
-    for file in os.listdir(folder):
-        if file.endswith(".images"):
-            image_files.append(os.path.join(folder, file))
-
-    # TODO: Read these from manifest
-    vid_width = 548
-    vid_height = 800
-    vid_depth = 3
-
-    frame_rate_out = 195  # TODO Read from manifest
-
     logger = logging.getLogger(APP_LOG_NAME)
     logger.debug(f'FLIR: Starting conversion in {folder}')
-    fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-    frame_size = (vid_width, vid_height)  # images size in pixels
 
-    for image_filename in image_files:
-        video_filename = image_filename.replace(".images", ".avi")
-        video_out = cv2.VideoWriter(
-            video_filename, fourcc, frame_rate_out, frame_size
-        )
-        read_bytes_to_avi(image_filename, video_out, vid_height, vid_width, vid_depth)
-        video_out.release()
-    logger.debug(f'FLIR: Finished conversion in {folder}')
+    manifests = []
+
+    for file in os.listdir(folder):
+        if file.endswith("_flir_manifest.yaml"):
+            manifests.append(os.path.join(folder, file))
+
+        for manifest_file in manifests:
+            with open(manifest_file, 'r') as file:
+                manifest: Dict = yaml.safe_load(file)
+                image_filename = manifest["image_file"]
+                if os.path.exists(image_filename):
+
+                    vid_width = manifest['frame_width']
+                    vid_height = manifest['frame_height']
+                    vid_depth = manifest['frame_depth']
+                    frame_rate_out = manifest['frame_rate']
+
+                    fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+                    frame_size = (vid_width, vid_height)  # images size in pixels
+
+                    video_filename = image_filename.replace(".images", ".avi")
+                    video_out = cv2.VideoWriter(
+                        video_filename, fourcc, frame_rate_out, frame_size
+                    )
+                    read_bytes_to_avi(image_filename, video_out, vid_height, vid_width, vid_depth)
+                    video_out.release()
+                    if os.path.exists(video_filename):
+                            os.remove(image_filename)
+                    logger.debug(f'FLIR: Finished conversion in {folder}')
+                else:
+                    logger.error(f"Flir images file not found {image_filename}")
+
 
 
 if __name__ == "__main__":
