@@ -320,9 +320,10 @@ def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-05") -> 
                         file.close()
                         os.remove(manifest_filename)
 
-                logger.info(f'FLIR: Finished conversion in {folder}')
+                logger.info(f'FLIR: Finished conversion of {image_filename}')
             else:
                 logger.error(f"Flir images file not found {image_filename}")
+    logger.info(f'FLIR: Finished conversion in {folder}')
 
 
 
