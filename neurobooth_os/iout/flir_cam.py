@@ -283,7 +283,7 @@ def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-05") -> 
     None
     """
 
-    logger = logging.getLogger(APP_LOG_NAME)
+    logger = make_db_logger()
     logger.info(f'FLIR: Starting conversion in {folder}')
 
     manifests = []
