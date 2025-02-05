@@ -294,35 +294,35 @@ def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-05") -> 
         if file.endswith("flir_manifest.yaml"):
             manifests.append(os.path.join(folder, file))
 
-        for manifest_filename in manifests:
-            with open(manifest_filename, 'r') as file:
-                manifest: Dict = yaml.safe_load(file)
-                image_filename = manifest["image_file"]
-                if os.path.exists(image_filename):
+    for manifest_filename in manifests:
+        with open(manifest_filename, 'r') as file:
+            manifest: Dict = yaml.safe_load(file)
+            image_filename = manifest["image_file"]
+            if os.path.exists(image_filename):
 
-                    vid_width = manifest['frame_width']
-                    vid_height = manifest['frame_height']
-                    vid_depth = manifest['frame_depth']
-                    frame_rate_out = manifest['frame_rate']
+                vid_width = manifest['frame_width']
+                vid_height = manifest['frame_height']
+                vid_depth = manifest['frame_depth']
+                frame_rate_out = manifest['frame_rate']
 
-                    fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-                    frame_size = (vid_width, vid_height)  # images size in pixels
+                fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+                frame_size = (vid_width, vid_height)  # images size in pixels
 
-                    video_filename = image_filename.replace(".images", ".avi")
-                    video_out = cv2.VideoWriter(
-                        video_filename, fourcc, frame_rate_out, frame_size
-                    )
-                    read_bytes_to_avi(image_filename, video_out, vid_height, vid_width, vid_depth)
-                    video_out.release()
-                    if os.path.exists(video_filename):
-                        os.remove(image_filename)
-                        if os.path.exists(manifest_filename):
-                            file.close()
-                            os.remove(manifest_filename)
+                video_filename = image_filename.replace(".images", ".avi")
+                video_out = cv2.VideoWriter(
+                    video_filename, fourcc, frame_rate_out, frame_size
+                )
+                read_bytes_to_avi(image_filename, video_out, vid_height, vid_width, vid_depth)
+                video_out.release()
+                if os.path.exists(video_filename):
+                    os.remove(image_filename)
+                    if os.path.exists(manifest_filename):
+                        file.close()
+                        os.remove(manifest_filename)
 
-                    logger.info(f'FLIR: Finished conversion in {folder}')
-                else:
-                    logger.error(f"Flir images file not found {image_filename}")
+                logger.info(f'FLIR: Finished conversion in {folder}')
+            else:
+                logger.error(f"Flir images file not found {image_filename}")
 
 
 
