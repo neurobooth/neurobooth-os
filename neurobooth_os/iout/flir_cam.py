@@ -210,8 +210,6 @@ class VidRec_Flir:
                 # Exception for failed waiting self.cam.GetNextImage(1000)
                 try:
                     im, tsmp = self.imgage_proc()  # im is an nd_array that represents the image
-                    self.manifest_dict['array_shape'] = im.shape
-
                     arr_bytes = im.tobytes()
                     file.write(arr_bytes)
                 except:
