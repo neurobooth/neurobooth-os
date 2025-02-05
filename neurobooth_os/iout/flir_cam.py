@@ -317,7 +317,9 @@ def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-05") -> 
                     if os.path.exists(video_filename):
                         os.remove(image_filename)
                         if os.path.exists(manifest_filename):
+                            file.close()
                             os.remove(manifest_filename)
+
                     logger.info(f'FLIR: Finished conversion in {folder}')
                 else:
                     logger.error(f"Flir images file not found {image_filename}")
