@@ -6,7 +6,6 @@ import os
 import threading
 import uuid
 import neurobooth_os.iout.metadator as meta
-import logging
 from typing import Callable, Any, Dict
 import yaml
 
@@ -16,7 +15,7 @@ from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
-from neurobooth_os.log_manager import APP_LOG_NAME
+from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFile
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
@@ -50,7 +49,7 @@ class VidRec_Flir:
         if self.serial_num is None:
             raise FlirException('FLIR serial number must be provided!')
 
-        self.logger = logging.getLogger(APP_LOG_NAME)
+        self.logger = make_db_logger()
 
         self.exposure = exposure
         self.gain = gain
@@ -285,7 +284,7 @@ def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-05") -> 
     """
 
     logger = logging.getLogger(APP_LOG_NAME)
-    logger.debug(f'FLIR: Starting conversion in {folder}')
+    logger.info(f'FLIR: Starting conversion in {folder}')
 
     manifests = []
 
@@ -293,8 +292,8 @@ def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-05") -> 
         if file.endswith("flir_manifest.yaml"):
             manifests.append(os.path.join(folder, file))
 
-        for manifest_file in manifests:
-            with open(manifest_file, 'r') as file:
+        for manifest_filename in manifests:
+            with open(manifest_filename, 'r') as file:
                 manifest: Dict = yaml.safe_load(file)
                 image_filename = manifest["image_file"]
                 if os.path.exists(image_filename):
@@ -314,8 +313,10 @@ def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-05") -> 
                     read_bytes_to_avi(image_filename, video_out, vid_height, vid_width, vid_depth)
                     video_out.release()
                     if os.path.exists(video_filename):
-                            os.remove(image_filename)
-                    logger.debug(f'FLIR: Finished conversion in {folder}')
+                        os.remove(image_filename)
+                        if os.path.exists(manifest_filename):
+                            os.remove(manifest_filename)
+                    logger.info(f'FLIR: Finished conversion in {folder}')
                 else:
                     logger.error(f"Flir images file not found {image_filename}")
 
