@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import os.path as op
+import time
+
 import numpy as np
 import queue
 import os
@@ -13,10 +15,8 @@ import cv2
 import PySpin
 from pylsl import StreamInfo, StreamOutlet
 
-from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
-from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFile
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
@@ -248,94 +248,14 @@ class VidRec_Flir:
             raise FlirException('Potential Zombie Thread Detected!')
 
 
-def read_bytes_to_avi(images_filename: str, video_out: cv2.VideoWriter, height, width, depth) -> None:
-    """
-    Reads the file containing the raw images and produces an AVI file encoded as MJPEG
-    Parameters
-    ----------
-    images_filename  Name of file used to store the row frame data
-    video_out        CV2 video writer
-    height           frame height in pixels
-    width            frame depth in pixels
-    depth            frame depth
-
-    Returns
-    -------
-    None
-    """
-    with open(images_filename, "rb") as f:
-        byte_size = height * width * depth
-        while True:
-            chunk = f.read(byte_size)
-            if chunk:
-                bytes_1d = np.frombuffer(chunk, dtype=np.uint8)
-                frame = np.reshape(bytes_1d, newshape=(height, width, depth))
-                video_out.write(frame)
-            else:
-                return
-
-
-def run_conversion(folder="E:/neurobooth/neurobooth_data/100001_2025-02-05") -> None:
-    """
-    Runs raw image file to AVI conversion for all image files in folder
-
-    Returns
-    -------
-    None
-    """
-
-    config.load_config()
-    logger = make_db_logger()
-    logger.info(f'FLIR: Starting conversion in {folder}')
-
-    manifests = []
-
-    for file in os.listdir(folder):
-        if file.endswith("flir_manifest.yaml"):
-            manifests.append(os.path.join(folder, file))
-
-    for manifest_filename in manifests:
-        with open(manifest_filename, 'r') as file:
-            manifest: Dict = yaml.safe_load(file)
-            image_filename = manifest["image_file"]
-            if os.path.exists(image_filename):
-
-                vid_width = manifest['frame_width']
-                vid_height = manifest['frame_height']
-                vid_depth = manifest['frame_depth']
-                frame_rate_out = manifest['frame_rate']
-
-                fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-                frame_size = (vid_width, vid_height)  # images size in pixels
-
-                video_filename = image_filename.replace(".images", ".avi")
-                video_out = cv2.VideoWriter(
-                    video_filename, fourcc, frame_rate_out, frame_size
-                )
-                read_bytes_to_avi(image_filename, video_out, vid_height, vid_width, vid_depth)
-                video_out.release()
-                if os.path.exists(video_filename):
-                    os.remove(image_filename)
-                    if os.path.exists(manifest_filename):
-                        file.close()
-                        os.remove(manifest_filename)
-
-                logger.info(f'FLIR: Finished conversion of {image_filename}')
-            else:
-                logger.error(f"Flir images file not found {image_filename}")
-    logger.info(f'FLIR: Finished conversion in {folder}')
-
-
-
 if __name__ == "__main__":
-    run_conversion()
-    # flir = VidRec_Flir()
-    # print('Recording...')
-    # flir.start()
-    # time.sleep(10)
-    # flir.stop()
-    # print('Stopping...')
-    # flir.ensure_stopped(timeout_seconds=5)
-    # flir.close()
-    # tdiff = np.diff(flir.stamp) / 1e6
-    # print(f"diff range {np.ptp(tdiff):.2e}")
+    flir = VidRec_Flir()
+    print('Recording...')
+    flir.start()
+    time.sleep(10)
+    flir.stop()
+    print('Stopping...')
+    flir.ensure_stopped(timeout_seconds=5)
+    flir.close()
+    tdiff = np.diff(flir.stamp) / 1e6
+    print(f"diff range {np.ptp(tdiff):.2e}")
