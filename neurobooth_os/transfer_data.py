@@ -12,6 +12,8 @@ from neurobooth_os.log_manager import make_db_logger
 
 def log_output(pipe):
     for line in iter(pipe.readline, b''):  # b'\n'-separated lines
+        if '*EXTRA' in line.decode("utf-8"):
+            continue
         logger.info(str(line, "utf-8").strip('\r\n'))
 
 
