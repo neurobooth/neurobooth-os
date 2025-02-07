@@ -17,6 +17,7 @@ from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
+from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFile
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
