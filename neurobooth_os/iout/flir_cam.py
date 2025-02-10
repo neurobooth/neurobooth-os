@@ -206,7 +206,7 @@ class VidRec_Flir:
         with open(manifest_file_name, "w") as file:
             yaml.dump(self.manifest_dict, file)
 
-        with open(self.video_filename, 'wb', buffering=4096) as file:
+        with open(self.video_filename, 'wb', buffering=10485760) as file:
             while self.recording:
                 # Exception for failed waiting self.cam.GetNextImage(1000)
                 try:
