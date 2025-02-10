@@ -23,7 +23,7 @@ from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFi
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 # size in bytes for buffer used to write image files
-WRITE_BUFFER_SIZE = 10485760  # 10 MB
+WRITE_BUFFER_SIZE = 10485760  # 10 MB Note CPUs have 16 MB cache, should probably stay smaller than that
 
 class FlirException(Exception):
     def __init__(self, *args, **kwargs):
@@ -45,9 +45,6 @@ class VidRec_Flir:
             fd=1,
     ):
         self.device_args: FlirDeviceArgs = device_args
-        # not currently using sizex, sizey --> need to update to use these parameters
-        # need to read these parameters from database
-        # need new column in database that allows parameters in json file
         self.open = False
         self.serial_num = device_args.device_sn
         if self.serial_num is None:

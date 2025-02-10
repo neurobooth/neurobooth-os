@@ -48,6 +48,13 @@ def run_conversion() -> None:
 
     config.load_config()
     logger = make_db_logger()
+
+    server_name = config.get_server_name_from_env()
+    if 'acquisition' != server_name:
+        logger.error(f'create_flir_videos script should be run on acquisition server only, not "{server_name}".')
+        return
+
+
     data_folder = config.neurobooth_config.acquisition.local_data_dir
     subfolders = [f.path for f in os.scandir(data_folder) if f.is_dir()]
 
