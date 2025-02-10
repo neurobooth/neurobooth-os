@@ -8,7 +8,7 @@ import os
 import threading
 import uuid
 import neurobooth_os.iout.metadator as meta
-from typing import Callable, Any, Dict
+from typing import Callable, Any
 import yaml
 
 import cv2
@@ -22,6 +22,8 @@ from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFi
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
+# size in bytes for buffer used to write image files
+WRITE_BUFFER_SIZE = 10485760  # 10 MB
 
 class FlirException(Exception):
     def __init__(self, *args, **kwargs):
@@ -147,18 +149,6 @@ class VidRec_Flir:
             meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)
         return StreamOutlet(info)
 
-    # function to capture images, convert to numpy, send to queue, and release
-    # from buffer in separate process
-    def camCaptureVid(self):
-        self.logger.debug('FLIR: Save Thread Started')
-        while self.recording or self.image_queue.qsize():
-            try:
-                dequeuedImage = self.image_queue.get(block=True, timeout=1)
-                self.video_out.write(dequeuedImage)
-            except queue.Empty:
-                continue
-        self.logger.debug('FLIR: Exiting Save Thread')
-
     def start(self, name="temp_video"):
         self.prepare(name)
         self.video_thread = threading.Thread(target=self.record)
@@ -206,7 +196,7 @@ class VidRec_Flir:
         with open(manifest_file_name, "w") as file:
             yaml.dump(self.manifest_dict, file)
 
-        with open(self.video_filename, 'wb', buffering=10485760) as file:
+        with open(self.video_filename, 'wb', buffering=WRITE_BUFFER_SIZE) as file:
             while self.recording:
                 # Exception for failed waiting self.cam.GetNextImage(1000)
                 try:
@@ -228,7 +218,7 @@ class VidRec_Flir:
 
         self.cam.EndAcquisition()
         self.recording = False
-        self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
+        self.logger.debug('FLIR: Images file released; Exiting LSL thread')
 
     def stop(self):
         if self.open and self.recording:
