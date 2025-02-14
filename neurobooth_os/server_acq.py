@@ -1,4 +1,5 @@
 import base64
+import gc
 import os
 import sys
 from time import time, sleep
@@ -48,6 +49,8 @@ def main():
 
 def run_acq(logger):
 
+    gc.set_threshold(7000, 15, 15)
+    logger.info(f"GC thresholds: {gc.get_threshold()}")
     db_conn = meta.get_database_connection()
 
     device_manager = None
