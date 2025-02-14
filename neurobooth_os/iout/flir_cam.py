@@ -1,29 +1,29 @@
 # -*- coding: utf-8 -*-
 import os.path as op
-import time
-
 import numpy as np
 import queue
+import time
 import os
 import threading
 import uuid
 import neurobooth_os.iout.metadator as meta
+import logging
 from typing import Callable, Any
-import yaml
 
 import cv2
 import PySpin
 from pylsl import StreamInfo, StreamOutlet
+import skvideo
+import skvideo.io
+import h5py
 
 from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
-from neurobooth_os.log_manager import make_db_logger
+from neurobooth_os.log_manager import APP_LOG_NAME
 from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFile
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-# size in bytes for buffer used to write image files
-WRITE_BUFFER_SIZE = 10485760  # 10 MB Note CPUs have 16 MB cache, should probably stay smaller than that
 
 class FlirException(Exception):
     def __init__(self, *args, **kwargs):
@@ -37,20 +37,23 @@ class VidRec_Flir:
     #              device_id="FLIR_blackfly_1", sensor_ids=['FLIR_rgb_1'], fd= .5):
     # Staging FLIR SN is 22348141
     def __init__(
-            self,
-            device_args: FlirDeviceArgs,
-            exposure=4500,
-            gain=20,
-            gamma=0.6,
-            fd=1,
+        self,
+        device_args: FlirDeviceArgs,
+        exposure=4500,
+        gain=20,
+        gamma=0.6,
+        fd=1,
     ):
         self.device_args: FlirDeviceArgs = device_args
+        # not currently using sizex, sizey --> need to update to use these parameters
+        # need to read these parameters from database
+        # need new column in database that allows parameters in json file
         self.open = False
         self.serial_num = device_args.device_sn
         if self.serial_num is None:
             raise FlirException('FLIR serial number must be provided!')
 
-        self.logger = make_db_logger()
+        self.logger = logging.getLogger(APP_LOG_NAME)
 
         self.exposure = exposure
         self.gain = gain
@@ -59,7 +62,6 @@ class VidRec_Flir:
         self.sensor_ids = device_args.sensor_ids
         self.fd = fd
         self.recording = False
-        self.manifest_dict = {}
 
         self.get_cam()
         self.setup_cam()
@@ -146,6 +148,18 @@ class VidRec_Flir:
             meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)
         return StreamOutlet(info)
 
+    # function to capture images, convert to numpy, send to queue, and release
+    # from buffer in separate process
+    def camCaptureVid(self):
+        self.logger.debug('FLIR: Save Thread Started')
+        while self.recording or self.image_queue.qsize():
+            try:
+                dequeuedImage = self.image_queue.get(block=True, timeout=1)
+                self.video_out.write(dequeuedImage)
+            except queue.Empty:
+                continue
+        self.logger.debug('FLIR: Exiting Save Thread')
+
     def start(self, name="temp_video"):
         self.prepare(name)
         self.video_thread = threading.Thread(target=self.record)
@@ -164,7 +178,7 @@ class VidRec_Flir:
         self.cam.BeginAcquisition()
         im, _ = self.imgage_proc()
         self.frameSize = (im.shape[1], im.shape[0])
-        self.video_filename = "{}_flir.images".format(name)
+        self.video_filename = "{}_flir.avi".format(name)
 
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
         self.FRAME_RATE_OUT = self.cam.AcquisitionResultingFrameRate()
@@ -176,46 +190,45 @@ class VidRec_Flir:
         with meta.get_database_connection() as db_conn:
             meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)
         self.streaming = True
-        self.manifest_dict["frame_rate"] = self.FRAME_RATE_OUT
-        self.manifest_dict['frame_height'] = im.shape[0]
-        self.manifest_dict['frame_width'] = im.shape[1]
-        self.manifest_dict['frame_depth'] = im.shape[2]
 
     def record(self):
         self.logger.debug('FLIR: LSL Thread Started')
         self.recording = True
-        self.stamp = []
         self.frame_counter = 0
+        self.save_thread = threading.Thread(target=self.camCaptureVid)
+        self.save_thread.start()
 
-        # write flir manifest
-        manifest_file_name = self.video_filename.replace(".images", "_manifest.yaml")
-        self.manifest_dict["image_file"] = self.video_filename
-        with open(manifest_file_name, "w") as file:
-            yaml.dump(self.manifest_dict, file)
+        self.stamp = []
+        while self.recording:
+            # Exception for failed waiting self.cam.GetNextImage(1000)
+            try:
+                im, tsmp = self.imgage_proc()
+            except:
+                continue
 
-        with open(self.video_filename, 'wb', buffering=WRITE_BUFFER_SIZE) as file:
-            while self.recording:
-                # Exception for failed waiting self.cam.GetNextImage(1000)
-                try:
-                    im, tsmp = self.imgage_proc()  # im is an nd_array that represents the image
-                    arr_bytes = im.tobytes()
-                    file.write(arr_bytes)
-                except:
-                    continue
+            self.image_queue.put(im)
+            self.stamp.append(tsmp)
 
-                self.stamp.append(tsmp)
+            try:
+                self.outlet.push_sample([self.frame_counter, tsmp])
+            except BaseException:
+                self.logger.debug(f"Reopening FLIR {self.device_index} stream already closed")
+                self.outlet = self.createOutlet(self.video_filename)
+                self.outlet.push_sample([self.frame_counter, tsmp])
 
-                try:
-                    self.outlet.push_sample([self.frame_counter, tsmp])
-                except BaseException:
-                    self.logger.debug(f"Reopening FLIR {self.device_index} stream already closed")
-                    self.outlet = self.createOutlet(self.video_filename)
-                    self.outlet.push_sample([self.frame_counter, tsmp])
-                self.frame_counter += 1
+            # self.video_out.write(im_conv_d)
+            self.frame_counter += 1
+
+            if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
+                self.logger.debug(
+                    f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
+                )
 
         self.cam.EndAcquisition()
         self.recording = False
-        self.logger.debug('FLIR: Images file released; Exiting LSL thread')
+        self.save_thread.join()
+        self.video_out.release()
+        self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
 
     def stop(self):
         if self.open and self.recording:
