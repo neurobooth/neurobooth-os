@@ -11,6 +11,7 @@ import traceback
 
 import neurobooth_os.config as config
 from neurobooth_os.iout import metadator
+from neurobooth_os.msg.messages import Message
 
 LOG_FORMAT = logging.Formatter('|%(levelname)s| [%(asctime)s] %(filename)s, %(funcName)s, L%(lineno)d> %(message)s')
 
@@ -123,6 +124,12 @@ def make_default_logger(
 
     logger.setLevel(log_level)
     return logger
+
+
+def log_message_received(message: Message, logger) -> None:
+    message_dict = dict(message)
+    message_dict['body'] = message.body.model_dump_json()
+    logger.info(f'MESSAGE RECEIVED: {message_dict}')
 
 
 class SystemResourceLogger(Thread):
