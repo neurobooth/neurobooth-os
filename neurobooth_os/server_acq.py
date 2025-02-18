@@ -83,7 +83,7 @@ def run_acq(logger):
                 logger.info('LOGGER CREATED')
 
                 if system_resource_logger is None:
-                    system_resource_logger = SystemResourceLogger(ses_folder, 'ACQ')
+                    system_resource_logger = SystemResourceLogger(machine_name='ACQ')
                     system_resource_logger.start()
 
                 task_args = meta.build_tasks_for_collection(collection_id)
