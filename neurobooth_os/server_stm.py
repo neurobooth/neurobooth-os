@@ -24,7 +24,7 @@ from neurobooth_os.iout import metadator as meta
 
 from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
-from neurobooth_os.log_manager import make_db_logger
+from neurobooth_os.log_manager import make_db_logger, log_message_received
 
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
@@ -71,9 +71,7 @@ def run_stm(logger):
                 if message is None:
                     sleep(.25)
                     continue
-
-                logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
-                logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
+                log_message_received(message, logger)
                 current_msg_type: str = message.msg_type
 
                 # Next message tells what to do now that we paused
@@ -120,8 +118,7 @@ def run_stm(logger):
                 sleep(1)
                 continue
 
-            logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
-            logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
+            log_message_received(message, logger)
             current_msg_type: str = message.msg_type
 
             if "TerminateServerRequest" == current_msg_type:

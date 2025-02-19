@@ -23,7 +23,7 @@ import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
-from neurobooth_os.log_manager import make_db_logger
+from neurobooth_os.log_manager import make_db_logger, log_message_received
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
 from neurobooth_os.iout import marker_stream
@@ -326,8 +326,7 @@ def _start_ctr_msg_reader(logger, window):
                 time.sleep(.25)
                 continue
             msg_body: Optional[MsgBody] = None
-            logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
-            logger.info(f'MESSAGE RECEIVED: {message.body.model_dump_json()}')
+            log_message_received(message, logger)
 
             if "DeviceInitialization" == message.msg_type:
                 msg_body: DeviceInitialization = message.body
