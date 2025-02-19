@@ -190,7 +190,6 @@ class SystemResourceLogger(Thread):
         self.sleep_event = Event()
         self.table = Table("log_system_resource", conn=self.connection)
 
-
     def run(self) -> None:
         # Perform initial calls that return meaningless data
         psutil.cpu_percent(percpu=True)
@@ -217,12 +216,12 @@ class SystemResourceLogger(Thread):
             self.emit(record)
 
     @staticmethod
-    def log_cpu(self) -> List[CpuUsage]:
+    def log_cpu() -> List[CpuUsage]:
         cpu_pct: List[float] = psutil.cpu_percent(percpu=True)
         return [CpuUsage(name=f'CPU_{i}', pct=pct) for i, pct in enumerate(cpu_pct)]
 
     @staticmethod
-    def log_memory(self) -> Dict[str, Any]:
+    def log_memory() -> Dict[str, Any]:
         ram = psutil.virtual_memory()
         swap = psutil.swap_memory()
 
@@ -234,7 +233,7 @@ class SystemResourceLogger(Thread):
         }
 
     @staticmethod
-    def log_disk_io(self) -> List[DiskUsage]:
+    def log_disk_io() -> List[DiskUsage]:
         disk_io: Dict[str, Any] = psutil.disk_io_counters(perdisk=True)
 
         results = []
@@ -248,7 +247,7 @@ class SystemResourceLogger(Thread):
         return results
 
     @staticmethod
-    def log_network_io(self) -> Dict[str, Any]:
+    def log_network_io() -> Dict[str, Any]:
         net_io = psutil.net_io_counters()
         return {
             'Network_bytes_received': net_io.bytes_recv,
