@@ -192,20 +192,18 @@ def wait_socket_data(s, wait_time=None):
                 return "TIMED-OUT_-999"
 
 
-def start_server(node_name, save_pid_txt=True):
+def start_server(node_name) -> None:
     """Makes a network call to run script serv_{node_name}.bat
 
-    First remote processes are logged, then a scheduled task is created to run
-    the remote batch file, then task runs, and new python PIDs are captured with
-    the option to save to save_pid_txt. If saved, when the function is called it
-    will kill the PIDs in the file.
+    1. remote processes are logged
+    2. a scheduled task is created to run the remote batch file
+    3. The task runs and new python PIDs are captured and saved to save_pid_txt.
+    4. When the function is called again, it will kill the PIDs in the file.
 
     Parameters
     ----------
     node_name : str
         PC node name defined in config.neurobooth_config`
-    save_pid_txt : bool
-        Option to save PID to file for killing PID in the future.
 
     Returns
     -------
@@ -277,10 +275,8 @@ def start_server(node_name, save_pid_txt=True):
     print(f"{node_name.upper()} server initiated with pid {pid}")
     logger.info(f"{node_name.upper()} server initiated with pid {pid}")
 
-    if save_pid_txt:
-        with open("server_pids.txt", "a") as f:
-            f.write(f"{pid}|{node_name}|{time()}\n")
-    return pid
+    with open("server_pids.txt", "a") as f:
+        f.write(f"{pid}|{node_name}|{time()}\n")
 
 
 def get_python_pids(output_tasklist):

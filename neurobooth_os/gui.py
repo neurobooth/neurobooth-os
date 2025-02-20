@@ -483,8 +483,7 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
     return video_marker_stream, event, values
 
 
-def _get_nodes():
-    return ["acquisition", "presentation"]
+nodes: List[str] = ["acquisition", "presentation"]
 
 
 def gui(logger):
@@ -493,8 +492,6 @@ def gui(logger):
     global running_servers, start_pressed
 
     database = cfg.neurobooth_config.database.dbname
-
-    nodes = _get_nodes()
 
     # declare and initialize vars
     subject: Subject
@@ -674,7 +671,7 @@ def gui(logger):
             elif event == 'devices_connected':
                 global session_prepared_count
                 session_prepared_count += 1
-                if session_prepared_count == len(_get_nodes()):
+                if session_prepared_count == len(nodes):
                     session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
                     window["-frame_preview-"].update(visible=True)
                     if not start_pressed:
@@ -697,7 +694,7 @@ def gui(logger):
                     raise RuntimeError(f"Unknown server type: {server} as source of ServerStarted message")
 
                 running_servers.append(node_name)
-                expected_servers = _get_nodes()
+                expected_servers = nodes
                 check = all(e in running_servers for e in expected_servers)
                 if check:
                     write_output(window, "Servers initiated. OK to connect devices.")
@@ -826,7 +823,7 @@ def main():
                         exc_info=sys.exc_info())
     finally:
         logging.shutdown()
-        sys.exit(1)
+        sys.exit()
 
 
 if __name__ == "__main__":

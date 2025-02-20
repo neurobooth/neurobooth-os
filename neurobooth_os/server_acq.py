@@ -42,7 +42,7 @@ def main():
                         exc_info=sys.exc_info())
     finally:
         logging.shutdown()
-        sys.exit(1)
+        sys.exit()
 
 
 def run_acq(logger):
