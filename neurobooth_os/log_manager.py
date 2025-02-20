@@ -27,9 +27,6 @@ APP_LOGGER: Optional[logging.Logger] = None
 
 # Name of the Application Logger, for use in retrieving the appropriate logger from the logging module
 APP_LOG_NAME = "app"
-# Name of the System Resource Logger
-SYS_RES_LOG_NAME = "sys_resource"
-
 
 def make_session_logger_debug(
         file: Optional[str] = None,
