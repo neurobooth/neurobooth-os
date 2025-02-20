@@ -3,6 +3,7 @@ import importlib
 import json
 import logging
 import os
+import sys
 from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, Any, Optional, List
@@ -278,7 +279,11 @@ def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
                 if not contact_df.empty:
                     subj.preferred_first_name = str(contact_df['first_name_contact'].iloc[0])
                     subj.preferred_last_name = str(contact_df['last_name_contact'].iloc[0])
-            except psycopg2.Error:  # Catch any psycopg2 database exception
+            except psycopg2.Error as db_error:  # Catch any psycopg2 database exception
+                import neurobooth_os.log_manager as log_man
+                log_man.APP_LOGGER.error(f"A database exception occurred. Exception was: {repr(db_error)}",
+                                         exc_info=sys.exc_info())
+            finally:
                 if curs is not None:
                     curs.close()
         return subj
