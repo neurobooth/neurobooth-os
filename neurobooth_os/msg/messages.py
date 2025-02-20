@@ -13,7 +13,7 @@ from uuid import uuid4, UUID
 from datetime import datetime
 from typing import List, Optional, Any, Dict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, SerializeAsAny
 
 # Standard priority levels for messages, Higher priority messages are processed before lower priority messages
 # If two messages have equal priorities, the one created first (based on Message_Queue table's ID column value)
@@ -54,7 +54,7 @@ class Message(BaseModel):
     time_created: Optional[datetime] = None     # Database server-time of message creation
     time_read: Optional[datetime] = None        # Database server-time when message was read
     priority: Optional[int]                     # message priority, filled-in automatically from MsgBody field
-    body: Optional[MsgBody]                     # Message body
+    body: Optional[SerializeAsAny[MsgBody]]     # Message body
 
     def __init__(self, **data: Any):
         super().__init__(**data)

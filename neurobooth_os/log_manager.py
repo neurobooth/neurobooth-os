@@ -1,3 +1,4 @@
+import json
 import os
 import logging
 import sys
@@ -5,12 +6,15 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 import psutil
 from threading import Thread, Event
-import json
 import platform
 import traceback
 
+from neurobooth_terra import Table
+from pydantic import BaseModel
+
 import neurobooth_os.config as config
 from neurobooth_os.iout import metadator
+from neurobooth_os.msg.messages import Message
 
 LOG_FORMAT = logging.Formatter('|%(levelname)s| [%(asctime)s] %(filename)s, %(funcName)s, L%(lineno)d> %(message)s')
 
@@ -23,7 +27,6 @@ APP_LOGGER: Optional[logging.Logger] = None
 
 # Name of the Application Logger, for use in retrieving the appropriate logger from the logging module
 APP_LOG_NAME = "app"
-
 
 def make_session_logger_debug(
         file: Optional[str] = None,
@@ -125,34 +128,64 @@ def make_default_logger(
     return logger
 
 
-class SystemResourceLogger(Thread):
-    """Logs CPU, network, and disk usage at regular intervals."""
-    LOG_FORMAT = logging.Formatter('[%(asctime)s] %(message)s')
+def log_message_received(message: Message, logger) -> None:
+    message_dict = dict(message)
+    message_dict['body'] = message.body.model_dump_json()
+    logger.info(f'MESSAGE RECEIVED: {message_dict}')
 
-    def __init__(self, session_folder: str, machine_name: str, log_interval_sec: float = 10):
+
+class CpuUsage(BaseModel):
+    name: str
+    pct: float
+
+
+class DiskUsage(BaseModel):
+    name: str
+    bytes_read: int
+    bytes_written: int
+
+
+class SysResourceRecord(BaseModel):
+    """
+    System Resource Log record
+    """
+    machine_name: str  # name of machine being logged, e.g. 'ACQ'
+    session_start: datetime  # timestamp when logging starts
+    created_at: Optional[datetime] = None  # Database server-time of record insertion
+    ram_used: int  #
+    ram_total: int  #
+    swap_used: int  #
+    swap_total: int  #
+    net_recd: int  #
+    net_sent: int  #
+    cpu_usage: List[CpuUsage]  # list of CPU utilization records
+    disk_usage: List[DiskUsage]  # list of disk utilization records
+
+
+class SystemResourceLogger(Thread):
+    """
+    A "logger" that isn't really part of the typical python logging family, which seemed to add too much complexity for
+    something so simple.
+
+    Logs system resources, mostly provided by psutil, into the table log_system_resource
+    Scalar values are logged as standard columns, but resources that are likely to change
+    (e.g. the number of disks or CPUs in a system) are written as JSON (jsonb) columns in Postgres
+    """
+
+    def __init__(self, machine_name: str, log_interval_sec: float = 10):
         """
         Create a new system resource logging thread.
-        :param session_folder: The folder to save the log to.
         :param machine_name: The name of the machine the thread is running on.
         :param log_interval_sec: How often to log resource usage (in seconds).
         """
         super().__init__()
-        self.logger = SystemResourceLogger.__create_log(session_folder, machine_name)
+        self.machine_name = machine_name
+        self.session_start = datetime.now()
+        self.connection = metadator.get_database_connection()
+        self.connection.autocommit = True
         self.log_interval_sec = log_interval_sec
         self.sleep_event = Event()
-
-    @staticmethod
-    def __create_log(session_folder: str, machine_name: str) -> logging.Logger:
-        logger = logging.getLogger('resource_log')
-        time_str = datetime.now().strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
-        file_handler = logging.FileHandler(
-            os.path.join(session_folder, f'{machine_name}_system_resource_{time_str}.log')
-        )
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(SystemResourceLogger.LOG_FORMAT)
-        logger.addHandler(file_handler)
-        logger.setLevel(logging.DEBUG)
-        return logger
+        self.table = Table("log_system_resource", conn=self.connection)
 
     def run(self) -> None:
         # Perform initial calls that return meaningless data
@@ -160,27 +193,34 @@ class SystemResourceLogger(Thread):
 
         # Main logging loop
         while not self.sleep_event.wait(self.log_interval_sec):  # Will return True if event set by stop()
-            results = {}
-            results.update(self.log_cpu())
-            results.update(self.log_memory())
-            results.update(self.log_disk_io())
-            results.update(self.log_network_io())
-            self.logger.info(f'JSON> {json.dumps(results)}')
+            cpu: List[CpuUsage] = self.log_cpu()
+            ram: Dict[str, int] = self.log_memory()
+            disk: List[DiskUsage] = self.log_disk_io()
+            net: Dict[str, int] = self.log_network_io()
 
-    def log_cpu(self) -> Dict[str, Any]:
+            record: SysResourceRecord = SysResourceRecord(
+                machine_name=self.machine_name,
+                session_start=self.session_start,
+                ram_used=ram['RAM_used'],
+                ram_total=ram['RAM_total'],
+                swap_used=ram['SWAP_used'],
+                swap_total=ram['SWAP_total'],
+                net_recd=net['Network_bytes_received'],
+                net_sent=net['Network_bytes_sent'],
+                disk_usage=disk,
+                cpu_usage=cpu,
+            )
+            self.emit(record)
+
+    @staticmethod
+    def log_cpu() -> List[CpuUsage]:
         cpu_pct: List[float] = psutil.cpu_percent(percpu=True)
+        return [CpuUsage(name=f'CPU_{i}', pct=pct) for i, pct in enumerate(cpu_pct)]
 
-        cpu_pct_str = ', '.join([f'{i}: {pct:.1f}%' for i, pct in enumerate(cpu_pct)])
-        self.logger.info(f'CPU> {cpu_pct_str}')
-
-        return {f'CPU_{i}_pct': pct for i, pct in enumerate(cpu_pct)}
-
-    def log_memory(self) -> Dict[str, Any]:
+    @staticmethod
+    def log_memory() -> Dict[str, Any]:
         ram = psutil.virtual_memory()
         swap = psutil.swap_memory()
-
-        self.logger.info(f'RAM> {ram.total - ram.available} / {ram.total} ({ram.percent:.1f}%)')
-        self.logger.info(f'SWAP> {swap.used} / {swap.total} ({swap.percent:.1f}%)')
 
         return {
             'RAM_used': ram.total - ram.available,
@@ -189,33 +229,51 @@ class SystemResourceLogger(Thread):
             'SWAP_total': swap.total,
         }
 
-    def log_disk_io(self) -> Dict[str, Any]:
+    @staticmethod
+    def log_disk_io() -> List[DiskUsage]:
         disk_io: Dict[str, Any] = psutil.disk_io_counters(perdisk=True)
 
-        results = {}
+        results = []
         for i, (name, io) in enumerate(disk_io.items()):
-            self.logger.info(f'DISK {i}> ({name}) {io.read_bytes} bytes read, {io.write_bytes} bytes written')
-            results.update({
-                f'Disk_{i}_name': name,
-                f'Disk_{i}_bytes_read': io.read_bytes,
-                f'Disk_{i}_bytes_written': io.write_bytes,
-            })
-
+            results.append(
+                DiskUsage(
+                    name=name,
+                    bytes_read=io.read_bytes,
+                    bytes_written=io.write_bytes)
+            )
         return results
 
-    def log_network_io(self) -> Dict[str, Any]:
+    @staticmethod
+    def log_network_io() -> Dict[str, Any]:
         net_io = psutil.net_io_counters()
-
-        self.logger.info(f'NET> {net_io.bytes_recv} bytes received, {net_io.bytes_sent} bytes sent')
-
         return {
             'Network_bytes_received': net_io.bytes_recv,
             'Network_bytes_sent': net_io.bytes_sent,
         }
 
+    def emit(self, record: SysResourceRecord):
+
+        disks = json.dumps([item.model_dump() for item in record.disk_usage])
+        cpus = json.dumps([item.model_dump() for item in record.cpu_usage])
+        return self.table.insert_rows([(str(
+            record.machine_name),
+                                   record.session_start,
+                                   record.ram_used,
+                                   record.ram_total,
+                                   record.swap_used,
+                                   record.swap_total,
+                                   record.net_recd,
+                                   record.net_sent,
+                                   disks,
+                                   cpus)],
+            cols=["machine_name", "session_start", "ram_used", "ram_total", "swap_used",
+                  'swap_total', "net_recd", "net_sent", "disk_usage", "cpu_usage"
+                  ])
+
     def stop(self) -> None:
         """Stop logging and wait for the thread to complete."""
         self.sleep_event.set()
+        self.connection.close()
         self.join(timeout=self.log_interval_sec + 1)
 
 
@@ -243,6 +301,7 @@ class PostgreSQLHandler(logging.Handler):
         self.fallback_log_path = fallback_log_path
         self.setLevel(log_level)
         self.name = "db_handler"
+
         try:
             self._get_logger_connection()
         except Exception:
@@ -315,4 +374,3 @@ def _test_log_handler_fallback():
     for handler in logger.handlers:
         if handler.name == "db_handler":
             handler.fallback_to_local_handler()
-

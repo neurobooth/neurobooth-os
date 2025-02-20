@@ -74,7 +74,7 @@ class StmSession(BaseModel):
         return ses_folder
 
     def create_sys_resource_logger(self):
-        system_resource_logger = SystemResourceLogger(self.session_folder, 'STM')
+        system_resource_logger = SystemResourceLogger('STM')
         system_resource_logger.start()
         return system_resource_logger
 
