@@ -463,7 +463,6 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
 
     video_marker_stream = marker_stream("videofiles")
 
-    nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:
         if node == 'acquisition':
             dest = "ACQ"
