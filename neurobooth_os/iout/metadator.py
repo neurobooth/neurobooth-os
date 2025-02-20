@@ -225,10 +225,15 @@ def get_subject_ids(conn: connection, first_name, last_name):
 
 
 def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
+    """
+    Returns the Subject associated with the give subject_id, or None if no match is found.
 
+    We also attempt to get auxiliary data from rc_contact, but this data table may be missing or corrupt,
+    so we make sure it exists first and attempt to tolerate any error coming from Postgres.
+    """
     subject_id = subject_id.strip()
-    # We do two separate queries in case the contact table doesn't have any matching records,
-    # due to, for example, an issue with the REDCap update timing.  We always want a result if there's a matching
+    # We do two separate queries in case the rc_contact table doesn't have any matching records due to,
+    # for example, an issue with the REDCap update timing.  We always want a result if there's a matching
     # record in the subject table.  Hitting both tables with a single join query would cause zero records to be returned
     table_subject = Table("subject", conn=conn)
     subject_df = table_subject.query(where=f"LOWER(subject_id)=LOWER('{subject_id}')")
@@ -243,18 +248,7 @@ def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
     if subject_df.empty:
         return None
     else:
-        # Get the column names from the cursor description
-        curs = conn.cursor()
-        curs.execute(contact_query)
-        results = curs.fetchall()
-        column_names = [desc[0] for desc in curs.description]
-
-        # Create the DataFrame
-        contact_df = pd.DataFrame(results, columns=column_names)
-
-        conn.commit()
-        curs.close()
-
+        # populate the Subject model with the data we found
         subj = Subject(
             subject_id=subject_id,
             first_name_birth=subject_df['first_name_birth'].iloc[0],
@@ -264,9 +258,29 @@ def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
             preferred_first_name="",
             preferred_last_name="",
         )
-        if not contact_df.empty:
-            subj.preferred_first_name = str(contact_df['first_name_contact'].iloc[0])
-            subj.preferred_last_name = str(contact_df['last_name_contact'].iloc[0])
+        # Get additional data from rc_contact, if it's available and the table is healthy
+        # verify that the contact table (rc_contact) exists, if not just return what we got from the subject table
+        curs = conn.cursor()
+        curs.execute("select * from information_schema.tables where table_name=%s", ('rc_contact',))
+        # if rc_contact *does* exist, try to query it for the additional info. Swallow any exceptions that occur
+        if bool(curs.rowcount):
+            try:
+                # Get the column names from the cursor description
+                curs.execute(contact_query)
+                results = curs.fetchall()
+                column_names = [desc[0] for desc in curs.description]
+
+                # Create the DataFrame
+                contact_df = pd.DataFrame(results, columns=column_names)
+                conn.commit()
+                curs.close()
+
+                if not contact_df.empty:
+                    subj.preferred_first_name = str(contact_df['first_name_contact'].iloc[0])
+                    subj.preferred_last_name = str(contact_df['last_name_contact'].iloc[0])
+            except psycopg2.Error:  # Catch any psycopg2 database exception
+                if curs is not None:
+                    curs.close()
         return subj
 
 
