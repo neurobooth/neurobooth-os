@@ -40,10 +40,9 @@ def main():
     except Exception as argument:
         logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                         exc_info=sys.exc_info())
-        raise argument
-
     finally:
         logging.shutdown()
+        sys.exit(1)
 
 
 def run_acq(logger):
