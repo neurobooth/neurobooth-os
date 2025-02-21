@@ -11,7 +11,7 @@ import neurobooth_os
 
 from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs, DeviceArgs
-from neurobooth_os.log_manager import make_db_logger
+from neurobooth_os.log_manager import make_db_logger, log_message_received
 from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
@@ -57,7 +57,7 @@ def run_acq(logger):
     shutdown_flag = False
     init_servers = Request(source="ACQ", destination="CTR", body=ServerStarted())
     meta.post_message(init_servers, db_conn)
-
+    task: Optional[str] = None  # id of currently executing task, if any
     while not shutdown_flag:
 
         try:
@@ -66,8 +66,7 @@ def run_acq(logger):
                 sleep(.25)
                 continue
             msg_body: Optional[MsgBody] = None
-            logger.info(f'MESSAGE RECEIVED: {message.model_dump_json()}')
-
+            log_message_received(message, logger)
             current_msg_type : str = message.msg_type
             if "PrepareRequest" == current_msg_type:
                 msg_body: PrepareRequest = message.body
@@ -84,7 +83,7 @@ def run_acq(logger):
                 logger.info('LOGGER CREATED')
 
                 if system_resource_logger is None:
-                    system_resource_logger = SystemResourceLogger(ses_folder, 'ACQ')
+                    system_resource_logger = SystemResourceLogger(machine_name='ACQ')
                     system_resource_logger.start()
 
                 task_args = meta.build_tasks_for_collection(collection_id)
@@ -123,14 +122,14 @@ def run_acq(logger):
                 fname = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name, fname)
 
                 elapsed_time = start_recording(device_manager, fname, task_args[task].device_args)
-                logger.info(f'Device start took {elapsed_time:.2f}')
+                logger.info(f'Device start took {elapsed_time:.2f} for {task}')
                 reply = RecordingStartedMsg()
                 meta.post_message(reply, db_conn)
                 recording = True
 
             elif "StopRecording" == current_msg_type:
                 elapsed_time = stop_recording(device_manager, task_args[task].device_args)
-                logger.info(f'Device stop took {elapsed_time:.2f}')
+                logger.info(f'Device stop took {elapsed_time:.2f} for {task}')
                 reply = RecordingStoppedMsg()
                 meta.post_message(reply, db_conn)
                 recording = False
@@ -155,7 +154,6 @@ def run_acq(logger):
                 req = Request(body=err_msg, source="ACQ", destination="CTR")
                 meta.post_message(req, db_conn)
             raise argument
-
 
 
 def iphone_frame_preview(db_conn, device_manager, logger):
