@@ -618,11 +618,10 @@ class Task_ShowProgressBar(Task):
         super().__init__(**kwargs)
         self.screen = None
 
-    def run(self, slide_image="", duration=0):
-        fpath = op.join(neurobooth_os.__path__[0], "tasks", "assets", slide_image)
+    def run(self, **kwargs):
+        fpath = op.join(neurobooth_os.__path__[0], "tasks", "assets", kwargs['slide_image'])
         self.screen = utils.create_image_screen(self.win, fpath)
-        self.show_text(screen=self.screen, msg="Task", audio=None, wait_time=duration)
-        self.clear_screen()
+        self.show_text(screen=self.screen, msg="Task", audio=None, wait_time=kwargs['duration'], waitKeys=False)
 
 
 class Introduction_Task(Task):
