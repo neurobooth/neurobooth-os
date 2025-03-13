@@ -182,7 +182,7 @@ def _perform_task(db_conn, device_log_entry_dict, message, session, subj_id: str
         this_task_kwargs = create_task_kwargs(session, task_args)
 
         # Do not record if intro instructions
-        if "intro_" in task_id or "pause_" in task_id:
+        if "intro_" in task_id or "pause_" in task_id or "progress_" in task_id:
             load_task_media(session, task_args)
             task: Task = task_args.task_instance
             task.run(**this_task_kwargs)

@@ -1,0 +1,8 @@
+stimulus_id: progress_bar_obs_4
+stimulus_description: progress
+num_iterations: 1
+duration: 7
+arg_parser: iout.stim_param_reader.py::ProgressBarStimArgs
+stimulus_file_type: psychopy
+stimulus_file: tasks.task.py::Task_ShowProgressBar()
+slide_image: Part4_Progress_01_23_25.jpg

@@ -313,6 +313,10 @@ class EyeTrackerStimArgs(StimulusArgs):
     target_size: NonNegativeFloat = 7
 
 
+class ProgressBarStimArgs(StimulusArgs):
+    slide_image: str
+
+
 class ClappingStimArgs(EyeTrackerStimArgs):
     text_task: str = Field(min_length=1)
 

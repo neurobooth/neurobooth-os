@@ -1,0 +1,7 @@
+task_id: progress_bar_obs_1
+feature_of_interest: progress
+stimulus_id: progress_bar_obs_1
+instruction_id: null
+device_id_array:
+- Mic_Yeti_dev_1
+arg_parser: iout.stim_param_reader.py::RawTaskParams()
