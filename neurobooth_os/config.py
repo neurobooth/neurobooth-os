@@ -105,7 +105,7 @@ def validate_system_paths(server_name: str):
 
 def load_neurobooth_config(fname: Optional[str] = None):
     if fname is None:
-        fname = path.join(environ.get("NB_CONFIG"), "neurobooth_os_config.json")
+        fname = path.join(environ.get("NB_CONFIG_TEST"), "neurobooth_os_config.json")
 
     if not path.exists(fname):
         raise ConfigException(f'Required config file does not exist: {fname}')

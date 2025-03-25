@@ -24,7 +24,6 @@ task_ids:
 - mememe_obs_1
 - pataka_obs_1
 - coord_pause_obs_1
-- progress_bar_obs_4
 - finger_nose_obs_1
 - foot_tapping_obs_1
 - altern_hand_mov_obs_1
