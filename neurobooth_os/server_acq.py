@@ -50,16 +50,6 @@ def main():
 
 def run_acq(logger):
 
-    thresholds: List[GcThreshold] = [
-        GcThreshold(700, 10, 10), # default python gc settings
-        GcThreshold(7000, 15, 15),
-        GcThreshold(10000, 20, 20),
-        GcThreshold(1000, 20, 20),
-        GcThreshold(15000, 10, 10)
-    ]
-    # TODO: Remove this code once the ideal thresholds are known
-    random_threshold(logger, thresholds)
-
     db_conn = meta.get_database_connection()
 
     device_manager = None
@@ -196,22 +186,6 @@ def stop_recording(device_manager: DeviceManager, task_devices: List[DeviceArgs]
     device_manager.stop_cameras(task_devices)
     elapsed_time = time() - t0
     return elapsed_time
-
-
-class GcThreshold:
-    """
-    Holds a set of GcThreshold values
-    """
-    def __init__(self, t0: int, t1: int, t2: int):
-        self.t0 = t0
-        self.t1 = t1
-        self.t2 = t2
-
-
-def random_threshold(logger, thresholds: List[GcThreshold]):
-    threshold = random.choice(thresholds)
-    gc.set_threshold(threshold.t0, threshold.t1, threshold.t2)
-    logger.info(f"GC thresholds: {gc.get_threshold()}")
 
 
 if __name__ == '__main__':
