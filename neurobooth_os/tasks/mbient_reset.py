@@ -117,6 +117,7 @@ class MbientResetPause(Task):
                 pos=(0, 0),
                 units="deg",
             )
+        self.duration = kwargs['duration']
 
     def continue_key_for_comparison(self):
         """ We want the UI to say 'ENTER', but the system calls the enter key 'return'"""
@@ -184,10 +185,12 @@ class MbientResetPause(Task):
             return TaskState.RESET_NO_SUCCESS
 
     def present_end_screen(self) -> None:
-        self.end_screen.draw()
-        self.win.flip()
-        self.send_status_msg(f'Pause: Press {self.continue_key.upper()} to continue.')  # Send message to GUI terminal
-        get_keys([self.continue_key_for_comparison()])  # Wait until continue key is pressed
+        self.show_text(screen=self.end_screen, msg="Task", audio=None, wait_time=self.duration, waitKeys=False)
+
+        # self.end_screen.draw()
+        # self.win.flip()
+        # self.send_status_msg(f'Pause: Press {self.continue_key.upper()} to continue.')  # Send message to GUI terminal
+        # get_keys([self.continue_key_for_comparison()])  # Wait until continue key is pressed
 
     def update_message(self, contents: List[str] = ()):
         """Update the message on the STM screen.
