@@ -240,7 +240,7 @@ def start_server(node_name, save_pid_txt=True):
     out = os.popen(cmd_out).read().replace("\\", "")
     df = pd.read_csv(StringIO(out), sep=",", index_col=0, names=["date", "status"])
 
-    task_name = node_name + "1"
+    task_name = node_name + "0"
     # task_name = "TaskOnEvent1"
     while True:
         if task_name in out:
@@ -264,16 +264,13 @@ def start_server(node_name, save_pid_txt=True):
             + f" /Create /TN {task_name} /TR {s.bat} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
         )
         out = os.popen(cmd_1).read()
-        print(out)
 
     cmd_2 = cmd_str + f" /Run /TN {task_name}"
     out = os.popen(cmd_2).read()
-    print(out)
 
     sleep(0.3)
     out = os.popen(task_cmd).read()
-    print(out)
-    
+
     pids_new = get_python_pids(out)
 
     pid = [p for p in pids_new if p not in pids_old]
