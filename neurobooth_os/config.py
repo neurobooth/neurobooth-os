@@ -5,7 +5,7 @@ Ensures that the base neurobooth-os config file exists and makes config file ava
 
 from os import environ, path, getenv
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 import json
 
 
