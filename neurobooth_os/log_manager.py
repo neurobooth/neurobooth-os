@@ -257,6 +257,7 @@ class PostgreSQLHandler(logging.Handler):
             self._get_logger_connection()
         except Exception as e:
             print(f"Unable to connect to database for logging:  {e}")
+            raise (e)
 
     def close(self):
         """Close this log handler and its DB connection """
