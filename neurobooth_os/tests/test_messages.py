@@ -20,7 +20,7 @@ msg = Request(
               body=body
 )
 
-conn = meta.get_database_connection(database=database_name, validate_config_paths=False)
+conn = meta.get_database_connection(database=database_name)
 
 
 class TestMessages(unittest.TestCase):

@@ -1,5 +1,4 @@
 import json
-import os
 import logging
 import sys
 from datetime import datetime
@@ -28,6 +27,7 @@ APP_LOGGER: Optional[logging.Logger] = None
 # Name of the Application Logger, for use in retrieving the appropriate logger from the logging module
 APP_LOG_NAME = "app"
 
+
 def make_session_logger_debug(
         file: Optional[str] = None,
         console: bool = False,
@@ -53,7 +53,6 @@ def make_session_logger_debug(
 
 def make_db_logger(subject: str = None,
                    session: str = None,
-                   fallback_log_path: str = None,
                    log_level: int = logging.DEBUG) -> logging.Logger:
     """Returns a logger that logs to the database and sets the subject id and session to be used for subsequent
     logging calls.
@@ -61,9 +60,6 @@ def make_db_logger(subject: str = None,
     NOTE: If the subject or session should be cleared, the argument should be an empty string.
     Passing None will NOT reset those values
     """
-
-    if fallback_log_path is None:
-        fallback_log_path = config.neurobooth_config.default_log_path
 
     global SUBJECT_ID, SESSION_ID, APP_LOGGER
 
@@ -75,57 +71,13 @@ def make_db_logger(subject: str = None,
     # Don't reinitialize the logger if one exists
     if APP_LOGGER is None:
         logger = logging.getLogger(APP_LOG_NAME)
-        handler = PostgreSQLHandler(fallback_log_path, log_level)
+        handler = PostgreSQLHandler(log_level)
         logger.addHandler(handler)
         logger.setLevel(log_level)
         extra = {"device": ""}
         logging.LoggerAdapter(logger, extra)
         APP_LOGGER = logger
     return APP_LOGGER
-
-
-def get_default_log_handler(
-        log_path: Optional[str] = None,
-        log_level=logging.DEBUG,
-):
-    """Returns a log handler suitable for logging when the DB isn't available
-    """
-    if log_path is None:
-        log_path = config.neurobooth_config.default_log_path
-
-    if not os.path.exists(log_path):
-        os.makedirs(log_path)
-    time_str = datetime.now().strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
-    file = os.path.join(log_path, f'default_{time_str}.log')
-
-    file_handler = logging.FileHandler(file)
-    file_handler.setLevel(log_level)
-    file_handler.setFormatter(LOG_FORMAT)
-    return file_handler
-
-
-def make_default_logger(
-        log_path: Optional[str] = None,
-        log_level=logging.DEBUG,
-        validate_paths: bool = True
-) -> logging.Logger:
-    if config.neurobooth_config is None:
-        config.load_config(None, validate_paths)
-    if log_path is None:
-        log_path = config.neurobooth_config.default_log_path
-
-    logger = logging.getLogger('default')
-    logger.addHandler(get_default_log_handler(log_path, log_level))
-
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(log_level)
-    console_handler.setFormatter(LOG_FORMAT)
-    logger.addHandler(console_handler)
-
-    # make_session_logger_debug(file=file)
-
-    logger.setLevel(log_level)
-    return logger
 
 
 def log_message_received(message: Message, logger) -> None:
@@ -296,18 +248,16 @@ class PostgreSQLHandler(logging.Handler):
     # see TYPE log_level
     _levels = ('debug', 'info', 'warning', 'error', 'critical')
 
-    def __init__(self, fallback_log_path: str = None, log_level=logging.DEBUG):
+    def __init__(self, log_level=logging.DEBUG):
         super(PostgreSQLHandler, self).__init__()
-        self.fallback_log_path = fallback_log_path
         self.setLevel(log_level)
         self.name = "db_handler"
 
         try:
             self._get_logger_connection()
-        except Exception:
-            msg = "Unable to connect to database for logging. Falling back to default file logging."
-            self.fallback_to_local_handler()
-            logging.getLogger(APP_LOG_NAME).exception(msg)
+        except Exception as e:
+            print(f"Unable to connect to database for logging:  {e}")
+            raise (e)
 
     def close(self):
         """Close this log handler and its DB connection """
@@ -347,30 +297,10 @@ class PostgreSQLHandler(logging.Handler):
 
             self.cursor.execute(self._query, args)
 
-        except Exception:
-            msg = "An exception occurred attempting to log to DB. Falling back to file-system log."
-            self.fallback_to_local_handler()
-            self.handleError(record)
-            logging.getLogger(APP_LOG_NAME).exception(msg)
+        except Exception as e:
+            print(f"An exception occurred attempting to log to DB: {e}")
 
     def _get_logger_connection(self):
         self.connection = metadator.get_database_connection()
         self.connection.autocommit = True
         self.cursor = self.connection.cursor()
-
-    def fallback_to_local_handler(self):
-        logger = logging.getLogger(APP_LOG_NAME)
-        if self in logger.handlers:
-            logger.removeHandler(self)
-        default_handler = get_default_log_handler(self.fallback_log_path, logging.DEBUG)
-        if default_handler not in logger.handlers:
-            logger.addHandler(default_handler)
-
-
-def _test_log_handler_fallback():
-    """FOR TESTING PURPOSES ONLY
-    Causes logger to fall back to filesystem logging without an actual failure occurring"""
-    logger = logging.getLogger(APP_LOG_NAME)
-    for handler in logger.handlers:
-        if handler.name == "db_handler":
-            handler.fallback_to_local_handler()

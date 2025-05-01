@@ -7,7 +7,7 @@ import unittest
 
 from neurobooth_terra import Table
 
-from neurobooth_os.log_manager import make_default_logger, make_db_logger, _test_log_handler_fallback
+from neurobooth_os.log_manager import make_db_logger
 from neurobooth_os.iout.metadator import get_database_connection
 
 log_path = r"C:\neurobooth\test_data\test_logs"
@@ -19,7 +19,7 @@ session = "000000_2023_12_25 12:12:12"
 
 
 def get_connection():
-    c = get_database_connection(database, False)
+    c = get_database_connection(database)
     c.autocommit = True
     return c
 
@@ -74,25 +74,6 @@ class TestLogging(unittest.TestCase):
         if connection is not None:
             connection.close()
             connection = None
-
-    def test_default_logging(self):
-
-        def do_something():
-            raise ValueError("Raising a test error. This should get logged.")
-
-        try:
-            do_something()
-        except Exception as argument:
-            logger = make_default_logger(log_path, logging.DEBUG, False)
-            logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
-                            exc_info=sys.exc_info())
-
-        filename = os.path.join(log_path, os.listdir(log_path)[0])
-
-        with open(filename, 'r') as file:
-            data = file.read()
-        self.assertTrue("Exiting" in data)
-        self.assertTrue("Traceback" in data)
 
     def test_db_logging_shutdown(self):
         """Tests to ensure log handler is closed (or at least, doesn't blow up when closing) """
@@ -162,22 +143,11 @@ class TestLogging(unittest.TestCase):
         df = get_records()
         assert (df is not None)
 
-    def test_fallback(self):
-        db_log = make_db_logger("foo", "bar", log_path, logging.DEBUG)
-        _test_log_handler_fallback()
-        db_log.critical("Test fallback logging. No DB Connection should be available")
-        file_list = os.listdir(log_path)[0]
-        filename = os.path.join(log_path, file_list)
-
-        with open(filename, 'r') as file:
-            data = file.read()
-        self.assertTrue("fallback" in data)
-
     @unittest.skip("Test requires that DB Connection not succeed (i.e. run outside VPN)")
     def test_db_logging3(self):
         """Tests logging fallback to local file logging.
         """
-        db_log = make_db_logger(subject, session, log_path)
+        db_log = make_db_logger(subject, session)
         db_log.critical("Test fallback logging. No DB Connection should be available")
         file_list = os.listdir(log_path)[0]
         filename = os.path.join(log_path, file_list)
@@ -189,7 +159,7 @@ class TestLogging(unittest.TestCase):
     def test_db_logging_with_traceback(self):
         """Evaluate how tracebacks are handled in database.
         """
-        db_log = make_db_logger("000000", "000000_2023_12_25 12:12:12", log_path)
+        db_log = make_db_logger("000000", "000000_2023_12_25 12:12:12")
         try:
             raise RuntimeError("This is a test")
         except RuntimeError:

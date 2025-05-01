@@ -5,8 +5,7 @@ Ensures that the base neurobooth-os config file exists and makes config file ava
 
 from os import environ, path, getenv
 from typing import Optional
-from typing_extensions import Annotated
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 import json
 
 
@@ -62,10 +61,9 @@ class ServerSpec(BaseModel):
 
 
 class NeuroboothConfig(BaseModel):
-    default_log_path: str
     remote_data_dir: str
-    split_xdf_backlog: str
     video_task_dir: str
+    split_xdf_backlog: str
     cam_inx_lowfeed: int
     acquisition: ServerSpec
     presentation: ServerSpec
@@ -94,7 +92,6 @@ def validate_system_paths(server_name: str):
     if server_name == "presentation":
         validate_folder(neurobooth_config.video_task_dir)
     validate_folder(neurobooth_config.remote_data_dir)
-    validate_folder(neurobooth_config.default_log_path)
 
     source = neurobooth_config.server_by_name(server_name).local_data_dir
     if not path.exists(source):

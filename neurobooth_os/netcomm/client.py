@@ -9,7 +9,6 @@ import pandas as pd
 from io import StringIO
 
 import neurobooth_os.config as cfg
-from neurobooth_os.gui import write_output
 
 
 def setup_log(name):
@@ -240,7 +239,7 @@ def start_server(node_name, save_pid_txt=True):
     out = os.popen(cmd_out).read().replace("\\", "")
     df = pd.read_csv(StringIO(out), sep=",", index_col=0, names=["date", "status"])
 
-    task_name = node_name + "1"
+    task_name = node_name + "0"
     # task_name = "TaskOnEvent1"
     while True:
         if task_name in out:
