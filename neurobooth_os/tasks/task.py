@@ -636,7 +636,7 @@ class MOT_DSST_Instruction_Task(Task):
         super().__init__(**kwargs)
 
     def run(self, **kwargs):
-        inst_end_task_img = op.join(self.root_pckg, kwargs['inst_end_task_img'])
+        inst_end_task_img = op.join(neurobooth_os.__path__[0], "tasks", "assets", kwargs['inst_end_task_img'])
         if not op.isfile(inst_end_task_img):
             raise IOError(f'Required image file {inst_end_task_img} does not exist')
         self.press_inst_screen = visual.ImageStim(
