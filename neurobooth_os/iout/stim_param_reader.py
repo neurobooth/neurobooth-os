@@ -259,7 +259,7 @@ class StimulusArgs(EnvArgs):
     stimulus_file_type: str = Field(min_length=1, max_length=255)
     stimulus_file: str = Field(min_length=1, max_length=255)
     task_repeatable_by_subject: Optional[bool] = True
-    mot_dsst_inst_end: Optional[str]
+    mot_dsst_inst_end: Optional[str] = None
     model_config = ConfigDict(extra='forbid', frozen=True)
 
 
