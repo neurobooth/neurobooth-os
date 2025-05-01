@@ -40,13 +40,13 @@ def make_win(
         monitor_width=55,
         subj_screendist_cm=60,
         # in centimeters from subject head to middle of the screen in our setup. The eye tracker distance measured is from head to center of eye tracker
-):
+) -> visual.Window:
     mon = monitors.getAllMonitors()[0]
     custom_mon = monitors.Monitor(
         "demoMon", width=monitor_width, distance=subj_screendist_cm
     )
 
-    mon_size = monitors.Monitor(mon).getSizePix()
+    mon_size = (1920, 1080)     # TODO: Move the monitor size to the config files
     custom_mon.setSizePix(mon_size)
     custom_mon.saveMon()
     win = visual.Window(
