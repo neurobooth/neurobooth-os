@@ -68,7 +68,7 @@ def start_yeti_stream(_, device_args):
 
 SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
     'acquisition': [
-        'Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3',
+        'Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3', 'Intel_D455_4',
         'FLIR_blackfly_1',
         'IPhone_dev_1',
         'Mbient_BK_1', 'Mbient_LH_2', 'Mbient_RH_2',
@@ -85,6 +85,7 @@ DEVICE_START_FUNCS: Dict[str, Callable] = {
     'Intel_D455_1': start_intel_stream,
     'Intel_D455_2': start_intel_stream,
     'Intel_D455_3': start_intel_stream,
+    'Intel_D455_4': start_intel_stream,
     'IPhone_dev_1': start_iphone_stream,
     'Mbient_BK_1': start_mbient_stream,
     'Mbient_LF_2': start_mbient_stream,
