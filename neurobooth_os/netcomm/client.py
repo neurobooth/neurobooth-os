@@ -241,11 +241,14 @@ def start_server(node_name, save_pid_txt=True):
 
     # task_name is the name of the task to create & run in the remote server's Windows Task Scheduler
     task_name = s.name + "0"
-    print(f"Attempting to run windows task: {task_name}")
+    print(f"Preparing to run windows task: {task_name}")
     while True:
         if task_name in out:
+            print(f"{task_name} was found")
             # if task already running add n+1 to task name
             if df.loc[task_name, "status"] == "Running":
+                print(f"{task_name} is already running")
+
                 tsk_inx = int(task_name[-1]) + 1
                 task_name = task_name[:-1] + str(tsk_inx)
                 print(f"Creating new scheduled task: {task_name} in server {node_name}")
@@ -258,13 +261,16 @@ def start_server(node_name, save_pid_txt=True):
     else:
         cmd_str = f"SCHTASKS"
 
+
     if task_name not in out:
+        print(f"Windows task: {task_name} was not found. Attempting to create")
         cmd_1 = (
             cmd_str
             + f" /Create /TN {task_name} /TR {s.bat} /SC ONEVENT /EC Application /MO *[System/EventID=777] /f"
         )
         out = os.popen(cmd_1).read()
 
+    print(f"Attempting to run windows task: {task_name} with {s.user} and {s.password}")
     cmd_2 = cmd_str + f" /Run /TN {task_name}"
     out = os.popen(cmd_2).read()
 
