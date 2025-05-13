@@ -242,7 +242,7 @@ def start_server(node_name, save_pid_txt=True):
     df = pd.read_csv(StringIO(out), sep=",", index_col=0, names=["date", "status"])
 
     # task_name is the name of the task to create & run in the remote server's Windows Task Scheduler
-    task_name = s.name + "0"
+    task_name = s.task_name + "0"
     print(f"Preparing to run windows task: {task_name}")
     while True:
         if task_name in out:
