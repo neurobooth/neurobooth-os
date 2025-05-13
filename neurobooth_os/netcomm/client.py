@@ -227,7 +227,7 @@ def start_server(node_name, save_pid_txt=True):
         task_cmd = "tasklist.exe"
 
     print(f"About to run task_cmd: {task_cmd}")
-\
+
     out = os.popen(task_cmd).read()
     logger.debug(f"Python processes found: {out}")
     pids_old = get_python_pids(out)
