@@ -226,8 +226,6 @@ def start_server(node_name, save_pid_txt=True):
     else:
         task_cmd = "tasklist.exe"
 
-    print(f"About to run task_cmd: {task_cmd}")
-
     out = os.popen(task_cmd).read()
     logger.debug(f"Python processes found: {out}")
     pids_old = get_python_pids(out)
@@ -249,8 +247,6 @@ def start_server(node_name, save_pid_txt=True):
             print(f"{task_name} was found")
             # if task already running add n+1 to task name
             if df.loc[task_name, "status"] == "Running":
-                print(f"{task_name} is already running")
-
                 tsk_inx = int(task_name[-1]) + 1
                 task_name = task_name[:-1] + str(tsk_inx)
                 print(f"Creating new scheduled task: {task_name} in server {node_name}")
@@ -272,7 +268,6 @@ def start_server(node_name, save_pid_txt=True):
         )
         out = os.popen(cmd_1).read()
 
-    print(f"Attempting to run windows task: {task_name} with {s.user} and {s.password}")
     cmd_2 = cmd_str + f" /Run /TN {task_name}"
     out = os.popen(cmd_2).read()
 
