@@ -48,6 +48,7 @@ class DatabaseSpec(BaseModel):
     password: str
     host: str
     port: int
+    ssh_tunnel: bool
     remote_user: str
     remote_host: str
 
