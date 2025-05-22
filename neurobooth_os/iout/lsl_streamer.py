@@ -13,6 +13,10 @@ import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.eyelink_tracker import EyeTracker
 from neurobooth_os.iout.mouse_tracker import MouseStream
 from neurobooth_os.iout.microphone import MicStream
+from neurobooth_os.iout.mbient import Mbient
+from neurobooth_os.iout.camera_intel import VidRec_Intel
+from neurobooth_os.iout.flir_cam import VidRec_Flir
+from neurobooth_os.iout.iphone import IPhone
 from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 
@@ -30,6 +34,27 @@ def start_mouse_stream(_, device_args):
     return device
 
 
+def start_mbient_stream(_, device_args):
+    device = Mbient(device_args)
+    if not device.prepare():
+        return None
+    device.start()
+    return device
+
+
+def start_intel_stream(_, device_args):
+    return VidRec_Intel(device_args)
+
+
+def start_flir_stream(_, device_args):
+    return VidRec_Flir(device_args)
+
+
+def start_iphone_stream(_, device_args):
+    device = IPhone(name="IPhoneFrameIndex", device_args=device_args)
+    return device if device.prepare() else None
+
+
 def start_yeti_stream(_, device_args):
     device = MicStream(device_args)
     device.start()
@@ -42,21 +67,44 @@ def start_yeti_stream(_, device_args):
 # --------------------------------------------------------------------------------
 
 SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
-    'acquisition': ['Mic_Yeti_dev_1'],
-    'presentation': ['Eyelink_1', 'Mouse'],
+    'acquisition': [
+        'Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3', 'Intel_D455_4',
+        'FLIR_blackfly_1',
+        'IPhone_dev_1',
+        'Mbient_BK_1', 'Mbient_LH_2', 'Mbient_RH_2',
+        'Mic_Yeti_dev_1',
+    ],
+    'presentation': ['Eyelink_1', 'Mouse', 'Mbient_LF_2', 'Mbient_RF_2'],
 }
 
 
 # TODO: Move this mapping to configuration files
 DEVICE_START_FUNCS: Dict[str, Callable] = {
     'Eyelink_1': start_eyelink_stream,
+    'FLIR_blackfly_1': start_flir_stream,
+    'Intel_D455_1': start_intel_stream,
+    'Intel_D455_2': start_intel_stream,
+    'Intel_D455_3': start_intel_stream,
+    'Intel_D455_4': start_intel_stream,
+    'IPhone_dev_1': start_iphone_stream,
+    'Mbient_BK_1': start_mbient_stream,
+    'Mbient_LF_2': start_mbient_stream,
+    'Mbient_LH_2': start_mbient_stream,
+    'Mbient_RF_2': start_mbient_stream,
+    'Mbient_RH_2': start_mbient_stream,
     'Mic_Yeti_dev_1': start_yeti_stream,
     'Mouse': start_mouse_stream,
 }
 
 
 N_ASYNC_THREADS: int = 3  # The maximum number of mbients on one machine
-ASYNC_STARTUP: List[str] = []
+ASYNC_STARTUP: List[str] = [
+    'Mbient_BK_1',
+    'Mbient_LF_2',
+    'Mbient_LH_2',
+    'Mbient_RF_2',
+    'Mbient_RH_2',
+]
 
 
 class DeviceNotFoundException(Exception):

@@ -81,7 +81,7 @@ class TestMetadator(unittest.TestCase):
         meta.fill_task_row(vals_dict, conn)
 
     def test_fill_device_rows(self):
-        conn = meta.get_database_connection("mock_neurobooth_1", False)
+        conn = meta.get_database_connection("mock_neurobooth_1")
         collection_id = 'mvp_030'
         task_dict = meta.build_tasks_for_collection(collection_id)
         self.assertIsNotNone(task_dict)
@@ -90,7 +90,7 @@ class TestMetadator(unittest.TestCase):
             meta._fill_device_param_row(conn, device)
 
     def test_log_task_params(self):
-        conn = meta.get_database_connection("mock_neurobooth_1", False)
+        conn = meta.get_database_connection("mock_neurobooth_1")
         collection_id = 'mvp_030'
         task_dict = meta.build_tasks_for_collection(collection_id)
         self.assertIsNotNone(task_dict)

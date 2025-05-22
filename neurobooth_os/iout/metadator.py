@@ -48,17 +48,12 @@ def str_fileid_to_eval(stim_file_str):
     return task_func
 
 
-def get_database_connection(database: Optional[str] = None, validate_config_paths: bool = True) -> connection:
+def get_database_connection(database: Optional[str] = None) -> connection:
     """Gets connector to the database
 
     :param database: If provided, override the database name in the configration.
-    :param validate_config_paths: True if the config file path should be validated.
-        This should generally be True outside test scenarios
     :returns: Connector to psycopg database
     """
-    import neurobooth_os.log_manager as log_man
-    log_man.make_default_logger(log_level=logging.ERROR, validate_paths=validate_config_paths)
-
     database_info = cfg.neurobooth_config.database
     if database_info.ssh_tunnel and database_info.host not in ["127.0.0.1", "localhost"]:
         # If the DB is not on this host, use SSH tunneling for access
