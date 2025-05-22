@@ -233,7 +233,7 @@ def start_server(node_name, save_pid_txt=True):
 
     # Get list of scheduled tasks and run TaskOnEvent if not running
     if s.name:
-        cmd_out = f"SCHTASKS /query /fo CSV /nh /S {s.name} /U {s.name}\\{s.user} /P {s.password}"
+        cmd_out = f"SCHTASKS /query /fo CSV /nh /S {s.name} /U {s.user} /P {s.password}"
     else:
         cmd_out = "SCHTASKS /query /fo CSV /nh"
 
@@ -254,7 +254,7 @@ def start_server(node_name, save_pid_txt=True):
 
     # Run scheduled task cmd1 creates a scheduled task, cmd2 initiates it
     if s.name:
-        cmd_str = f"SCHTASKS /S {s.name} /U {s.name}\\{s.user} /P {s.password}"
+        cmd_str = f"SCHTASKS /S {s.name} /U {s.user} /P {s.password}"
     else:
         cmd_str = f"SCHTASKS"
 
