@@ -105,10 +105,13 @@ class VidRec_Webcam:
 
     def prepare(self, name="temp_video") -> None:
         self.open_stream()
-        self.video_filename = f"{name}_webcam.mp4"
+        self.video_filename = f"{name}_webcam.avi"
         fourcc = cv2.VideoWriter_fourcc(*self.device_args.fourcc)
-        fps = self.camera.get(cv2.CAP_PROP_FPS)
-        frame_size = (self.camera.get(cv2.CAP_PROP_FRAME_WIDTH), self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = float(self.device_args.sample_rate())
+        frame_size = (
+            int(self.camera.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            int(self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        )
         self.video_out = cv2.VideoWriter(self.video_filename, fourcc, fps, frame_size)
 
         msg_body = NewVideoFile(stream_name=self.stream_name, filename=op.split(self.video_filename)[-1])
@@ -186,20 +189,28 @@ def test_script() -> None:
     import numpy as np
 
     args = WebcamDeviceArgs(
-        device_index=0,
+        device_name='webcam',
+        device_id='WebcamDev',
         sensor_array=[StandardSensorArgs(
             sensor_id='Webcam1',
-            file_type='.mp4',
+            file_type='.avi',
             arg_parser='',
-            sample_rate=60,
+            sample_rate=120,
             width_px=1920,
             height_px=1080,
-            ENV_devices={'fourcc': 'MJPG', 'camera_idx': 1}
+            ENV_devices={}
         )],
+        sensor_ids=['Webcam1'],
+        ENV_devices={'WebcamDev': {'fourcc': 'MJPG', 'camera_idx': 0}},
+        wearable_bool=False,
+        arg_parser='',
     )
+
+    print('Beginning Capture')
     webcam = VidRec_Webcam(device_args=args)
-    webcam.prepare('test_video')
+    webcam.start('test_video')
     sleep(5)
+    print('Ending Capture')
     webcam.stop()
     sleep(0.5)
     webcam.ensure_stopped(0.5)
