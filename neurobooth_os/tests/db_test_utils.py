@@ -27,7 +27,7 @@ def delete_records(db_table, where=None) -> None:
 
 
 def get_connection():
-    c = get_database_connection(TEST_DATABASE, False)
+    c = get_database_connection(TEST_DATABASE)
     c.autocommit = True
     return c
 

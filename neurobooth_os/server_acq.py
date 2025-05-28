@@ -1,8 +1,6 @@
 import base64
-import gc
 import os
 import sys
-import random
 from time import time, sleep
 from typing import Dict, List, Optional
 
@@ -18,7 +16,7 @@ from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
 from neurobooth_os.msg.messages import Message, MsgBody, PrepareRequest, RecordingStoppedMsg, StartRecording, \
-    RecordingStartedMsg, MbientResetResults, StatusMessage, Request, SessionPrepared, FramePreviewReply, \
+    RecordingStartedMsg, MbientResetResults, Request, SessionPrepared, FramePreviewReply, \
     ServerStarted, ErrorMessage
 
 
