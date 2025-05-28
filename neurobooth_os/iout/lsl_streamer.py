@@ -42,7 +42,7 @@ def start_yeti_stream(_, device_args):
 # --------------------------------------------------------------------------------
 
 SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
-    'acquisition': ['Mic_Yeti_dev_1'],
+    'acquisition': ['Mic_Yeti_dev_1', 'Webcam_Elgato_1'],
     'presentation': ['Eyelink_1', 'Mouse'],
 }
 
@@ -156,7 +156,7 @@ class DeviceManager:
     @staticmethod
     def is_camera(stream_name: str) -> bool:
         """Test to see if a stream is a camera stream based on its name."""
-        return stream_name.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone"]
+        return stream_name.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone", "Webcam"]
 
     def get_camera_streams(self, task_devices: List[DeviceArgs]) -> List[Any]:
         device_ids = [dev.device_id for dev in task_devices]

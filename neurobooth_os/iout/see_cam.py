@@ -5,11 +5,8 @@ Created on Mon May 10 13:01:13 2021
 @author: ACQ
 """
 
-import numpy as np
 import cv2
 import pyrealsense2 as rs
-
-import neurobooth_os.iout.dshowcapture as dshowcapture
 
 video_cap = dshowcapture.DShowCapture()
 ndevs = video_cap.get_devices()
