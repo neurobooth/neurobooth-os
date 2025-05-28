@@ -195,7 +195,7 @@ def test_script() -> None:
             sensor_id='Webcam1',
             file_type='.avi',
             arg_parser='',
-            sample_rate=120,
+            sample_rate=60,
             width_px=1920,
             height_px=1080,
             ENV_devices={}
