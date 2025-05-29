@@ -237,8 +237,6 @@ class WebcamDeviceArgs(DeviceArgs):
         my_id = kwargs.get('device_id')
         camera_idx = kwargs['ENV_devices'][my_id]['camera_idx']
         kwargs['camera_idx'] = camera_idx
-        fourcc = kwargs['ENV_devices'][my_id]['fourcc']
-        kwargs['fourcc'] = fourcc
         super().__init__(**kwargs)
 
     def sample_rate(self):

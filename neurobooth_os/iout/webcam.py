@@ -201,7 +201,8 @@ def test_script() -> None:
             ENV_devices={}
         )],
         sensor_ids=['Webcam1'],
-        ENV_devices={'WebcamDev': {'fourcc': 'MJPG', 'camera_idx': 0}},
+        fourcc='MJPG',
+        ENV_devices={'WebcamDev': {'camera_idx': 0}},
         wearable_bool=False,
         arg_parser='',
     )
