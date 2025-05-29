@@ -15,9 +15,9 @@ from typing import Dict, Optional, List
 import cv2
 import numpy as np
 
-import FreeSimpleGUI as sg
+import PySimpleGUI as sg
 import liesl
-from FreeSimpleGUI import Multiline
+from PySimpleGUI import Multiline
 
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
