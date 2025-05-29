@@ -55,7 +55,7 @@ def get_database_connection(database: Optional[str] = None) -> connection:
     :returns: Connector to psycopg database
     """
     database_info = cfg.neurobooth_config.database
-    if database_info.host not in ["127.0.0.1", "localhost"]:
+    if database_info.ssh_tunnel and database_info.host not in ["127.0.0.1", "localhost"]:
         # If the DB is not on this host, use SSH tunneling for access
         tunnel = SSHTunnelForwarder(
             database_info.remote_host,

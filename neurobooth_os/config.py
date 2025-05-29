@@ -15,11 +15,11 @@ class ConfigException(Exception):
 
 def get_server_name(abbreviation: str) -> Optional[str]:
     abbr = abbreviation.upper()
-    if "STM" in abbr:
+    if "STM" in abbr or "PARTICIPANT" in abbr:
         return 'presentation'
     if "ACQ" in abbr:
         return 'acquisition'
-    if "CTR" in abbr:
+    if "CTR" in abbr or "COORDINATOR" in abbr:
         return 'control'
     return None
 
@@ -47,6 +47,7 @@ class DatabaseSpec(BaseModel):
     password: str
     host: str
     port: int
+    ssh_tunnel: bool
     remote_user: str
     remote_host: str
 

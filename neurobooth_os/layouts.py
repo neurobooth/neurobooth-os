@@ -6,7 +6,7 @@ from datetime import datetime
 import os.path as op
 import numpy as np
 
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 import cv2
 
 import neurobooth_os.iout.metadator as meta
