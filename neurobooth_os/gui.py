@@ -486,6 +486,26 @@ def _get_nodes():
     return ["acquisition", "presentation"]
 
 
+def display_calibration_key_info(win):
+    instructions  = """
+Calibration instructions: 
+    Press C to trigger calibration mode
+    Press ENTER to start calibration
+    
+    Press V to trigger validation mode
+    Press ENTER to start validation
+    
+    Press O to accept calibration
+    
+    Press ESC to exit calibration or validation mode.
+    Pressing ESC outside of these modes ends the calibration task
+    
+    Press ENTER outside of these modes to toggle between eyes
+"""
+    for line in instructions.splitlines():
+        write_output(win, line)
+
+
 def gui(logger):
     """Start the Graphical User Interface.
     """
@@ -654,6 +674,8 @@ def gui(logger):
                     tsk_strt_time,
                     conn
                 )
+                if "calibration" in task_id.lower():
+                    display_calibration_key_info(window)
 
             # Signal a task ended: stop LSL recording and update gui
             elif event == "task_finished":
