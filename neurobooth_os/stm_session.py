@@ -55,7 +55,12 @@ class StmSession(BaseModel):
 
     @staticmethod
     def init_window():
-        return utl.make_win(full_screen=config.neurobooth_config.fullscreen)
+        screen_config = config.neurobooth_config.screen
+        return utl.make_win(
+            full_screen=screen_config.fullscreen,
+            monitor_width=screen_config.monitor_width,
+            subj_screendist_cm=screen_config.subject_distance_to_screen_cm,
+        )
 
     def init_device_manager(self) -> DeviceManager:
         device_manager = DeviceManager(node_name='presentation')
