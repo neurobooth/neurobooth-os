@@ -1,5 +1,5 @@
 import neurobooth_os.iout.iphone as iphone
-from neurobooth_os.iout.lsl_streamer import get_device_assignment
+from neurobooth_os.iout.lsl_streamer import is_device_assigned
 import neurobooth_os.config as cfg
 import re
 import os
@@ -168,7 +168,7 @@ def main():
 
     # Check if we should be running the dump on this machine.
     server_name = cfg.get_server_name_from_env()
-    if get_device_assignment('IPhone_dev_1') != server_name:
+    if is_device_assigned('IPhone_dev_1', server_name):
         logger.debug(f'IPhone not assigned to {server_name}.')
         return
 

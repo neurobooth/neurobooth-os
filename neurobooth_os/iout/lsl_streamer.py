@@ -124,6 +124,16 @@ def get_device_assignment(device_id: str) -> str:
     raise DeviceNotFoundException(f'{device_id} is not assigned to any server.')
 
 
+def is_device_assigned(device_id: str, server_name: str) -> bool:
+    """
+    Check whether a device is assigned to a particular server.
+    :param device_id: The ID of the device.
+    :param server_name: The name of the server.
+    :return: True if the device is assigned to a server, False otherwise.
+    """
+    return device_id in SERVER_ASSIGNMENTS[server_name]
+
+
 # --------------------------------------------------------------------------------
 # Handle the device life cycle
 # --------------------------------------------------------------------------------
