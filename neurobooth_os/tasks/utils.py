@@ -37,9 +37,8 @@ def send_marker(marker, msg):
 
 def make_win(
         full_screen=True,
-        monitor_width=55,
-        subj_screendist_cm=60,
-        # in centimeters from subject head to middle of the screen in our setup. The eye tracker distance measured is from head to center of eye tracker
+        monitor_width=55,  # Width (cm) of viewable monitor area, used for psychopy sizing of UI
+        subj_screendist_cm=60,  # Distance (cm) from subject head to middle of screen, used for psychopy sizing of UI
 ):
     mon = monitors.getAllMonitors()[0]
     custom_mon = monitors.Monitor(
