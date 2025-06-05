@@ -4,7 +4,13 @@
     "split_xdf_backlog": "C:/neurobooth/split_xdf_backlog.csv",
     "cam_inx_lowfeed": 0,
     "default_log_path": "D:/neurobooth/neurobooth_logs",
-    "fullscreen": false,
+    "screen": {
+        "fullscreen": false,
+        "width_cm": 55,
+        "subject_distance_to_screen_cm": 60,
+        "min_refresh_rate_hz": 230,
+        "max_refresh_rate_hz": 245
+    },
     "acquisition": {
         "name": "acq-staging",
         "user": "ACQ",
