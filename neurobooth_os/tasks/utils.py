@@ -14,6 +14,7 @@ from psychopy import core, event, monitors
 import time
 import os.path as op
 
+from pyglet import window
 from pylsl import local_clock
 from psychopy import visual
 
@@ -35,6 +36,29 @@ def send_marker(marker, msg):
     marker.push_sample([f"{msg}_{time.time()}"])
 
 
+class InvalidWindowRefreshRate(Exception):
+    """An error signaling a window refresh rate that is out of specified bounds"""
+    pass
+
+
+def check_window_refresh_rate(win: visual.window.Window, min_rate: float, max_rate: float):
+    """
+    Measures the refresh rate of the window/screen, and raises an error if it is out of tolerances.
+    :param win: The PyschoPy window object
+    :param min_rate: The minimum acceptable refresh rate (Hz)
+    :param max_rate: The maximum acceptable refresh rate (Hz)
+    :return:
+    """
+    set_rate = 1 / win.monitorFramePeriod
+    actual_rate = win.getActualFrameRate(nIdentical=30, nMaxFrames=300, nWarmUpFrames=10, threshold=1)
+    if actual_rate is None:
+        raise InvalidWindowRefreshRate("Window frame rate measurement returned 'None'.")
+
+    print(f"Monitor Refresh Rate: Set = {set_rate:0.2f} Hz, Actual = {actual_rate:0.2f} Hz")
+
+    if min(set_rate, actual_rate) < min_rate or max(set_rate, actual_rate) > max_rate:
+        raise InvalidWindowRefreshRate(f"Set = {set_rate:0.2f} Hz, Actual = {actual_rate:0.2f} Hz")
+
 def make_win(
         full_screen=True,
         monitor_width=55,  # Width (cm) of viewable monitor area, used for psychopy sizing of UI
@@ -50,16 +74,6 @@ def make_win(
     custom_mon.saveMon()
     win = visual.Window(
         mon_size, fullscr=full_screen, monitor=custom_mon, units="pix", color=(0, 0, 0)
-    )
-    print("Monitor Set Refresh Rate:{:.2f} Hz".format(1 / win.monitorFramePeriod))
-    actual_frame_rate = win.getActualFrameRate(
-        nIdentical=30, nMaxFrames=300, nWarmUpFrames=10, threshold=1
-    )
-    if actual_frame_rate is None:
-        raise RuntimeError("Window returned 'None' instead of frame rate.")
-
-    print(
-        "Monitor Actual Refresh Rate:{:.2f} Hz".format(actual_frame_rate)
     )
     return win
 

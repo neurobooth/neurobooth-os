@@ -56,11 +56,15 @@ class StmSession(BaseModel):
     @staticmethod
     def init_window():
         screen_config = config.neurobooth_config.screen
-        return utl.make_win(
+        win = utl.make_win(
             full_screen=screen_config.fullscreen,
             monitor_width=screen_config.monitor_width,
             subj_screendist_cm=screen_config.subject_distance_to_screen_cm,
         )
+        utl.check_window_refresh_rate(
+            win, min_rate=screen_config.min_refresh_rate_hz, max_rate=screen_config.max_refresh_rate_hz
+        )
+        return win
 
     def init_device_manager(self) -> DeviceManager:
         device_manager = DeviceManager(node_name='presentation')

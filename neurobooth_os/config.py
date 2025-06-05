@@ -45,6 +45,8 @@ class ScreenSpec(BaseModel):
     fullscreen: bool
     width_cm: int
     subject_distance_to_screen_cm: int
+    min_refresh_rate_hz: float
+    max_refresh_rate_hz: float
 
 
 class DatabaseSpec(BaseModel):
