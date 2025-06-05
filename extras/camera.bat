@@ -1,2 +1,2 @@
-call  C:\Users\CTR\anaconda3\Scripts\activate.bat C:\Users\CTR\anaconda3\envs\neurobooth-staging
-call start /W python  C:\neurobooth-os\neurobooth_os\iout\see_cam.py
+call  %NB_CONDA_INSTALL%\Scripts\activate.bat %NB_CONDA_ENV%
+call start /W python %NB_INSTALL%\extras\see_cam.py
