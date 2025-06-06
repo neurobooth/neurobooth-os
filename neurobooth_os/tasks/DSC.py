@@ -129,7 +129,7 @@ class DSC(Task_Eyetracker):
             units="deg",
         )
 
-    def present_practice(self, prompt=True, subj_id=None):
+    def present_practice(self, subj_id=None):
 
         self.results = []  # array to store trials details and responses
         self.outcomes = {}  # object containing outcome variables
@@ -152,9 +152,10 @@ class DSC(Task_Eyetracker):
             elif frame.type in ["practice"]:  # Handle practice and test frames
                 self.execute_frame(frame)
             else: # Proceed with present_task
+                self.frameSequence.append(frame)
                 break
 
-    def present_task(self, prompt=True, duration=0, subj_id=None, **kwargs):
+    def present_task(self, prompt=True, duration=0, **kwargs):
 
         while len(self.frameSequence):
             frame: FrameDef = self.frameSequence.pop(0)

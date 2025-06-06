@@ -424,9 +424,9 @@ class TrialFrame(MOTFrame):
         prev_button_state = None
         mouse.clickReset()
         while n_clicks < self.n_targets:
-            keys = utils.get_keys(['r'])
-            if 'r' in keys:
-                raise TrialTimeout()
+            # keys = utils.get_keys(['r'])
+            # if 'r' in keys:
+            #     raise TrialTimeout()
                 
             buttons, click_times = mouse.getPressed(getTime=True)
             left_button_click, left_button_click_time = buttons[0] > 0, click_times[0]

@@ -145,7 +145,7 @@ class MOT(Task_Eyetracker):
         self.practice_chunks = [self._create_chunk(chunk) for chunk in practice_chunks]
         self.test_chunks = [self._create_chunk(chunk) for chunk in test_chunks]
 
-    def present_practice(self, prompt=True, subj_id=None):
+    def present_practice(self, subj_id=None):
         if subj_id is not None:  # The provided argument contains the full session timestamp...
             self.subject_id = subj_id
 
@@ -166,7 +166,6 @@ class MOT(Task_Eyetracker):
         try:
             for chunk in self.test_chunks:
                 self.run_chunk(chunk)
-
                 # Check early stopping criterion and stop if met
                 total_click_duration = MOT.chunk_click_duration(chunk)
                 if total_click_duration > self.chunk_timeout_sec:
@@ -174,9 +173,11 @@ class MOT(Task_Eyetracker):
                     break
         except TaskAborted:
             print('MOT aborted')
+
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
 
         self.save_results()
+
         if prompt:  # Check if task should be repeated
             func_kwargs_func = {"prompt": prompt}
             self.n_repetitions += 1
