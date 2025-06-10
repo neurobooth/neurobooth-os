@@ -53,8 +53,6 @@ def launch_gui() -> None:
     load_config_by_service_name("CTR")
     conn = metadator.get_database_connection()
 
-    placeholder_dob = "YYYY-MM-DD"
-
     options = load_add_subject_options()
     study_options = options.study_options
     gender_options = options.gender_options
@@ -76,8 +74,8 @@ def launch_gui() -> None:
 
     [sg.Column([[
         sg.Text("Date of Birth:", size=(12, 1), font=font),
-        sg.Input(key="-DOB-", size=(20, 1), default_text=placeholder_dob, tooltip="Format: YYYY-MM-DD", font=font,
-                 background_color="white", text_color="black", enable_events=True),
+        sg.Input(key="-DOB-", size=(20, 1), default_text="YYYY-MM-DD", tooltip="Format: YYYY-MM-DD", font=font,
+                 background_color="white", text_color="black"),
         sg.CalendarButton("Pick Date", target="-DOB-", format="%Y-%m-%d", size=(10, 1), font=font)
     ]], pad=(0, 10))],
 
@@ -119,10 +117,6 @@ def launch_gui() -> None:
             if study_code:
                 subject_id = get_next_subject_id(study_code, conn)
                 window["-SUBJECT_ID-"].update(subject_id)
-        
-        if event == "-DOB-":
-            if values["-DOB-"] == placeholder_dob:
-                window["-DOB-"].update("")
 
         if event == "Submit":
             submit_success = submit_event(values, options, conn)
@@ -132,9 +126,6 @@ def launch_gui() -> None:
                     "-BIRTHPLACE-","-SUBJECT_ID-", "-STUDY-",
                 ]:
                     window[key].update("")
-                
-                if not values["-DOB-"]:
-                    window["-DOB-"].update(placeholder_dob)
 
     conn.close()
     window.close()
