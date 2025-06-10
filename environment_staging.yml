@@ -163,4 +163,3 @@ dependencies:
       - git+https://github.com/neurobooth/neurobooth-terra.git#egg=neurobooth_terra
       - h5py==3.10.0
       - h5io==0.2.1
-prefix: /Users/aquarius/anaconda3/envs/neurobooth-staging
