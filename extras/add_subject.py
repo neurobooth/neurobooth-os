@@ -5,7 +5,7 @@ from typing import Dict
 import os
 from datetime import datetime
 
-import neurobooth_os.config as config
+from neurobooth_os.config import load_config_by_service_name
 from neurobooth_os.config import ConfigException
 from neurobooth_os.iout import metadator
 
@@ -50,8 +50,8 @@ def launch_gui() -> None:
     sg.theme("Dark Grey 9")
     font = ("Arial", 12)
 
-    config.load_config_by_service_name("CTR")
-    conn = metadator.get_database_connection(config.database)
+    load_config_by_service_name("CTR")
+    conn = metadator.get_database_connection()
 
     options = load_add_subject_options()
     study_options = options.study_options
