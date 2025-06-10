@@ -73,7 +73,7 @@ def launch_gui() -> None:
 
         [sg.Column([[
             sg.Text("Date of Birth:", size=(12, 1), font=font),
-            sg.Input(key="-DOB-", size=(20, 1), placeholder="YYYY-MM-DD", tooltip="Format: YYYY-MM-DD", font=font),
+            sg.Input(key="-DOB-", size=(20, 1), default_text="YYYY-MM-DD", tooltip="Format: YYYY-MM-DD", font=font),
             sg.CalendarButton("Pick Date", target="-DOB-", format="%Y-%m-%d", size=(10, 1), font=font)
         ]], pad=(0, 10))],
 
