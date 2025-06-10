@@ -59,48 +59,51 @@ def launch_gui() -> None:
     country_options = options.country_options
 
     layout = [
-        [sg.Column([[
-            sg.Text("Study:", size=(12, 1), font=font),
-            sg.Combo(list(study_options.keys()), key="-STUDY-", readonly=True, enable_events=True, size=(30, 1), font=font),
-            sg.Text("Subject ID:", size=(12, 1), font=font),
-            sg.Input(key="-SUBJECT_ID-", size=(30, 1), disabled=True, readonly=True, font=font)
-        ]], pad=(0, 10))],
+    [sg.Column([[
+        sg.Text("Study:", size=(12, 1), font=font),
+        sg.Combo(list(study_options.keys()), key="-STUDY-", readonly=True, enable_events=True, size=(30, 1), font=font),
+        sg.Text("Subject ID:", size=(12, 1), font=font),
+        sg.Input(key="-SUBJECT_ID-", size=(30, 1), disabled=True, readonly=True, font=font,
+                 background_color="white", text_color="black")
+    ]], pad=(0, 10))],
 
-        [sg.Column([[
-            sg.Text("Gender:", size=(12, 1), font=font),
-            sg.Combo(list(gender_options.keys()), key="-GENDER-", readonly=True, size=(30, 1), font=font)
-        ]], pad=(0, 10))],
+    [sg.Column([[
+        sg.Text("Gender:", size=(12, 1), font=font),
+        sg.Combo(list(gender_options.keys()), key="-GENDER-", readonly=True, size=(30, 1), font=font)
+    ]], pad=(0, 10))],
 
-        [sg.Column([[
-            sg.Text("Date of Birth:", size=(12, 1), font=font),
-            sg.Input(key="-DOB-", size=(20, 1), default_text="YYYY-MM-DD", tooltip="Format: YYYY-MM-DD", font=font),
-            sg.CalendarButton("Pick Date", target="-DOB-", format="%Y-%m-%d", size=(10, 1), font=font)
-        ]], pad=(0, 10))],
+    [sg.Column([[
+        sg.Text("Date of Birth:", size=(12, 1), font=font),
+        sg.Input(key="-DOB-", size=(20, 1), default_text="YYYY-MM-DD", tooltip="Format: YYYY-MM-DD", font=font,
+                 background_color="white", text_color="black"),
+        sg.CalendarButton("Pick Date", target="-DOB-", format="%Y-%m-%d", size=(10, 1), font=font)
+    ]], pad=(0, 10))],
 
-        [sg.Column([[
-            sg.Text("First Name:", size=(12, 1), font=font),
-            sg.Input(key="-FNAME-", size=(20, 1), font=font),
-            sg.Text("Middle Name:", size=(12, 1), pad=((20, 0), 0), font=font),
-            sg.Input(key="-MNAME-", size=(20, 1), font=font),
-            sg.Text("Last Name:", size=(12, 1), pad=((20, 0), 0), font=font),
-            sg.Input(key="-LNAME-", size=(20, 1), font=font)
-        ]], pad=(0, 10))],
+    [sg.Column([[
+        sg.Text("First Name:", size=(12, 1), font=font),
+        sg.Input(key="-FNAME-", size=(20, 1), font=font, background_color="white", text_color="black"),
+        sg.Text("Middle Name:", size=(12, 1), pad=((20, 0), 0), font=font),
+        sg.Input(key="-MNAME-", size=(20, 1), font=font, background_color="white", text_color="black"),
+        sg.Text("Last Name:", size=(12, 1), pad=((20, 0), 0), font=font),
+        sg.Input(key="-LNAME-", size=(20, 1), font=font, background_color="white", text_color="black")
+    ]], pad=(0, 10))],
 
-        [sg.Column([[
-            sg.Text("Country of Birth:", size=(12, 1), font=font),
-            sg.Combo(list(country_options.keys()), key="-COB-", readonly=True, size=(30, 1), font=font),
-            sg.Text("Birthplace:", size=(12, 1), pad=((20, 0), 0), font=font),
-            sg.Input(key="-BIRTHPLACE-", size=(30, 1), font=font)
-        ]], pad=(0, 10))],
+    [sg.Column([[
+        sg.Text("Country of Birth:", size=(12, 1), font=font),
+        sg.Combo(list(country_options.keys()), key="-COB-", readonly=True, size=(30, 1), font=font),
+        sg.Text("Birthplace:", size=(12, 1), pad=((20, 0), 0), font=font),
+        sg.Input(key="-BIRTHPLACE-", size=(30, 1), font=font, background_color="white", text_color="black")
+    ]], pad=(0, 10))],
 
-        [sg.Column([[
-            sg.Push(),
-            sg.Button("Submit", size=(10, 1), font=font),
-            sg.Push()
-        ]], pad=(0, 10))]
+    [sg.Column([[
+        sg.Push(),
+        sg.Button("Submit", size=(10, 1), font=font),
+        sg.Push()
+    ]], pad=(0, 10))]
     ]
 
-    window = sg.Window("Study Selection", layout, size=(800, 500), resizable=True, finalize=True)
+
+    window = sg.Window("Study Selection", layout, size=(1200, 375), resizable=True, finalize=True)
 
     while True:
         event, values = window.read()
