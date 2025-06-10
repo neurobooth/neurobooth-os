@@ -16,6 +16,7 @@ from enum import IntEnum
 from hashlib import md5
 from base64 import b64decode
 
+from neurobooth_os.iout.device import CameraPreviewer
 from neurobooth_os.iout.metadator import post_message, get_database_connection
 from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.iout.usbmux import USBMux
@@ -93,7 +94,7 @@ def _handle_panic(func):
     return wrapper_panic
 
 
-class IPhone:
+class IPhone(CameraPreviewer):
     """
     Handles interactions with an iPhone device running the Neurobooth app.
     Intended Lifecycle:
