@@ -25,7 +25,7 @@ def load_add_subject_options() -> AddSubjectGuiOptions:
         return AddSubjectGuiOptions(**yaml.load(f, yaml.FullLoader))
 
 
-def get_next_subject_id(study_code, conn):
+def get_next_subject_id(study_code: str, conn) -> str:
     with conn.cursor() as cur:
         cur.execute("""
             SELECT subject_id
@@ -46,14 +46,14 @@ def get_next_subject_id(study_code, conn):
         return f"{study_code}{str(new_number).zfill(4)}"
 
 
-def launch_gui():
-    sg.theme("LightBlue2")
-    font = ("Helvetica", 12)
+def launch_gui() -> None:
+    sg.theme("Dark Grey 9")
+    font = ("Arial", 12)
 
     config.load_config_by_service_name("CTR")
     conn = metadator.get_database_connection(config.database)
-    options = load_add_subject_options()
 
+    options = load_add_subject_options()
     study_options = options.study_options
     gender_options = options.gender_options
     country_options = options.country_options
@@ -116,75 +116,83 @@ def launch_gui():
                 window["-SUBJECT_ID-"].update(subject_id)
 
         if event == "Submit":
-            required_fields = {
-                "Study": values["-STUDY-"],
-                "First Name": values["-FNAME-"],
-                "Last Name": values["-LNAME-"],
-                "Date of Birth": values["-DOB-"]
-            }
-            missing = [label for label, val in required_fields.items() if not val]
-            if missing:
-                sg.popup_error(f"The following required fields are missing: {', '.join(missing)}")
-                continue
-
-            try:
-                datetime.strptime(values["-DOB-"], "%Y-%m-%d")
-            except ValueError:
-                sg.popup_error("Date must be in YYYY-MM-DD format.")
-                continue
-
-            data = {
-                "subject_id": values["-SUBJECT_ID-"],
-                "first_name_birth": values["-FNAME-"],
-                "middle_name_birth": values["-MNAME-"],
-                "last_name_birth": values["-LNAME-"],
-                "date_of_birth_subject": values["-DOB-"],
-                "country_of_birth": country_options.get(values["-COB-"], ""),
-                "gender_at_birth": gender_options.get(values["-GENDER-"], ""),
-                "birthplace": values["-BIRTHPLACE-"],
-                "redcap_event_name": "manual",
-                "guid": "",
-                "old_subject_id": ""
-            }
-
-            for key in data:
-                if data[key] is None:
-                    data[key] = ""
-
-            try:
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        INSERT INTO subject (
-                            subject_id, first_name_birth, middle_name_birth, last_name_birth,
-                            date_of_birth_subject, country_of_birth, gender_at_birth,
-                            birthplace, redcap_event_name, guid, old_subject_id
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """, (
-                        data["subject_id"],
-                        data["first_name_birth"],
-                        data["middle_name_birth"],
-                        data["last_name_birth"],
-                        data["date_of_birth_subject"],
-                        data["country_of_birth"],
-                        data["gender_at_birth"],
-                        data["birthplace"],
-                        data["redcap_event_name"],
-                        data["guid"],
-                        data["old_subject_id"]
-                    ))
-                    conn.commit()
-                    sg.popup("Submission successful!")
-
-                    # Clear fields after submission
-                    for key in ["-FNAME-", "-MNAME-", "-LNAME-", "-DOB-", "-GENDER-", "-COB-",
-                                "-BIRTHPLACE-", "-SUBJECT_ID-", "-STUDY-"]:
-                        window[key].update("")
-            except Exception as e:
-                sg.popup_error("Database insert failed:", str(e))
+            submit_success = submit_event(values, options, conn)
+            if submit_success:  # Clear fields after submission
+                for key in [
+                    "-FNAME-", "-MNAME-", "-LNAME-", "-DOB-", "-GENDER-", "-COB-",
+                    "-BIRTHPLACE-","-SUBJECT_ID-", "-STUDY-",
+                ]:
+                    window[key].update("")
 
     conn.close()
     window.close()
+
+
+def submit_event(values, options, conn) -> bool:
+    required_fields = {
+        "Study": values["-STUDY-"],
+        "First Name": values["-FNAME-"],
+        "Last Name": values["-LNAME-"],
+        "Date of Birth": values["-DOB-"]
+    }
+    missing = [label for label, val in required_fields.items() if not val]
+    if missing:
+        sg.popup_error(f"The following required fields are missing: {', '.join(missing)}")
+        return False
+
+    try:
+        datetime.strptime(values["-DOB-"], "%Y-%m-%d")
+    except ValueError:
+        sg.popup_error("Date must be in YYYY-MM-DD format.")
+        return False
+
+    data = {
+        "subject_id": values["-SUBJECT_ID-"],
+        "first_name_birth": values["-FNAME-"],
+        "middle_name_birth": values["-MNAME-"],
+        "last_name_birth": values["-LNAME-"],
+        "date_of_birth_subject": values["-DOB-"],
+        "country_of_birth": options.country_options.get(values["-COB-"], ""),
+        "gender_at_birth": options.gender_options.get(values["-GENDER-"], ""),
+        "birthplace": values["-BIRTHPLACE-"],
+        "redcap_event_name": "manual",
+        "guid": "",
+        "old_subject_id": ""
+    }
+
+    for key in data:
+        if data[key] is None:
+            data[key] = ""
+
+    try:
+        query_str = """
+        INSERT INTO subject (
+            subject_id, first_name_birth, middle_name_birth, last_name_birth,
+            date_of_birth_subject, country_of_birth, gender_at_birth,
+            birthplace, redcap_event_name, guid, old_subject_id
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        with conn.cursor() as cur:
+            cur.execute(query_str, (
+                data["subject_id"],
+                data["first_name_birth"],
+                data["middle_name_birth"],
+                data["last_name_birth"],
+                data["date_of_birth_subject"],
+                data["country_of_birth"],
+                data["gender_at_birth"],
+                data["birthplace"],
+                data["redcap_event_name"],
+                data["guid"],
+                data["old_subject_id"]
+            ))
+            conn.commit()
+            sg.popup("Submission successful!")
+    except Exception as e:
+        sg.popup_error("Database insert failed:", str(e))
+
+    return True
 
 
 if __name__ == "__main__":
