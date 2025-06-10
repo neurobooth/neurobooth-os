@@ -41,6 +41,14 @@ def validate_folder(value: str) -> None:
         raise IOError(f"The path '{value}' is not a folder.")
 
 
+class ScreenSpec(BaseModel):
+    fullscreen: bool
+    width_cm: int
+    subject_distance_to_screen_cm: int
+    min_refresh_rate_hz: float
+    max_refresh_rate_hz: float
+
+
 class DatabaseSpec(BaseModel):
     dbname: str
     user: str
@@ -71,7 +79,7 @@ class NeuroboothConfig(BaseModel):
     presentation: ServerSpec
     control: ServerSpec
     database: DatabaseSpec
-    fullscreen: bool
+    screen: ScreenSpec
 
     def current_server(self) -> ServerSpec:
         server_name = get_server_name_from_env()
