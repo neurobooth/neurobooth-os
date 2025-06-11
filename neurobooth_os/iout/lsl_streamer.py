@@ -62,36 +62,12 @@ def start_yeti_stream(_, device_args):
     return device
 
 
-# --------------------------------------------------------------------------------
-# Device Configurations
-# TODO: Server assignment and device setup should all be derived from config files!!!
-# --------------------------------------------------------------------------------
-
 config.load_config()
 acq_devices: List[str] = config.neurobooth_config.acquisition.devices
 stm_devices: List[str] = config.neurobooth_config.presentation.devices
 SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
     'acquisition': acq_devices,
     'presentation':stm_devices,
-}
-
-
-# TODO: Move this mapping to configuration files
-DEVICE_START_FUNCS: Dict[str, Callable] = {
-    'Eyelink_1': start_eyelink_stream,
-    'FLIR_blackfly_1': start_flir_stream,
-    'Intel_D455_1': start_intel_stream,
-    'Intel_D455_2': start_intel_stream,
-    'Intel_D455_3': start_intel_stream,
-    'Intel_D455_4': start_intel_stream,
-    'IPhone_dev_1': start_iphone_stream,
-    'Mbient_BK_1': start_mbient_stream,
-    'Mbient_LF_2': start_mbient_stream,
-    'Mbient_LH_2': start_mbient_stream,
-    'Mbient_RF_2': start_mbient_stream,
-    'Mbient_RH_2': start_mbient_stream,
-    'Mic_Yeti_dev_1': start_yeti_stream,
-    'Mouse': start_mouse_stream,
 }
 
 
@@ -165,7 +141,8 @@ class DeviceManager:
             device_id = device_args.device_id
             self.logger.debug(f'Device Manager Starting: {device_id}')
             self.logger.debug(f'Device Manager Starting with args: {device_args}')
-            device = DEVICE_START_FUNCS[device_id](win, device_args)
+            device_start_function: Callable = meta.str_fileid_to_eval(device_args.device_start_function)
+            device = device_start_function(win, device_args)
             if device is None:
                 self.logger.warning(f'Device Manager Failed to Start: {device_id}')
                 return

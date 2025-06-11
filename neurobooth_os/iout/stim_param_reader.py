@@ -95,6 +95,7 @@ class DeviceArgs(EnvArgs):
     device_firmware: Optional[str] = None
     sensor_ids: Optional[List[str]]
     sensor_array: List[SerializeAsAny[SensorArgs]] = []
+    device_start_function: Optional[str] = None
     arg_parser: str
 
     def __init__(self, **kwargs):
