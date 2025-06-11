@@ -8,4 +8,5 @@ device_firmware: '1.7'
 sensor_ids:
 - mbient_acc_1
 - mbient_gyro_1
+device_start_function: iout.lsl_streamer.py::start_mbient_stream()
 arg_parser: iout.stim_param_reader.py::MbientDeviceArgs()

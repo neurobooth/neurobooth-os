@@ -8,4 +8,5 @@ device_model: Yeti Pro
 device_firmware: None
 sensor_ids:
 - Mic_Yeti_sens_1
+device_start_function: iout.lsl_streamer.py::start_yeti_stream()
 arg_parser: iout.stim_param_reader.py::MicYetiDeviceArgs()
