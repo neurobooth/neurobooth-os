@@ -3,10 +3,11 @@ import threading
 from neurobooth_os.iout.stim_param_reader import DeviceArgs, TaskArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 from neurobooth_os import config
-from typing import Any, Dict, List, Callable
+from typing import Any, Dict, List, Callable, ByteString
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
 import neurobooth_os.iout.metadator as meta
+from neurobooth_os.iout.device import CameraPreviewer, CameraPreviewException
 from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 # --------------------------------------------------------------------------------
@@ -69,6 +70,9 @@ SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
     'acquisition': acq_devices,
     'presentation':stm_devices,
 }
+
+
+CAMERA_PREVIEW_DEVICE = 'IPhone_dev_1'
 
 
 N_ASYNC_THREADS: int = 3  # The maximum number of mbients on one machine
@@ -246,11 +250,15 @@ class DeviceManager:
             wait(reset_results.values())
             return {stream_name: result.result() for stream_name, result in reset_results.items()}
 
-    def iphone_frame_preview(self):
-        for stream_name, stream in self.streams.items():
-            if "IPhone" in stream_name:
-                return stream.frame_preview()
-        return None
+    def camera_frame_preview(self) -> ByteString:
+        if CAMERA_PREVIEW_DEVICE not in self.streams:
+            raise CameraPreviewException(f'Device {CAMERA_PREVIEW_DEVICE} unavailable.')
+
+        camera = self.streams[CAMERA_PREVIEW_DEVICE]
+        if not isinstance(camera, CameraPreviewer):
+            raise CameraPreviewException(f'Device {CAMERA_PREVIEW_DEVICE} is not a valid preview device.')
+
+        return camera.frame_preview()
 
     def close_streams(self) -> None:
         for stream_name, stream in self.streams.items():

@@ -433,7 +433,7 @@ def _plot_realtime(window, plttr, inlets):
 
 def handle_frame_preview_reply(window, frame_reply: FramePreviewReply):
     if not frame_reply.image_available or len(frame_reply.image) < 100:
-        write_output(window, "ERROR: no iphone in LSL streams", text_color="red")
+        write_output(window, f"ERROR: Unable to preview ({frame_reply.unavailable_message})", text_color="red")
         return
     frame = base64.b64decode(frame_reply.image)
     nparr = np.frombuffer(frame, dtype=np.uint8)

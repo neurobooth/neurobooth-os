@@ -4,6 +4,11 @@
 from typing import ByteString
 
 
+class CameraPreviewException(Exception):
+    """An exception raised when unable to capture a preview image/frame from a camera stream."""
+    pass
+
+
 class CameraPreviewer:
     def frame_preview(self) -> ByteString:
         """

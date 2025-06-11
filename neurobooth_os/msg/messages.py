@@ -397,10 +397,11 @@ class FramePreviewRequest(MsgBody):
 
 class FramePreviewReply(MsgBody):
     f"""
-    Message from ACQ to controller/gui in response to {FramePreviewRequest} containing an iPhone frame preview image
+    Message from ACQ to controller/gui in response to {FramePreviewRequest} containing an camera frame preview image
     """
-    image: Optional[str]=None
+    image: Optional[str] = None
     image_available: bool
+    unavailable_message: Optional[str] = None
 
     class Config:
         arbitrary_types_allowed = True
