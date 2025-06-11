@@ -4,7 +4,7 @@ Ensures that the base neurobooth-os config file exists and makes config file ava
 """
 
 from os import environ, path, getenv
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 import json
 
@@ -68,6 +68,7 @@ class ServerSpec(BaseModel):
     local_data_dir: str
     bat: Optional[str] = None
     task_name: Optional[str] = None
+    devices: Optional[List] = []
 
 
 class NeuroboothConfig(BaseModel):

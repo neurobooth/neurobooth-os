@@ -2,6 +2,7 @@ import logging
 import threading
 from neurobooth_os.iout.stim_param_reader import DeviceArgs, TaskArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
+from neurobooth_os import config
 from typing import Any, Dict, List, Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
@@ -66,15 +67,12 @@ def start_yeti_stream(_, device_args):
 # TODO: Server assignment and device setup should all be derived from config files!!!
 # --------------------------------------------------------------------------------
 
+config.load_config()
+acq_devices: List[str] = config.neurobooth_config.acquisition.devices
+stm_devices: List[str] = config.neurobooth_config.presentation.devices
 SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
-    'acquisition': [
-        'Intel_D455_1', 'Intel_D455_2', 'Intel_D455_3', 'Intel_D455_4',
-        'FLIR_blackfly_1',
-        'IPhone_dev_1',
-        'Mbient_BK_1', 'Mbient_LH_2', 'Mbient_RH_2',
-        'Mic_Yeti_dev_1',
-    ],
-    'presentation': ['Eyelink_1', 'Mouse', 'Mbient_LF_2', 'Mbient_RF_2'],
+    'acquisition': acq_devices,
+    'presentation':stm_devices,
 }
 
 
