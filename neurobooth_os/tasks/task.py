@@ -151,7 +151,8 @@ class Task:
         self.task_screen = utils.create_text_screen(self.win, text_task)
         self.end_screen = utils.get_end_screen(self.win, self.root_pckg)
 
-        end_slide = op.join(self.root_pckg, "tasks", "assets", "end_slide_01_23_25.jpg")
+        # end_slide = op.join(self.root_pckg, "tasks", "assets", "end_slide_01_23_25.jpg") session_end_slide
+        end_slide = op.join(self.root_pckg, "tasks", "assets", cfg.neurobooth_config.session_end_slide)
         if not op.isfile(end_slide):
             raise IOError(f'Required image file {end_slide} does not exist')
 
