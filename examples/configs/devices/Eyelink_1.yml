@@ -7,4 +7,5 @@ device_model: 'EYELINK CL 6.50  '
 device_firmware: None
 sensor_ids:
 - Eyelink_sens_1
+device_start_function: iout.lsl_streamer.py::start_eyelink_stream()
 arg_parser: iout.stim_param_reader.py::EyelinkDeviceArgs()

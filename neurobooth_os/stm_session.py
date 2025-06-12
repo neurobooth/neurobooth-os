@@ -58,7 +58,7 @@ class StmSession(BaseModel):
         screen_config = config.neurobooth_config.screen
         win = utl.make_win(
             full_screen=screen_config.fullscreen,
-            monitor_width=screen_config.monitor_width,
+            monitor_width=screen_config.width_cm,
             subj_screendist_cm=screen_config.subject_distance_to_screen_cm,
         )
         utl.check_window_refresh_rate(
