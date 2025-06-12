@@ -68,7 +68,7 @@ class ServerSpec(BaseModel):
     local_data_dir: str
     bat: Optional[str] = None
     task_name: Optional[str] = None
-    devices: Optional[List] = []
+    devices: Optional[List[str]] = []
 
 
 class NeuroboothConfig(BaseModel):
