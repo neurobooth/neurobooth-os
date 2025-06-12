@@ -1,9 +1,8 @@
 {
     "remote_data_dir": "Z:/data/",
-    "video_task_dir": "C:/Users/STM/Partners HealthCare Dropbox/Neurobooth/Neurobooth Videos for tasks/Videos_to_present",
-    "split_xdf_backlog": "C:/neurobooth/split_xdf_backlog.csv",
+    "video_task_dir": "C:/Users/TEST_STM/Partners HealthCare Dropbox/Neurobooth/Test Neurobooth Videos for tasks/Videos_to_present",
+    "split_xdf_backlog": "C:/Users/TEST_CTR/nb_os_env/neurobooth_data/split_xdf_backlog.csv",
     "cam_inx_lowfeed": 0,
-    "default_log_path": "D:/neurobooth/neurobooth_logs",
     "screen": {
         "fullscreen": false,
         "width_cm": 55,
@@ -13,34 +12,44 @@
     },
     "acquisition": {
         "name": "acq-staging",
-        "user": "ACQ",
+        "user": "TEST_ACQ",
         "password": "5519",
         "port": 12347,
-        "local_data_dir": "D:/neurobooth/neurobooth_data/",
-        "bat": "%NB_INSTALL%/neurobooth_os/server_acq.bat"
+        "local_data_dir": "E:/neurobooth/test/neurobooth_data/",
+        "bat": "%NB_INSTALL%/neurobooth_os/server_acq.bat",
+        "task_name": "acq-staging",
+        "devices": ["Intel_D455_1", "Intel_D455_2", "Intel_D455_3",
+                    "FLIR_blackfly_1",
+                    "IPhone_dev_1",
+                    "Mbient_BK_1", "Mbient_LH_2", "Mbient_RH_2",
+                    "Mic_Yeti_dev_1"]
     },
     "presentation": {
         "name": "stm-staging",
-        "user": "STM",
+        "user": "TEST_STM",
         "password": "5519",
-	    "port": 12348,
-        "local_data_dir": "C:/neurobooth/neurobooth_data/",
-        "bat": "%NB_INSTALL%/neurobooth_os/server_stm.bat"
+	    "port": 12347,
+        "local_data_dir": "C:/Users/TEST_STM/nb_os_env/neurobooth_data/",
+        "bat": "%NB_INSTALL%/neurobooth_os/server_stm.bat",
+        "task_name": "stm-staging",
+        "devices": ["Eyelink_1", "Mouse",
+                    "Mbient_LF_2", "Mbient_RF_2"]
     },
     "control": {
         "name": "ctr-staging",
-        "user": "CTR",
+        "user": "TEST_CTR",
         "password": "5519",
-	    "port": 12349,
-        "local_data_dir": "C:/neurobooth/neurobooth_data/"
+	    "port": 12347,
+        "local_data_dir": "C:/Users/TEST_CTR/nb_os_env/neurobooth_data/"
     },
     "database": {
-        "dbname": "mock_neurobooth_1",
-        "user": "neuroboother",
-        "password": "neuroboothrocks",
-        "host": "192.168.100.1",
+        "ssh_tunnel": true,
+        "dbname": "staging",
+        "user": "USER",
+        "password": "PASSWD",
+        "host": "neurodoor2.nmr.mgh.harvard.edu",
         "port": 5432,
-        "remote_user": "sp1022",
-        "remote_host": "neurodoor.nmr.mgh.harvard.edu"
+        "remote_user": "mgb_username",
+        "remote_host": "neurodoor2.nmr.mgh.harvard.edu"
     }
 }

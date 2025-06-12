@@ -8,4 +8,5 @@ device_firmware: 05.13.00.50
 sensor_ids:
 - Intel_D455_rgb_1
 - Intel_D455_depth_1
+device_start_function: iout.lsl_streamer.py::start_intel_stream()
 arg_parser: iout.stim_param_reader.py::IntelDeviceArgs()

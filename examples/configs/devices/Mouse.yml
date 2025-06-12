@@ -8,4 +8,5 @@ device_model: null
 device_firmware: null
 sensor_ids:
 - Mouse
+device_start_function: iout.lsl_streamer.py::start_mouse_stream()
 arg_parser: iout.stim_param_reader.py::DeviceArgs()
