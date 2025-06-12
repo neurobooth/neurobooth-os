@@ -80,6 +80,7 @@ class NeuroboothConfig(BaseModel):
     control: ServerSpec
     database: DatabaseSpec
     screen: ScreenSpec
+    session_end_slide: str
 
     def current_server(self) -> ServerSpec:
         server_name = get_server_name_from_env()
