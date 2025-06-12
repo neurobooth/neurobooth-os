@@ -184,10 +184,12 @@ class VidRec_Webcam:
 
 
 def test_script() -> None:
+    import neurobooth_os.config as cfg
     from neurobooth_os.iout.stim_param_reader import StandardSensorArgs
     from time import sleep
     import numpy as np
 
+    cfg.load_config()
     args = WebcamDeviceArgs(
         device_name='webcam',
         device_id='WebcamDev',
