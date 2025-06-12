@@ -223,6 +223,32 @@ class IntelDeviceArgs(DeviceArgs):
         return False
 
 
+class WebcamDeviceArgs(DeviceArgs):
+    """
+    Webcam device arguments
+    The webcam should be only one sensor, represented by an instance of type StandardSensorArgs
+    """
+    camera_idx: int
+    fourcc: str  # Video codec to use
+    sensor_array: List[StandardSensorArgs] = []
+
+    def __init__(self, **kwargs):
+        # pull-in environment specific param "camera_idx", updating the kwargs with the appropriate value
+        my_id = kwargs.get('device_id')
+        camera_idx = kwargs['ENV_devices'][my_id]['camera_idx']
+        kwargs['camera_idx'] = camera_idx
+        super().__init__(**kwargs)
+
+    def sample_rate(self):
+        return self.sensor_array[0].sample_rate
+
+    def width_px(self):
+        return self.sensor_array[0].width_px
+
+    def height_px(self):
+        return self.sensor_array[0].height_px
+
+
 class MbientDeviceArgs(DeviceArgs):
     sensor_array: List[MbientSensorArgs] = []
     mac: str
