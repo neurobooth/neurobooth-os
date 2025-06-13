@@ -181,7 +181,7 @@ class VidRec_Webcam(CameraPreviewer):
         self.open_stream()
         rc, img = self.camera.read()
         self.close_stream()
-        return cv2.imencode('.jpg', img)[1].tobytes() if rc else b""
+        return img.tobytes() if rc else b""
 
 
 def test_script() -> None:
