@@ -11,6 +11,7 @@ from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 import neurobooth_os.iout.metadator as meta
+from neurobooth_os.iout.device import CameraPreviewer
 from neurobooth_os.iout.stim_param_reader import WebcamDeviceArgs
 
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -22,7 +23,7 @@ class WebcamException(Exception):
         super().__init__(*args, **kwargs)
 
 
-class VidRec_Webcam:
+class VidRec_Webcam(CameraPreviewer):
     def __init__(
         self,
         device_args: WebcamDeviceArgs,
@@ -175,7 +176,7 @@ class VidRec_Webcam:
         """
         Retrieve a frame preview from the webcam.
 
-        :returns: The raw data of the image, or an empty byte string if the condition times out.
+        :returns: The raw data of the image/frame, or an empty byte string if an error occurs.
         """
         self.open_stream()
         rc, img = self.camera.read()
