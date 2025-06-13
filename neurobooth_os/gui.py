@@ -444,7 +444,7 @@ def handle_frame_preview_reply(window, frame_reply: FramePreviewReply):
 
 
 def _request_frame_preview(conn):
-    msg = FramePreviewRequest()
+    msg = FramePreviewRequest(device_id='IPhone_dev_1')  # TODO: Make this selectable or customizable from ACQ devices
     req = Request(source="CTR", destination="ACQ", body=msg)
     meta.post_message(req, conn)
 

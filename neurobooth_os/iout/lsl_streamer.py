@@ -72,9 +72,6 @@ SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
 }
 
 
-CAMERA_PREVIEW_DEVICE = 'IPhone_dev_1'
-
-
 N_ASYNC_THREADS: int = 3  # The maximum number of mbients on one machine
 ASYNC_STARTUP: List[str] = [
     'Mbient_BK_1',
@@ -250,13 +247,13 @@ class DeviceManager:
             wait(reset_results.values())
             return {stream_name: result.result() for stream_name, result in reset_results.items()}
 
-    def camera_frame_preview(self) -> ByteString:
-        if CAMERA_PREVIEW_DEVICE not in self.streams:
-            raise CameraPreviewException(f'Device {CAMERA_PREVIEW_DEVICE} unavailable.')
+    def camera_frame_preview(self, device_id: str) -> ByteString:
+        if device_id not in self.streams:
+            raise CameraPreviewException(f'Device {device_id} unavailable.')
 
-        camera = self.streams[CAMERA_PREVIEW_DEVICE]
+        camera = self.streams[device_id]
         if not isinstance(camera, CameraPreviewer):
-            raise CameraPreviewException(f'Device {CAMERA_PREVIEW_DEVICE} is not a valid preview device.')
+            raise CameraPreviewException(f'Device {device_id} is not a valid preview device.')
 
         return camera.frame_preview()
 

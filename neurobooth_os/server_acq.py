@@ -17,7 +17,7 @@ from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
 from neurobooth_os.msg.messages import Message, MsgBody, PrepareRequest, RecordingStoppedMsg, StartRecording, \
-    RecordingStartedMsg, MbientResetResults, Request, SessionPrepared, FramePreviewReply, \
+    RecordingStartedMsg, MbientResetResults, Request, SessionPrepared, FramePreviewReply, FramePreviewRequest, \
     ServerStarted, ErrorMessage
 
 
@@ -98,7 +98,8 @@ def run_acq(logger):
                 meta.post_message(updator, db_conn)
 
             elif "FramePreviewRequest" == current_msg_type and not recording:
-                camera_frame_preview(db_conn, device_manager, logger)
+                msg_body: FramePreviewRequest = message.body
+                camera_frame_preview(msg_body.device_id, db_conn, device_manager, logger)
 
             # TODO: Both reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
             elif "ResetMbients" == current_msg_type:
@@ -157,9 +158,9 @@ def run_acq(logger):
             raise argument
 
 
-def camera_frame_preview(db_conn, device_manager, logger):
+def camera_frame_preview(device_id: str, db_conn, device_manager, logger):
     try:
-        frame = device_manager.camera_frame_preview()
+        frame = device_manager.camera_frame_preview(device_id)
         b64_frame = base64.b64encode(frame).decode('utf-8')
         body = FramePreviewReply(image=b64_frame, image_available=True, unavailable_message=None)
     except CameraPreviewException as e:

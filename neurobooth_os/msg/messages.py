@@ -388,8 +388,10 @@ class MbientResetResults(MsgBody):
 
 class FramePreviewRequest(MsgBody):
     """
-    Message from controller to ACQ asking for an iPhone frame preview image
+    Message from controller to ACQ asking for a frame preview image from the specified device
     """
+    device_id: str
+
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
