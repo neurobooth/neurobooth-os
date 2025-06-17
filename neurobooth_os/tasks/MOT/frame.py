@@ -25,7 +25,6 @@ from neurobooth_os.tasks.MOT.animate import CircleAnimator, SavedAnimationHandle
 if TYPE_CHECKING:  # Prevent circular import during runtime
     from neurobooth_os.tasks.MOT.task import MOT
 
-
 # ========================================================================
 # Parameter Definitions
 # ========================================================================
@@ -425,6 +424,7 @@ class TrialFrame(MOTFrame):
         prev_button_state = None
         mouse.clickReset()
         while n_clicks < self.n_targets:
+                
             buttons, click_times = mouse.getPressed(getTime=True)
             left_button_click, left_button_click_time = buttons[0] > 0, click_times[0]
 

@@ -145,7 +145,51 @@ class MOT(Task_Eyetracker):
         self.practice_chunks = [self._create_chunk(chunk) for chunk in practice_chunks]
         self.test_chunks = [self._create_chunk(chunk) for chunk in test_chunks]
 
-    def run(self, prompt=True, subj_id=None, **kwargs):
+    def present_practice(self, subj_id=None):
+        if subj_id is not None:  # The provided argument contains the full session timestamp...
+            self.subject_id = subj_id
+
+        if self.n_repetitions > 0:
+            self._init_frame_sequence(*self.stimulus_params)  # Create new frames for repeats to flush old data
+
+        self.score = 0
+        self.win.color = "white"
+        self.win.flip()
+        self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
+        try:
+            for chunk in self.practice_chunks:
+                self.run_chunk(chunk)
+        except TaskAborted:
+            print('MOT aborted')
+
+    def present_task(self, prompt=True, duration=0, **kwargs):
+        try:
+            for chunk in self.test_chunks:
+                self.run_chunk(chunk)
+                # Check early stopping criterion and stop if met
+                total_click_duration = MOT.chunk_click_duration(chunk)
+                if total_click_duration > self.chunk_timeout_sec:
+                    print(f'MOT timed out: total_click_duration={total_click_duration} s')
+                    break
+        except TaskAborted:
+            print('MOT aborted')
+
+        self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
+
+        self.save_results()
+
+        if prompt:  # Check if task should be repeated
+            func_kwargs_func = {"prompt": prompt}
+            self.n_repetitions += 1
+            self.show_text(
+                screen=self.press_task_screen,
+                msg="Task-continue-repeat",
+                func=self.run,
+                func_kwargs=func_kwargs_func,
+                waitKeys=False,
+            )
+    
+    def _run(self, prompt=True, subj_id=None, **kwargs):
         if subj_id is not None:  # The provided argument contains the full session timestamp...
             self.subject_id = subj_id
 

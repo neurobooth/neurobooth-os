@@ -129,7 +129,100 @@ class DSC(Task_Eyetracker):
             units="deg",
         )
 
-    def run(self, prompt=True, subj_id="test", **kwarg):
+    def present_practice(self, subj_id=None):
+
+        self.results = []  # array to store trials details and responses
+        self.outcomes = {}  # object containing outcome variables
+        self.test_start_time = 0
+
+        # Check if run previously, create framesequence again
+        if len(self.frameSequence) == 0:
+            self.setFrameSequence()
+
+        self.subj_id = subj_id
+        self.win.color = "white"
+        self.win.flip()
+        self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
+
+        # Keep presenting frames while there are still frames in the sequence
+        while len(self.frameSequence):
+            frame: FrameDef = self.frameSequence.pop(0)
+            if frame.type in ["begin", "message"]:  # Check if it is an image frame
+                present_msg([frame.message], self.win)
+            elif frame.type in ["practice"]:  # Handle practice and test frames
+                self.execute_frame(frame)
+            else: # Proceed with present_task
+                self.frameSequence.append(frame)
+                break
+
+    def present_task(self, prompt=True, duration=0, **kwargs):
+
+        while len(self.frameSequence):
+            frame: FrameDef = self.frameSequence.pop(0)
+            if frame.type in ["begin", "message"]:  # Check if it is an image frame
+                present_msg([frame.message], self.win)
+            elif frame.type in ["test"]:  # Handle practice and test frames
+                self.execute_frame(frame)
+
+        # all test trials (excluding practice and timeouts)
+        tmp1 = [
+            r for r in self.results
+            if r["type"] != "practice" and r["state"] != "timeout"
+        ]
+
+        # all correct rts
+        tmp2 = [r["rt"] for r in tmp1 if r["correct"]]
+
+        # compute score and outcome variables
+        score = self.outcomes["score"] = len(tmp2)
+        self.outcomes["num_correct"] = len(tmp2)
+        self.outcomes["num_responses"] = len(tmp1)
+        self.outcomes["meanRTc"] = np.mean(tmp2)
+        self.outcomes["medianRTc"] = np.median(tmp2)
+        self.outcomes["sdRTc"] = round(np.std(tmp2), 2)
+        self.outcomes["responseDevice"] = "keyboard"
+        self.outcomes["testVersion"] = self.testVersion
+
+        if self.showresults:
+            mes = [
+                self.my_textbox2(
+                    f"Your score is {score}. \nThe test is "
+                    + "over. \nThank you for participating!",
+                    (0, 2),
+                ),
+                self.load_image('frames/continue.png'),
+            ]
+
+            present_msg(mes, self.win, key_resp="space")
+
+        # SAVE RESULTS to file
+        df_res = pd.DataFrame(self.results)
+        df_out = pd.DataFrame.from_dict(self.outcomes, orient="index", columns=["vals"])
+
+        res_fname = f"{self.subj_id}_{self.task_name}_results{self.rep}.csv"
+        out_fname = f"{self.subj_id}_{self.task_name}_outcomes{self.rep}.csv"
+        df_res.to_csv(op.join(self.path_out, res_fname))
+        df_out.to_csv(op.join(self.path_out, out_fname))
+        self.task_files.extend([res_fname, out_fname])
+
+        # Close win if just created for the task
+        if self.win_temp:
+            self.win.close()
+
+        self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
+        if prompt:
+            func_kwargs_func = {"prompt": prompt}
+            self.rep += "_I"
+            self.show_text(
+                screen=self.press_task_screen,
+                msg="Task-continue-repeat",
+                func=self.run,
+                func_kwargs=func_kwargs_func,
+                waitKeys=False,
+            )
+        self.io.quit()
+
+    def _run(self, prompt=True, subj_id="test", **kwarg):
 
         self.results = []  # array to store trials details and responses
         self.outcomes = {}  # object containing outcome variables
@@ -246,7 +339,7 @@ class DSC(Task_Eyetracker):
                 # set up the next frame
                 self.frameSequence.append(FrameDef(type='test', symbol=symbol))
 
-    def nextTrial(self):
+    def _nextTrial(self):
         # Keep presenting frames while there are still frames in the sequence
         while len(self.frameSequence):
             frame: FrameDef = self.frameSequence.pop(0)
