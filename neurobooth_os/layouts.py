@@ -257,13 +257,20 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
         [sg.Image(data=imgbytes, key="iphone", size=frame_sz)],
         [
             sg.Button(
-                "IPhone preview",
+                "Preview Camera",
                 button_color=("white", "black"),
                 key="-frame_preview-",
                 visible=False,
             )
         ],
-        [_space()],
+        [
+            sg.Combo(
+                values=[],
+                size=(40, 1),
+                readonly=True,
+                key="-frame_preview_opts-",
+            ),
+        ],
         [_space()],
         [_space()],
         [sg.Text("", justification="left", k="task_title")],

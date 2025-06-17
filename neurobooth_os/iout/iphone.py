@@ -630,7 +630,7 @@ class IPhone(CameraPreviewer):
                 'Time_ACQ': 'Local machine timestamp (s)',
             }
         )
-        body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.outlet_id)
+        body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.outlet_id, camera_preview=True)
         msg = Request(source="IPhone", destination="CTR", body=body)
         with get_database_connection() as conn:
             post_message(msg, conn)
