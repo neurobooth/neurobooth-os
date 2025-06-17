@@ -636,21 +636,6 @@ class Introduction_Task(Task):
     def run(self, **kwargs):
         self.present_instructions(prompt=False)
 
-class MOT_DSST_Instruction_Task(Task):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def run(self, **kwargs):
-        inst_end_task_img = op.join(neurobooth_os.__path__[0], "tasks", "assets", kwargs['inst_end_task_img'])
-        if not op.isfile(inst_end_task_img):
-            raise IOError(f'Required image file {inst_end_task_img} does not exist')
-        self.press_inst_screen = visual.ImageStim(
-            self.win,
-            image=inst_end_task_img,
-            pos=(0, 0),
-            units="deg",
-        )
-        self.present_instructions(prompt=True)
 
 if __name__ == "__main__":
 
