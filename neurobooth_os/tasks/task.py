@@ -303,10 +303,15 @@ class Task:
         if self.win_temp:
             self.win.close()
 
-    def run(self, prompt=True, duration=0, **kwargs):
+    def present_practice(self, subj_id=None):
+        pass
+
+    def run(self, prompt=True, duration=0, subj_id=None, **kwargs):
         self.present_instructions(prompt)
         event.clearEvents(eventType='keyboard')
-        self.present_task(prompt, duration, **kwargs)
+        self.present_practice(subj_id)
+        event.clearEvents(eventType='keyboard')
+        self.present_task(prompt=prompt, duration=duration, **kwargs)
         event.clearEvents(eventType='keyboard')
         self.present_complete()
         event.clearEvents(eventType='keyboard')
