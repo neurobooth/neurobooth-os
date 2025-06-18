@@ -56,9 +56,11 @@ def check_window_refresh_rate(win: visual.window.Window, min_rate: float, max_ra
     print(f"Monitor Refresh Rate: Psychopy est. = {psychopy_rate:0.2f} Hz, Actual = {actual_rate:0.2f} Hz")
 
     if actual_rate < min_rate or  actual_rate > max_rate:
-        raise InvalidWindowRefreshRate(
-            f"Actual rate ({actual_rate:0.2f}hz) is out of bounds: ({min_rate} to {max_rate})."
-        )
+        raise InvalidWindowRefreshRate(actual_rate, min_rate, max_rate)
+
+
+def _fps_error_msg(actual_rate: float, min_rate: float, max_rate: float) -> str:
+    return f"Actual rate ({actual_rate:0.2f} hz) is out of bounds: ({min_rate} to {max_rate})."
 
 
 def make_win(
