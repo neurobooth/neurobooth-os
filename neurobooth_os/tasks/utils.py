@@ -35,7 +35,6 @@ def send_marker(marker, msg):
     marker.push_sample([f"{msg}_{time.time()}"])
 
 
-
 class InvalidWindowRefreshRate(Exception):
     """An error signaling a window refresh rate that is out of specified bounds"""
     pass
@@ -57,7 +56,10 @@ def check_window_refresh_rate(win: visual.window.Window, min_rate: float, max_ra
     print(f"Monitor Refresh Rate: Set = {psychopy_rate:0.2f} Hz, Actual = {actual_rate:0.2f} Hz")
 
     if actual_rate < min_rate or  actual_rate > max_rate:
-        raise InvalidWindowRefreshRate(f"Actual refresh rate ({actual_rate:0.2f}hz) is out of bounds ({min_rate} to {max_rate}).")
+        raise InvalidWindowRefreshRate(
+            f"Actual rate ({actual_rate:0.2f}hz) is out of bounds: ({min_rate} to {max_rate})."
+        )
+
 
 def make_win(
         full_screen=True,
