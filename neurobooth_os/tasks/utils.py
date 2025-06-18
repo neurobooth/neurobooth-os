@@ -53,7 +53,7 @@ def check_window_refresh_rate(win: visual.window.Window, min_rate: float, max_ra
     if actual_rate is None:
         raise InvalidWindowRefreshRate("Window frame rate measurement returned 'None'.")
 
-    print(f"Monitor Refresh Rate: Set = {psychopy_rate:0.2f} Hz, Actual = {actual_rate:0.2f} Hz")
+    print(f"Monitor Refresh Rate: Psychopy est. = {psychopy_rate:0.2f} Hz, Actual = {actual_rate:0.2f} Hz")
 
     if actual_rate < min_rate or  actual_rate > max_rate:
         raise InvalidWindowRefreshRate(
