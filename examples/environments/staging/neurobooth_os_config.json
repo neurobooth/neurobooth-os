@@ -8,7 +8,8 @@
         "width_cm": 55,
         "subject_distance_to_screen_cm": 60,
         "min_refresh_rate_hz": 230,
-        "max_refresh_rate_hz": 245
+        "max_refresh_rate_hz": 245,
+        "screen_resolution": [1920, 1080]
     },
     "acquisition": {
         "name": "acq-staging",
