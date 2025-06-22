@@ -69,11 +69,9 @@ def make_win(
         subj_screendist_cm=60,  # Distance (cm) from subject head to middle of screen, used for psychopy sizing of UI
         screen_resolution=[1920,1080],  # Resolution of the screen in pixels, used for sizing the psychopy window
 ):
-    
     custom_mon = monitors.Monitor(
         "demoMon", width=monitor_width, distance=subj_screendist_cm
     )
-
     mon_size = screen_resolution
     custom_mon.setSizePix(mon_size)
     custom_mon.saveMon()
