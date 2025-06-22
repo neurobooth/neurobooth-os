@@ -60,6 +60,7 @@ class StmSession(BaseModel):
             full_screen=screen_config.fullscreen,
             monitor_width=screen_config.width_cm,
             subj_screendist_cm=screen_config.subject_distance_to_screen_cm,
+            screen_resolution=screen_config.screen_resolution,
         )
         utl.check_window_refresh_rate(
             win, min_rate=screen_config.min_refresh_rate_hz, max_rate=screen_config.max_refresh_rate_hz

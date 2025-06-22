@@ -160,5 +160,7 @@ class Saccade(Eyelink_HostPC):
 
 
 if __name__ == "__main__":
+    from neurobooth_os import config
+    config.load_config()
     task = Saccade(direction="vertical", amplitude_deg=30)
     task.run(prompt=False)

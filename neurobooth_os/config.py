@@ -5,7 +5,7 @@ Ensures that the base neurobooth-os config file exists and makes config file ava
 
 from os import environ, path, getenv
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, conlist
 import json
 
 
@@ -47,6 +47,7 @@ class ScreenSpec(BaseModel):
     subject_distance_to_screen_cm: int
     min_refresh_rate_hz: float
     max_refresh_rate_hz: float
+    screen_resolution: conlist(int, min_length=2, max_length=2)
 
 
 class DatabaseSpec(BaseModel):
