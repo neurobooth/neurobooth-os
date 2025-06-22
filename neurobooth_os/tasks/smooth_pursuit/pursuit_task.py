@@ -150,8 +150,15 @@ class Pursuit(Eyelink_HostPC):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    from neurobooth_os import config
+    config.load_config()
 
-    task = Pursuit()
+    task = Pursuit(
+        amplitude_deg=30,
+        peak_velocity_deg=30,
+        start_phase_deg=0,
+        ntrials=5,
+        )
     task.run(prompt=True)
 
     tstmp = task.time_array
