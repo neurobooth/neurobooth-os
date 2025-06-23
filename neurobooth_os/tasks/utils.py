@@ -72,8 +72,7 @@ def make_win(
     custom_mon = monitors.Monitor(
         "demoMon", width=monitor_width, distance=subj_screendist_cm
     )
-    mon_size = screen_resolution
-    custom_mon.setSizePix(mon_size)
+    custom_mon.setSizePix(screen_resolution)
     custom_mon.saveMon()
     win = visual.Window(
         mon_size, fullscr=full_screen, monitor=custom_mon, units="pix", color=(0, 0, 0)
