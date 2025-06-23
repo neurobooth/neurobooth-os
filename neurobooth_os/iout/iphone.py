@@ -196,6 +196,12 @@ class IPhone:
         if not DISABLE_LSL:  # Device and sensor IDs are only needed if streaming data to LSL.
             self.device_id = device_args.device_id
             self.sensor_ids = device_args.sensor_ids
+        self.fps = device_args.sample_rate()
+        self.notifyonframe = device_args.notifyonframe()
+        self.videoquality = device_args.videoquality()
+        self.usecamerafacing = device_args.usecamerafacing()
+        self.brightness = device_args.brightness()
+        self.lenspos = device_args.lenspos()
         self.enable_timeout_exceptions = enable_timeout_exceptions
         self.streaming = False
         self.streamName = "IPhoneFrameIndex"
@@ -529,12 +535,12 @@ class IPhone:
 
         if config is None:
             config = {
-                "NOTIFYONFRAME": device_args.notifyonframe(),
-                "VIDEOQUALITY": device_args.videoquality(),
-                "USECAMERAFACING": device_args.usecamerafacing(),
-                "FPS": device_args.sample_rate(),
-                "BRIGHTNESS": device_args.brightness(),
-                "LENSPOS": device_args.lenspos(),
+                "NOTIFYONFRAME": self.notifyonframe,
+                "VIDEOQUALITY": self.videoquality,
+                "USECAMERAFACING": self.usecamerafacing,
+                "FPS": self.fps,
+                "BRIGHTNESS": self.brightness,
+                "LENSPOS": self.lenspos,
             }
 
         success = self._handshake(config)
@@ -941,12 +947,6 @@ def script_capture_data(subject_id: str, recording_folder: str, capture_duration
         sensor_ids=['IPhone_sens_1'],
         sensor_array=[],  # The sensor array and arg parser are not needed by the test script
         arg_parser='',
-        # sample_rate='240',
-        # notifyonframe='1',
-        # videoquality='1920x1080',
-        # usecamerafacing='BACK',
-        # brightness='50',
-        # lenspos='0.7',
     )
 
     iphone = IPhone("IPhone", device_args=dev_args)

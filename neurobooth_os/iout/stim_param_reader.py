@@ -84,12 +84,12 @@ class EyelinkSensorArgs(SensorArgs):
 
 
 class IPhoneSensorArgs(SensorArgs):
-    sample_rate: str
-    notifyonframe: str
+    sample_rate: PositiveInt
+    notifyonframe: PositiveInt
     videoquality: str
     usecamerafacing: str
-    brightness: str
-    lenspos: str
+    brightness: PositiveInt
+    lenspos: float
 
 
 class DeviceArgs(EnvArgs):
@@ -166,12 +166,10 @@ class IPhoneDeviceArgs(DeviceArgs):
     sensor_array: List[IPhoneSensorArgs] = []
 
     def sample_rate(self):
-        print(self.sensor_array[0].sample_rate)
-        return self.sensor_array[0].sample_rate
+        return str(self.sensor_array[0].sample_rate)
 
     def notifyonframe(self):
-        print(self.sensor_array[0].notifyonframe)
-        return self.sensor_array[0].notifyonframe
+        return str(self.sensor_array[0].notifyonframe)
 
     def videoquality(self):
         return self.sensor_array[0].videoquality
@@ -180,10 +178,10 @@ class IPhoneDeviceArgs(DeviceArgs):
         return self.sensor_array[0].usecamerafacing
 
     def brightness(self):
-        return self.sensor_array[0].brightness
+        return str(self.sensor_array[0].brightness)
 
     def lenspos(self):
-        return self.sensor_array[0].lenspos
+        return str(self.sensor_array[0].lenspos)
 
 
 class FlirDeviceArgs(DeviceArgs):
