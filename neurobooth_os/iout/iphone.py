@@ -193,15 +193,10 @@ class IPhone:
         self.iphone_sessionID = sess_id
         self.name = name
         self.mock = mock
+        self.device_args = device_args
         if not DISABLE_LSL:  # Device and sensor IDs are only needed if streaming data to LSL.
             self.device_id = device_args.device_id
             self.sensor_ids = device_args.sensor_ids
-        self.fps = device_args.sample_rate()
-        self.notifyonframe = device_args.notifyonframe()
-        self.videoquality = device_args.videoquality()
-        self.usecamerafacing = device_args.usecamerafacing()
-        self.brightness = device_args.brightness()
-        self.lenspos = device_args.lenspos()
         self.enable_timeout_exceptions = enable_timeout_exceptions
         self.streaming = False
         self.streamName = "IPhoneFrameIndex"
@@ -535,12 +530,12 @@ class IPhone:
 
         if config is None:
             config = {
-                "NOTIFYONFRAME": self.notifyonframe,
-                "VIDEOQUALITY": self.videoquality,
-                "USECAMERAFACING": self.usecamerafacing,
-                "FPS": self.fps,
-                "BRIGHTNESS": self.brightness,
-                "LENSPOS": self.lenspos,
+                "NOTIFYONFRAME": self.device_args.notifyonframe(),
+                "VIDEOQUALITY": self.device_args.videoquality(),
+                "USECAMERAFACING": self.device_args.usecamerafacing(),
+                "FPS": self.device_args.sample_rate(),
+                "BRIGHTNESS": self.device_args.brightness(),
+                "LENSPOS": self.device_args.lenspos(),
             }
 
         success = self._handshake(config)
