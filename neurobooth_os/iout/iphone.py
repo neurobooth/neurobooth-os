@@ -1024,4 +1024,6 @@ def script_results(recording_folder: str, subject_id: str, show_plots: bool) -> 
 
 
 if __name__ == "__main__":
+    from neurobooth_os import config as cfg
+    cfg.load_config()
     test_script()
