@@ -72,7 +72,12 @@ class VidRec_Webcam(CameraPreviewer):
             fps_rgb=str(self.device_args.sample_rate()),
             size_rgb=str((self.device_args.width_px(), self.device_args.height_px())),
         )
-        msg_body = DeviceInitialization(stream_name=self.stream_name, outlet_id=self.outlet_id, camera_preview=True)
+        msg_body = DeviceInitialization(
+            stream_name=self.stream_name,
+            outlet_id=self.outlet_id,
+            device_id=self.device_args.device_id,
+            camera_preview=True,
+        )
         with meta.get_database_connection() as db_conn:
             meta.post_message(Request(source='Webcam', destination='CTR', body=msg_body), conn=db_conn)
         return StreamOutlet(info)

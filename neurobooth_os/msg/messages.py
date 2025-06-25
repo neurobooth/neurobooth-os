@@ -229,6 +229,7 @@ class DeviceInitialization(MsgBody):
     """
     stream_name: str
     outlet_id: str
+    device_id: str = ''
     camera_preview: bool = False
 
     def __init__(self, **data):

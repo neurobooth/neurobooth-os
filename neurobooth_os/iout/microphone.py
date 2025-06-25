@@ -84,7 +84,11 @@ class MicStream:
             fps=str(self.fps),
             device_name=device_args.device_name,
         )
-        body = DeviceInitialization(stream_name='Audio', outlet_id=self.oulet_id)
+        body = DeviceInitialization(
+            stream_name='Audio',
+            outlet_id=self.oulet_id,
+            device_id=device_args.device_id,
+        )
         msg = Request(source="Audio", destination="CTR", body=body)
         with get_database_connection() as conn:
             post_message(msg, conn)

@@ -689,7 +689,11 @@ class Mbient:
                 self.outlet = self._create_outlet()
             self.setup()
             if not DISABLE_LSL:
-                body = DeviceInitialization(stream_name=self.dev_name, outlet_id=self.outlet_id)
+                body = DeviceInitialization(
+                    stream_name=self.dev_name,
+                    outlet_id=self.outlet_id,
+                    device_id=self.device_id,
+                )
                 msg = Request(source="Mbient", destination="CTR", body=body)
                 post_message(msg, get_database_connection())
 

@@ -269,6 +269,7 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
                 size=(40, 1),
                 readonly=True,
                 key="-frame_preview_opts-",
+                visible=False,
             ),
         ],
         [_space()],

@@ -150,7 +150,11 @@ class EyeTracker:
         self.tk.sendCommand("calibration_area_proportion = 0.80 0.78")
         self.tk.sendCommand("validation_area_proportion = 0.80 0.78")
 
-        body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
+        body = DeviceInitialization(
+            stream_name=self.streamName,
+            outlet_id=self.oulet_id,
+            device_id=self.device_id,
+        )
         msg = Request(source="EyeTracker", destination="CTR", body=body)
         with get_database_connection() as conn:
             post_message(msg, conn)

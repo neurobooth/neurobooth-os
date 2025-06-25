@@ -332,10 +332,11 @@ def _start_ctr_msg_reader(logger, window):
                 msg_body: DeviceInitialization = message.body
                 outlet_name = msg_body.stream_name
                 outlet_id = msg_body.outlet_id
+                device_id = msg_body.device_id
                 outlet_values = f"['{outlet_name}', '{outlet_id}']"
                 window.write_event_value("-OUTLETID-", outlet_values)
                 if msg_body.camera_preview:
-                    window.write_event_value("-new_preview_device-", outlet_name)
+                    window.write_event_value("-new_preview_device-", [outlet_name, device_id])
             elif "SessionPrepared" == message.msg_type:
                 window.write_event_value("devices_connected", True)
             elif "ServerStarted" == message.msg_type:
@@ -520,7 +521,7 @@ def gui(logger):
     # declare and initialize vars
     subject: Subject
     tasks = None
-    frame_preview_devices = set()
+    frame_preview_devices = {}
 
     with meta.get_database_connection() as conn:
         meta.clear_msg_queue(conn)
@@ -702,6 +703,7 @@ def gui(logger):
                     session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
                     if len(frame_preview_devices) > 0:
                         window["-frame_preview-"].update(visible=True)
+                        window["-frame_preview_opts-"].update(visible=True)
                     if not start_pressed:
                         window['Start'].update(disabled=False)
                         write_output(window, "Device connection complete. OK to start session")
@@ -711,8 +713,9 @@ def gui(logger):
                 _create_lsl_inlet(stream_ids, values[event], inlets)
 
             elif event == "-new_preview_device-":
-                frame_preview_devices.add(values[event])
-                window["-frame_preview_opts-"].update(values=sorted(list(frame_preview_devices)))
+                outlet_name, device_id = values[event]
+                frame_preview_devices[outlet_name] = device_id
+                window["-frame_preview_opts-"].update(values=sorted(list(frame_preview_devices.keys())))
 
             elif event == "server_started":
                 server = values[event]
@@ -745,7 +748,9 @@ def gui(logger):
             ##################################################################################
 
             elif event == "-frame_preview-":
-                _request_frame_preview(conn, values["-frame_preview_opts-"])
+                outlet_name = values["-frame_preview_opts-"]
+                device_id = frame_preview_devices[outlet_name]
+                _request_frame_preview(conn, device_id)
 
             # Print LSL inlet names in GUI
             if inlet_keys != list(inlets):
