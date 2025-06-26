@@ -231,6 +231,7 @@ class WebcamDeviceArgs(DeviceArgs):
     """
     camera_idx: int
     fourcc: str  # Video codec to use
+    n_frames_to_flush: int  # Number of frames to discard before recording
     sensor_array: List[StandardSensorArgs] = []
 
     def __init__(self, **kwargs):

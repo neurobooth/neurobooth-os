@@ -91,14 +91,13 @@ class VidRec_Webcam(CameraPreviewer):
         self.open = True
 
     def flush_video_buffer(self) -> None:
-        # Retrieve/flush old frames from the buffer before recording.
-        for _ in range(120):  # TODO: Configs
+        # Retrieve/flush old frames from the buffer before recording
+        for _ in range(self.device_args.n_frames_to_flush):
             self.camera.retrieve()
 
     def close_stream(self) -> None:
         self.camera.release()
         self.camera = None
-        cv2.destroyAllWindows()
         self.open = False
 
     def save_to_disk(self) -> None:
