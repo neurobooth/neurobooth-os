@@ -83,6 +83,15 @@ class EyelinkSensorArgs(SensorArgs):
     calibration_type: str
 
 
+class IPhoneSensorArgs(SensorArgs):
+    sample_rate: PositiveInt
+    notifyonframe: PositiveInt
+    videoquality: str
+    usecamerafacing: str
+    brightness: PositiveInt
+    lenspos: float
+
+
 class DeviceArgs(EnvArgs):
     ENV_devices: Dict
     device_id: str
@@ -147,10 +156,38 @@ class EyelinkDeviceArgs(DeviceArgs):
         return self.sensor_array[0].calibration_type
 
 
+class IPhoneDeviceArgs(DeviceArgs):
+    """
+    IPhone device arguments
+    The IPhone should have only one sensor, represented by an instance
+    of type IPhoneSensorArgs
+
+    """
+    sensor_array: List[IPhoneSensorArgs] = []
+
+    def sample_rate(self):
+        return str(self.sensor_array[0].sample_rate)
+
+    def notifyonframe(self):
+        return str(self.sensor_array[0].notifyonframe)
+
+    def videoquality(self):
+        return self.sensor_array[0].videoquality
+
+    def usecamerafacing(self):
+        return self.sensor_array[0].usecamerafacing
+
+    def brightness(self):
+        return str(self.sensor_array[0].brightness)
+
+    def lenspos(self):
+        return str(self.sensor_array[0].lenspos)
+
+
 class FlirDeviceArgs(DeviceArgs):
     """
     FLIR device arguments
-    The FLIR should only one sensor, represented by an instance
+    The FLIR should have only one sensor, represented by an instance
     of type FlirSensorArgs
     """
     sensor_array: List[FlirSensorArgs] = []
