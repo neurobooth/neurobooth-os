@@ -88,6 +88,11 @@ class VidRec_Webcam(CameraPreviewer):
             self.logger.error('Webcam: Could not open stream')
             raise WebcamException('Webcam: Could not open stream')
         self.open = True
+        self.flush_video_buffer()
+
+    def flush_video_buffer(self) -> None:
+        for _ in range(cv2.CAP_PROP_BUFFERSIZE):
+            self.camera.grab()
 
     def close_stream(self) -> None:
         self.camera.release()
