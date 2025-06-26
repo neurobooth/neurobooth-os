@@ -75,7 +75,7 @@ def make_win(
     custom_mon.setSizePix(screen_resolution)
     custom_mon.saveMon()
     win = visual.Window(
-        mon_size, fullscr=full_screen, monitor=custom_mon, units="pix", color=(0, 0, 0)
+        screen_resolution, fullscr=full_screen, monitor=custom_mon, units="pix", color=(0, 0, 0)
     )
     return win
 
