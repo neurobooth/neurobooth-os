@@ -8,7 +8,7 @@ import threading
 import uuid
 import neurobooth_os.iout.metadator as meta
 import logging
-from typing import Callable, Any
+from typing import Callable, Any, ByteString
 
 import cv2
 import PySpin
@@ -147,6 +147,7 @@ class VidRec_Flir:
             stream_name=self.streamName,
             outlet_id=self.oulet_id,
             device_id=self.device_id,
+            camera_preview=True,
         )
         with meta.get_database_connection() as db_conn:
             meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)
@@ -233,6 +234,19 @@ class VidRec_Flir:
         self.save_thread.join()
         self.video_out.release()
         self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
+
+    def frame_preview(self) -> ByteString:
+        """
+        Retrieve a frame preview from the FLIR.
+
+        :returns: The raw data of the image/frame, or an empty byte string if an error occurs.
+        """
+        self.cam.BeginAcquisition()
+        img, _ = self.imgage_proc()
+        self.cam.EndAcquisition()
+
+        rc, img = cv2.imencode('.png', img)
+        return img.tobytes() if rc else b""
 
     def stop(self):
         if self.open and self.recording:

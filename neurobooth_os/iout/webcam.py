@@ -191,10 +191,13 @@ class VidRec_Webcam(CameraPreviewer):
         :returns: The raw data of the image/frame, or an empty byte string if an error occurs.
         """
         self.open_stream()
-        rc1, img = self.camera.read()
+        rc, img = self.camera.read()
         self.close_stream()
-        rc2, img = cv2.imencode('.png', img)
-        return img.tobytes() if (rc1 and rc2) else b""
+        if not rc:
+            return b""
+
+        rc, img = cv2.imencode('.png', img)
+        return img.tobytes() if rc else b""
 
 
 def test_script() -> None:
