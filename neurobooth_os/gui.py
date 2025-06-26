@@ -719,7 +719,7 @@ def gui(logger):
                             preview_default = list(frame_preview_devices.keys())[0]
 
                         window["-frame_preview-"].update(visible=True)
-                        window["-frame_preview_opts-"].update(visible=True, default_value=preview_default)
+                        window["-frame_preview_opts-"].update(visible=True, value=preview_default)
                     if not start_pressed:
                         window['Start'].update(disabled=False)
                         write_output(window, "Device connection complete. OK to start session")
