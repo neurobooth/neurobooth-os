@@ -87,16 +87,18 @@ class VidRec_Webcam(CameraPreviewer):
         if not self.camera.isOpened():
             self.logger.error('Webcam: Could not open stream')
             raise WebcamException('Webcam: Could not open stream')
-        self.open = True
         self.flush_video_buffer()
+        self.open = True
 
     def flush_video_buffer(self) -> None:
-        for _ in range(cv2.CAP_PROP_BUFFERSIZE):
-            self.camera.grab()
+        # Retrieve/flush old frames from the buffer before recording.
+        for _ in range(120):  # TODO: Configs
+            self.camera.retrieve()
 
     def close_stream(self) -> None:
         self.camera.release()
         self.camera = None
+        cv2.destroyAllWindows()
         self.open = False
 
     def save_to_disk(self) -> None:
