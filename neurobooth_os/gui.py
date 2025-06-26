@@ -714,8 +714,12 @@ def gui(logger):
                 if session_prepared_count == len(_get_nodes()):
                     session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
                     if len(frame_preview_devices) > 0:
+                        preview_default = cfg.neurobooth_config.default_preview_stream
+                        if preview_default not in frame_preview_devices:
+                            preview_default = list(frame_preview_devices.keys())[0]
+
                         window["-frame_preview-"].update(visible=True)
-                        window["-frame_preview_opts-"].update(visible=True)
+                        window["-frame_preview_opts-"].update(visible=True, default_value=preview_default)
                     if not start_pressed:
                         window['Start'].update(disabled=False)
                         write_output(window, "Device connection complete. OK to start session")
