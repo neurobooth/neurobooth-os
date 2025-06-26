@@ -499,8 +499,6 @@ Calibration instructions:
     
     Press ESC to exit calibration or validation mode.
     Pressing ESC outside of these modes ends the calibration task
-    
-    Press ENTER outside of these modes to toggle between eyes
 """
     for line in instructions.splitlines():
         write_output(win, line)

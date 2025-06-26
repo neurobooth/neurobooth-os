@@ -67,14 +67,12 @@ def make_win(
         full_screen=True,
         monitor_width=55,  # Width (cm) of viewable monitor area, used for psychopy sizing of UI
         subj_screendist_cm=60,  # Distance (cm) from subject head to middle of screen, used for psychopy sizing of UI
+        screen_resolution=[1920,1080],  # Resolution of the screen in pixels, used for sizing the psychopy window
 ):
-    mon = monitors.getAllMonitors()[0]
     custom_mon = monitors.Monitor(
         "demoMon", width=monitor_width, distance=subj_screendist_cm
     )
-
-    mon_size = monitors.Monitor(mon).getSizePix()
-    custom_mon.setSizePix(mon_size)
+    custom_mon.setSizePix(screen_resolution)
     custom_mon.saveMon()
     win = visual.Window(
         mon_size, fullscr=full_screen, monitor=custom_mon, units="pix", color=(0, 0, 0)
