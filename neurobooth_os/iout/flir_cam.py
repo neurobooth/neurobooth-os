@@ -21,6 +21,7 @@ from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFile
+from neurobooth_os.iout.device import CameraPreviewer
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -30,7 +31,7 @@ class FlirException(Exception):
         super().__init__(*args, **kwargs)
 
 
-class VidRec_Flir:
+class VidRec_Flir(CameraPreviewer):
     # def __init__(self,
     #              sizex=round(1936 / 2), sizey=round(1216 / 2), fps=196,
     #              camSN="20522874", exposure=4500, gain=20, gamma=.6,
