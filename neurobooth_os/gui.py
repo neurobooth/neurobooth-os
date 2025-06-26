@@ -434,31 +434,60 @@ def _plot_realtime(window, plttr, inlets):
         plttr.start(inlets)
 
 
-def handle_frame_preview_reply(window, frame_reply: FramePreviewReply):
+def enable_frame_preview(window, preview_devices: Dict[str, str]) -> None:
+    if not preview_devices:
+        return  # No registered devices; do not enable the preview
+
+    available_streams = sorted(list(preview_devices.keys()))
+
+    # Pick the specified default preview device if available, otherwise pick the first entry.
+    preview_default = cfg.neurobooth_config.default_preview_stream
+    if preview_default not in available_streams:
+        preview_default = available_streams[0]
+
+    # Enable the preview button and the Combo picker
+    window["-frame_preview-"].update(visible=True)
+    window["-frame_preview_opts-"].update(visible=True, value=preview_default, values=available_streams)
+
+
+def handle_frame_preview_reply(window, frame_reply: FramePreviewReply) -> None:
     if not frame_reply.image_available or len(frame_reply.image) < 100:
         write_output(window, f"ERROR: Unable to preview ({frame_reply.unavailable_message})", text_color="red")
         return
+
+    # Decode the image from the message into a NumPy array (OpenCV format)
     frame = base64.b64decode(frame_reply.image)
     nparr = np.frombuffer(frame, dtype=np.uint8)
     img_np = cv2.imdecode(nparr, flags=1)
+
     img_rz = resize_frame_preview(img_np)
+
+    # Re-encode the image and present it
     img_b = cv2.imencode(".png", img_rz)[1].tobytes()
     window["iphone"].update(data=img_b)
 
 
 def resize_frame_preview(img: np.ndarray) -> np.ndarray:
+    """
+    Resize the given image such that its width matches that of the preview area.
+    If the resulting image is taller than the preview area, then it is vertically center-cropped.
+    """
     h, w, _ = img.shape  # x and y are flipped in OpenCV
     new_w, max_h = PREVIEW_AREA
+
+    # Resize to the desired width
     aspect_ratio = w / h
     new_h = int(round(new_w / aspect_ratio))
     img = cv2.resize(img, (new_w, new_h))
-    if new_h > max_h:
+
+    if new_h > max_h:  # Vertically crop if needed
         crop = (new_h - max_h) // 2
         img = img[crop:-crop, :]
+
     return img
 
 
-def _request_frame_preview(conn, device_id: str):
+def _request_frame_preview(conn, device_id: str) -> None:
     msg = FramePreviewRequest(device_id=device_id)
     req = Request(source="CTR", destination="ACQ", body=msg)
     meta.post_message(req, conn)
@@ -533,7 +562,7 @@ def gui(logger):
     # declare and initialize vars
     subject: Subject
     tasks = None
-    frame_preview_devices = {}
+    frame_preview_devices: Dict[str, str] = {}  # Maps from stream name to device ID
 
     with meta.get_database_connection() as conn:
         meta.clear_msg_queue(conn)
@@ -713,13 +742,7 @@ def gui(logger):
                 session_prepared_count += 1
                 if session_prepared_count == len(_get_nodes()):
                     session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
-                    if len(frame_preview_devices) > 0:
-                        preview_default = cfg.neurobooth_config.default_preview_stream
-                        if preview_default not in frame_preview_devices:
-                            preview_default = list(frame_preview_devices.keys())[0]
-
-                        window["-frame_preview-"].update(visible=True)
-                        window["-frame_preview_opts-"].update(visible=True, value=preview_default)
+                    enable_frame_preview(window, frame_preview_devices)
                     if not start_pressed:
                         window['Start'].update(disabled=False)
                         write_output(window, "Device connection complete. OK to start session")
@@ -731,7 +754,6 @@ def gui(logger):
             elif event == "-new_preview_device-":
                 outlet_name, device_id = values[event]
                 frame_preview_devices[outlet_name] = device_id
-                window["-frame_preview_opts-"].update(values=sorted(list(frame_preview_devices.keys())))
 
             elif event == "server_started":
                 server = values[event]
