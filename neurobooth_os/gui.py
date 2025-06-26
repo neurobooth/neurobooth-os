@@ -22,7 +22,7 @@ from FreeSimpleGUI import Multiline
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 
-from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
+from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes, PREVIEW_AREA
 from neurobooth_os.log_manager import make_db_logger, log_message_received
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
@@ -441,9 +441,21 @@ def handle_frame_preview_reply(window, frame_reply: FramePreviewReply):
     frame = base64.b64decode(frame_reply.image)
     nparr = np.frombuffer(frame, dtype=np.uint8)
     img_np = cv2.imdecode(nparr, flags=1)
-    img_rz = cv2.resize(img_np, (1080 // 4, 1920 // 4))
+    img_rz = resize_frame_preview(img_np)
     img_b = cv2.imencode(".png", img_rz)[1].tobytes()
     window["iphone"].update(data=img_b)
+
+
+def resize_frame_preview(img: np.ndarray) -> np.ndarray:
+    h, w, _ = img.shape  # x and y are flipped in OpenCV
+    new_w, max_h = PREVIEW_AREA
+    aspect_ratio = w / h
+    new_h = int(round(new_w / aspect_ratio))
+    img = cv2.resize(img, (new_w, new_h))
+    if new_h > max_h:
+        crop = (new_h - max_h) // 2
+        img = img[crop:-crop, :]
+    return img
 
 
 def _request_frame_preview(conn, device_id: str):

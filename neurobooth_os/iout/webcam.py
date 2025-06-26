@@ -91,6 +91,7 @@ class VidRec_Webcam(CameraPreviewer):
 
     def close_stream(self) -> None:
         self.camera.release()
+        self.camera = None
         self.open = False
 
     def save_to_disk(self) -> None:
