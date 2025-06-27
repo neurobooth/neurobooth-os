@@ -12,6 +12,10 @@ import cv2
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
 
+
+PREVIEW_AREA = (1080 // 4, 1920 // 4)
+
+
 def _lay_butt(name, key=None, tooltip=None, pad=None):
     if key is None:
         key = name
@@ -24,7 +28,7 @@ def _space(n=10):
     return sg.Text(" " * n)
 
 
-def _init_layout(conn, exclusion=None, frame_sz=(320, 240)):
+def _init_layout(conn, exclusion=None):
     sg.theme("Dark Grey 9")
     sg.set_options(
         element_padding=(0, 0),
@@ -144,8 +148,8 @@ def _make_tasks_checkbox(task_list):
     return field_tasks
 
 
-def _main_layout(sess_info, frame_sz=(270, 480)):
-    frame_cam = np.ones(frame_sz)
+def _main_layout(sess_info):
+    frame_cam = np.ones(PREVIEW_AREA)
     imgbytes = cv2.imencode(".png", frame_cam)[1].tobytes()
     sg.theme("Dark Grey 9")
     sg.set_options(element_padding=(0, 0))
@@ -254,16 +258,24 @@ def _main_layout(sess_info, frame_sz=(270, 480)):
     )
 
     layout_col2 = [
-        [sg.Image(data=imgbytes, key="iphone", size=frame_sz)],
+        [sg.Image(data=imgbytes, key="iphone", size=PREVIEW_AREA)],
         [
             sg.Button(
-                "IPhone preview",
+                "Preview Camera",
                 button_color=("white", "black"),
                 key="-frame_preview-",
                 visible=False,
             )
         ],
-        [_space()],
+        [
+            sg.Combo(
+                values=[],
+                size=(40, 1),
+                readonly=True,
+                key="-frame_preview_opts-",
+                visible=False,
+            ),
+        ],
         [_space()],
         [_space()],
         [sg.Text("", justification="left", k="task_title")],

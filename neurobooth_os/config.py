@@ -77,6 +77,7 @@ class NeuroboothConfig(BaseModel):
     video_task_dir: str
     split_xdf_backlog: str
     cam_inx_lowfeed: int
+    default_preview_stream: str
     acquisition: ServerSpec
     presentation: ServerSpec
     control: ServerSpec
