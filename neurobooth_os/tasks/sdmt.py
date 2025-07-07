@@ -131,3 +131,42 @@ class SDMT(Eyelink_HostPC):
                 func=self.present_task,
                 waitKeys=False,
             )
+
+
+if __name__ == "__main__":
+    from psychopy import monitors
+
+    monitor_width = 55
+    monitor_distance = 60
+    mon = monitors.getAllMonitors()[0]
+    customMon = monitors.Monitor(
+        "demoMon", width=monitor_width, distance=monitor_distance
+    )
+    win = visual.Window(
+        [1920, 1080], fullscr=False, monitor=customMon, units="pix", color="white"
+    )
+
+    self = SDMT(
+        win=win,
+        n_trials=1,
+        symbols=[
+            '\u2A05',
+            '\u223E',
+            '\u22B2',
+            '\u22B3',
+            '\u2A06',
+            '\u221D',
+            '\u2238',
+            '\u2ADB',
+            '\u2200',
+        ],
+        seed=0,
+        text_height=0.7,
+        text_font='Arial',
+        cell_size=1,
+        grid=(10, 15),
+        mouse_visible=False,
+        interline_gap=0.5,
+    )
+    self.run()
+    win.close()
