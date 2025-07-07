@@ -495,6 +495,8 @@ Calibration instructions:
     Press V to trigger validation mode
     Press ENTER to start validation
     
+    Press ENTER/ESC after successful validation to exit validation mode
+    
     Press O to accept calibration
     
     Press ESC to exit calibration or validation mode.
