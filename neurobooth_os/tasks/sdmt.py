@@ -1,7 +1,9 @@
 from typing import List, Optional
 from random import randint, Random
 import numpy as np
-from psychopy import event, clock
+from psychopy import event, clock, visual
+from psychopy.visual import TextStim
+from psychopy.visual.rect import Rect
 from neurobooth_os.tasks.task import Eyelink_HostPC, TaskAborted
 
 
@@ -12,21 +14,23 @@ class SDMT(Eyelink_HostPC):
             symbols: List[str],
             seed: Optional[int],
             text_height: float,
+            text_font: str,
+            cell_size: float,
             grid: (int, int),
             mouse_visible: bool,
             interline_gap: float,
-            units: str,
             **kwargs
     ):
         """
         :param n_trials: The number of trials, where each trial presents a new random grid of test symbols
         :param symbols: The symbols to be displayed in the key (in order of presentation)
         :param seed: If provided, controls the "random" sequence of generated test symbols
-        :param text_height: The height of the text
+        :param text_height: The height of the text (cm)
+        :param text_font: The font of the text
+        :param cell_size: The size of each square cell (cm)
         :param grid: Specifies the number of rows and columns in the test symbol grid
         :param mouse_visible: Whether the mouse should be visible during the task
-        :param interline_gap: How much space to add between each row of test symbols
-        :param units: The units of the above parameters (passed through to PsychoPy)
+        :param interline_gap: How much space to add between each row of test symbols (cm)
         :param kwargs: Passthrough arguments
         """
         super().__init__(**kwargs)
@@ -36,15 +40,38 @@ class SDMT(Eyelink_HostPC):
 
         # Visual Parameters
         self.text_height: float = text_height
+        self.text_font: str = text_font
+        self.cell_size: float = cell_size
         self.grid: (int, int) = grid
         self.interline_gap: float = interline_gap
-        self.units: str = units
         self.mouse_visible: bool = mouse_visible
 
         # Sequence Parameters
         self.seed: int = seed if (seed is not None) else randint(0, 1<<20)
         self.rng = Random(self.seed)
         self.test_sequence: np.ndarray = np.array([])
+
+        self._calc_symbol_locations()
+
+    def _calc_symbol_locations(self) -> None:
+        grow, gcol = self.grid
+        grid_width = gcol * self.cell_size
+        key_width = len(self.symbols) * self.cell_size
+        total_height = grow * (self.cell_size + self.interline_gap)  # Test area height
+        total_height += self.cell_size * 2  # Keys area height
+
+        h = (total_height / 2) - (self.cell_size / 2)
+        w = (-key_width / 2) + (self.cell_size / 2)
+        self.key_symbol_locs = [(w + i*self.cell_size, h) for i in range(len(self.symbols))]
+        h -= self.cell_size
+        self.key_number_locs = [(w + i*self.cell_size, h) for i in range(len(self.symbols))]
+
+        h -= self.cell_size + self.interline_gap
+        w = (-grid_width / 2) + (self.cell_size / 2)
+        self.test_symbol_locs = []
+        for j in range(grow):
+            self.test_symbol_locs.append([(w + i*self.cell_size, h) for i in range(gcol)])
+            h -= self.cell_size + self.interline_gap
 
     def generate_test_sequence(self) -> np.ndarray:
         h, w = self.grid
@@ -55,13 +82,25 @@ class SDMT(Eyelink_HostPC):
         return seq.reshape(self.grid)
 
     def draw_key(self) -> None:
-        pass
+        for loc in self.key_symbol_locs:
+            stim = Rect(self.win, size=self.cell_size, lineColor='black', units='cm', pos=loc)
+            stim.draw()
+
+        for loc in self.key_number_locs:
+            stim = Rect(self.win, size=self.cell_size, lineColor='black', units='cm', pos=loc)
+            stim.draw()
 
     def draw_test_grid(self) -> None:
-        pass
+        for i, row in enumerate(self.test_symbol_locs):
+            for j, loc in enumerate(row):
+                stim = Rect(self.win, size=self.cell_size, lineColor='black', units='cm', pos=loc)
+                stim.draw()
 
     def draw(self) -> None:
-        pass
+        self.win.color = 'white'
+        self.draw_key()
+        self.draw_test_grid()
+        self.win.flip()
 
     def run_trial(self) -> None:
         self.test_sequence = self.generate_test_sequence()
