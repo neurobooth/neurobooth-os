@@ -1,0 +1,206 @@
+study_options:
+  "HD study": "01"
+  "test study": "00"
+
+gender_options:
+  "Male": 1
+  "Female": 2
+
+country_options:
+  "United States of America": 1
+  "Albania": 2
+  "Algeria": 3
+  "Andorra": 4
+  "Angola": 5
+  "Antigua and Barbuda": 6
+  "Argentina": 7
+  "Armenia": 8
+  "Australia": 9
+  "Austria": 10
+  "Azerbaijan": 11
+  "The Bahamas": 12
+  "Bahrain": 13
+  "Bangladesh": 14
+  "Barbados": 15
+  "Belarus": 16
+  "Belgium": 17
+  "Belize": 18
+  "Benin": 19
+  "Bhutan": 20
+  "Bolivia": 21
+  "Bosnia and Herzegovina": 22
+  "Botswana": 23
+  "Brazil": 24
+  "Brunei": 25
+  "Bulgaria": 26
+  "Burkina Faso": 27
+  "Burundi": 28
+  "Cambodia": 29
+  "Cameroon": 30
+  "Canada": 31
+  "Cape Verde": 32
+  "Central African Republic": 33
+  "Chad": 34
+  "Chile": 35
+  "China": 36
+  "Colombia": 37
+  "Comoros": 38
+  "Costa Rica": 39
+  "Cote d'Ivoire": 40
+  "Croatia": 41
+  "Cuba": 42
+  "Cyprus": 43
+  "Czech Republic": 44
+  "Denmark": 45
+  "Djibouti": 46
+  "Dominica": 47
+  "Dominican Republic": 48
+  "East Timor (Timor-Leste)": 49
+  "Ecuador": 50
+  "Egypt": 51
+  "El Salvador": 52
+  "Equatorial Guinea": 53
+  "Eritrea": 54
+  "Estonia": 55
+  "Ethiopia": 56
+  "Fiji": 57
+  "Finland": 58
+  "France": 59
+  "Gabon": 60
+  "The Gambia": 61
+  "Georgia": 62
+  "Germany": 63
+  "Ghana": 64
+  "Greece": 65
+  "Grenada": 66
+  "Guatemala": 67
+  "Guinea": 68
+  "Guinea-Bissau": 69
+  "Guyana": 70
+  "Haiti": 71
+  "Honduras": 72
+  "Hungary": 73
+  "Iceland": 74
+  "India": 75
+  "Indonesia": 76
+  "Iran": 77
+  "Iraq": 78
+  "Ireland": 79
+  "Israel": 80
+  "Italy": 81
+  "Jamaica": 82
+  "Japan": 83
+  "Jordan": 84
+  "Kazakhstan": 85
+  "Kenya": 86
+  "Kiribati": 87
+  "Kosovo": 88
+  "Kuwait": 89
+  "Kyrgyzstan": 90
+  "Laos": 91
+  "Latvia": 92
+  "Lebanon": 93
+  "Lesotho": 94
+  "Liberia": 95
+  "Libya": 96
+  "Liechtenstein": 97
+  "Lithuania": 98
+  "Luxembourg": 99
+  "Macedonia": 100
+  "Madagascar": 101
+  "Malawi": 102
+  "Malaysia": 103
+  "Maldives": 104
+  "Mali": 105
+  "Malta": 106
+  "Marshall Islands": 107
+  "Mauritania": 108
+  "Mauritius": 109
+  "Mexico": 110
+  "Moldova": 111
+  "Monaco": 112
+  "Mongolia": 113
+  "Montenegro": 114
+  "Morocco": 115
+  "Mozambique": 116
+  "Myanmar (Burma)": 117
+  "Namibia": 118
+  "Nauru": 119
+  "Nepal": 120
+  "Netherlands": 121
+  "New Zealand": 122
+  "Nicaragua": 123
+  "Niger": 124
+  "Nigeria": 125
+  "Norway": 126
+  "Oman": 127
+  "Pakistan": 128
+  "Palau": 129
+  "Panama": 130
+  "Papua New Guinea": 131
+  "Paraguay": 132
+  "Peru": 133
+  "Philippines": 134
+  "Poland": 135
+  "Portugal": 136
+  "Qatar": 137
+  "Romania": 138
+  "Russia": 139
+  "Rwanda": 140
+  "Saint Kitts and Nevis": 141
+  "Saint Lucia": 142
+  "Saint Vincent and the Grenadines": 143
+  "Samoa": 144
+  "San Marino": 145
+  "Sao Tome and Principe": 146
+  "Saudi Arabia": 147
+  "Senegal": 148
+  "Serbia": 149
+  "Seychelles": 150
+  "Sierra Leone": 151
+  "Singapore": 152
+  "Slovakia": 153
+  "Slovenia": 154
+  "Solomon Islands": 155
+  "Somalia": 156
+  "South Africa": 157
+  "South Sudan": 158
+  "Spain": 159
+  "Sri Lanka": 160
+  "Sudan": 161
+  "Suriname": 162
+  "Swaziland": 163
+  "Sweden": 164
+  "Switzerland": 165
+  "Syria": 166
+  "Taiwan": 167
+  "Tajikistan": 168
+  "Tanzania": 169
+  "Thailand": 170
+  "Togo": 171
+  "Tonga": 172
+  "Trinidad and Tobago": 173
+  "Tunisia": 174
+  "Turkey": 175
+  "Turkmenistan": 176
+  "Tuvalu": 177
+  "Uganda": 178
+  "Ukraine": 179
+  "United Arab Emirates": 180
+  "United Kingdom": 181
+  "Uruguay": 183
+  "Uzbekistan": 184
+  "Vanuatu": 185
+  "Vatican City (Holy See)": 186
+  "Venezuela": 187
+  "Vietnam": 188
+  "Yemen": 189
+  "Zambia": 190
+  "Zimbabwe": 191
+  "Republic of the Congo": 192
+  "North Korea": 193
+  "South Korea": 194
+  "Afghanistan": 195
+  "Bermuda": 196
+  "Federated States of Micronesia": 197
+
