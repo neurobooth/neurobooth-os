@@ -870,9 +870,9 @@ class IPhoneListeningThread(threading.Thread):
             if 'WinError 10053' in str(e):  # Can occur if the app is on too long and iPhone blocks the port
                 raise IPhonePanic('Communications Breakdown') from e
             # Simply log anything unexpected
-            self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
+            self.logger.error(f'iPhone: Listening loop encountered an unexpected OSError: {e}')
         except Exception as e:  # Simply log any other unexpected errors
-            self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
+            self.logger.error(f'iPhone: Listening loop encountered an unexpected error: {e}')
 
     def stop(self):
         self._running = False
