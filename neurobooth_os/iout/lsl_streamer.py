@@ -32,7 +32,7 @@ def start_mouse_stream(_, device_args):
 def start_mbient_stream(_, device_args):
     import neurobooth_os.iout.mbient as mbient
     with SHARED_LOCK:
-        if SHARED_CONTEXT.get('MBIENT_SCAN_PERFORMED', False):
+        if not SHARED_CONTEXT.get('MBIENT_SCAN_PERFORMED', False):
             logger = logging.getLogger(APP_LOG_NAME)
 
             # Wake up Mbients
