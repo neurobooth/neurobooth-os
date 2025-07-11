@@ -81,20 +81,26 @@ class SDMT(Eyelink_HostPC):
             seq[i+1] = self.rng.choice(np.setdiff1d(self.symbols, seq[i]))  # No back-to-back symbols
         return seq.reshape(self.grid)
 
-    def draw_key(self) -> None:
-        for loc in self.key_symbol_locs:
-            stim = Rect(self.win, size=self.cell_size, lineColor='black', units='cm', pos=loc)
-            stim.draw()
+    def draw_symbol(self, loc: (float, float), symbol: str) -> None:
+        rstim = Rect(self.win, size=self.cell_size, lineColor='black', units='cm', pos=loc)
+        tstim = TextStim(
+            self.win, text=symbol, font=self.text_font, height=self.text_height, units='cm', pos=loc
+        )
+        rstim.draw()
+        tstim.draw()
 
-        for loc in self.key_number_locs:
-            stim = Rect(self.win, size=self.cell_size, lineColor='black', units='cm', pos=loc)
-            stim.draw()
+    def draw_key(self) -> None:
+        for symbol, loc in zip(self.symbols, self.key_symbol_locs):
+            self.draw_symbol(loc, symbol)
+
+        for i, loc in enumerate(self.key_number_locs):
+            self.draw_symbol(loc, f'{i+1}')
 
     def draw_test_grid(self) -> None:
         for i, row in enumerate(self.test_symbol_locs):
             for j, loc in enumerate(row):
-                stim = Rect(self.win, size=self.cell_size, lineColor='black', units='cm', pos=loc)
-                stim.draw()
+                rstim = Rect(self.win, size=self.cell_size, lineColor='black', units='cm', pos=loc)
+                rstim.draw()
 
     def draw(self) -> None:
         self.win.color = 'white'
