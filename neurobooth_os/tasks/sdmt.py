@@ -57,7 +57,7 @@ class SDMT(Eyelink_HostPC):
         grow, gcol = self.grid
         grid_width = gcol * self.cell_size
         key_width = len(self.symbols) * self.cell_size
-        total_height = grow * (self.cell_size + self.interline_gap)  # Test area height
+        total_height = grow * (self.cell_size + self.interline_gap * 2)  # Test area height
         total_height += self.cell_size * 2  # Keys area height
 
         h = (total_height / 2) - (self.cell_size / 2)
@@ -66,7 +66,7 @@ class SDMT(Eyelink_HostPC):
         h -= self.cell_size
         self.key_number_locs = [(w + i*self.cell_size, h) for i in range(len(self.symbols))]
 
-        h -= self.cell_size + self.interline_gap
+        h -= self.cell_size + self.interline_gap * 2
         w = (-grid_width / 2) + (self.cell_size / 2)
         self.test_symbol_locs = []
         for j in range(grow):
