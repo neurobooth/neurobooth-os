@@ -4,7 +4,8 @@ import numpy as np
 from psychopy import event, clock, visual
 from psychopy.visual import TextStim
 from psychopy.visual.rect import Rect
-from neurobooth_os.tasks.task import Eyelink_HostPC, TaskAborted
+from psychopy.tools.monitorunittools import convertToPix
+from neurobooth_os.tasks.task import Eyelink_HostPC, TaskAborted, EyelinkColor
 
 
 class SDMT(Eyelink_HostPC):
@@ -84,12 +85,17 @@ class SDMT(Eyelink_HostPC):
         return seq.reshape(self.grid)
 
     def draw_symbol(self, loc: (float, float), symbol: str) -> None:
+        # Draw  symbol and box to screen
         rstim = Rect(self.win, size=self.cell_size, lineColor='black', units='cm', pos=loc)
         tstim = TextStim(
             self.win, text=symbol, font=self.text_font, height=self.text_height, units='cm', pos=loc
         )
         rstim.draw()
         tstim.draw()
+
+        # Draw box to EyeLink tablet
+        loc_px = convertToPix(loc, loc, 'cm', self.win)
+        self.draw_box(*loc_px, self.cell_size, self.cell_size, EyelinkColor.BLACK)
 
     def draw_key(self) -> None:
         for symbol, loc in zip(self.symbols, self.key_symbol_locs):
