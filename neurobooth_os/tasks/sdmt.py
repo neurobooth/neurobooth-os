@@ -135,6 +135,9 @@ class SDMT(Eyelink_HostPC):
 
 if __name__ == "__main__":
     from psychopy import monitors
+    from neurobooth_os.config import load_config_by_service_name
+
+    load_config_by_service_name('STM')
 
     monitor_width = 55
     monitor_distance = 60
