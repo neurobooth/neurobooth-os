@@ -169,7 +169,7 @@ if __name__ == "__main__":
         cell_size=1.5,
         grid=(8, 20),
         mouse_visible=False,
-        interline_gap=0.5,
+        interline_gap=1,
     )
     self.run()
     win.close()
