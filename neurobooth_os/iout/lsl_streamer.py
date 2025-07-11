@@ -9,6 +9,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.msg.messages import DeviceInitialization, Request
 
+# Global shared context to assist with threading during device startup
+SHARED_CONTEXT: Dict[str, Any] = {}
+SHARED_LOCK = threading.Lock()
+
 # --------------------------------------------------------------------------------
 # Wrappers for device setup procedures.
 # TODO: Handle device setup calls and imports in a more standardized/extensible fashion!!!
@@ -26,8 +30,21 @@ def start_mouse_stream(_, device_args):
 
 
 def start_mbient_stream(_, device_args):
-    from neurobooth_os.iout.mbient import Mbient
-    device = Mbient(device_args)
+    import neurobooth_os.iout.mbient as mbient
+    with SHARED_LOCK:
+        if SHARED_CONTEXT.get('MBIENT_SCAN_PERFORMED', False):
+            logger = logging.getLogger(APP_LOG_NAME)
+
+            # Wake up Mbients
+            logger.debug('Mbient: Performing BLE Scan')
+            ble_devices = mbient.scan_BLE(timeout_sec=10)
+            logger.debug(
+                f'Mbient: BLE scan found {len(ble_devices)} devices: {[mac for _, mac in ble_devices.items()]}'
+            )
+
+            SHARED_CONTEXT['MBIENT_SCAN_PERFORMED'] = True
+
+    device = mbient.Mbient(device_args)
     if not device.prepare():
         return None
     device.start()

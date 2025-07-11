@@ -508,20 +508,6 @@ class Mbient:
     def register_data_handler(self, handler_fn: 'Mbient.DATA_HANDLER'):
         self.data_handlers.append(handler_fn)
 
-    def prepare_scan(self) -> None:
-        """
-        Perform a BLE scan to wake up devices before trying to connect.
-        (The alternative is to physically push the button on the devices or scan for devices from a Windows computer.)
-        We only need to do this once, so this function ensures it is only done once per machine/server.
-        """
-        with Mbient.SCAN_LOCK:
-            if Mbient.SCAN_PERFORMED:  # Only need to scan once if multiple devices are present
-                return
-            self.logger.debug('Performing BLE Scan')
-            ble_devices = scan_BLE(timeout_sec=10)
-            self.logger.debug(f'BLE scan found {len(ble_devices)} devices: {[mac for _, mac in ble_devices.items()]}')
-            Mbient.SCAN_PERFORMED = True
-
     def connect(self, n_attempts: Optional[int] = None, retry_delay_sec: Optional[float] = None) -> None:
         """
         Attempt to connect to the device and set a disconnect handler.
@@ -674,7 +660,6 @@ class Mbient:
         :returns: Whether the connection and setup was successful.
         """
         try:
-            self.prepare_scan()  # Wake up devices
             self.connect()
             self.logger.debug(self.format_message(f'Device Model: {self.device_wrapper.model_name}'))
             self.logger.debug(self.format_message(f'Wrapper Class: {self.device_wrapper.__class__.__name__}'))
