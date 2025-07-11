@@ -454,11 +454,6 @@ class Mbient:
         5. close() to disconnect the sensor.
     If the sensor disconnects at any point, a reconnect will be attempted.
     """
-    # Class variables to ensure that the BLE scan only happens during one prepare() call.
-    # Will need to switch to a multiprocess.Manager if intending to use multiprocessing.
-    SCAN_LOCK = mp.Lock()
-    SCAN_PERFORMED = False
-
     # Type definitions
     DATA_HANDLER = Callable[[float, Any, Any], None]
 
@@ -865,8 +860,8 @@ def test_script() -> None:
 
     logger.info(f'Creating Device {args.name} at {args.mac}')
     dev_args = MbientDeviceArgs()
+    scan_BLE()  # Comment out to make test script run faster
     device = Mbient(dev_args)
-    Mbient.SCAN_PERFORMED = True  # Make repeated runs of test script faster; comment out if needed.
 
     def _test_data_handler(epoch: float, acc: Any, gyro: Any) -> None:
         """Prints data to the console"""
