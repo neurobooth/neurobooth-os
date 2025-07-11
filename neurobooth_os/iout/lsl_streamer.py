@@ -9,30 +9,26 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.msg.messages import DeviceInitialization, Request
 
-# Global shared context to assist with threading during device startup
-SHARED_CONTEXT: Dict[str, Any] = {}
-SHARED_LOCK = threading.Lock()
-
 # --------------------------------------------------------------------------------
 # Wrappers for device setup procedures.
 # TODO: Handle device setup calls and imports in a more standardized/extensible fashion!!!
 # --------------------------------------------------------------------------------
-def start_eyelink_stream(win, device_args):
+def start_eyelink_stream(win, _, device_args):
     from neurobooth_os.iout.eyelink_tracker import EyeTracker
     return EyeTracker(win=win, device_args=device_args)
 
 
-def start_mouse_stream(_, device_args):
+def start_mouse_stream(win, context, device_args):
     from neurobooth_os.iout.mouse_tracker import MouseStream
     device = MouseStream(device_args)
     device.start()
     return device
 
 
-def start_mbient_stream(_, device_args):
+def start_mbient_stream(win, context, device_args):
     import neurobooth_os.iout.mbient as mbient
-    with SHARED_LOCK:
-        if not SHARED_CONTEXT.get('MBIENT_SCAN_PERFORMED', False):
+    with context['LOCK']:
+        if not context.get('MBIENT_SCAN_PERFORMED', False):
             logger = logging.getLogger(APP_LOG_NAME)
 
             # Wake up Mbients
@@ -42,7 +38,7 @@ def start_mbient_stream(_, device_args):
                 f'Mbient: BLE scan found {len(ble_devices)} devices: {[mac for _, mac in ble_devices.items()]}'
             )
 
-            SHARED_CONTEXT['MBIENT_SCAN_PERFORMED'] = True
+            context['MBIENT_SCAN_PERFORMED'] = True
 
     device = mbient.Mbient(device_args)
     if not device.prepare():
@@ -51,28 +47,28 @@ def start_mbient_stream(_, device_args):
     return device
 
 
-def start_intel_stream(_, device_args):
+def start_intel_stream(win, context, device_args):
     from neurobooth_os.iout.camera_intel import VidRec_Intel
     return VidRec_Intel(device_args)
 
 
-def start_flir_stream(_, device_args):
+def start_flir_stream(win, context, device_args):
     from neurobooth_os.iout.flir_cam import VidRec_Flir
     return VidRec_Flir(device_args)
 
 
-def start_webcam_stream(_, device_args):
+def start_webcam_stream(win, context, device_args):
     from neurobooth_os.iout.webcam import VidRec_Webcam
     return VidRec_Webcam(device_args)
 
 
-def start_iphone_stream(_, device_args):
+def start_iphone_stream(win, context, device_args):
     from neurobooth_os.iout.iphone import IPhone
     device = IPhone(name="IPhoneFrameIndex", device_args=device_args)
     return device if device.prepare() else None
 
 
-def start_yeti_stream(_, device_args):
+def start_yeti_stream(win, context, device_args):
     from neurobooth_os.iout.microphone import MicStream
     device = MicStream(device_args)
     device.start()
@@ -133,6 +129,9 @@ class DeviceManager:
         self.logger = logging.getLogger(APP_LOG_NAME)
         self.streams: Dict[str, Any] = {}
 
+        # Global shared context to assist with threading during device startup
+        self.SHARED_CONTEXT: Dict[str, Any] = {'LOCK': threading.Lock()}
+
         if node_name not in SERVER_ASSIGNMENTS:
             raise ValueError(f'Unrecognized node name ({node_name}) given to device manger!')
         self.assigned_devices = SERVER_ASSIGNMENTS[node_name]
@@ -154,12 +153,12 @@ class DeviceManager:
 
         register_lock = threading.Lock()
 
-        def start_and_register_device(device_args: DeviceArgs) -> None:
+        def start_and_register_device(context: Dict[str, Any], device_args: DeviceArgs) -> None:
             device_id = device_args.device_id
             self.logger.debug(f'Device Manager Starting: {device_id}')
             self.logger.debug(f'Device Manager Starting with args: {device_args}')
             device_start_function: Callable = meta.str_fileid_to_eval(device_args.device_start_function)
-            device = device_start_function(win, device_args)
+            device = device_start_function(win, context, device_args)
             if device is None:
                 self.logger.warning(f'Device Manager Failed to Start: {device_id}')
                 return
@@ -173,7 +172,7 @@ class DeviceManager:
                 if device_key not in self.assigned_devices:
                     continue
                 if device_key in ASYNC_STARTUP:
-                    futures.append(executor.submit(start_and_register_device, device_args))
+                    futures.append(executor.submit(start_and_register_device, self.SHARED_CONTEXT, device_args))
                 else:  # Run sequentially if not specified as async
                     start_and_register_device(device_args)
 
