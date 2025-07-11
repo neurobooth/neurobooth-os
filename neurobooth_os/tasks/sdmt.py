@@ -164,10 +164,10 @@ if __name__ == "__main__":
             '\u2200',
         ],
         seed=0,
-        text_height=0.7,
+        text_height=1.2,
         text_font='Arial',
-        cell_size=1,
-        grid=(10, 15),
+        cell_size=1.5,
+        grid=(8, 20),
         mouse_visible=False,
         interline_gap=0.5,
     )
