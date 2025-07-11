@@ -174,7 +174,7 @@ class DeviceManager:
                 if device_key in ASYNC_STARTUP:
                     futures.append(executor.submit(start_and_register_device, self.SHARED_CONTEXT, device_args))
                 else:  # Run sequentially if not specified as async
-                    start_and_register_device(device_args)
+                    start_and_register_device(self.SHARED_CONTEXT, device_args)
 
             for f in as_completed(futures):
                 f.result()  # Raise errors that occur asynchronously
