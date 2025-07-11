@@ -60,12 +60,14 @@ class SDMT(Eyelink_HostPC):
         total_height = grow * (self.cell_size + self.interline_gap)  # Test area height
         total_height += self.cell_size * 2 + self.interline_gap # Keys area height
 
+        # Key Area
         h = (total_height / 2) - (self.cell_size / 2)
         w = (-key_width / 2) + (self.cell_size / 2)
         self.key_symbol_locs = [(w + i*self.cell_size, h) for i in range(len(self.symbols))]
         h -= self.cell_size
         self.key_number_locs = [(w + i*self.cell_size, h) for i in range(len(self.symbols))]
 
+        # Test Area
         h -= self.cell_size + self.interline_gap * 2
         w = (-grid_width / 2) + (self.cell_size / 2)
         self.test_symbol_locs = []
@@ -99,11 +101,9 @@ class SDMT(Eyelink_HostPC):
     def draw_test_grid(self) -> None:
         for i, row in enumerate(self.test_symbol_locs):
             for j, loc in enumerate(row):
-                rstim = Rect(self.win, size=self.cell_size, lineColor='black', units='cm', pos=loc)
-                rstim.draw()
+                self.draw_symbol(loc, self.test_sequence[i, j])
 
     def draw(self) -> None:
-        self.win.color = 'white'
         self.draw_key()
         self.draw_test_grid()
         self.win.flip()
