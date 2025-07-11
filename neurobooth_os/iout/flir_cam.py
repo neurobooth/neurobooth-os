@@ -246,6 +246,9 @@ class VidRec_Flir(CameraPreviewer):
         img, _ = self.imgage_proc()
         self.cam.EndAcquisition()
 
+        # Open question: why is the image not flipped during active recording?
+        img = cv2.rotate(img, cv2.ROTATE_180)
+
         rc, img = cv2.imencode('.png', img)
         return img.tobytes() if rc else b""
 
