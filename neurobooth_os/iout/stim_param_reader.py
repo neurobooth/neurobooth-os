@@ -1,8 +1,8 @@
 from os import environ, path
 
-from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, \
+from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, PositiveFloat, \
     SerializeAsAny, model_validator
-from typing import Optional, List, Callable, Tuple, Dict
+from typing import Optional, List, Callable, Tuple, Dict, Annotated
 import os
 import yaml
 
@@ -18,6 +18,8 @@ the pydantic BaseModel class). This class handles the parsing of the yaml file i
 
 Parsers for all the standard stimulus yaml files are found in this module.   
 """
+
+Char = Annotated[str, Field(min_length=1, max_length=1)]
 
 
 class EnvArgs(BaseModel):
@@ -457,6 +459,18 @@ class TimingTestStimArgs(EyeTrackerStimArgs):
     tone_duration: NonNegativeFloat
     wait_center: NonNegativeFloat
     num_iterations: NonNegativeInt
+
+
+class SdmtStimArgs(EyeTrackerStimArgs):
+    duration: PositiveFloat
+    symbols: List[Char]
+    seed: Optional[int]
+    font: str
+    text_height: PositiveFloat
+    cell_size: PositiveFloat
+    interline_gap: NonNegativeFloat
+    grid_size: (PositiveInt, PositiveInt)
+    mouse_visible: bool
 
 
 def get_cfg_path(folder_name: str) -> str:

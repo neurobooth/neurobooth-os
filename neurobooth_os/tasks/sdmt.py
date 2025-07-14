@@ -11,39 +11,39 @@ from neurobooth_os.tasks.task import Eyelink_HostPC, TaskAborted, EyelinkColor
 class SDMT(Eyelink_HostPC):
     def __init__(
             self,
-            n_trials: int,
+            duration: float,
             symbols: List[str],
             seed: Optional[int],
             text_height: float,
             text_font: str,
             cell_size: float,
-            grid: (int, int),
+            grid_size: (int, int),
             mouse_visible: bool,
             interline_gap: float,
             **kwargs
     ):
         """
-        :param n_trials: The number of trials, where each trial presents a new random grid of test symbols
+        :param duration: The duration of the task (seconds)
         :param symbols: The symbols to be displayed in the key (in order of presentation)
         :param seed: If provided, controls the "random" sequence of generated test symbols
         :param text_height: The height of the text (cm)
         :param text_font: The font of the text
         :param cell_size: The size of each square cell (cm)
-        :param grid: Specifies the number of rows and columns in the test symbol grid
+        :param grid_size: Specifies the number of rows and columns in the test symbol grid
         :param mouse_visible: Whether the mouse should be visible during the task
         :param interline_gap: How much space to add between each row of test symbols (cm)
         :param kwargs: Passthrough arguments
         """
         super().__init__(**kwargs)
 
-        self.n_trials: int = n_trials
+        self.duration: float = duration
         self.symbols = np.array(symbols, dtype='U1')
 
         # Visual Parameters
         self.text_height: float = text_height
         self.text_font: str = text_font
         self.cell_size: float = cell_size
-        self.grid: (int, int) = grid
+        self.grid: (int, int) = grid_size
         self.interline_gap: float = interline_gap
         self.mouse_visible: bool = mouse_visible
 
@@ -119,21 +119,18 @@ class SDMT(Eyelink_HostPC):
     def run_trial(self) -> None:
         self.test_sequence = self.generate_test_sequence()
         self.draw()
-        self.sendMessage(self.marker_trial_start)
 
         event.clearEvents(eventType='keyboard')
+        # TODO: End if duration is surpassed
         while not event.getKeys(self.advance_keys):
             self.check_if_aborted()
             clock.wait(0.01, hogCPUperiod=1)
-
-        self.sendMessage(self.marker_trial_end)
 
     def present_task(self, prompt=True, duration=0, **kwargs):
         self.Mouse.setVisible(self.mouse_visible)
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
         try:
-            for trial in range(self.n_trials):
-                self.run_trial()
+            self.run_trial()
         except TaskAborted:
             print('SDMT aborted')
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
@@ -147,7 +144,7 @@ class SDMT(Eyelink_HostPC):
             )
 
 
-if __name__ == "__main__":
+def test_script() -> None:
     from psychopy import monitors
     from neurobooth_os.config import load_config_by_service_name
 
@@ -165,7 +162,7 @@ if __name__ == "__main__":
 
     self = SDMT(
         win=win,
-        n_trials=1,
+        duration=90,
         symbols=[
             '\u2A05',
             '\u223E',
@@ -181,9 +178,13 @@ if __name__ == "__main__":
         text_height=1.5,
         text_font='Arial',
         cell_size=1.75,
-        grid=(8, 20),
+        grid_size=(8, 20),
         mouse_visible=False,
         interline_gap=0.75,
     )
     self.run()
     win.close()
+
+
+if __name__ == "__main__":
+    test_script()
