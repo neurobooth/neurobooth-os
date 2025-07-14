@@ -1,7 +1,8 @@
 from typing import List, Optional
 from random import randint, Random
 import numpy as np
-from psychopy import event, clock, visual
+from psychopy import event, clock
+from psychopy.core import CountdownTimer
 from psychopy.visual import TextStim
 from psychopy.visual.rect import Rect
 from psychopy.tools.monitorunittools import convertToPix, cm2pix
@@ -121,10 +122,10 @@ class SDMT(Eyelink_HostPC):
         self.draw()
 
         event.clearEvents(eventType='keyboard')
-        # TODO: End if duration is surpassed
-        while not event.getKeys(self.advance_keys):
+        timer = CountdownTimer(self.duration)
+        while timer.getTime() > 0:
             self.check_if_aborted()
-            clock.wait(0.01, hogCPUperiod=1)
+            clock.wait(0.05, hogCPUperiod=1)
 
     def present_task(self, prompt=True, duration=0, **kwargs):
         self.Mouse.setVisible(self.mouse_visible)
@@ -145,7 +146,7 @@ class SDMT(Eyelink_HostPC):
 
 
 def test_script() -> None:
-    from psychopy import monitors
+    from psychopy import monitors, visual
     from neurobooth_os.config import load_config_by_service_name
 
     load_config_by_service_name('STM')
