@@ -1,11 +1,15 @@
-from typing import List, Optional
+import os
+from typing import List, Optional, Union
 from random import randint, Random
 import numpy as np
+
 from psychopy import event, clock
 from psychopy.core import CountdownTimer
-from psychopy.visual import TextStim
+from psychopy.visual import TextStim, ImageStim
 from psychopy.visual.rect import Rect
+
 from neurobooth_os.tasks.task import Eyelink_HostPC, TaskAborted, EyelinkColor
+from neurobooth_os.iout.stim_param_reader import get_cfg_path
 
 
 class SDMT(Eyelink_HostPC):
@@ -139,13 +143,24 @@ class SDMT(Eyelink_HostPC):
         self.draw_test_grid()
         self.win.flip()
 
-    def show_slide(self) -> None:
-        # TODO: Change to a slide based on a parameter
-        stim = TextStim(
-            self.win, text='Press continue to advance.',
-            font=self.text_font, height=self.text_height, units='cm', pos=(0,0)
+    @classmethod
+    def asset_path(cls, asset: Union[str, os.PathLike]) -> str:
+        """
+        Get the path to the specified asset.
+        :param asset: The name of the asset/file.
+        :return: The file system path to the asset in the config folder.
+        """
+        return os.path.join(get_cfg_path('assets'), 'SDMT', asset)
+
+    def show_slide(self, name: str) -> None:
+        slide = ImageStim(
+            self.win,
+            image=SDMT.asset_path(f'{name}.jpg'),
+            pos=(0, 0),
+            size=(2, 2),
+            units="norm",
         )
-        stim.draw()
+        slide.draw()
         self.win.flip()
 
     def wait_for_advance(self) -> None:
@@ -171,7 +186,7 @@ class SDMT(Eyelink_HostPC):
         self.sendMessage(self.marker_trial_end, to_marker=True, add_event=True)
 
     def run_practice_trial(self) -> None:
-        self.show_slide()  # TODO: Add appropriate slide
+        self.show_slide('before_practice')
         self.wait_for_advance()
 
         self.test_sequence = self.generate_test_sequence(practice=True)
@@ -182,7 +197,7 @@ class SDMT(Eyelink_HostPC):
         self.wait_for_advance()
         self.sendMessage(self.marker_practice_trial_end, to_marker=True, add_event=True)
 
-        self.show_slide()  # TODO: Add appropriate slide
+        self.show_slide('after_practice')
         self.wait_for_advance()
 
     def present_task(self, prompt=True, duration=0, **kwargs):
