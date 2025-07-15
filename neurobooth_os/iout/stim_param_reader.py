@@ -463,7 +463,7 @@ class SdmtStimArgs(EyeTrackerStimArgs):
     duration: PositiveFloat
     symbols: List[str]
     seed: Optional[int]
-    font: str
+    text_font: str
     text_height: PositiveFloat
     cell_size: PositiveFloat
     interline_gap: NonNegativeFloat
