@@ -223,6 +223,7 @@ def test_script() -> None:
         text_font='Arial',
         cell_size=1.75,
         grid_size=(8, 20),
+        practice_grid_size=(2, 6),
         mouse_visible=False,
         interline_gap=0.75,
     )

@@ -2,7 +2,7 @@ from os import environ, path
 
 from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, PositiveFloat, \
     SerializeAsAny, model_validator
-from typing import Optional, List, Callable, Tuple, Dict, Annotated
+from typing import Optional, List, Callable, Tuple, Dict
 import os
 import yaml
 
@@ -18,8 +18,6 @@ the pydantic BaseModel class). This class handles the parsing of the yaml file i
 
 Parsers for all the standard stimulus yaml files are found in this module.   
 """
-
-Char = Annotated[str, Field(min_length=1, max_length=1)]
 
 
 class EnvArgs(BaseModel):
@@ -463,7 +461,7 @@ class TimingTestStimArgs(EyeTrackerStimArgs):
 
 class SdmtStimArgs(EyeTrackerStimArgs):
     duration: PositiveFloat
-    symbols: List[Char]
+    symbols: List[str]
     seed: Optional[int]
     font: str
     text_height: PositiveFloat
