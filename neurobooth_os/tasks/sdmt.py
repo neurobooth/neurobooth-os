@@ -162,26 +162,24 @@ class SDMT(Eyelink_HostPC):
             clock.wait(0.05, hogCPUperiod=1)
 
     def run_trial(self) -> None:
-        self.sendMessage(self.marker_trial_start, to_marker=True, add_event=True)
-
         self.test_sequence = self.generate_test_sequence(practice=False)
         self.calc_symbol_locations(practice=False)
         self.draw()
-        self.wait_for_timer(duration=self.duration)
 
+        self.sendMessage(self.marker_trial_start, to_marker=True, add_event=True)
+        self.wait_for_timer(duration=self.duration)
         self.sendMessage(self.marker_trial_end, to_marker=True, add_event=True)
 
     def run_practice_trial(self) -> None:
         self.show_slide()  # TODO: Add appropriate slide
         self.wait_for_advance()
 
-        self.sendMessage(self.marker_practice_trial_start, to_marker=True, add_event=True)
-
         self.test_sequence = self.generate_test_sequence(practice=True)
         self.calc_symbol_locations(practice=True)
         self.draw()
-        self.wait_for_advance()
 
+        self.sendMessage(self.marker_practice_trial_start, to_marker=True, add_event=True)
+        self.wait_for_advance()
         self.sendMessage(self.marker_practice_trial_end, to_marker=True, add_event=True)
 
         self.show_slide()  # TODO: Add appropriate slide
