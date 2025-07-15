@@ -2,19 +2,19 @@ stimulus_id: sdmt_obs_1
 stimulus_description: symbol digit modalities test
 num_iterations: 1
 duration: 90
-symbols: [
-  '\u2A05',
-  '\u223E',
-  '\u22B2',
-  '\u22B3',
-  '\u2A06',
-  '\u221D',
-  '\u2238',
-  '\u2ADB',
-  '\u2200',
+symbols: [  # Double quotes necessary for Unicode escape sequences
+  "\u2A05",
+  "\u223E",
+  "\u22B2",
+  "\u22B3",
+  "\u2A06",
+  "\u221D",
+  "\u2238",
+  "\u2ADB",
+  "\u2200",
 ]
 seed: 42
-text_font: 'Arial'
+text_font: "Arial"
 text_height: 1.5
 cell_size: 1.75
 interline_gap: 0.75
