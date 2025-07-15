@@ -24,7 +24,7 @@ class SDMT(Eyelink_HostPC):
             practice_grid_cols: int,
             mouse_visible: bool,
             interline_gap: float,
-            draw_on_tablet: bool = False,
+            draw_on_tablet: bool = True,
             **kwargs
     ):
         """
@@ -112,11 +112,15 @@ class SDMT(Eyelink_HostPC):
         tstim.draw()
 
         if self.draw_on_tablet: # Draw box to EyeLink tablet
-            x, y = convertToPix(loc, loc, 'cm', self.win)
-            x, y = int(round(x)), int(round(y))
-            # TODO: Figure out why this cm conversion is not working...
-            cell_size_px = int(round(cm2pix(self.cell_size, self.win)))
-            self.draw_box(x, y, cell_size_px, cell_size_px, EyelinkColor.BLACK)
+            self.clear_screen(EyelinkColor.BRIGHTWHITE)
+
+            # Just accessing the vertices directly to sidestep a PsychoPy error
+            xs = [int(round(x)) for (x, y) in rstim.verticesPix]
+            ys = [int(round(y)) for (x, y) in rstim.verticesPix]
+            x, y = min(xs), min(ys)
+            size = max(xs) - x
+
+            self.draw_box(x, y, size, size, EyelinkColor.BLACK)
 
     def draw_key(self) -> None:
         for symbol, loc in zip(self.symbols, self.key_symbol_locs):
