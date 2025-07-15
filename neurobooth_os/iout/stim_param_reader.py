@@ -470,6 +470,7 @@ class SdmtStimArgs(EyeTrackerStimArgs):
     cell_size: PositiveFloat
     interline_gap: NonNegativeFloat
     grid_size: (PositiveInt, PositiveInt)
+    practice_grid_size: (PositiveInt, PositiveInt)
     mouse_visible: bool
 
 

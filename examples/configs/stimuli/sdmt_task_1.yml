@@ -19,6 +19,7 @@ text_height: 1.5
 cell_size: 1.75
 interline_gap: 0.75
 grid_size: (8, 20)
+practice_grid_size: (2, 6)
 mouse_visible: False
 arg_parser: iout.stim_param_reader.py::SdmtStimArgs()
 stimulus_file_type: psychopy

@@ -19,6 +19,7 @@ class SDMT(Eyelink_HostPC):
             text_font: str,
             cell_size: float,
             grid_size: (int, int),
+            practice_grid_size: (int, int),
             mouse_visible: bool,
             interline_gap: float,
             **kwargs
@@ -31,6 +32,7 @@ class SDMT(Eyelink_HostPC):
         :param text_font: The font of the text
         :param cell_size: The size of each square cell (cm)
         :param grid_size: Specifies the number of rows and columns in the test symbol grid
+        :param practice_grid_size: Specifies the number of rows and columns in the test symbol grid for practice
         :param mouse_visible: Whether the mouse should be visible during the task
         :param interline_gap: How much space to add between each row of test symbols (cm)
         :param kwargs: Passthrough arguments
@@ -45,18 +47,24 @@ class SDMT(Eyelink_HostPC):
         self.text_font: str = text_font
         self.cell_size: float = cell_size
         self.grid: (int, int) = grid_size
+        self.practice_grid: (int, int) = practice_grid_size
         self.interline_gap: float = interline_gap
         self.mouse_visible: bool = mouse_visible
+
+        # Dynamically calculated cell center positions
+        self.key_symbol_locs: List[(float, float)] = []
+        self.key_number_locs: List[(float, float)] = []
+        self.test_symbol_locs: List[List[(float, float)]] = []
 
         # Sequence Parameters
         self.seed: int = seed if (seed is not None) else randint(0, 1<<20)
         self.rng = Random(self.seed)
         self.test_sequence: np.ndarray = np.array([])
 
-        self._calc_symbol_locations()
+    def calc_symbol_locations(self, practice: bool) -> None:
+        grid = self.practice_grid if practice else self.grid
+        grow, gcol = grid
 
-    def _calc_symbol_locations(self) -> None:
-        grow, gcol = self.grid
         grid_width = gcol * self.cell_size
         key_width = len(self.symbols) * self.cell_size
         total_height = grow * (self.cell_size + self.interline_gap)  # Test area height
@@ -77,13 +85,15 @@ class SDMT(Eyelink_HostPC):
             self.test_symbol_locs.append([(w + i*self.cell_size, h) for i in range(gcol)])
             h -= self.cell_size + self.interline_gap
 
-    def generate_test_sequence(self) -> np.ndarray:
-        h, w = self.grid
+    def generate_test_sequence(self, practice: bool) -> np.ndarray:
+        grid = self.practice_grid if practice else self.grid
+        h, w = grid
+
         seq = np.full(h*w, ' ', dtype='U1')
         seq[0] = self.rng.choice(self.symbols)
         for i in range(h*w-1):
             seq[i+1] = self.rng.choice(np.setdiff1d(self.symbols, seq[i]))  # No back-to-back symbols
-        return seq.reshape(self.grid)
+        return seq.reshape(grid)
 
     def draw_symbol(self, loc: (float, float), symbol: str) -> None:
         # Draw  symbol and box to screen
@@ -117,20 +127,53 @@ class SDMT(Eyelink_HostPC):
         self.draw_test_grid()
         self.win.flip()
 
-    def run_trial(self) -> None:
-        self.test_sequence = self.generate_test_sequence()
-        self.draw()
+    def show_slide(self) -> None:
+        pass
 
+    def wait_for_advance(self) -> None:
         event.clearEvents(eventType='keyboard')
-        timer = CountdownTimer(self.duration)
+        while not event.getKeys(self.advance_keys):
+            self.check_if_aborted()
+            clock.wait(0.05, hogCPUperiod=1)
+
+    def wait_for_timer(self, duration) -> None:
+        event.clearEvents(eventType='keyboard')
+        timer = CountdownTimer(duration)
         while timer.getTime() > 0:
             self.check_if_aborted()
             clock.wait(0.05, hogCPUperiod=1)
+
+    def run_trial(self) -> None:
+        self.sendMessage(self.marker_trial_start, to_marker=True, add_event=True)
+
+        self.test_sequence = self.generate_test_sequence(practice=False)
+        self.calc_symbol_locations(practice=False)
+        self.draw()
+        self.wait_for_timer(duration=self.duration)
+
+        self.sendMessage(self.marker_trial_end, to_marker=True, add_event=True)
+
+    def run_practice_trial(self) -> None:
+        self.show_slide()  # TODO: Add appropriate slide
+        self.wait_for_advance()
+
+        self.sendMessage(self.marker_practice_trial_start, to_marker=True, add_event=True)
+
+        self.test_sequence = self.generate_test_sequence(practice=True)
+        self.calc_symbol_locations(practice=True)
+        self.draw()
+        self.wait_for_advance()
+
+        self.sendMessage(self.marker_practice_trial_end, to_marker=True, add_event=True)
+
+        self.show_slide()  # TODO: Add appropriate slide
+        self.wait_for_advance()
 
     def present_task(self, prompt=True, duration=0, **kwargs):
         self.Mouse.setVisible(self.mouse_visible)
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
         try:
+            self.run_practice_trial()
             self.run_trial()
         except TaskAborted:
             print('SDMT aborted')
