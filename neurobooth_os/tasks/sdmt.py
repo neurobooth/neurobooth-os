@@ -18,8 +18,10 @@ class SDMT(Eyelink_HostPC):
             text_height: float,
             text_font: str,
             cell_size: float,
-            grid_size: (int, int),
-            practice_grid_size: (int, int),
+            grid_rows: int,
+            grid_cols: int,
+            practice_grid_rows: int,
+            practice_grid_cols: int,
             mouse_visible: bool,
             interline_gap: float,
             **kwargs
@@ -31,8 +33,10 @@ class SDMT(Eyelink_HostPC):
         :param text_height: The height of the text (cm)
         :param text_font: The font of the text
         :param cell_size: The size of each square cell (cm)
-        :param grid_size: Specifies the number of rows and columns in the test symbol grid
-        :param practice_grid_size: Specifies the number of rows and columns in the test symbol grid for practice
+        :param grid_rows: The number of rows in the test symbol grid
+        :param grid_cols: The number of columns in the test symbol grid
+        :param grid_rows: The number of rows in the test symbol grid (for practice)
+        :param grid_cols: The number of columns in the test symbol grid (for practice)
         :param mouse_visible: Whether the mouse should be visible during the task
         :param interline_gap: How much space to add between each row of test symbols (cm)
         :param kwargs: Passthrough arguments
@@ -46,8 +50,8 @@ class SDMT(Eyelink_HostPC):
         self.text_height: float = text_height
         self.text_font: str = text_font
         self.cell_size: float = cell_size
-        self.grid: (int, int) = grid_size
-        self.practice_grid: (int, int) = practice_grid_size
+        self.grid: (int, int) = (grid_rows, grid_cols)
+        self.practice_grid: (int, int) = (practice_grid_rows, practice_grid_cols)
         self.interline_gap: float = interline_gap
         self.mouse_visible: bool = mouse_visible
 
@@ -219,13 +223,9 @@ def test_script() -> None:
             '\u2200',
         ],
         seed=0,
-        text_height=1.5,
-        text_font='Arial',
-        cell_size=1.75,
-        grid_size=(8, 20),
-        practice_grid_size=(2, 6),
+        text_height=1.5, text_font='Arial', cell_size=1.75, interline_gap=0.75,
+        grid_rows=8, grid_cols=20, practice_grid_rows=2, practice_grid_cols=6,
         mouse_visible=False,
-        interline_gap=0.75,
     )
     self.run()
     win.close()

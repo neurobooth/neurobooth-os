@@ -1,6 +1,6 @@
 from os import environ, path
 
-from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, \
+from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, PositiveFloat, \
     SerializeAsAny, model_validator
 from typing import Optional, List, Callable, Tuple, Dict
 import os
@@ -460,15 +460,17 @@ class TimingTestStimArgs(EyeTrackerStimArgs):
 
 
 class SdmtStimArgs(EyeTrackerStimArgs):
-    duration: NonNegativeFloat
+    duration: PositiveFloat
     symbols: List[str]
     seed: Optional[int]
     font: str
-    text_height: NonNegativeFloat
-    cell_size: NonNegativeFloat
+    text_height: PositiveFloat
+    cell_size: PositiveFloat
     interline_gap: NonNegativeFloat
-    grid_size: (PositiveInt, PositiveInt)
-    practice_grid_size: (PositiveInt, PositiveInt)
+    grid_rows: PositiveInt
+    grid_cols: PositiveInt
+    practice_grid_rows: PositiveInt
+    practice_grid_cols: PositiveInt
     mouse_visible: bool
 
 
