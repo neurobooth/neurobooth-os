@@ -5,7 +5,6 @@ from psychopy import event, clock
 from psychopy.core import CountdownTimer
 from psychopy.visual import TextStim
 from psychopy.visual.rect import Rect
-from psychopy.tools.monitorunittools import convertToPix, cm2pix
 from neurobooth_os.tasks.task import Eyelink_HostPC, TaskAborted, EyelinkColor
 
 
@@ -117,7 +116,8 @@ class SDMT(Eyelink_HostPC):
             # Just accessing the vertices directly to sidestep a PsychoPy error
             xs = [int(round(x)) for (x, y) in rstim.verticesPix]
             ys = [int(round(y)) for (x, y) in rstim.verticesPix]
-            x, y = min(xs), min(ys)
+            w, h = self.win.monitor.getSizePix()
+            x, y = min(xs) + w // 2, -min(ys) + h // 2
             size = max(xs) - x
 
             self.draw_box(x, y, size, size, EyelinkColor.BLACK)
@@ -214,7 +214,6 @@ def test_script() -> None:
 
     monitor_width = 55
     monitor_distance = 60
-    mon = monitors.getAllMonitors()[0]
     customMon = monitors.Monitor(
         "demoMon", width=monitor_width, distance=monitor_distance
     )
@@ -239,7 +238,7 @@ def test_script() -> None:
         seed=0,
         text_height=1.5, text_font='Arial', cell_size=1.75, interline_gap=0.75,
         grid_rows=8, grid_cols=20, practice_grid_rows=2, practice_grid_cols=6,
-        mouse_visible=False,
+        mouse_visible=False, draw_on_tablet=False,
     )
     self.run()
     win.close()
