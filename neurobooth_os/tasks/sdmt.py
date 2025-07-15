@@ -111,13 +111,10 @@ class SDMT(Eyelink_HostPC):
         tstim.draw()
 
         if self.draw_on_tablet: # Draw box to EyeLink tablet
-            self.clear_screen(EyelinkColor.BRIGHTWHITE)
-
             # Just accessing the vertices directly to sidestep a PsychoPy error
-            xs = [int(round(x)) for (x, y) in rstim.verticesPix]
-            ys = [int(round(y)) for (x, y) in rstim.verticesPix]
-            x, y = min(xs), max(ys)
-            x, y = self.pos_psych2pix([x, y]) # convert from 0 centered to top-left centered coordinate space
+            vertices = [self.pos_psych2pix(v) for v in rstim.verticesPix]
+            xs, ys = [x for (x, y) in vertices], [y for (x, y) in vertices]
+            x, y = min(xs), min(ys)
             size = max(xs) - x
 
             self.draw_box(x, y, size, size, EyelinkColor.BLACK)
@@ -135,6 +132,9 @@ class SDMT(Eyelink_HostPC):
                 self.draw_symbol(loc, self.test_sequence[i, j])
 
     def draw(self) -> None:
+        if self.draw_on_tablet:
+            self.clear_screen(EyelinkColor.BRIGHTWHITE)
+
         self.draw_key()
         self.draw_test_grid()
         self.win.flip()
