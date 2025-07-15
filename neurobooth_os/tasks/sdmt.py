@@ -116,8 +116,8 @@ class SDMT(Eyelink_HostPC):
             # Just accessing the vertices directly to sidestep a PsychoPy error
             xs = [int(round(x)) for (x, y) in rstim.verticesPix]
             ys = [int(round(y)) for (x, y) in rstim.verticesPix]
-            w, h = self.win.monitor.getSizePix()
-            x, y = min(xs) + w // 2, -min(ys) + h // 2
+            x, y = min(xs), max(ys)
+            x, y = self.pos_psych2pix([x, y]) # convert from 0 centered to top-left centered coordinate space
             size = max(xs) - x
 
             self.draw_box(x, y, size, size, EyelinkColor.BLACK)
