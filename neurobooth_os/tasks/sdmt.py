@@ -24,6 +24,7 @@ class SDMT(Eyelink_HostPC):
             practice_grid_cols: int,
             mouse_visible: bool,
             interline_gap: float,
+            draw_on_tablet: bool = False,
             **kwargs
     ):
         """
@@ -39,6 +40,7 @@ class SDMT(Eyelink_HostPC):
         :param grid_cols: The number of columns in the test symbol grid (for practice)
         :param mouse_visible: Whether the mouse should be visible during the task
         :param interline_gap: How much space to add between each row of test symbols (cm)
+        :param draw_on_tablet: Whether to draw the grid to the EyeLink tablet.
         :param kwargs: Passthrough arguments
         """
         super().__init__(**kwargs)
@@ -54,6 +56,7 @@ class SDMT(Eyelink_HostPC):
         self.practice_grid: (int, int) = (practice_grid_rows, practice_grid_cols)
         self.interline_gap: float = interline_gap
         self.mouse_visible: bool = mouse_visible
+        self.draw_on_tablet: bool = draw_on_tablet
 
         # Dynamically calculated cell center positions
         self.key_symbol_locs: List[(float, float)] = []
@@ -108,11 +111,12 @@ class SDMT(Eyelink_HostPC):
         rstim.draw()
         tstim.draw()
 
-        # Draw box to EyeLink tablet
-        x, y = convertToPix(loc, loc, 'cm', self.win)
-        x, y = int(round(x)), int(round(y))
-        cell_size_px = int(round(cm2pix(self.cell_size, self.win)))
-        self.draw_box(x, y, cell_size_px, cell_size_px, EyelinkColor.BLACK)
+        if self.draw_on_tablet: # Draw box to EyeLink tablet
+            x, y = convertToPix(loc, loc, 'cm', self.win)
+            x, y = int(round(x)), int(round(y))
+            # TODO: Figure out why this cm conversion is not working...
+            cell_size_px = int(round(cm2pix(self.cell_size, self.win)))
+            self.draw_box(x, y, cell_size_px, cell_size_px, EyelinkColor.BLACK)
 
     def draw_key(self) -> None:
         for symbol, loc in zip(self.symbols, self.key_symbol_locs):
@@ -132,7 +136,13 @@ class SDMT(Eyelink_HostPC):
         self.win.flip()
 
     def show_slide(self) -> None:
-        pass
+        # TODO: Change to a slide based on a parameter
+        stim = TextStim(
+            self.win, text='Press continue to advance.',
+            font=self.text_font, height=self.text_height, units='cm', pos=(0,0)
+        )
+        stim.draw()
+        self.win.flip()
 
     def wait_for_advance(self) -> None:
         event.clearEvents(eventType='keyboard')
