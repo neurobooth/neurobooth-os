@@ -28,6 +28,7 @@ def start_mouse_stream(win, context, device_args):
 def start_mbient_stream(win, context, device_args):
     import neurobooth_os.iout.mbient as mbient
     with context['LOCK']:
+        print(f'I AM IN THE LOCK - YIPPEEEEEE..... {id(context["LOCK"])}')
         if not context.get('MBIENT_SCAN_PERFORMED', False):
             logger = logging.getLogger(APP_LOG_NAME)
 
@@ -39,6 +40,7 @@ def start_mbient_stream(win, context, device_args):
             )
 
             context['MBIENT_SCAN_PERFORMED'] = True
+        print('I AM OUT OF THE LOCK - BOOOOOOOOO.....')
 
     device = mbient.Mbient(device_args)
     if not device.prepare():
@@ -174,7 +176,7 @@ class DeviceManager:
                 if device_key in ASYNC_STARTUP:
                     futures.append(executor.submit(start_and_register_device, self.SHARED_CONTEXT, device_args))
                 else:  # Run sequentially if not specified as async
-                    start_and_register_device(device_args)
+                    start_and_register_device(self.SHARED_CONTEXT, device_args)
 
             for f in as_completed(futures):
                 f.result()  # Raise errors that occur asynchronously
