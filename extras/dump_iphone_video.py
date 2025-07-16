@@ -35,14 +35,8 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
     logger.debug('Connecting to iPhone')
     # It is important that timeout exceptions are enabled to prevent misnamed files!
     phone = iphone.IPhone("dump_iphone", enable_timeout_exceptions=True)
-    default_config: CONFIG = {
-        "NOTIFYONFRAME": "1",
-        "VIDEOQUALITY": "1920x1080",
-        "USECAMERAFACING": "BACK",
-        "FPS": "240",
-        "BRIGHTNESS": "50",
-        "LENSPOS": "0.7",
-    }
+    
+    default_config = phone.read_default_sensor_args()
     handshake_success = phone.prepare(config=default_config)
     if not handshake_success:
         logger.error(f'Unable to connect to iPhone [state={phone._state}]!')

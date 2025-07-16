@@ -16,7 +16,7 @@ from enum import IntEnum
 from hashlib import md5
 from base64 import b64decode
 
-from neurobooth_os.iout.metadator import post_message, get_database_connection
+from neurobooth_os.iout.metadator import post_message, get_database_connection, read_sensors
 from neurobooth_os.iout.stim_param_reader import IPhoneDeviceArgs
 from neurobooth_os.iout.usbmux import USBMux
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -832,6 +832,19 @@ class IPhone:
         self.connected = False
         self.streaming = False
         return True
+    
+    @staticmethod
+    def read_default_sensor_args() -> CONFIG :
+        iphone_sensor_params = read_sensors()['IPhone_sens_1']
+        default_config: CONFIG = {
+                "NOTIFYONFRAME": str(iphone_sensor_params.notifyonframe),
+                "VIDEOQUALITY": iphone_sensor_params.videoquality,
+                "USECAMERAFACING": iphone_sensor_params.usecamerafacing,
+                "FPS": str(iphone_sensor_params.sample_rate),
+                "BRIGHTNESS": str(iphone_sensor_params.brightness),
+                "LENSPOS": str(iphone_sensor_params.lenspos),
+            }
+        return default_config
 
 
 class IPhoneListeningThread(threading.Thread):
@@ -945,15 +958,8 @@ def script_capture_data(subject_id: str, recording_folder: str, capture_duration
     )
 
     iphone = IPhone("IPhone", device_args=dev_args)
-    default_config: CONFIG = {
-        "NOTIFYONFRAME": "1",
-        "VIDEOQUALITY": "1920x1080",
-        "USECAMERAFACING": "BACK",
-        "FPS": "240",
-        "BRIGHTNESS": "50",
-        "LENSPOS": "0.7",
-    }
 
+    default_config = iphone.read_default_sensor_args()
     if not iphone.prepare(config=default_config):
         with get_database_connection() as conn:
             IPhone.send_status_msg("Could not connect to iphone", conn)
