@@ -136,6 +136,24 @@ def present(
     if waitKeys:
         get_keys()
 
+def load_image(win: visual.Window, path: Union[str, os.PathLike]) -> visual.ImageStim:
+    """
+    Load the specified image and create an image stimulus.
+    :param win: The PsychoPy window object the task will be displayed on.
+    :param path: The name of the slide, including the extension
+    :return: An image stimulus containing the requested slide
+    """
+    if not op.isfile(path):
+        raise IOError(f'Required image file {path} does not exist')
+
+    return visual.ImageStim(
+        win,
+        image=path,
+        pos=(0, 0),
+        units="deg",
+    )
+
+
 def load_slide(win: visual.Window, name: Union[str, os.PathLike]) -> visual.ImageStim:
     """
     Locate the specified image  and create an image stimulus.
@@ -144,16 +162,25 @@ def load_slide(win: visual.Window, name: Union[str, os.PathLike]) -> visual.Imag
     :return: An image stimulus containing the requested slide
     """
     slide_path = op.join(get_cfg_path('assets'), 'slides', name)
+    return load_image(win, slide_path)
 
-    if not op.isfile(slide_path):
-        raise IOError(f'Required image file {slide_path} does not exist')
 
-    return visual.ImageStim(
-        win,
-        image=slide_path,
-        pos=(0, 0),
-        units="deg",
+def load_video(win: visual.Window, path: Union[str, os.PathLike]) -> visual.MovieStim3:
+    """
+    Load the specified video and create a movie stimulus.
+    :param win: The PsychoPy window object the task will be displayed on.
+    :param path: The name of the countdown movie, including the extension
+    :return: An image stimulus containing the requested countdown movie
+    """
+    if not op.isfile(path):
+        raise IOError(f'Required video file {path} does not exist')
+
+    return visual.MovieStim3(
+        win=win,
+        filename=path,
+        noAudio=False,
     )
+
 
 def load_countdown(win: visual.Window, name: Union[str, os.PathLike]) -> visual.MovieStim3:
     """
@@ -163,15 +190,8 @@ def load_countdown(win: visual.Window, name: Union[str, os.PathLike]) -> visual.
     :return: An image stimulus containing the requested countdown movie
     """
     video_path = op.join(get_cfg_path('assets'), 'countdown', name)
+    return load_video(win, video_path)
 
-    if not op.isfile(video_path):
-        raise IOError(f'Required video file {video_path} does not exist')
-
-    return visual.MovieStim3(
-        win=win,
-        filename=video_path,
-        noAudio=False,
-    )
 
 def get_end_screen(win: visual.Window) -> visual.ImageStim:
     """
