@@ -34,7 +34,11 @@ class MouseStream:
             }
         )
         self.outlet = StreamOutlet(self.info_stream)
-        body = DeviceInitialization(stream_name='Mouse', outlet_id=self.oulet_id)
+        body = DeviceInitialization(
+            stream_name='Mouse',
+            outlet_id=self.oulet_id,
+            device_id=device_args.device_id,
+        )
         msg = Request(source="MouseStream", destination="CTR", body=body)
         with get_database_connection() as conn:
             post_message(msg, conn)

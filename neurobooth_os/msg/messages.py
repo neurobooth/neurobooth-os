@@ -229,6 +229,8 @@ class DeviceInitialization(MsgBody):
     """
     stream_name: str
     outlet_id: str
+    device_id: str = ''
+    camera_preview: bool = False
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
@@ -388,8 +390,10 @@ class MbientResetResults(MsgBody):
 
 class FramePreviewRequest(MsgBody):
     """
-    Message from controller to ACQ asking for an iPhone frame preview image
+    Message from controller to ACQ asking for a frame preview image from the specified device
     """
+    device_id: str
+
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
@@ -397,10 +401,11 @@ class FramePreviewRequest(MsgBody):
 
 class FramePreviewReply(MsgBody):
     f"""
-    Message from ACQ to controller/gui in response to {FramePreviewRequest} containing an iPhone frame preview image
+    Message from ACQ to controller/gui in response to {FramePreviewRequest} containing an camera frame preview image
     """
-    image: Optional[str]=None
+    image: Optional[str] = None
     image_available: bool
+    unavailable_message: Optional[str] = None
 
     class Config:
         arbitrary_types_allowed = True
