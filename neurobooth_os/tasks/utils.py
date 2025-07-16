@@ -109,11 +109,6 @@ def create_text_screen(win, text):
     return screen
 
 
-def create_image_screen(win, path_image, pos=(0, 0)):
-    screen = visual.ImageStim(win, image=path_image, pos=pos, units="deg")
-    return screen
-
-
 def present(
         win,
         screen,
@@ -194,15 +189,6 @@ def load_countdown(win: visual.Window, name: Union[str, os.PathLike]) -> visual.
 
 
 def get_end_screen(win: visual.Window) -> visual.ImageStim:
-    """
-    Parameters
-    ----------
-    win
-
-    Returns
-    -------
-        screen "Preparing next task" shown between tasks
-    """
     return load_slide(win, "task_complete.png")
 
 
