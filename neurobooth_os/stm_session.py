@@ -5,6 +5,8 @@ from typing import Optional, Dict
 from pydantic import BaseModel
 from psycopg2.extensions import connection
 
+from psychopy import visual
+
 from neurobooth_os import config
 from neurobooth_os.iout.eyelink_tracker import EyeTracker
 from neurobooth_os.iout.lsl_streamer import DeviceManager
@@ -22,7 +24,7 @@ class StmSession(BaseModel):
     collection_id: str
     logger: logging.Logger
     db_conn: connection
-    win: Optional[object] = None
+    win: Optional[visual.Window] = None
     session_folder: Optional[str] = None
     system_resource_logger: Optional[object] = None
     task_func_dict: Optional[Dict] = {}
@@ -54,7 +56,7 @@ class StmSession(BaseModel):
         self.eye_tracker = self.device_manager.get_eyelink_stream()
 
     @staticmethod
-    def init_window():
+    def init_window() -> visual.Window:
         screen_config = config.neurobooth_config.screen
         win = utl.make_win(
             full_screen=screen_config.fullscreen,

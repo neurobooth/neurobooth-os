@@ -22,7 +22,7 @@ from neurobooth_os import config
 
 from neurobooth_os.iout import metadator as meta
 
-from neurobooth_os.tasks.wellcome_finish_screens import welcome_screen, finish_screen
+from neurobooth_os.tasks.welcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.log_manager import make_db_logger, log_message_received
 
@@ -83,8 +83,7 @@ def run_stm(logger):
                     paused = False
 
                     # display 'preparing next task'
-                    root_pckg = neurobooth_os.__path__[0]
-                    end_screen = utl.get_end_screen(session.win, root_pckg)
+                    end_screen = utl.get_end_screen(session.win)
 
                     # TODO: msg is only needed if we need to do markers around this prepare step.
                     # See task.show_text()

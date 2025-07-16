@@ -82,13 +82,13 @@ class Task:
         self.advance_keys: List[str] = ['space']
         self.abort_keys: List[str] = ['q']
         if task_repeatable_by_subject:
-            task_end_image = 'tasks/assets/task_end.png'
-            inst_end_task_img = 'tasks/assets/inst_end_task.png'
+            task_end_img = 'task_end.png'
+            inst_end_task_img = 'inst_end_task.png'
             self.repeat_keys: List[str] = ['r', 'comma']
         else:
             # Note: By overriding repeat_keys, disabling a task repeats also disables instruction repeats!
-            task_end_image = 'tasks/assets/task_end_disabled.png'
-            inst_end_task_img = 'tasks/assets/inst_end_task_disabled.png'
+            task_end_img = 'task_end_disabled.png'
+            inst_end_task_img = 'inst_end_task_disabled.png'
             self.repeat_keys: List[str] = ['r']
 
         if marker_outlet is not None:
@@ -115,52 +115,19 @@ class Task:
 
         self.root_pckg = neurobooth_os.__path__[0]
 
-        inst_end_task_img = op.join(self.root_pckg, inst_end_task_img)
-        if not op.isfile(inst_end_task_img):
-            raise IOError(f'Required image file {inst_end_task_img} does not exist')
-        self.press_inst_screen = visual.ImageStim(
-            self.win,
-            image=inst_end_task_img,
-            pos=(0, 0),
-            units="deg",
-        )
+        self.press_inst_screen = utils.load_slide(self.win, inst_end_task_img)
+        self.press_task_screen = utils.load_slide(self.win, task_end_img)
 
-        task_end_img = op.join(self.root_pckg, task_end_image)
-        if not op.isfile(task_end_img):
-            raise IOError(f'Required image file {task_end_image} does not exist')
-
-        self.press_task_screen = visual.ImageStim(
-            self.win,
-            image=task_end_img,
-            pos=(0, 0),
-            units="deg",
-        )
         if countdown is None:
             countdown = "countdown_2021_11_22.mp4"
-        countdown_path = op.join(neurobooth_os.__path__[0], "tasks", "assets", countdown)
-        if not op.isfile(countdown_path):
-            raise IOError(f'Required image file {countdown_path} does not exist')
-        self.countdown_video = visual.MovieStim3(
-            win=self.win,
-            filename=countdown_path,
-            noAudio=False,
-        )
+        self.countdown_video = utils.load_countdown(self.win, countdown)
 
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
-        self.end_screen = utils.get_end_screen(self.win, self.root_pckg)
-     
-        end_slide = op.join(self.root_pckg, "tasks", "assets", cfg.neurobooth_config.session_end_slide)
-        if not op.isfile(end_slide):
-            raise IOError(f'Required image file {end_slide} does not exist')
+        self.end_screen = utils.get_end_screen(self.win)
 
-        self.end_tasks = visual.ImageStim(
-            self.win,
-            image=end_slide,
-            pos=(0, 0),
-            units="deg",
-        )
+        self.end_tasks = utils.load_slide(self.win, cfg.neurobooth_config.session_end_slide)
 
     def load_instruction_video(self):
         """
@@ -367,17 +334,7 @@ class Task_pause(Task):
         self.screen = None
 
     def run(self, slide_image="end_slide_01_23_25.jpg", wait_key="return", **kwarg):
-        image_path = op.join(self.root_pckg, "tasks", "assets", slide_image)
-        if not op.isfile(image_path):
-            raise IOError(f'Required slide image file {image_path} does not exist.')
-
-        self.screen = visual.ImageStim(
-            self.win,
-            image=image_path,
-            pos=(0, 0),
-            units="deg",
-        )
-
+        self.screen = utils.load_slide(self.win, slide_image)
         self.screen.draw()
         self.win.flip()
         utils.get_keys(keyList=[wait_key])
@@ -622,9 +579,8 @@ class Task_ShowProgressBar(Task):
         super().__init__(**kwargs)
         self.screen = None
 
-    def run(self, **kwargs):
-        fpath = op.join(neurobooth_os.__path__[0], "tasks", "assets", kwargs['slide_image'])
-        self.screen = utils.create_image_screen(self.win, fpath)
+    def run(self, **kwargs) -> None:
+        self.screen = utils.load_slide(self.win, kwargs['slide_image'])
         self.show_text(screen=self.screen, msg="Task", audio=None, wait_time=kwargs['duration'], waitKeys=False)
 
 

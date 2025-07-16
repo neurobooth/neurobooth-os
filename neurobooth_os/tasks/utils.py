@@ -12,10 +12,14 @@ from typing import List, Optional
 from psychopy import core, event, monitors
 
 import time
+import os
 import os.path as op
+from typing import Union
 
 from pylsl import local_clock
 from psychopy import visual
+
+from neurobooth_os.iout.stim_param_reader import get_cfg_path
 
 text_continue_repeat = (
         'Please press:\n\t"Continue" to advance' + '\n\t"Repeat" to go back'
@@ -68,7 +72,7 @@ def make_win(
         monitor_width=55,  # Width (cm) of viewable monitor area, used for psychopy sizing of UI
         subj_screendist_cm=60,  # Distance (cm) from subject head to middle of screen, used for psychopy sizing of UI
         screen_resolution=[1920,1080],  # Resolution of the screen in pixels, used for sizing the psychopy window
-):
+) -> visual.Window:
     custom_mon = monitors.Monitor(
         "demoMon", width=monitor_width, distance=subj_screendist_cm
     )
@@ -132,29 +136,54 @@ def present(
     if waitKeys:
         get_keys()
 
+def load_slide(win: visual.Window, name: Union[str, os.PathLike]) -> visual.ImageStim:
+    """
+    Locate the specified image  and create an image stimulus.
+    :param win: The PsychoPy window object the task will be displayed on.
+    :param name: The name of the slide, including the extension
+    :return: An image stimulus containing the requested slide
+    """
+    slide_path = op.join(get_cfg_path('assets'), 'slides', name)
 
-def get_end_screen(win, root_pckg):
+    if not op.isfile(slide_path):
+        raise IOError(f'Required image file {slide_path} does not exist')
+
+    return visual.ImageStim(
+        win,
+        image=slide_path,
+        pos=(0, 0),
+        units="deg",
+    )
+
+def load_countdown(win: visual.Window, name: Union[str, os.PathLike]) -> visual.MovieStim3:
+    """
+    Locate the specified countdown movie  and create a movie stimulus.
+    :param win: The PsychoPy window object the task will be displayed on.
+    :param name: The name of the countdown movie, including the extension
+    :return: An image stimulus containing the requested countdown movie
+    """
+    video_path = op.join(get_cfg_path('assets'), 'countdown', name)
+
+    if not op.isfile(video_path):
+        raise IOError(f'Required video file {video_path} does not exist')
+
+    return visual.MovieStim3(
+        win=win,
+        filename=video_path,
+        noAudio=False,
+    )
+
+def get_end_screen(win: visual.Window) -> visual.ImageStim:
     """
     Parameters
     ----------
     win
-    root_pckg
 
     Returns
     -------
         screen "Preparing next task" shown between tasks
     """
-    task_complete_img = op.join(root_pckg, "tasks", "assets", "task_complete.png")
-    if not op.isfile(task_complete_img):
-        raise IOError(f'Required image file {task_complete_img} does not exist')
-
-    end_screen = visual.ImageStim(
-        win,
-        image=task_complete_img,
-        pos=(0, 0),
-        units="deg",
-    )
-    return end_screen
+    return load_slide(win, "task_complete.png")
 
 
 def countdown(period: float, abort_keys: Optional[List] = None) -> None:
