@@ -127,8 +127,6 @@ class Task:
         self.task_screen = utils.create_text_screen(self.win, text_task)
         self.end_screen = utils.get_end_screen(self.win)
 
-        self.end_tasks = utils.load_slide(self.win, cfg.neurobooth_config.session_end_slide)
-
     def load_instruction_video(self):
         """
         Loads instruction video if not previously loaded or if previously loaded but currently stopped.

@@ -40,6 +40,8 @@ class StudyArgs(EnvArgs):
 class CollectionArgs(EnvArgs):
     collection_id: str = Field(min_length=1, max_length=255)
     is_active: bool
+    session_start_slide: str
+    session_end_slide: str
     task_ids: List[str]
     arg_parser: str
 

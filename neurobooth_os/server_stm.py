@@ -50,7 +50,7 @@ def main():
 def run_stm(logger):
     def _finish_tasks(session):
         session.logger.debug('FINISH SCREEN')
-        finish_screen(session.win)
+        finish_screen(session.win, session.session_end_slide)
         return True
 
     session: Optional[StmSession] = None
@@ -274,7 +274,7 @@ def _create_tasks(message, session, task_log_entry):
 
     device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
 
-    session.win = welcome_screen(win=session.win)
+    session.win = welcome_screen(win=session.win, slide=session.session_start_slide)
     reply_body = TasksCreated()
     reply = Request(source="STM", destination=message.source, body=reply_body)
     meta.post_message(reply, session.db_conn)
