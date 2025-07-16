@@ -18,7 +18,7 @@ from base64 import b64decode
 
 from neurobooth_os.iout.device import CameraPreviewer
 from neurobooth_os.iout.metadator import post_message, get_database_connection
-from neurobooth_os.iout.stim_param_reader import DeviceArgs
+from neurobooth_os.iout.stim_param_reader import IPhoneDeviceArgs
 from neurobooth_os.iout.usbmux import USBMux
 from neurobooth_os.log_manager import APP_LOG_NAME
 from neurobooth_os.msg.messages import NewVideoFile, Request, StatusMessage, DeviceInitialization
@@ -188,12 +188,13 @@ class IPhone(CameraPreviewer):
     MESSAGE_TYPES = set(MESSAGE_TYPES)
     MESSAGE_KEYS = {"MessageType", "SessionID", "TimeStamp", "Message"}
 
-    def __init__(self, name, sess_id="", mock=False, device_args: DeviceArgs = None, enable_timeout_exceptions=False):
+    def __init__(self, name, sess_id="", mock=False, device_args: IPhoneDeviceArgs = None, enable_timeout_exceptions=False):
         self.connected = False
         self.tag = 0
         self.iphone_sessionID = sess_id
         self.name = name
         self.mock = mock
+        self.device_args = device_args
         if not DISABLE_LSL:  # Device and sensor IDs are only needed if streaming data to LSL.
             self.device_id = device_args.device_id
             self.sensor_ids = device_args.sensor_ids
@@ -530,12 +531,12 @@ class IPhone(CameraPreviewer):
 
         if config is None:
             config = {
-                "NOTIFYONFRAME": "1",
-                "VIDEOQUALITY": "1920x1080",
-                "USECAMERAFACING": "BACK",
-                "FPS": "240",
-                "BRIGHTNESS": "50",
-                "LENSPOS": "0.7",
+                "NOTIFYONFRAME": self.device_args.notifyonframe(),
+                "VIDEOQUALITY": self.device_args.videoquality(),
+                "USECAMERAFACING": self.device_args.usecamerafacing(),
+                "FPS": self.device_args.sample_rate(),
+                "BRIGHTNESS": self.device_args.brightness(),
+                "LENSPOS": self.device_args.lenspos(),
             }
 
         success = self._handshake(config)
@@ -939,7 +940,7 @@ def script_parse_args() -> argparse.Namespace:
 
 
 def script_capture_data(subject_id: str, recording_folder: str, capture_duration: int) -> None:
-    dev_args = DeviceArgs(
+    dev_args = IPhoneDeviceArgs(
         ENV_devices={'IPhone_dev_1': {}},
         device_id='IPhone_dev_1',
         device_name='IPhone',
@@ -1024,4 +1025,6 @@ def script_results(recording_folder: str, subject_id: str, show_plots: bool) -> 
 
 
 if __name__ == "__main__":
+    from neurobooth_os import config as cfg
+    cfg.load_config()
     test_script()

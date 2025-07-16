@@ -56,7 +56,7 @@ def check_window_refresh_rate(win: visual.window.Window, min_rate: float, max_ra
     print(f"Monitor Refresh Rate: Psychopy est. = {psychopy_rate:0.2f} Hz, Actual = {actual_rate:0.2f} Hz")
 
     if actual_rate < min_rate or  actual_rate > max_rate:
-        raise InvalidWindowRefreshRate(actual_rate, min_rate, max_rate)
+        raise InvalidWindowRefreshRate(_fps_error_msg(actual_rate, min_rate, max_rate))
 
 
 def _fps_error_msg(actual_rate: float, min_rate: float, max_rate: float) -> str:
@@ -67,17 +67,15 @@ def make_win(
         full_screen=True,
         monitor_width=55,  # Width (cm) of viewable monitor area, used for psychopy sizing of UI
         subj_screendist_cm=60,  # Distance (cm) from subject head to middle of screen, used for psychopy sizing of UI
+        screen_resolution=[1920,1080],  # Resolution of the screen in pixels, used for sizing the psychopy window
 ):
-    mon = monitors.getAllMonitors()[0]
     custom_mon = monitors.Monitor(
         "demoMon", width=monitor_width, distance=subj_screendist_cm
     )
-
-    mon_size = monitors.Monitor(mon).getSizePix()
-    custom_mon.setSizePix(mon_size)
+    custom_mon.setSizePix(screen_resolution)
     custom_mon.saveMon()
     win = visual.Window(
-        mon_size, fullscr=full_screen, monitor=custom_mon, units="pix", color=(0, 0, 0)
+        screen_resolution, fullscr=full_screen, monitor=custom_mon, units="pix", color=(0, 0, 0)
     )
     return win
 

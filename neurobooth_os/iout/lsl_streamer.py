@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.device import CameraPreviewer, CameraPreviewException
+from neurobooth_os.iout.mbient import Mbient
 from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 # --------------------------------------------------------------------------------
@@ -27,7 +28,6 @@ def start_mouse_stream(_, device_args):
 
 
 def start_mbient_stream(_, device_args):
-    from neurobooth_os.iout.mbient import Mbient
     device = Mbient(device_args)
     if not device.prepare():
         return None
