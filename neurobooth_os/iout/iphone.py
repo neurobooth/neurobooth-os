@@ -835,6 +835,18 @@ class IPhone:
     
     @staticmethod
     def read_default_sensor_args() -> CONFIG :
+        """
+        * Static method to read a set of iphone device config params from
+          any iphone device sensor config file.
+        * This one uses IPhone_sens_1 but IPhone_sens_stance can also be used.
+        * This method should only be used to create iphone config in cases
+          where communication with iphone is needed but data collection is not
+          a factor, for example for iphone_dump or running test_script or running
+          stress_test.
+        * During actual data collection iphone config is generated inside
+          prepare based on device_args packaged by the device manager in
+          lsl_streamer.
+        """
         iphone_sensor_params = read_sensors()['IPhone_sens_1']
         default_config: CONFIG = {
                 "NOTIFYONFRAME": str(iphone_sensor_params.notifyonframe),
