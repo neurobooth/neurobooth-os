@@ -13,7 +13,6 @@ from typing import Union
 
 from neurobooth_os.tasks.task import Eyelink_HostPC
 from neurobooth_os.tasks import utils
-import neurobooth_os
 from neurobooth_os.iout.stim_param_reader import get_cfg_path
 
 
