@@ -8,7 +8,7 @@ import threading
 import uuid
 import neurobooth_os.iout.metadator as meta
 import logging
-from typing import Callable, Any
+from typing import Callable, Any, ByteString
 
 import cv2
 import PySpin
@@ -21,6 +21,7 @@ from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFile
+from neurobooth_os.iout.device import CameraPreviewer
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -30,7 +31,7 @@ class FlirException(Exception):
         super().__init__(*args, **kwargs)
 
 
-class VidRec_Flir:
+class VidRec_Flir(CameraPreviewer):
     # def __init__(self,
     #              sizex=round(1936 / 2), sizey=round(1216 / 2), fps=196,
     #              camSN="20522874", exposure=4500, gain=20, gamma=.6,
@@ -143,7 +144,12 @@ class VidRec_Flir:
             gamma=str(self.gamma),
             # device_model_id=self.cam.get_device_name().decode(),
         )
-        msg_body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.oulet_id)
+        msg_body = DeviceInitialization(
+            stream_name=self.streamName,
+            outlet_id=self.oulet_id,
+            device_id=self.device_id,
+            camera_preview=True,
+        )
         with meta.get_database_connection() as db_conn:
             meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)
         return StreamOutlet(info)
@@ -229,6 +235,22 @@ class VidRec_Flir:
         self.save_thread.join()
         self.video_out.release()
         self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
+
+    def frame_preview(self) -> ByteString:
+        """
+        Retrieve a frame preview from the FLIR.
+
+        :returns: The raw data of the image/frame, or an empty byte string if an error occurs.
+        """
+        self.cam.BeginAcquisition()
+        img, _ = self.imgage_proc()
+        self.cam.EndAcquisition()
+
+        # Open question: why is the image not flipped during active recording?
+        img = cv2.rotate(img, cv2.ROTATE_180)
+
+        rc, img = cv2.imencode('.png', img)
+        return img.tobytes() if rc else b""
 
     def stop(self):
         if self.open and self.recording:

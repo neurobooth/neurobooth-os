@@ -11,6 +11,7 @@ from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 import neurobooth_os.iout.metadator as meta
+from neurobooth_os.iout.device import CameraPreviewer
 from neurobooth_os.iout.stim_param_reader import WebcamDeviceArgs
 
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -22,7 +23,7 @@ class WebcamException(Exception):
         super().__init__(*args, **kwargs)
 
 
-class VidRec_Webcam:
+class VidRec_Webcam(CameraPreviewer):
     def __init__(
         self,
         device_args: WebcamDeviceArgs,
@@ -71,7 +72,12 @@ class VidRec_Webcam:
             fps_rgb=str(self.device_args.sample_rate()),
             size_rgb=str((self.device_args.width_px(), self.device_args.height_px())),
         )
-        msg_body = DeviceInitialization(stream_name=self.stream_name, outlet_id=self.outlet_id)
+        msg_body = DeviceInitialization(
+            stream_name=self.stream_name,
+            outlet_id=self.outlet_id,
+            device_id=self.device_args.device_id,
+            camera_preview=True,
+        )
         with meta.get_database_connection() as db_conn:
             meta.post_message(Request(source='Webcam', destination='CTR', body=msg_body), conn=db_conn)
         return StreamOutlet(info)
@@ -81,10 +87,17 @@ class VidRec_Webcam:
         if not self.camera.isOpened():
             self.logger.error('Webcam: Could not open stream')
             raise WebcamException('Webcam: Could not open stream')
+        self.flush_video_buffer()
         self.open = True
+
+    def flush_video_buffer(self) -> None:
+        # Retrieve/flush old frames from the buffer before recording
+        for _ in range(self.device_args.n_frames_to_flush):
+            self.camera.retrieve()
 
     def close_stream(self) -> None:
         self.camera.release()
+        self.camera = None
         self.open = False
 
     def save_to_disk(self) -> None:
@@ -175,12 +188,16 @@ class VidRec_Webcam:
         """
         Retrieve a frame preview from the webcam.
 
-        :returns: The raw data of the image, or an empty byte string if the condition times out.
+        :returns: The raw data of the image/frame, or an empty byte string if an error occurs.
         """
         self.open_stream()
         rc, img = self.camera.read()
         self.close_stream()
-        return cv2.imencode('.jpg', img)[1].tobytes() if rc else b""
+        if not rc:
+            return b""
+
+        rc, img = cv2.imencode('.png', img)
+        return img.tobytes() if rc else b""
 
 
 def test_script() -> None:

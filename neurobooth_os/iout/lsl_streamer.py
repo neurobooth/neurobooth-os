@@ -3,10 +3,12 @@ import threading
 from neurobooth_os.iout.stim_param_reader import DeviceArgs, TaskArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 from neurobooth_os import config
-from typing import Any, Dict, List, Callable
+from typing import Any, Dict, List, Callable, ByteString
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
 import neurobooth_os.iout.metadator as meta
+from neurobooth_os.iout.device import CameraPreviewer, CameraPreviewException
+from neurobooth_os.iout.mbient import Mbient
 from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 # --------------------------------------------------------------------------------
@@ -26,7 +28,6 @@ def start_mouse_stream(_, device_args):
 
 
 def start_mbient_stream(_, device_args):
-    from neurobooth_os.iout.mbient import Mbient
     device = Mbient(device_args)
     if not device.prepare():
         return None
@@ -246,11 +247,15 @@ class DeviceManager:
             wait(reset_results.values())
             return {stream_name: result.result() for stream_name, result in reset_results.items()}
 
-    def iphone_frame_preview(self):
-        for stream_name, stream in self.streams.items():
-            if "IPhone" in stream_name:
-                return stream.frame_preview()
-        return None
+    def camera_frame_preview(self, device_id: str) -> ByteString:
+        if device_id not in self.streams:
+            raise CameraPreviewException(f'Device {device_id} unavailable.')
+
+        camera = self.streams[device_id]
+        if not isinstance(camera, CameraPreviewer):
+            raise CameraPreviewException(f'Device {device_id} is not a valid preview device.')
+
+        return camera.frame_preview()
 
     def close_streams(self) -> None:
         for stream_name, stream in self.streams.items():
