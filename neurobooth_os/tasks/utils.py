@@ -85,7 +85,7 @@ def change_win_color(win, color):
     win.flip()
 
 
-def create_text_screen(win, text):
+def create_text_screen(win, text, text_color: str = "white"):
     screen = visual.TextStim(
         win=win,
         name="",
@@ -95,7 +95,7 @@ def create_text_screen(win, text):
         height=0.05,
         wrapWidth=800,
         ori=0.0,
-        color="white",
+        color=text_color,
         colorSpace="rgb",
         opacity=None,
         languageStyle="LTR",
