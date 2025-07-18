@@ -1,6 +1,6 @@
 from os import environ, path
 
-from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, \
+from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, PositiveFloat, \
     SerializeAsAny, model_validator
 from typing import Optional, List, Callable, Tuple, Dict
 import os
@@ -457,6 +457,22 @@ class TimingTestStimArgs(EyeTrackerStimArgs):
     tone_duration: NonNegativeFloat
     wait_center: NonNegativeFloat
     num_iterations: NonNegativeInt
+
+
+class SdmtStimArgs(EyeTrackerStimArgs):
+    duration: PositiveFloat
+    symbols: List[str]
+    seed: Optional[int]
+    text_font: str
+    text_height: PositiveFloat
+    continue_text_height: PositiveFloat
+    cell_size: PositiveFloat
+    interline_gap: NonNegativeFloat
+    grid_rows: PositiveInt
+    grid_cols: PositiveInt
+    practice_grid_rows: PositiveInt
+    practice_grid_cols: PositiveInt
+    mouse_visible: bool
 
 
 def get_cfg_path(folder_name: str) -> str:
