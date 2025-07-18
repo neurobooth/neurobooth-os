@@ -19,6 +19,7 @@ class SDMT(Eyelink_HostPC):
             symbols: List[str],
             seed: Optional[int],
             text_height: float,
+            continue_text_height: float,
             text_font: str,
             cell_size: float,
             grid_rows: int,
@@ -35,6 +36,7 @@ class SDMT(Eyelink_HostPC):
         :param symbols: The symbols to be displayed in the key (in order of presentation)
         :param seed: If provided, controls the "random" sequence of generated test symbols
         :param text_height: The height of the text (cm)
+        :param continue_text_height: The height of the text for the continue message (cm)
         :param text_font: The font of the text
         :param cell_size: The size of each square cell (cm)
         :param grid_rows: The number of rows in the test symbol grid
@@ -53,6 +55,7 @@ class SDMT(Eyelink_HostPC):
 
         # Visual Parameters
         self.text_height: float = text_height
+        self.continue_text_height: float = continue_text_height
         self.text_font: str = text_font
         self.cell_size: float = cell_size
         self.grid: (int, int) = (grid_rows, grid_cols)
@@ -65,6 +68,7 @@ class SDMT(Eyelink_HostPC):
         self.key_symbol_locs: List[(float, float)] = []
         self.key_number_locs: List[(float, float)] = []
         self.test_symbol_locs: List[List[(float, float)]] = []
+        self.continue_message_loc: (float, float) = (0, 0)
 
         # Sequence Parameters
         self.seed: int = seed if (seed is not None) else randint(0, 1<<20)
@@ -78,7 +82,8 @@ class SDMT(Eyelink_HostPC):
         grid_width = gcol * self.cell_size
         key_width = len(self.symbols) * self.cell_size
         total_height = grow * (self.cell_size + self.interline_gap)  # Test area height
-        total_height += self.cell_size * 2 + self.interline_gap # Keys area height
+        total_height += self.cell_size * 2 + self.interline_gap  # Keys area height
+        total_height += self.interline_gap*2 + self.continue_text_height  # Continue message height
 
         # Key Area
         h = (total_height / 2) - (self.cell_size / 2)
@@ -94,6 +99,10 @@ class SDMT(Eyelink_HostPC):
         for j in range(grow):
             self.test_symbol_locs.append([(w + i*self.cell_size, h) for i in range(gcol)])
             h -= self.cell_size + self.interline_gap
+
+        # Continue message
+        h -= (self.interline_gap * 2) + (self.continue_text_height / 2) + (self.cell_size / 2)
+        self.continue_message_loc = (0, h)
 
     def generate_test_sequence(self, practice: bool) -> np.ndarray:
         grid = self.practice_grid if practice else self.grid
@@ -135,12 +144,20 @@ class SDMT(Eyelink_HostPC):
             for j, loc in enumerate(row):
                 self.draw_symbol(loc, self.test_sequence[i, j])
 
+    def draw_continue_message(self) -> None:
+        stim = TextStim(
+            self.win, text='Press continue when finished',
+            font=self.text_font, height=self.continue_text_height, units='cm', pos=self.continue_message_loc,
+        )
+        stim.draw()
+
     def draw(self) -> None:
         if self.draw_on_tablet:
             self.clear_screen(EyelinkColor.BRIGHTWHITE)
 
         self.draw_key()
         self.draw_test_grid()
+        self.draw_continue_message()
         self.win.flip()
 
     @classmethod
@@ -169,21 +186,29 @@ class SDMT(Eyelink_HostPC):
             self.check_if_aborted()
             clock.wait(0.05, hogCPUperiod=1)
 
-    def wait_for_timer(self, duration) -> None:
-        event.clearEvents(eventType='keyboard')
-        timer = CountdownTimer(duration)
-        while timer.getTime() > 0:
-            self.check_if_aborted()
-            clock.wait(0.05, hogCPUperiod=1)
+    def new_frame(self) -> None:
+        self.draw_on_tablet = False  # Don't spend time redrawing the tablet grid
+        self.sendMessage(self.marker_trial_end, to_marker=True, add_event=True)
+        self.test_sequence = self.generate_test_sequence(practice=False)
+        self.draw()
+        self.sendMessage(self.marker_trial_start, to_marker=True, add_event=True)
 
     def run_trial(self) -> None:
         self.test_sequence = self.generate_test_sequence(practice=False)
         self.calc_symbol_locations(practice=False)
         self.draw()
 
+        event.clearEvents(eventType='keyboard')
         self.sendMessage(self.marker_trial_start, to_marker=True, add_event=True)
-        self.wait_for_timer(duration=self.duration)
+        timer = CountdownTimer(self.duration)
+        while timer.getTime() > 0:
+            self.check_if_aborted()
+            if event.getKeys(self.advance_keys):
+                self.new_frame()
+                continue
+            clock.wait(0.05, hogCPUperiod=1)
         self.sendMessage(self.marker_trial_end, to_marker=True, add_event=True)
+
 
     def run_practice_trial(self) -> None:
         self.show_slide('before_practice')
