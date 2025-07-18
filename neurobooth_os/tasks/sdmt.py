@@ -146,8 +146,13 @@ class SDMT(Eyelink_HostPC):
 
     def draw_continue_message(self) -> None:
         stim = TextStim(
-            self.win, text='Press continue when finished',
-            font=self.text_font, height=self.continue_text_height, units='cm', pos=self.continue_message_loc,
+            self.win,
+            text='Press continue when finished',
+            font=self.text_font,
+            height=self.continue_text_height,
+            units='cm',
+            pos=self.continue_message_loc,
+            wrapWidth=30*self.continue_text_height,  # Avoid wrapping
         )
         stim.draw()
 
