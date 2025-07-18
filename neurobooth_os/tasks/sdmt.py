@@ -279,8 +279,8 @@ def test_script() -> None:
             '\u2200',
         ],
         seed=0,
-        text_height=1.5, text_font='Arial', cell_size=1.75, interline_gap=0.75,
-        grid_rows=8, grid_cols=20, practice_grid_rows=2, practice_grid_cols=6,
+        text_height=2.2, continue_text_height=1, text_font='Arial', cell_size=2.5, interline_gap=1,
+        grid_rows=4, grid_cols=12, practice_grid_rows=2, practice_grid_cols=6,
         mouse_visible=False, draw_on_tablet=False,
     )
     self.run()
