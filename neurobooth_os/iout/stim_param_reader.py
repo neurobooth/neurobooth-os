@@ -384,6 +384,7 @@ class ProgressBarStimArgs(StimulusArgs):
 class StanceStimArgs(StimulusArgs):
     trial_intruct: List[str]
     wait_keys: bool
+    trial_text: Optional[str]
 
 
 class ClappingStimArgs(EyeTrackerStimArgs):
