@@ -3,6 +3,7 @@
     "video_task_dir": "C:/Users/TEST_STM/Partners HealthCare Dropbox/Neurobooth/Test Neurobooth Videos for tasks/Videos_to_present",
     "split_xdf_backlog": "C:/Users/TEST_CTR/nb_os_env/neurobooth_data/split_xdf_backlog.csv",
     "cam_inx_lowfeed": 0,
+    "default_preview_stream": "IPhoneFrameIndex",
     "screen": {
         "fullscreen": false,
         "width_cm": 55,

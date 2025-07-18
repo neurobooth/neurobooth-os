@@ -316,6 +316,12 @@ def get_task_ids_for_collection(collection_id) -> List[str]:
     return collection.task_ids
 
 
+def get_session_start_end_slides_for_collection(collection_id) -> (str, str):
+    collections = read_collections()
+    collection: CollectionArgs = collections[collection_id]
+    return collection.session_start_slide, collection.session_end_slide
+
+
 def _new_tech_log_dict():
     """Create a new log_task dict.
     TODO(larry): Consider removing.

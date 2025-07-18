@@ -5,10 +5,12 @@ from typing import Optional, Dict
 from pydantic import BaseModel
 from psycopg2.extensions import connection
 
+from psychopy import visual
+
 from neurobooth_os import config
 from neurobooth_os.iout.eyelink_tracker import EyeTracker
 from neurobooth_os.iout.lsl_streamer import DeviceManager
-from neurobooth_os.iout.metadator import build_tasks_for_collection
+from neurobooth_os.iout.metadator import build_tasks_for_collection, get_session_start_end_slides_for_collection
 from neurobooth_os.log_manager import SystemResourceLogger
 from neurobooth_os.tasks import utils as utl
 
@@ -22,7 +24,7 @@ class StmSession(BaseModel):
     collection_id: str
     logger: logging.Logger
     db_conn: connection
-    win: Optional[object] = None
+    win: Optional[visual.Window] = None
     session_folder: Optional[str] = None
     system_resource_logger: Optional[object] = None
     task_func_dict: Optional[Dict] = {}
@@ -30,6 +32,8 @@ class StmSession(BaseModel):
     prompt: Optional[bool] = None
     device_manager: Optional[DeviceManager] = None
     eye_tracker: Optional[EyeTracker] = None
+    session_start_slide: Optional[str] = None
+    session_end_slide: Optional[str] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -44,6 +48,8 @@ class StmSession(BaseModel):
         self.session_folder = self.create_session_folder(self.logger, self.session_name)
         self.system_resource_logger: SystemResourceLogger = self.create_sys_resource_logger()
         self.task_func_dict = build_tasks_for_collection(self.collection_id)
+        self.session_start_slide, self.session_end_slide = get_session_start_end_slides_for_collection(
+            self.collection_id)
         self.path = os.path.join(config.neurobooth_config.presentation.local_data_dir, self.session_name)
         self.win = self.init_window()
 
@@ -54,7 +60,7 @@ class StmSession(BaseModel):
         self.eye_tracker = self.device_manager.get_eyelink_stream()
 
     @staticmethod
-    def init_window():
+    def init_window() -> visual.Window:
         screen_config = config.neurobooth_config.screen
         win = utl.make_win(
             full_screen=screen_config.fullscreen,
