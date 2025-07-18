@@ -101,7 +101,7 @@ class SDMT(Eyelink_HostPC):
             h -= self.cell_size + self.interline_gap
 
         # Continue message
-        h -= (self.interline_gap * 2) + (self.continue_text_height / 2) + (self.cell_size / 2)
+        h -= (self.interline_gap * 2) + (self.continue_text_height / 2)
         self.continue_message_loc = (0, h)
 
     def generate_test_sequence(self, practice: bool) -> np.ndarray:
@@ -147,7 +147,7 @@ class SDMT(Eyelink_HostPC):
     def draw_continue_message(self) -> None:
         stim = TextStim(
             self.win,
-            text='Press continue when finished',
+            text='Press continue for the next slide',
             font=self.text_font,
             height=self.continue_text_height,
             units='cm',
