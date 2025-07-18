@@ -381,6 +381,11 @@ class ProgressBarStimArgs(StimulusArgs):
     slide_image: str
 
 
+class StanceStimArgs(StimulusArgs):
+    trial_intruct: List[str]
+    wait_keys: bool
+
+
 class ClappingStimArgs(EyeTrackerStimArgs):
     text_task: str = Field(min_length=1)
 
