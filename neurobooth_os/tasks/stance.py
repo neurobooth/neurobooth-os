@@ -12,6 +12,7 @@ class Stance(Task):
         self,
         prompt=True,
         duration=0,
+        wait_keys=True,
         trial_intruct=["trial 1", "trial 2"],
     ):
 
@@ -20,7 +21,7 @@ class Stance(Task):
         for nth, trl in enumerate(trial_intruct):
             self.display_trial_instructions(trl)
             # self.countdown_to_stimulus()
-            self.perform_trial()
+            self.perform_trial(duration, wait_keys)
             self.present_trial_ended_msg(trial_number=nth+1)
 
         self.send_marker(self.marker_task_end)
@@ -36,16 +37,16 @@ class Stance(Task):
                 waitKeys=False,
             )
 
-    def perform_trial(self):
+    def perform_trial(self, duration, wait_keys):
         white = (1, 1, 1)
         self.win.color = white
         self.win.flip()
         self.show_text(
             screen=utils.create_text_screen(win=self.win, text='Press any key to end trial', text_color="black"),
             msg="Trial",
-            wait_time=0,
+            wait_time=duration,
             abort_keys=None, # self.abort_keys,
-            waitKeys=True
+            waitKeys=wait_keys
         )
         
 
