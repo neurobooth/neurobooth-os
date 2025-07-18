@@ -1,5 +1,3 @@
-# import os.path as op
-from psychopy import visual
 from neurobooth_os.tasks.task import Task
 from neurobooth_os.tasks import utils
 
@@ -14,6 +12,8 @@ class Stance(Task):
         duration=0,
         wait_keys=True,
         trial_intruct=["trial 1", "trial 2"],
+        trial_text='Press any key to end trial',
+        **kwargs
     ):
 
         self.send_marker(self.marker_task_start)
@@ -21,7 +21,7 @@ class Stance(Task):
         for nth, trl in enumerate(trial_intruct):
             self.display_trial_instructions(trl)
             # self.countdown_to_stimulus()
-            self.perform_trial(duration, wait_keys)
+            self.perform_trial(duration, wait_keys, trial_text)
             self.present_trial_ended_msg(trial_number=nth+1)
 
         self.send_marker(self.marker_task_end)
@@ -37,12 +37,12 @@ class Stance(Task):
                 waitKeys=False,
             )
 
-    def perform_trial(self, duration, wait_keys):
+    def perform_trial(self, duration: int, wait_keys: bool, trial_text: str):
         white = (1, 1, 1)
         self.win.color = white
         self.win.flip()
         self.show_text(
-            screen=utils.create_text_screen(win=self.win, text='Press any key to end trial', text_color="black"),
+            screen=utils.create_text_screen(win=self.win, text=trial_text, text_color="black"),
             msg="Trial",
             wait_time=duration,
             abort_keys=None, # self.abort_keys,
@@ -70,4 +70,4 @@ if __name__ == "__main__":
     from neurobooth_os import config
     config.load_config()
     t = Stance()
-    t.run(duration=0)
+    t.run()
