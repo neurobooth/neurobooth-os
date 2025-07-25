@@ -1,5 +1,7 @@
 collection_id: demo
 is_active: false
+session_start_slide: welcome.jpg
+session_end_slide: end_slide_01_23_25.jpg
 task_ids:
 - finger_nose_demo_obs_1
 - mouse_demo_obs
