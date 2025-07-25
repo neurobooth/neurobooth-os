@@ -1,5 +1,7 @@
 collection_id: test_no_eyelink
 is_active: true
+session_start_slide: welcome.jpg
+session_end_slide: end_slide_01_23_25.jpg
 task_ids:
 - intro_sess_obs_1
 - gogogo_test_obs_1

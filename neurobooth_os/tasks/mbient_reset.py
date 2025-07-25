@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, wait
 
 from neurobooth_os.msg.messages import StatusMessage, Request, ResetMbients
 from neurobooth_os.tasks.task import Task
-from neurobooth_os.tasks.utils import get_keys
+from neurobooth_os.tasks.utils import get_keys, load_slide
 from psychopy import visual
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.mbient import Mbient
@@ -111,12 +111,7 @@ class MbientResetPause(Task):
 
         self.show_end_screen = end_screen is not None
         if self.show_end_screen:
-            self.end_screen = visual.ImageStim(
-                self.win,
-                image=os.path.join(self.root_pckg, "tasks", "assets", end_screen),
-                pos=(0, 0),
-                units="deg",
-            )
+            self.end_screen = load_slide(self.win, end_screen)
         self.duration = kwargs['duration']
 
     def continue_key_for_comparison(self):

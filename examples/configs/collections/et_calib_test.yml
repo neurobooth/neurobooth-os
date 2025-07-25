@@ -1,5 +1,7 @@
 collection_id: et_calib_test
 is_active: false
+session_start_slide: welcome.jpg
+session_end_slide: end_slide_01_23_25.jpg
 task_ids:
 - calibration_obs_1
 - pursuit_test_obs_test
