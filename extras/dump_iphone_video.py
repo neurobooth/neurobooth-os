@@ -35,7 +35,9 @@ def neurobooth_dump(args: argparse.Namespace) -> None:
     logger.debug('Connecting to iPhone')
     # It is important that timeout exceptions are enabled to prevent misnamed files!
     phone = iphone.IPhone("dump_iphone", enable_timeout_exceptions=True)
-    handshake_success = phone.prepare()
+    
+    default_config = phone.read_default_sensor_args()
+    handshake_success = phone.prepare(config=default_config)
     if not handshake_success:
         logger.error(f'Unable to connect to iPhone [state={phone._state}]!')
         return
@@ -168,7 +170,7 @@ def main():
 
     # Check if we should be running the dump on this machine.
     server_name = cfg.get_server_name_from_env()
-    if is_device_assigned('IPhone_dev_1', server_name):
+    if not is_device_assigned('IPhone_dev_1', server_name):
         logger.debug(f'IPhone not assigned to {server_name}.')
         return
 

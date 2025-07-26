@@ -22,7 +22,7 @@ from FreeSimpleGUI import Multiline
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 
-from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes
+from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes, PREVIEW_AREA
 from neurobooth_os.log_manager import make_db_logger, log_message_received
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
@@ -331,8 +331,11 @@ def _start_ctr_msg_reader(logger, window):
                 msg_body: DeviceInitialization = message.body
                 outlet_name = msg_body.stream_name
                 outlet_id = msg_body.outlet_id
+                device_id = msg_body.device_id
                 outlet_values = f"['{outlet_name}', '{outlet_id}']"
                 window.write_event_value("-OUTLETID-", outlet_values)
+                if msg_body.camera_preview:
+                    window.write_event_value("-new_preview_device-", [outlet_name, device_id])
             elif "SessionPrepared" == message.msg_type:
                 window.write_event_value("devices_connected", True)
             elif "ServerStarted" == message.msg_type:
@@ -430,20 +433,61 @@ def _plot_realtime(window, plttr, inlets):
         plttr.start(inlets)
 
 
-def handle_frame_preview_reply(window, frame_reply: FramePreviewReply):
+def enable_frame_preview(window, preview_devices: Dict[str, str]) -> None:
+    if not preview_devices:
+        return  # No registered devices; do not enable the preview
+
+    available_streams = sorted(list(preview_devices.keys()))
+
+    # Pick the specified default preview device if available, otherwise pick the first entry.
+    preview_default = cfg.neurobooth_config.default_preview_stream
+    if preview_default not in available_streams:
+        preview_default = available_streams[0]
+
+    # Enable the preview button and the Combo picker
+    window["-frame_preview-"].update(visible=True)
+    window["-frame_preview_opts-"].update(visible=True, value=preview_default, values=available_streams)
+
+
+def handle_frame_preview_reply(window, frame_reply: FramePreviewReply) -> None:
     if not frame_reply.image_available or len(frame_reply.image) < 100:
-        write_output(window, "ERROR: no iphone in LSL streams", text_color="red")
+        write_output(window, f"ERROR: Unable to preview ({frame_reply.unavailable_message})", text_color="red")
         return
+
+    # Decode the image from the message into a NumPy array (OpenCV format)
     frame = base64.b64decode(frame_reply.image)
     nparr = np.frombuffer(frame, dtype=np.uint8)
     img_np = cv2.imdecode(nparr, flags=1)
-    img_rz = cv2.resize(img_np, (1080 // 4, 1920 // 4))
+
+    img_rz = resize_frame_preview(img_np)
+
+    # Re-encode the image and present it
     img_b = cv2.imencode(".png", img_rz)[1].tobytes()
     window["iphone"].update(data=img_b)
 
 
-def _request_frame_preview(conn):
-    msg = FramePreviewRequest()
+def resize_frame_preview(img: np.ndarray) -> np.ndarray:
+    """
+    Resize the given image such that its width matches that of the preview area.
+    If the resulting image is taller than the preview area, then it is vertically center-cropped.
+    """
+    h, w, _ = img.shape  # x and y are flipped in OpenCV
+    new_w, max_h = PREVIEW_AREA
+
+    # Resize to the desired width
+    aspect_ratio = w / h
+    new_h = int(round(new_w / aspect_ratio))
+    img = cv2.resize(img, (new_w, new_h))
+
+    if new_h > max_h:  # Vertically crop if needed
+        crop = (new_h - max_h) // 2
+        img = img[crop:-crop, :]
+
+    return img
+
+
+def _request_frame_preview(conn, device_id: str) -> None:
+    msg = FramePreviewRequest(device_id=device_id)
     req = Request(source="CTR", destination="ACQ", body=msg)
     meta.post_message(req, conn)
 
@@ -521,6 +565,7 @@ def gui(logger):
     # declare and initialize vars
     subject: Subject
     task_string: Optional[str] = None       # A comma delimited list of task ids in a string
+    frame_preview_devices: Dict[str, str] = {}  # Maps from stream name to device ID
 
     with meta.get_database_connection() as conn:
         meta.clear_msg_queue(conn)
@@ -700,7 +745,7 @@ def gui(logger):
                 session_prepared_count += 1
                 if session_prepared_count == len(_get_nodes()):
                     session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
-                    window["-frame_preview-"].update(visible=True)
+                    enable_frame_preview(window, frame_preview_devices)
                     if not start_pressed:
                         window['Start'].update(disabled=False)
                         write_output(window, "Device connection complete. OK to start session")
@@ -708,6 +753,10 @@ def gui(logger):
             # Create LSL inlet stream
             elif event == "-OUTLETID-":
                 _create_lsl_inlet(stream_ids, values[event], inlets)
+
+            elif event == "-new_preview_device-":
+                outlet_name, device_id = values[event]
+                frame_preview_devices[outlet_name] = device_id
 
             elif event == "server_started":
                 server = values[event]
@@ -740,7 +789,9 @@ def gui(logger):
             ##################################################################################
 
             elif event == "-frame_preview-":
-                _request_frame_preview(conn)
+                outlet_name = values["-frame_preview_opts-"]
+                device_id = frame_preview_devices[outlet_name]
+                _request_frame_preview(conn, device_id)
 
             # Print LSL inlet names in GUI
             if inlet_keys != list(inlets):

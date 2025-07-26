@@ -1,6 +1,6 @@
 from os import environ, path
 
-from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, \
+from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, PositiveFloat, \
     SerializeAsAny, model_validator
 from typing import Optional, List, Callable, Tuple, Dict
 import os
@@ -40,6 +40,8 @@ class StudyArgs(EnvArgs):
 class CollectionArgs(EnvArgs):
     collection_id: str = Field(min_length=1, max_length=255)
     is_active: bool
+    session_start_slide: str
+    session_end_slide: str
     task_ids: List[str]
     arg_parser: str
 
@@ -268,6 +270,7 @@ class WebcamDeviceArgs(DeviceArgs):
     """
     camera_idx: int
     fourcc: str  # Video codec to use
+    n_frames_to_flush: int  # Number of frames to discard before recording
     sensor_array: List[StandardSensorArgs] = []
 
     def __init__(self, **kwargs):
@@ -456,6 +459,22 @@ class TimingTestStimArgs(EyeTrackerStimArgs):
     tone_duration: NonNegativeFloat
     wait_center: NonNegativeFloat
     num_iterations: NonNegativeInt
+
+
+class SdmtStimArgs(EyeTrackerStimArgs):
+    duration: PositiveFloat
+    symbols: List[str]
+    seed: Optional[int]
+    text_font: str
+    text_height: PositiveFloat
+    continue_text_height: PositiveFloat
+    cell_size: PositiveFloat
+    interline_gap: NonNegativeFloat
+    grid_rows: PositiveInt
+    grid_cols: PositiveInt
+    practice_grid_rows: PositiveInt
+    practice_grid_cols: PositiveInt
+    mouse_visible: bool
 
 
 def get_cfg_path(folder_name: str) -> str:

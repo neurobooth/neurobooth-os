@@ -16,7 +16,8 @@ from enum import IntEnum
 from hashlib import md5
 from base64 import b64decode
 
-from neurobooth_os.iout.metadator import post_message, get_database_connection
+from neurobooth_os.iout.device import CameraPreviewer
+from neurobooth_os.iout.metadator import post_message, get_database_connection, read_sensors
 from neurobooth_os.iout.stim_param_reader import IPhoneDeviceArgs
 from neurobooth_os.iout.usbmux import USBMux
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -93,7 +94,7 @@ def _handle_panic(func):
     return wrapper_panic
 
 
-class IPhone:
+class IPhone(CameraPreviewer):
     """
     Handles interactions with an iPhone device running the Neurobooth app.
     Intended Lifecycle:
@@ -630,7 +631,12 @@ class IPhone:
                 'Time_ACQ': 'Local machine timestamp (s)',
             }
         )
-        body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.outlet_id)
+        body = DeviceInitialization(
+            stream_name=self.streamName,
+            outlet_id=self.outlet_id,
+            device_id=self.device_id,
+            camera_preview=True,
+        )
         msg = Request(source="IPhone", destination="CTR", body=body)
         with get_database_connection() as conn:
             post_message(msg, conn)
@@ -832,6 +838,31 @@ class IPhone:
         self.connected = False
         self.streaming = False
         return True
+    
+    @staticmethod
+    def read_default_sensor_args() -> CONFIG :
+        """
+        * Static method to read a set of iphone device config params from
+          any iphone device sensor config file.
+        * This one uses IPhone_sens_1 but IPhone_sens_stance can also be used.
+        * This method should only be used to create iphone config in cases
+          where communication with iphone is needed but data collection is not
+          a factor, for example for iphone_dump or running test_script or running
+          stress_test.
+        * During actual data collection iphone config is generated inside
+          prepare based on device_args packaged by the device manager in
+          lsl_streamer.
+        """
+        iphone_sensor_params = read_sensors()['IPhone_sens_1']
+        default_config: CONFIG = {
+                "NOTIFYONFRAME": str(iphone_sensor_params.notifyonframe),
+                "VIDEOQUALITY": iphone_sensor_params.videoquality,
+                "USECAMERAFACING": iphone_sensor_params.usecamerafacing,
+                "FPS": str(iphone_sensor_params.sample_rate),
+                "BRIGHTNESS": str(iphone_sensor_params.brightness),
+                "LENSPOS": str(iphone_sensor_params.lenspos),
+            }
+        return default_config
 
 
 class IPhoneListeningThread(threading.Thread):
@@ -870,9 +901,9 @@ class IPhoneListeningThread(threading.Thread):
             if 'WinError 10053' in str(e):  # Can occur if the app is on too long and iPhone blocks the port
                 raise IPhonePanic('Communications Breakdown') from e
             # Simply log anything unexpected
-            self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
+            self.logger.error(f'iPhone: Listening loop encountered an unexpected OSError: {e}')
         except Exception as e:  # Simply log any other unexpected errors
-            self.logger.error(f'iPhone: Listening loop encountered an error: {e}')
+            self.logger.error(f'iPhone: Listening loop encountered an unexpected error: {e}')
 
     def stop(self):
         self._running = False
@@ -945,15 +976,8 @@ def script_capture_data(subject_id: str, recording_folder: str, capture_duration
     )
 
     iphone = IPhone("IPhone", device_args=dev_args)
-    default_config: CONFIG = {
-        "NOTIFYONFRAME": "1",
-        "VIDEOQUALITY": "1920x1080",
-        "USECAMERAFACING": "BACK",
-        "FPS": "240",
-        "BRIGHTNESS": "50",
-        "LENSPOS": "0.7",
-    }
 
+    default_config = iphone.read_default_sensor_args()
     if not iphone.prepare(config=default_config):
         with get_database_connection() as conn:
             IPhone.send_status_msg("Could not connect to iphone", conn)

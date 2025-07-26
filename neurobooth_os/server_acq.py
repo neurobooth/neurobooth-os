@@ -12,11 +12,12 @@ import neurobooth_os
 from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs, DeviceArgs
 from neurobooth_os.log_manager import make_db_logger, log_message_received
+from neurobooth_os.iout.device import CameraPreviewException
 from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
 from neurobooth_os.msg.messages import Message, MsgBody, PrepareRequest, RecordingStoppedMsg, StartRecording, \
-    RecordingStartedMsg, MbientResetResults, Request, SessionPrepared, FramePreviewReply, \
+    RecordingStartedMsg, MbientResetResults, Request, SessionPrepared, FramePreviewReply, FramePreviewRequest, \
     ServerStarted, ErrorMessage
 
 
@@ -98,7 +99,8 @@ def run_acq(logger):
                 meta.post_message(updator, db_conn)
 
             elif "FramePreviewRequest" == current_msg_type and not recording:
-                iphone_frame_preview(db_conn, device_manager, logger)
+                msg_body: FramePreviewRequest = message.body
+                camera_frame_preview(msg_body.device_id, db_conn, device_manager, logger)
 
             # TODO: Both reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
             elif "ResetMbients" == current_msg_type:
@@ -157,19 +159,20 @@ def run_acq(logger):
             raise argument
 
 
-def iphone_frame_preview(db_conn, device_manager, logger):
-    frame = device_manager.iphone_frame_preview()
-    if frame is None:
-        body = FramePreviewReply(image=None, image_available=False)
-    else:
+def camera_frame_preview(device_id: str, db_conn, device_manager, logger):
+    try:
+        frame = device_manager.camera_frame_preview(device_id)
         b64_frame = base64.b64encode(frame).decode('utf-8')
-        body = FramePreviewReply(image=b64_frame, image_available=True)
+        body = FramePreviewReply(image=b64_frame, image_available=True, unavailable_message=None)
+    except CameraPreviewException as e:
+        body = FramePreviewReply(image=None, image_available=False, unavailable_message=str(e))
+
     reply = Request(source="ACQ", destination="CTR", body=body)
     meta.post_message(reply, db_conn)
     if body.image_available:
         logger.debug('Frame preview sent')
     else:
-        logger.debug('Frame preview unavailable')
+        logger.debug(f'Frame preview unavailable: {body.unavailable_message}')
 
 
 def start_recording(device_manager: DeviceManager, fname: str, task_devices: List[DeviceArgs]) -> float:

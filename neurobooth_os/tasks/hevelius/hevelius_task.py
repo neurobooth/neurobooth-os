@@ -3,7 +3,9 @@
 
 from __future__ import absolute_import, division
 import json
+import os
 import os.path as op
+from typing import Union
 
 import pylink
 from psychopy import visual, core, data, event
@@ -12,6 +14,7 @@ from psychopy.hardware import keyboard
 
 from neurobooth_os.tasks import utils
 from neurobooth_os.tasks.task import Task_Eyetracker
+from neurobooth_os.iout.stim_param_reader import get_cfg_path
 import neurobooth_os
 
 
@@ -21,7 +24,7 @@ class hevelius_task(Task_Eyetracker):
         record_psychopy=False,
         path="",
         subj_id="test",
-        trial_data_fname="tasks/assets/hevelius_centered_config.json",
+        trial_data_fname="hevelius_centered_config.json",
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -32,11 +35,20 @@ class hevelius_task(Task_Eyetracker):
         self.filename = self.path_out + f"{self.subj_id}_Hevelius_results"
         self.frameTolerance = 0.001  # how close to onset before 'same' frame
         self.rep = ""  # repeated task num to add to filename
-        self.trial_data_fname = trial_data_fname
-
-        with open(op.join(neurobooth_os.__path__[0], self.trial_data_fname)) as f:
-            self.trials_data = json.load(f)
         self.record_psychopy = record_psychopy
+
+        self.trial_data_fpath = hevelius_task.asset_path(trial_data_fname)
+        with open(op.join(neurobooth_os.__path__[0], self.trial_data_fpath)) as f:
+            self.trials_data = json.load(f)
+
+    @classmethod
+    def asset_path(cls, asset: Union[str, os.PathLike]) -> str:
+        """
+        Get the path to the specified asset.
+        :param asset: The name of the asset/file.
+        :return: The file system path to the asset in the config folder.
+        """
+        return op.join(get_cfg_path('assets'), 'hevelius', asset)
 
     def convert_pix(self, loc, offset):
         newloc = [[], []]
@@ -129,7 +141,7 @@ class hevelius_task(Task_Eyetracker):
             name=self.subj_id,
             version="",
             runtimeInfo=None,
-            originPath="C:\\neurobooth\\neurobooth-eel\\tasks\\hevelius_task.py",
+            originPath="C:\\neurobooth\\neurobooth-eel\\tasks\\hevelius_task.py",  # TODO: This is an old path!!!
             savePickle=False,
             saveWideText=False,
             dataFileName=self.filename + self.rep,

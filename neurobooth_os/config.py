@@ -77,12 +77,12 @@ class NeuroboothConfig(BaseModel):
     video_task_dir: str
     split_xdf_backlog: str
     cam_inx_lowfeed: int
+    default_preview_stream: str
     acquisition: ServerSpec
     presentation: ServerSpec
     control: ServerSpec
     database: DatabaseSpec
     screen: ScreenSpec
-    session_end_slide: str
 
     def current_server(self) -> ServerSpec:
         server_name = get_server_name_from_env()
