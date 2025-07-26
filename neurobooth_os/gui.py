@@ -85,7 +85,6 @@ def _get_subject_by_id(window, log_sess, conn, subject_id: str):
         window["subject_info"].update('')
 
 
-
 def _get_tasks(window, collection_id: str):
     task_obs = meta.get_task_ids_for_collection(collection_id)
     tasks = ", ".join(task_obs)
@@ -125,14 +124,14 @@ def _create_session_dict(window, log_task, staff_id, subject: Subject, tasks):
 ########## Task-related functions ############
 
 
-def _start_task_presentation(window, tasks: List[str], subject_id: str, session_id: int, steps, conn):
+def _start_task_presentation(window, task_list: List[str], subject_id: str, session_id: int, steps, conn):
     """Present tasks"""
     global last_task
     window['Start'].update(disabled=True)
     write_output(window, "\nSession started")
-    last_task = tasks[-1]
-    if len(tasks) > 0:
-        msg_body = CreateTasksRequest(tasks=tasks, subj_id=subject_id, session_id=session_id)
+    last_task = task_list[-1]
+    if len(task_list) > 0:
+        msg_body = CreateTasksRequest(tasks=task_list, subj_id=subject_id, session_id=session_id)
         msg = Request(
             source='CTR',
             destination='STM',
@@ -498,10 +497,14 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
 
     # disable button so it can't be pushed twice
     window["-Connect-"].Update(disabled=True)
-    for task in tasks.split(","):
+    task_list: List[str] = tasks.split(',')
+    for task in task_list:
         task_checkbox: sg.Checkbox = window.find_element(task.strip())
         task_checkbox.update(disabled=True)
+
     event, values = window.read(0.1)
+    selected_tasks: List[str] = [k for k, v in values.items() if "obs" in k and v is True]
+
     write_output(window, "\nConnecting devices. Please wait....")
 
     video_marker_stream = marker_stream("videofiles")
@@ -515,7 +518,7 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
         body = PrepareRequest(database_name=database,
                               subject_id=log_task['subject_id'],
                               collection_id=collection_id,
-                              selected_tasks=tasks.split(),
+                              selected_tasks=selected_tasks,
                               date=log_task['date']
                               )
         msg = Request(source='CTR',
@@ -561,7 +564,7 @@ def gui(logger):
 
     # declare and initialize vars
     subject: Subject
-    tasks = None
+    task_string: Optional[str] = None       # A comma delimited list of task ids in a string
     frame_preview_devices: Dict[str, str] = {}  # Maps from stream name to device ID
 
     with meta.get_database_connection() as conn:
@@ -593,7 +596,7 @@ def gui(logger):
             elif event == "collection_id":
                 collection_id: str = values[event]
                 log_sess["collection_id"] = collection_id
-                tasks = _get_tasks(window, collection_id)
+                task_string = _get_tasks(window, collection_id)
 
             elif event == "_init_sess_save_":
                 if values["study_id"] == "" or values['collection_id'] == "":
@@ -609,7 +612,7 @@ def gui(logger):
                         log_task,
                         values["staff_id"],
                         subject,
-                        tasks,
+                        task_string,
                     )
                     # Open new layout with main window
                     window = _win_gen(_main_layout, sess_info)
@@ -627,7 +630,7 @@ def gui(logger):
             # Turn on devices
             elif event == "-Connect-":
                 video_marker_stream, event, values = _prepare_devices(window,
-                    nodes, collection_id, log_task, database, tasks, conn)
+                    nodes, collection_id, log_task, database, task_string, conn)
 
             elif event == "plot":
                 _plot_realtime(window, plttr, inlets)
@@ -637,12 +640,12 @@ def gui(logger):
                     window["Start"].Update(disabled=True)
                     start_pressed = True
                     session_id = meta._make_session_id(conn, log_sess)
-                    tasks = [k for k, v in values.items() if "obs" in k and v is True]
-                    _start_task_presentation(window, tasks, sess_info["subject_id"], session_id, steps, conn)
+                    task_list: List[str] = [k for k, v in values.items() if "obs" in k and v is True]
+                    _start_task_presentation(window, task_list, sess_info["subject_id"], session_id, steps, conn)
 
             elif event == "tasks_created":
                 _session_button_state(window, disabled=False)
-                for task_id in tasks:
+                for task_id in task_list:
                     msg_body = PerformTaskRequest(task_id=task_id)
                     msg = Request(source="CTR", destination="STM", body=msg_body)
                     meta.post_message(msg, conn)
