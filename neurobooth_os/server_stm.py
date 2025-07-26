@@ -455,6 +455,7 @@ def prepare_session(prepare_req: PrepareRequest, logger):
         logger=logger,
         session_name=task_log_entry.subject_id_date,
         collection_id=collection_id,
+        selected_tasks=prepare_req.selected_tasks,
         db_conn=meta.get_database_connection(database=database_name),
     )
     #  TODO(larry): See about refactoring so we don't need to create a new logger here.

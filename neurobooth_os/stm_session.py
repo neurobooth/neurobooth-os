@@ -1,7 +1,7 @@
 import logging
 import os
 
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from pydantic import BaseModel
 from psycopg2.extensions import connection
 
@@ -19,6 +19,7 @@ class StmSession(BaseModel):
     """
 
     session_name: str = ''
+    selected_tasks: List[str]
     collection_id: str
     logger: logging.Logger
     db_conn: connection
@@ -39,11 +40,12 @@ class StmSession(BaseModel):
         if kwargs["session_name"] is not None:
             self.session_name: str = kwargs["session_name"]
         self.collection_id = kwargs["collection_id"]
+        self.selected_tasks = kwargs["selected_tasks"]
         self.db_conn = kwargs["db_conn"]
         self.logger = kwargs["logger"]
         self.session_folder = self.create_session_folder(self.logger, self.session_name)
         self.system_resource_logger: SystemResourceLogger = self.create_sys_resource_logger()
-        self.task_func_dict = build_tasks_for_collection(self.collection_id)
+        self.task_func_dict = build_tasks_for_collection(self.collection_id, self.selected_tasks)
         self.path = os.path.join(config.neurobooth_config.presentation.local_data_dir, self.session_name)
         self.win = self.init_window()
 
