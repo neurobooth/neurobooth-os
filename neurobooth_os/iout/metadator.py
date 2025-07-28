@@ -625,19 +625,25 @@ def read_all_task_params():
     return params
 
 
-def build_tasks_for_collection(collection_id: str) -> Dict[str, TaskArgs]:
+def build_tasks_for_collection(collection_id: str, selected_tasks: Optional[List[str]] = None) -> Dict[str, TaskArgs]:
     """
     Constructs a dictionary of task_ids to TaskArgs for every task in the collection
     Parameters
     ----------
     collection_id str
         The unique identifier for the collection
+    selected_tasks Optional[List[str]]
+        An optional list of task IDs used to filter the tasks in the collection.
+        If present, Only those tasks in selected tasks should be returned.
 
     Returns
     -------
         Dictionary with task_id = TaskArgs
     """
-    task_ids = get_task_ids_for_collection(collection_id)
+    if selected_tasks is None:
+        task_ids: List[str] = get_task_ids_for_collection(collection_id)
+    else:
+        task_ids: List[str] = selected_tasks
     task_dict: Dict[str:TaskArgs] = {}
     param_dictionary = read_all_task_params()
     for task_id in task_ids:

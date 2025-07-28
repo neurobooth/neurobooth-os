@@ -75,6 +75,7 @@ def run_acq(logger):
                 subject_id: str = msg_body.subject_id
                 session_name: str = msg_body.session_name()
                 collection_id: str = msg_body.collection_id
+                selected_tasks: List[str] = msg_body.selected_tasks
 
                 ses_folder = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name)
                 if not os.path.exists(ses_folder):
@@ -87,7 +88,7 @@ def run_acq(logger):
                     system_resource_logger = SystemResourceLogger(machine_name='ACQ')
                     system_resource_logger.start()
 
-                task_args = meta.build_tasks_for_collection(collection_id)
+                task_args = meta.build_tasks_for_collection(collection_id, selected_tasks)
 
                 device_manager = DeviceManager(node_name='acquisition')
                 if device_manager.streams:
