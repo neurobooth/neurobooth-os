@@ -95,19 +95,26 @@ class IPhoneSensorArgs(SensorArgs):
 
 
 class DeviceArgs(EnvArgs):
-    ENV_devices: Dict
-    device_id: str
-    device_sn: Optional[str] = None
-    device_name: str
-    device_location: Optional[str] = None
-    wearable_bool: bool
-    device_make: Optional[str] = None
-    device_model: Optional[str] = None
-    device_firmware: Optional[str] = None
-    sensor_ids: Optional[List[str]]
-    sensor_array: List[SerializeAsAny[SensorArgs]] = []
-    device_start_function: Optional[str] = None
-    arg_parser: str
+    ENV_devices: Dict           # Environment-specific device arguments
+
+    # Attributes required for program execution
+    device_id: str                                  # Unique identifier for device
+    device_start_function: Optional[str] = None     # A string representing the function that starts the device
+    arg_parser: str                 # A string representing the function that parses the device arguments into objects
+    sensor_ids: Optional[List[str]]                 # List of unique identifiers for sensors contained in device
+    sensor_array: List[SerializeAsAny[SensorArgs]] = []     # LIst of the SensorArgs for sensor sensors in device
+
+    # Device parameter (where used)
+    device_sn: Optional[str] = None     # Serial number for individual device
+
+    # Attributes used for logging and documentation only
+    device_name: str            # Descriptive string for device type
+    wearable_bool: bool         # True if the device is wearable; false otherwise
+
+    # Attributes used for documentation only (Not logged)
+    device_make: Optional[str] = None   # Manufacturer name
+    device_model: Optional[str] = None  # Model name
+    device_firmware: Optional[str] = None   # Firmware version
 
     def __init__(self, **kwargs):
         # pull-in environment specific parameter "device_sn", updating the kwargs with the appropriate value
@@ -121,6 +128,8 @@ class DeviceArgs(EnvArgs):
 
 
 class MicYetiDeviceArgs(DeviceArgs):
+
+    # Attributes required for program execution
     microphone_name: str
     sensor_array: List[MicYetiSensorArgs] = []
 
@@ -139,6 +148,8 @@ class EyelinkDeviceArgs(DeviceArgs):
     The eyelink should have only one sensor, represented by an instance
     of type EyelinkSensorArgs
     """
+
+    # Attributes required for program execution
     ip: str
     sensor_array: List[EyelinkSensorArgs] = []
 
@@ -149,7 +160,6 @@ class EyelinkDeviceArgs(DeviceArgs):
         kwargs['ip'] = ip_addr
 
         super().__init__(**kwargs)
-
 
     def sample_rate(self):
         return self.sensor_array[0].sample_rate
@@ -165,6 +175,7 @@ class IPhoneDeviceArgs(DeviceArgs):
     of type IPhoneSensorArgs
 
     """
+    # Attributes required for program execution
     sensor_array: List[IPhoneSensorArgs] = []
 
     def sample_rate(self):
@@ -192,6 +203,8 @@ class FlirDeviceArgs(DeviceArgs):
     The FLIR should have only one sensor, represented by an instance
     of type FlirSensorArgs
     """
+
+    # Attributes required for program execution
     sensor_array: List[FlirSensorArgs] = []
 
     def __init__(self, **kwargs):
@@ -218,6 +231,8 @@ class FlirDeviceArgs(DeviceArgs):
 
 
 class IntelDeviceArgs(DeviceArgs):
+
+    # Attributes required for program execution
     sensor_array: List[IntelSensorArgs] = []
 
     def sample_rate(self):
@@ -268,6 +283,8 @@ class WebcamDeviceArgs(DeviceArgs):
     Webcam device arguments
     The webcam should be only one sensor, represented by an instance of type StandardSensorArgs
     """
+
+    # Attributes required for program execution
     camera_idx: int
     fourcc: str  # Video codec to use
     n_frames_to_flush: int  # Number of frames to discard before recording
@@ -291,6 +308,8 @@ class WebcamDeviceArgs(DeviceArgs):
 
 
 class MbientDeviceArgs(DeviceArgs):
+
+    # Attributes required for program execution
     sensor_array: List[MbientSensorArgs] = []
     mac: str
 
