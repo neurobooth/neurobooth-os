@@ -99,7 +99,7 @@ class DeviceArgs(EnvArgs):
 
     # Attributes required for program execution
     device_id: str                                  # Unique identifier for device
-    device_start_function: Optional[str] = None     # A string representing the function that starts the device
+    device_start_function: str      # A string representing the function that starts the device
     arg_parser: str                 # A string representing the function that parses the device arguments into objects
     sensor_ids: Optional[List[str]]                 # List of unique identifiers for sensors contained in device
     sensor_array: List[SerializeAsAny[SensorArgs]] = []     # LIst of the SensorArgs for sensor sensors in device
@@ -108,8 +108,8 @@ class DeviceArgs(EnvArgs):
     device_sn: Optional[str] = None     # Serial number for individual device
 
     # Attributes used for logging and documentation only
-    device_name: str            # Descriptive string for device type
-    wearable_bool: bool         # True if the device is wearable; false otherwise
+    device_name: Optional[str] = None   # Descriptive string for device type
+    wearable_bool: Optional[bool] = None    # True if the device is wearable; false otherwise
 
     # Attributes used for documentation only (Not logged)
     device_make: Optional[str] = None   # Manufacturer name
