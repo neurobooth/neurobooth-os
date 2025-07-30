@@ -102,7 +102,7 @@ class DeviceArgs(EnvArgs):
     device_start_function: str      # A string representing the function that starts the device
     arg_parser: str                 # A string representing the function that parses the device arguments into objects
     sensor_ids: Optional[List[str]]                 # List of unique identifiers for sensors contained in device
-    sensor_array: List[SerializeAsAny[SensorArgs]] = []     # LIst of the SensorArgs for sensor sensors in device
+    sensor_array: List[SerializeAsAny[SensorArgs]] = []     # List of the SensorArgs for sensors in device
 
     # Device parameter (where used)
     device_sn: Optional[str] = None     # Serial number for individual device
