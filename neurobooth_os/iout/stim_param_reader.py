@@ -70,6 +70,14 @@ class MbientSensorArgs(SensorArgs):
     sample_rate: PositiveInt
 
 
+class IntelSensorArgs(StandardSensorArgs):
+    size: Optional[Tuple[float, float]] = None
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.size = (self.width_px, self.height_px)
+
+
 class FlirSensorArgs(StandardSensorArgs):
 
     # Attributes used as device parameters
@@ -241,7 +249,7 @@ class FlirDeviceArgs(DeviceArgs):
 class IntelDeviceArgs(DeviceArgs):
 
     # Attributes required for program execution
-    sensor_array: List[StandardSensorArgs] = []
+    sensor_array: List[IntelSensorArgs] = []
 
     def sample_rate(self):
         """
