@@ -54,7 +54,6 @@ class Sitting(Stance):
         trial_text='Press any key to end trial',
         **kwargs
     ):
-        print(duration)
         self.send_marker(self.marker_task_start)
 
         for nth, trl in enumerate(trial_intruct):
@@ -87,7 +86,6 @@ class Sitting(Stance):
         self.win.flip()
         
         import time
-        time.sleep(2)
         self.show_text(
             screen=utils.create_text_screen(win=self.win, text=trial_text, text_color="black"),
             msg="Trial",
@@ -226,7 +224,5 @@ class Sitting(Stance):
 
 
 if __name__ == "__main__":
-    from neurobooth_os import config
-    config.load_config()
-    t = Sitting(duration=5, wait_keys=True)
-    t.run()
+    t = Sitting()
+    t.run(duration=0, wait_keys=True)
