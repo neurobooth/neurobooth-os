@@ -53,7 +53,7 @@ class SensorArgs(EnvArgs):
     arg_parser: str
 
     # Attributes used for logging and documentation only
-    file_type: str
+    file_type: Optional[str]
 
 
 class StandardSensorArgs(SensorArgs):
@@ -70,12 +70,6 @@ class MbientSensorArgs(SensorArgs):
     sample_rate: PositiveInt
 
 
-class IntelSensorArgs(StandardSensorArgs):
-    # TODO: Remove this class and use StandardSensorArgs for Intel
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-
 class FlirSensorArgs(StandardSensorArgs):
 
     # Attributes used as device parameters
@@ -84,16 +78,22 @@ class FlirSensorArgs(StandardSensorArgs):
 
 
 class MicYetiSensorArgs(SensorArgs):
+
+    # Attributes used as device parameters
     sample_rate: PositiveInt
     sample_chunk_size: PositiveInt
 
 
 class EyelinkSensorArgs(SensorArgs):
+
+    # Attributes used as device parameters
     sample_rate: PositiveInt
     calibration_type: str
 
 
 class IPhoneSensorArgs(SensorArgs):
+
+    # Attributes used as device parameters
     sample_rate: PositiveInt
     notifyonframe: PositiveInt
     videoquality: str
