@@ -241,7 +241,7 @@ class FlirDeviceArgs(DeviceArgs):
 class IntelDeviceArgs(DeviceArgs):
 
     # Attributes required for program execution
-    sensor_array: List[IntelSensorArgs] = []
+    sensor_array: List[StandardSensorArgs] = []
 
     def sample_rate(self):
         """
