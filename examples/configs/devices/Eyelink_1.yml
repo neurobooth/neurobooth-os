@@ -1,6 +1,5 @@
 device_id: Eyelink_1
 device_name: EYELINK Portable Duo
-device_location: '25_19_36'
 wearable_bool: false
 device_make: SR
 device_model: 'EYELINK CL 6.50  '

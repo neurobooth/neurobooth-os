@@ -1,6 +1,5 @@
 device_id: Intel_D455_1
 device_name: Intel RealSense D455
-device_location: '0_0_0'
 wearable_bool: false
 device_make: Intel RealSense
 device_model: D455
