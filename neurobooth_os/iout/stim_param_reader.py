@@ -409,7 +409,8 @@ class FixationTargetStimArgs(EyeTrackerStimArgs):
 
 class PassageReadingStimArgs(EyeTrackerStimArgs):
     countdown: str  # An mp4 filename
-
+    image_to_render_on_tablet: str
+    image_to_render_on_HostPC: str
 
 class SaccadesStimArgs(EyeTrackerStimArgs):
     direction: str

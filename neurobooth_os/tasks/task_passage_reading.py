@@ -17,8 +17,10 @@ from neurobooth_os.iout.stim_param_reader import get_cfg_path
 
 
 class Passage_Reading(Eyelink_HostPC):
-    def __init__(self, **kwargs):
+    def __init__(self, image_to_render_on_tablet, image_to_render_on_HostPC, **kwargs):
         super().__init__(**kwargs)
+        self.image_to_render_on_tablet = image_to_render_on_tablet
+        self.image_to_render_on_HostPC = image_to_render_on_HostPC
 
     @classmethod
     def asset_path(cls, asset: Union[str, os.PathLike]) -> str:
@@ -31,13 +33,13 @@ class Passage_Reading(Eyelink_HostPC):
 
     def render_image(self):
         self._render_image(
-            Passage_Reading.asset_path('bamboo_screenshot.jpg'),
+            Passage_Reading.asset_path(self.image_to_render_on_tablet),
             0, 0, 1920, 1080, 0, 0
         )
 
     def present_task(self, prompt=True, duration=0, **kwargs):
         self.Mouse.setVisible(1)  # Allow participants to use the mouse to assist their reading
-        screen = utils.load_image(self.win, Passage_Reading.asset_path('passage_reading_1536x864.jpg'))
+        screen = utils.load_image(self.win, Passage_Reading.asset_path(self.image_to_render_on_HostPC))
         self.show_text(screen=screen, msg="Task", audio=None, wait_time=5)
 
         if prompt:
