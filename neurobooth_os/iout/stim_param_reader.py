@@ -1,7 +1,7 @@
 from os import environ, path
 
 from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, PositiveFloat, \
-    SerializeAsAny, model_validator
+    SerializeAsAny
 from typing import Optional, List, Callable, Tuple, Dict
 import os
 import yaml
@@ -47,30 +47,38 @@ class CollectionArgs(EnvArgs):
 
 
 class SensorArgs(EnvArgs):
+
+    # Attributes required for program execution
     sensor_id: str = Field(min_length=1, max_length=255)
-    file_type: str
     arg_parser: str
+
+    # Attributes used for logging and documentation only
+    file_type: str
 
 
 class StandardSensorArgs(SensorArgs):
+
+    # Attributes used as device parameters
     sample_rate: PositiveInt
     width_px: PositiveInt
     height_px: PositiveInt
 
 
 class MbientSensorArgs(SensorArgs):
+
+    # Attributes used as device parameters
     sample_rate: PositiveInt
 
 
 class IntelSensorArgs(StandardSensorArgs):
-    size: Optional[Tuple[float, float]] = None
-
+    # TODO: Remove this class and use StandardSensorArgs for Intel
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.size = (self.width_px, self.height_px)
 
 
 class FlirSensorArgs(StandardSensorArgs):
+
+    # Attributes used as device parameters
     offsetX: PositiveInt
     offsetY: PositiveInt
 
