@@ -30,11 +30,6 @@ text_task = "Please do the task \n\tPress any button when done"
 text_end = "Thank you. You have completed this task"
 
 
-def change_win_color(win, color):
-    win.color = color
-    win.flip()
-
-
 def send_marker(marker, msg):
     marker.push_sample([f"{msg}_{time.time()}"])
 
@@ -130,6 +125,7 @@ def present(
     countdown(wait_time, abort_keys)  # TODO: add abort keys back after debugging
     if waitKeys:
         get_keys()
+
 
 def load_image(win: visual.Window, path: Union[str, os.PathLike]) -> visual.ImageStim:
     """
@@ -231,7 +227,6 @@ def get_keys(keyList=()):
             elif any([k in keyList for k in press]):
                 return press
         delay(0.005)
-
 
 
 def play_video(win, mov, wait_time=1, stop=True):
