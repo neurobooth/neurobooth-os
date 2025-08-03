@@ -1,7 +1,7 @@
 from os import environ, path
 
 from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, PositiveFloat, \
-    SerializeAsAny, model_validator
+    SerializeAsAny
 from typing import Optional, List, Callable, Tuple, Dict
 import os
 import yaml
@@ -47,18 +47,26 @@ class CollectionArgs(EnvArgs):
 
 
 class SensorArgs(EnvArgs):
+
+    # Attributes required for program execution
     sensor_id: str = Field(min_length=1, max_length=255)
-    file_type: str
     arg_parser: str
+
+    # Attributes used for logging and documentation only
+    file_type: Optional[str]
 
 
 class StandardSensorArgs(SensorArgs):
+
+    # Attributes used as device parameters
     sample_rate: PositiveInt
     width_px: PositiveInt
     height_px: PositiveInt
 
 
 class MbientSensorArgs(SensorArgs):
+
+    # Attributes used as device parameters
     sample_rate: PositiveInt
 
 
@@ -71,21 +79,29 @@ class IntelSensorArgs(StandardSensorArgs):
 
 
 class FlirSensorArgs(StandardSensorArgs):
+
+    # Attributes used as device parameters
     offsetX: PositiveInt
     offsetY: PositiveInt
 
 
 class MicYetiSensorArgs(SensorArgs):
+
+    # Attributes used as device parameters
     sample_rate: PositiveInt
     sample_chunk_size: PositiveInt
 
 
 class EyelinkSensorArgs(SensorArgs):
+
+    # Attributes used as device parameters
     sample_rate: PositiveInt
     calibration_type: str
 
 
 class IPhoneSensorArgs(SensorArgs):
+
+    # Attributes used as device parameters
     sample_rate: PositiveInt
     notifyonframe: PositiveInt
     videoquality: str
