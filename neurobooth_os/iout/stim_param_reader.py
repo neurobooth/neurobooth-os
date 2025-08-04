@@ -418,6 +418,13 @@ class ProgressBarStimArgs(StimulusArgs):
     slide_image: str
 
 
+class StanceStimArgs(StimulusArgs):
+    trial_intruct: List[str]
+    wait_keys: bool
+    trial_text: str = 'Press CONTINUE to end trial'
+    screen_update_interval: Optional[int] = None
+
+
 class ClappingStimArgs(EyeTrackerStimArgs):
     text_task: str = Field(min_length=1)
 
