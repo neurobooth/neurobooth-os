@@ -386,8 +386,8 @@ class ProgressBarStimArgs(StimulusArgs):
 class StanceStimArgs(StimulusArgs):
     trial_intruct: List[str]
     wait_keys: bool
-    trial_text: Optional[str] = 'Press any key to end trial'
-    screen_update_interval: Optional[int] = 1
+    trial_text: str = 'Press CONTINUE to end trial'
+    screen_update_interval: Optional[int] = None
 
 
 class ClappingStimArgs(EyeTrackerStimArgs):
