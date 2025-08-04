@@ -33,7 +33,7 @@ class Passage_Reading(Eyelink_HostPC):
 
     def render_image(self):
         self._render_image(
-            Passage_Reading.asset_path('bamboo_screenshot.jpg'),
+            Passage_Reading.asset_path(self.image_to_render_on_tablet),
             0, 0, 1920, 1080, 0, 0
         )
 
