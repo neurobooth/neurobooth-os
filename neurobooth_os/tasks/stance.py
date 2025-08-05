@@ -135,7 +135,7 @@ class Standing(Stance):
         prompt=True,
         duration=0,
         wait_keys=True,
-        trial_intruct=["Standing Trial 1", "Standing Trial 1"],
+        trial_intruct=["Standing Trial 1", "Standing Trial 2"],
         trial_text='Press CONTINUE to end trial',
         screen_update_interval = 1,
         **kwargs
