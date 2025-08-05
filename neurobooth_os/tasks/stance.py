@@ -123,7 +123,6 @@ class Sitting(Stance):
             waitKeys=wait_keys,
             abort_keys=self.abort_keys,
         )
-        # self.play_tone()
 
 
 class Standing(Stance):
@@ -224,7 +223,6 @@ class Standing(Stance):
 
             if any([k in self.advance_keys for k in press]):
                 self.update_trial_screen(trial_text + f"\n\nTime elapsed = {round(trial_time_elapsed)} s")
-                # self.play_tone()
                 self.send_marker(f"{marker_prefix}_end", True)
                 return trial_time_elapsed
 
@@ -242,4 +240,4 @@ class Standing(Stance):
 
 if __name__ == "__main__":
     t = Standing()
-    t.run(duration=60, screen_update_interval = 1)
+    t.run(duration=5)
