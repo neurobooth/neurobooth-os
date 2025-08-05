@@ -231,6 +231,11 @@ class Standing(Stance):
             if any([k in self.abort_keys for k in press]):
                 self.send_marker(f"{marker_prefix}_end", True)
                 return 'QUIT_TASK'
+            if any([k in self.repeat_keys for k in press]):
+                trial_time_elapsed = 0
+                self.send_marker(f'Timer_reset', True)
+                self.update_trial_screen(trial_text + f"\n\nTime elapsed = {round(trial_time_elapsed)} s")
+                screen_last_updated = trial_time_elapsed
 
             # final fail safe to prevent infinite loop
             if trial_time_elapsed > fail_safe_duration:
@@ -242,4 +247,4 @@ class Standing(Stance):
 
 if __name__ == "__main__":
     t = Standing()
-    t.run(duration=5)
+    t.run(duration=60, screen_update_interval = 1)
