@@ -123,7 +123,6 @@ class Sitting(Stance):
             waitKeys=wait_keys,
             abort_keys=self.abort_keys,
         )
-        self.play_tone()
 
 
 class Standing(Stance):
@@ -146,8 +145,10 @@ class Standing(Stance):
         for nth, trl in enumerate(trial_intruct):
             self.display_trial_instructions(trl)
             self.countdown_to_stimulus()
-            trial_time = self.perform_standing_trial(duration, wait_keys, trial_text, screen_update_interval)
-            self.present_trial_ended_msg(trial_number=nth+1, trial_time=round(trial_time))
+            trial_result = self.perform_standing_trial(duration, wait_keys, trial_text, screen_update_interval)
+            if trial_result == 'QUIT_TASK':
+                break
+            self.present_trial_ended_msg(trial_number=nth+1, trial_time=round(trial_result))
 
         self.send_marker(self.marker_task_end)
 
@@ -175,10 +176,14 @@ class Standing(Stance):
         # wait_keys must be True for standing trial to work
         assert wait_keys, ':param wait_keys: must be True'
 
+        # set marker text
+        marker_prefix = 'Trial'
+        timer_reset_marker = 'Timer_reset'
+
         self.update_screen_color_to_white()
 
         # send trial start marker
-        self.send_marker(f"Trial_start", True)
+        self.send_marker(f"{marker_prefix}_start", True)
 
         # display trial screen
         self.update_trial_screen(trial_text)
@@ -188,6 +193,7 @@ class Standing(Stance):
         screen_last_updated = 0
         tone_played = False
         event.clearEvents(eventType='keyboard')
+
         #start trial timer loop
         while True:
 
@@ -207,19 +213,28 @@ class Standing(Stance):
                 self.play_tone(1500, 0.5)
                 tone_played = True
 
-            # check for key press
+            # check for various key presses
             press = event.getKeys()
+            if any([k in self.repeat_keys for k in press]):
+                trial_time_elapsed = 0
+                self.send_marker(timer_reset_marker, True)
+                self.update_trial_screen(trial_text + f"\n\nTime elapsed = {round(trial_time_elapsed)} s")
+                screen_last_updated = trial_time_elapsed
+
             if any([k in self.advance_keys for k in press]):
                 self.update_trial_screen(trial_text + f"\n\nTime elapsed = {round(trial_time_elapsed)} s")
-                self.play_tone()
-                self.send_marker(f"Trial_end", True)
+                self.send_marker(f"{marker_prefix}_end", True)
                 return trial_time_elapsed
+
+            if any([k in self.abort_keys for k in press]):
+                self.send_marker(f"{marker_prefix}_end", True)
+                return 'QUIT_TASK'
 
             # final fail safe to prevent infinite loop
             if trial_time_elapsed > fail_safe_duration:
                 self.update_trial_screen(trial_text + f"\n\nNo Response: Ended trial at {fail_safe_duration} s")
                 self.play_tone(1000, 2)
-                self.send_marker(f"Trial_end", True)
+                self.send_marker(f"{marker_prefix}_end", True)
                 return trial_time_elapsed
 
 
