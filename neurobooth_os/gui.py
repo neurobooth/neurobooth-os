@@ -495,8 +495,10 @@ def _request_frame_preview(conn, device_id: str) -> None:
 def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dict, database, tasks: str, conn):
     """Prepare devices. Mainly ensuring devices are connected"""
 
-    # disable button so it can't be pushed twice
+    # disable button so it can't be pushed twice, and disable changes to task selection
     window["-Connect-"].Update(disabled=True)
+    window['-SELECT_ALL-'].Update(disabled=True)
+
     task_list: List[str] = tasks.split(',')
     for task in task_list:
         task_checkbox: sg.Checkbox = window.find_element(task.strip())
@@ -622,6 +624,16 @@ def gui(logger):
             ############################################################
             # Main Window -> Run neurobooth session
             ############################################################
+
+            # Handle select all/none checkbox
+            if event == '-SELECT_ALL-':
+                select_all_state = values['-SELECT_ALL-']
+                # Update all other checkboxes to match the select all/none state
+                all_task_list: List[str] = task_string.split(',')
+
+                for task in all_task_list:
+                    task_checkbox: sg.Checkbox = window.find_element(task.strip())
+                    task_checkbox.update(value=select_all_state)
 
             # Start servers on STM, ACQ
             elif event == "-init_servs-":
