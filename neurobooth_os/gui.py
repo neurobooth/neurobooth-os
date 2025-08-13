@@ -492,18 +492,18 @@ def _request_frame_preview(conn, device_id: str) -> None:
     meta.post_message(req, conn)
 
 
-def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dict, database, tasks: str, conn):
+def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dict, database, tasks: str,
+                     selected_tasks: List[str], conn):
     """Prepare devices. Mainly ensuring devices are connected"""
 
-    # disable button so it can't be pushed twice
+    # disable button so it can't be pushed twice, and disable changes to task selection
     window["-Connect-"].Update(disabled=True)
+    window['-SELECT_ALL-'].Update(disabled=True)
+
     task_list: List[str] = tasks.split(',')
     for task in task_list:
         task_checkbox: sg.Checkbox = window.find_element(task.strip())
         task_checkbox.update(disabled=True)
-
-    event, values = window.read(0.1)
-    selected_tasks: List[str] = [k for k, v in values.items() if "obs" in k and v is True]
 
     write_output(window, "\nConnecting devices. Please wait....")
 
@@ -526,7 +526,7 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
                       body=body)
 
         meta.post_message(msg, conn)
-    return video_marker_stream, event, values
+    return video_marker_stream
 
 
 def _get_nodes():
@@ -623,14 +623,34 @@ def gui(logger):
             # Main Window -> Run neurobooth session
             ############################################################
 
+            # Handle select all/none checkbox
+            if event == '-SELECT_ALL-':
+                select_all_state = values['-SELECT_ALL-']
+                # Update all other checkboxes to match the select all/none state
+                all_task_list: List[str] = task_string.split(',')
+
+                for task in all_task_list:
+                    task_checkbox: sg.Checkbox = window.find_element(task.strip())
+                    task_checkbox.update(value=select_all_state)
+
             # Start servers on STM, ACQ
             elif event == "-init_servs-":
                 _start_servers(window, nodes)
 
             # Turn on devices
             elif event == "-Connect-":
-                video_marker_stream, event, values = _prepare_devices(window,
-                    nodes, collection_id, log_task, database, task_string, conn)
+                event, values = window.read(0.1)
+                selected_tasks: List[str] = [k for k, v in values.items() if "obs" in k and v is True]
+
+                if not selected_tasks:
+                    sg.popup_error(
+                        "You must select at least one task to continue",
+                        location=get_popup_location(window)
+                    )
+                    continue
+
+                video_marker_stream = _prepare_devices(window,
+                    nodes, collection_id, log_task, database, task_string, selected_tasks, conn)
 
             elif event == "plot":
                 _plot_realtime(window, plttr, inlets)
