@@ -153,6 +153,8 @@ def _main_layout(sess_info):
     imgbytes = cv2.imencode(".png", frame_cam)[1].tobytes()
     sg.theme("Dark Grey 9")
     sg.set_options(element_padding=(0, 0))
+    select_all_none = sg.Checkbox('Select All', default=True, key='-SELECT_ALL-', enable_events=True,
+                                  tooltip='Check to select all tasks. Uncheck to select none.')
 
     field_tasks = _make_tasks_checkbox(sess_info["tasks"])
 
@@ -220,6 +222,10 @@ def _main_layout(sess_info):
                     k="_notes_taskname_",
                 ),
                 sg.ReadFormButton("Save", key="_save_notes_"),
+            ],
+            [_space()],
+            [
+                select_all_none,
             ],
             [_space()],
         ]
