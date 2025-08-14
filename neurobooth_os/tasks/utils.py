@@ -227,13 +227,10 @@ def countdown(period: float, abort_keys: Optional[List] = None) -> None:
 
 
 def get_keys(keyList=()):
-
-    # def delay(period: float) -> None:
-    #     t1 = local_clock()
-    #     t2 = t1
-    #     while t2 - t1 < period:
-    #         t2 = local_clock()
-
+    """
+        Funtion to wait indefinitely until a
+        certain key is pressed 
+    """
     event.clearEvents(eventType='keyboard')
     # Wait for keys checking every 5 ms
     while True:
