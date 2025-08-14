@@ -41,15 +41,15 @@ class Stance(Task):
         self.win.flip()
 
 
-    def delay(self, period: float) -> None:
-        """
-            Function to stall a loop for user defined time
-            specified by 'period' in seconds
-        """
-        t1 = local_clock()
-        t2 = t1
-        while t2 - t1 < period:
-            t2 = local_clock()
+    # def delay(self, period: float) -> None:
+    #     """
+    #         Function to stall a loop for user defined time
+    #         specified by 'period' in seconds
+    #     """
+    #     t1 = local_clock()
+    #     t2 = t1
+    #     while t2 - t1 < period:
+    #         t2 = local_clock()
 
 
     def display_trial_instructions(self, trl_instructions: str) -> None:
@@ -198,7 +198,7 @@ class Standing(Stance):
         while True:
 
             # delay loop for 10 ms
-            self.delay(0.01)
+            utils.delay(0.01)
 
             # update time_elapsed
             trial_time_elapsed = trial_time_elapsed + 0.01

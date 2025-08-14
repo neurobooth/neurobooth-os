@@ -188,6 +188,23 @@ def get_end_screen(win: visual.Window) -> visual.ImageStim:
     return load_slide(win, "task_complete.png")
 
 
+def delay(period: float) -> None:
+    """
+        Function which spins around doing nothing
+        so as to stall time. Uses lsl local_clock
+        which is accurate even below millisecond 
+        range. Useful for waiting while something
+        else is happening, or to stall a loop for
+        a defined period of time.
+        User defined time isspecified by
+        'period' in seconds
+    """
+    t1 = local_clock()
+    t2 = t1
+    while t2 - t1 < period:
+        t2 = local_clock()
+
+
 def countdown(period: float, abort_keys: Optional[List] = None) -> None:
 
     def get_abort_key(keyList=()):
@@ -211,11 +228,11 @@ def countdown(period: float, abort_keys: Optional[List] = None) -> None:
 
 def get_keys(keyList=()):
 
-    def delay(period: float) -> None:
-        t1 = local_clock()
-        t2 = t1
-        while t2 - t1 < period:
-            t2 = local_clock()
+    # def delay(period: float) -> None:
+    #     t1 = local_clock()
+    #     t2 = t1
+    #     while t2 - t1 < period:
+    #         t2 = local_clock()
 
     event.clearEvents(eventType='keyboard')
     # Wait for keys checking every 5 ms
