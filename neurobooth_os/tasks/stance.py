@@ -195,7 +195,7 @@ class Standing(Stance):
         event.clearEvents(eventType='keyboard')
 
         #start trial timer loop
-        while True:
+        while wait_keys:
 
             # delay loop for 10 ms
             utils.delay(0.01)
