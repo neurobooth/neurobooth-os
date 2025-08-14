@@ -9,7 +9,7 @@ from __future__ import absolute_import, division
 
 from typing import List, Optional
 
-from psychopy import core, event, monitors
+from psychopy import core, event, monitors, sound
 
 import time
 import os
@@ -77,6 +77,15 @@ def make_win(
         screen_resolution, fullscr=full_screen, monitor=custom_mon, units="pix", color=(0, 0, 0)
     )
     return win
+
+
+def play_tone(freq = 1000, tone_duration = 0.2):
+    """
+        Plays a tone at 1000 hz, for 0.2 s, in two channel stereo mode
+    """
+    tone = sound.Sound(freq, tone_duration, stereo=True)
+    tone.play()
+    countdown(tone_duration + 0.02) # wait for 20 ms longer than tone_duration so tone can play fully
 
 
 def change_win_color(win, color):

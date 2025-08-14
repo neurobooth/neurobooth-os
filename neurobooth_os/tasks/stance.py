@@ -1,7 +1,6 @@
 from neurobooth_os.tasks.task import Task
 from neurobooth_os.tasks import utils
-from psychopy import sound, event
-from pylsl import local_clock
+from psychopy import event
 
 
 class Stance(Task):
@@ -12,15 +11,6 @@ class Stance(Task):
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-
-    def play_tone(self, freq = 1000, tone_duration = 0.2):
-        """
-            Plays a tone at 1000 hz, for 0.2 s, in two channel stereo mode
-        """
-        tone = sound.Sound(freq, tone_duration, stereo=True)
-        tone.play()
-        utils.countdown(tone_duration + 0.02) # wait for 20 ms longer so tone can play fully
     
 
     def update_screen_color_to_white(self):
@@ -56,8 +46,7 @@ class Stance(Task):
             Can press Q to end task
         """
         # change screen color back to grey
-        self.win.color = (0, 0, 0)
-        self.win.flip()
+        utils.change_win_color(self.win, (0, 0, 0))
 
         trial_end_text = f"Trial {trial_number} ended\n\nTime Elapsed = {trial_time} s\n\nPress CONTINUE to proceed"
         trial_end_screen = utils.create_text_screen(self.win, trial_end_text)
@@ -199,7 +188,7 @@ class Standing(Stance):
 
             # play tone at duration seconds
             if trial_time_elapsed > duration and not tone_played:
-                self.play_tone(1500, 0.5)
+                utils.play_tone(1500, 0.5)
                 tone_played = True
 
             # check for various key presses
@@ -222,7 +211,7 @@ class Standing(Stance):
             # final fail safe to prevent infinite loop
             if trial_time_elapsed > fail_safe_duration:
                 self.update_trial_screen(trial_text + f"\n\nNo Response: Ended trial at {fail_safe_duration} s")
-                self.play_tone(1000, 2)
+                utils.play_tone(1000, 2)
                 self.send_marker(f"{marker_prefix}_end", True)
                 return trial_time_elapsed
 
