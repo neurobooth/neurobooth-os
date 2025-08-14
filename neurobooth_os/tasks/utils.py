@@ -206,7 +206,10 @@ def delay(period: float) -> None:
 
 
 def countdown(period: float, abort_keys: Optional[List] = None) -> None:
-
+    """
+        Function to wait for a specified amount of time for a certain
+        keypress - after which it simply times out
+    """
     def get_abort_key(keyList=()):
         press = event.getKeys()
         if press:
