@@ -25,9 +25,9 @@ class Stance(Task):
 
     def update_screen_color_to_white(self):
         # change screen color from grey to white and flip to update the screen
+        # wrapper around utils.change_win_color
         white = (1, 1, 1)
-        self.win.color = white
-        self.win.flip()
+        utils.change_win_color(self.win, white)
 
 
     def update_trial_screen(self, text):
@@ -39,17 +39,6 @@ class Stance(Task):
         trial_screen = utils.create_text_screen(self.win, text, 'black')
         trial_screen.draw()
         self.win.flip()
-
-
-    # def delay(self, period: float) -> None:
-    #     """
-    #         Function to stall a loop for user defined time
-    #         specified by 'period' in seconds
-    #     """
-    #     t1 = local_clock()
-    #     t2 = t1
-    #     while t2 - t1 < period:
-    #         t2 = local_clock()
 
 
     def display_trial_instructions(self, trl_instructions: str) -> None:
