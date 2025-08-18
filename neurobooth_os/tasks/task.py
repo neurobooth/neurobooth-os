@@ -226,10 +226,8 @@ class Task:
         """
         Displays countdown video prior to the start of stimulus
         """
-        mySound = sound.Sound(1000, 0.2, stereo=True)
         utils.play_video(self.win, self.countdown_video, wait_time=4, stop=False)
-        mySound.play()
-        utils.countdown(0.22)
+        utils.play_tone()
 
     def present_instructions(self, prompt=True):
         self.load_instruction_video()

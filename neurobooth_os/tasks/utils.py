@@ -9,7 +9,7 @@ from __future__ import absolute_import, division
 
 from typing import List, Optional
 
-from psychopy import core, event, monitors
+from psychopy import core, event, monitors, sound
 
 import time
 import os
@@ -77,6 +77,15 @@ def make_win(
         screen_resolution, fullscr=full_screen, monitor=custom_mon, units="pix", color=(0, 0, 0)
     )
     return win
+
+
+def play_tone(freq = 1000, tone_duration = 0.2):
+    """
+        Plays a tone at 1000 hz, for 0.2 s, in two channel stereo mode
+    """
+    tone = sound.Sound(freq, tone_duration, stereo=True)
+    tone.play()
+    countdown(tone_duration + 0.02) # wait for 20 ms longer than tone_duration so tone can play fully
 
 
 def change_win_color(win, color):
@@ -188,8 +197,28 @@ def get_end_screen(win: visual.Window) -> visual.ImageStim:
     return load_slide(win, "task_complete.png")
 
 
-def countdown(period: float, abort_keys: Optional[List] = None) -> None:
+def delay(period: float) -> None:
+    """
+        Function which spins around doing nothing
+        so as to stall time. Uses lsl local_clock
+        which is accurate even below millisecond 
+        range. Useful for waiting while something
+        else is happening, or to stall a loop for
+        a defined period of time.
+        User defined time isspecified by
+        'period' in seconds
+    """
+    t1 = local_clock()
+    t2 = t1
+    while t2 - t1 < period:
+        t2 = local_clock()
 
+
+def countdown(period: float, abort_keys: Optional[List] = None) -> None:
+    """
+        Function to wait for a specified amount of time for a certain
+        keypress - after which it simply times out
+    """
     def get_abort_key(keyList=()):
         press = event.getKeys()
         if press:
@@ -210,13 +239,10 @@ def countdown(period: float, abort_keys: Optional[List] = None) -> None:
 
 
 def get_keys(keyList=()):
-
-    def delay(period: float) -> None:
-        t1 = local_clock()
-        t2 = t1
-        while t2 - t1 < period:
-            t2 = local_clock()
-
+    """
+        Funtion to wait indefinitely until a
+        certain key is pressed 
+    """
     event.clearEvents(eventType='keyboard')
     # Wait for keys checking every 5 ms
     while True:
