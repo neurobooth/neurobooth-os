@@ -287,7 +287,49 @@ clapping_test_obs:
 - Eyelink_1
 - IPhone_dev_1
 
+mouse_obs:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+- Eyelink_1
+- IPhone_dev_1
+
+clapping_test:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- IPhone_dev_1
+- FLIR_blackfly_1
+
+clapping_test_2:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- IPhone_dev_1
+- FLIR_blackfly_1
+
 timing_test_obs:
+- Intel_D455_1
+- Intel_D455_2
+- Intel_D455_3
+- Mbient_LH_2
+- Mbient_RH_2
+- Mbient_RF_2
+- Mbient_LF_2
+- Mbient_BK_1
+- FLIR_blackfly_1
+- Mic_Yeti_dev_1
+- Eyelink_1
+- IPhone_dev_1
+
+timing_test_obs_2:
 - Intel_D455_1
 - Intel_D455_2
 - Intel_D455_3
