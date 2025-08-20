@@ -20,23 +20,6 @@ import re
 import neurobooth_os.config as nb_config
 import neurobooth_os.iout.metadator as meta
 
-# with_bag_query = """SELECT DISTINCT log_sensor_file_test.*
-#     FROM log_sensor_file_test
-#
-#     WHERE UPPER(device_id) LIKE 'INTEL%'
-#
-#     AND EXISTS (
-#         -- At least one element must match the first pattern
-#         SELECT 1 FROM unnest(sensor_file_path) AS elem
-#         WHERE elem LIKE '%hdf5'
-#     )
-#     AND EXISTS (
-#         -- No element should match the exclusion pattern
-#         SELECT 1 FROM unnest(sensor_file_path) AS elem
-#         WHERE elem LIKE '%bag'
-#     );
-#     """
-
 without_bag_query = """SELECT DISTINCT  log_sensor_file_test.* 
     FROM  log_sensor_file_test
 
@@ -107,56 +90,7 @@ def run():
                     print(update_count)
             print("")
     print(f"Updates: {update_count}")
-
-    print(len(query_results))
-
-
-# def run_test():
-#     nb_config.load_config(validate_paths=False)
-#
-#     db = nb_config.neurobooth_config.database
-#
-#     with meta.get_database_connection() as conn:
-#         query_results = _get_records_with_bag_file(conn)
-#         failure_count = 0
-#         success_count = 0
-#         for row in query_results:
-#             string_list = row[8]  # 9th element (0-based indexing)
-#             device = row[6]
-#             bag_file_name = None
-#             hdf_name = None
-#             for string_item in string_list:
-#                 # print(device)
-#                 if 'hdf5' in string_item:
-#                     hdf_name = string_item
-#                     bag_file_name = _get_bag_file_name(device, string_item)
-#
-#                 elif 'bag' in string_item:
-#                     if bag_file_name == string_item:
-#                         # print ("SUCCESS!!")
-#                         success_count += 1
-#                     else:
-#                         # print(f"Processing hdf5: {string_item}")
-#                         print(f'{hdf_name} hdf')
-#                         print(f'{string_item} actual')
-#                         print(f'{bag_file_name} constructed')
-#                         print("************************* FAILURE **************************************************")
-#                         failure_count += 1
-#         print(f'failures {failure_count}')
-#         print(f'successes {success_count}')
-
-
-# def _get_records_with_bag_file(conn: connection) -> Tuple:
-#     """
-#     Retrieve records where there is both an hdf5 file and a bag file element in the text array column SENSOR_FILE_PATH.
-#
-#     :param conn: The database connection object.
-#     """
-#     return _get_records(conn, with_bag_query)
-
-
-# def _get_records_without_bag_file(conn: connection) -> Tuple:
-#     return _get_records(conn, without_bag_query)
+    print(f"Total results: {len(query_results)}")
 
 
 def _get_records(conn: connection, query: str) -> List[Tuple]:
