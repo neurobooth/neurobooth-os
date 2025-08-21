@@ -577,7 +577,7 @@ class Task_ShowProgressBar(Task):
 
     def run(self, **kwargs) -> None:
         self.screen = utils.load_slide(self.win, kwargs['slide_image'])
-        self.show_text(screen=self.screen, msg="Task", audio=None, wait_time=kwargs['duration'], waitKeys=False)
+        self.show_text(screen=self.screen, msg="Task", audio=None, wait_time=kwargs['duration'], waitKeys=kwargs['wait_keys'])
 
 
 class Introduction_Task(Task):
