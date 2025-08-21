@@ -119,7 +119,7 @@ class Task:
         self.press_task_screen = utils.load_slide(self.win, task_end_img)
 
         if countdown is None:
-            countdown = "countdown_2021_11_22.mp4"
+            countdown = "countdown_2025_06_17.mp4"
         self.countdown_video = utils.load_countdown(self.win, countdown)
 
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
