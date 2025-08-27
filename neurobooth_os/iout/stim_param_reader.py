@@ -416,6 +416,7 @@ class EyeTrackerStimArgs(StimulusArgs):
 
 class ProgressBarStimArgs(StimulusArgs):
     slide_image: str
+    wait_keys: bool = False
 
 
 class StanceStimArgs(StimulusArgs):
