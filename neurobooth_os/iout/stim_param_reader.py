@@ -556,6 +556,6 @@ class RawTaskParams(EnvArgs):
     task_id: str
     feature_of_interest: str
     stimulus_id: str
-    instruction_id: Optional[str]
+    instruction_id: Optional[str] = None
     device_id_array: List[str]
     arg_parser: str
