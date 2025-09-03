@@ -911,6 +911,12 @@ class IPhoneListeningThread(threading.Thread):
 
 # --------------------------------------------------------------------------------
 # Testing Script
+#
+# script_parse_args(), script_capture_data(), and script_results() are functions
+# used purely for testing the neurobooth app and the iPhone independent of the
+# system. These get invoked when iphone.py script is run.
+# Useful for a variety of functions such as stress testing the phone, testing
+# new builds of the app, and troubleshooting and debugging issues with the iPhone
 # --------------------------------------------------------------------------------
 def test_script():
     args = script_parse_args()
