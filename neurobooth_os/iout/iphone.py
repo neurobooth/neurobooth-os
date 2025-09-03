@@ -968,8 +968,6 @@ def script_capture_data(subject_id: str, recording_folder: str, capture_duration
     dev_args = IPhoneDeviceArgs(
         ENV_devices={'IPhone_dev_1': {}},
         device_id='IPhone_dev_1',
-        device_name='IPhone',
-        wearable_bool=False,
         sensor_ids=['IPhone_sens_1'],
         sensor_array=[],  # The sensor array and arg parser are not needed by the test script
         arg_parser='',
