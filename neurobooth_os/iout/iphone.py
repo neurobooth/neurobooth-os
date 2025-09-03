@@ -911,6 +911,12 @@ class IPhoneListeningThread(threading.Thread):
 
 # --------------------------------------------------------------------------------
 # Testing Script
+#
+# script_parse_args(), script_capture_data(), and script_results() are functions
+# used purely for testing the neurobooth app and the iPhone independent of the
+# system. These get invoked when iphone.py script is run.
+# Useful for a variety of functions such as stress testing the phone, testing
+# new builds of the app, and troubleshooting and debugging issues with the iPhone
 # --------------------------------------------------------------------------------
 def test_script():
     args = script_parse_args()
@@ -968,11 +974,12 @@ def script_capture_data(subject_id: str, recording_folder: str, capture_duration
     dev_args = IPhoneDeviceArgs(
         ENV_devices={'IPhone_dev_1': {}},
         device_id='IPhone_dev_1',
-        device_name='IPhone',
-        wearable_bool=False,
         sensor_ids=['IPhone_sens_1'],
-        sensor_array=[],  # The sensor array and arg parser are not needed by the test script
+        # sensor array, arg parser, and device start function are not needed by the
+        # test script but are not optional and are needed for pydantic validation
+        sensor_array=[],
         arg_parser='',
+        device_start_function='',
     )
 
     iphone = IPhone("IPhone", device_args=dev_args)
