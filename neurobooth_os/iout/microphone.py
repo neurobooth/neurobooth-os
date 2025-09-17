@@ -1,4 +1,3 @@
-
 from pylsl import StreamInfo, StreamOutlet, local_clock
 import pyaudio
 import numpy as np
@@ -27,13 +26,23 @@ class AudioDeviceException(Exception):
     pass
 
 
+# available audio formats.  The format used is specified in the config file
+SAMPLE_FORMATS = {
+    'paFloat32': pyaudio.paFloat32, # 32 bit float
+    'paInt32': pyaudio.paInt32,  #: 32 bit int
+    'paInt24': pyaudio.paInt24,  #: 24 bit int
+    'paInt16': pyaudio.paInt16,  #: 16 bit int
+    'paInt8': pyaudio.paInt8,    #: 8 bit int
+    'paUInt8': pyaudio.paUInt8,  #: 8 bit unsigned int
+    'paCustomFormat': pyaudio.paCustomFormat,  #: a custom data format
+}
+
+
 class MicStream:
     def __init__(
-        self,
-        device_args: MicYetiDeviceArgs,
-        CHANNELS=1,
-        FORMAT=pyaudio.paInt16,
-        save_on_disk=False,
+            self,
+            device_args: MicYetiDeviceArgs,
+            save_on_disk=False,
     ):
         # There should always be one and only one sensor for the mic
         sensor = device_args.sensor_array[0]
@@ -41,8 +50,8 @@ class MicStream:
         self.fps = sensor.sample_rate
         self.sensor_ids = device_args.sensor_ids
         self.save_on_disk = save_on_disk
-        self.CHANNELS = CHANNELS
-        self.FORMAT = FORMAT
+        self.channels = sensor.channels
+        self.format = sensor.channels
 
         self.logger = logging.getLogger(APP_LOG_NAME)
 
@@ -58,11 +67,11 @@ class MicStream:
 
         # Create stream
         self.stream_in = audio.open(
-            format=FORMAT,
-            channels=CHANNELS,
+            format=self.format,
+            channels=self.channels,
             rate=sensor.sample_rate,
-            input=True,
-            output=True,
+            input=sensor.input,
+            output=sensor.output,
             frames_per_buffer=sensor.sample_chunk_size,
             input_device_index=device.index,
         )
@@ -94,7 +103,7 @@ class MicStream:
             post_message(msg, conn)
 
         self.logger.debug(
-            f'Microphone: sample_rate={str(self.fps)}; save_on_disk={self.save_on_disk}; channels={self.CHANNELS}'
+            f'Microphone: sample_rate={str(self.fps)}; save_on_disk={self.save_on_disk}; channels={self.channels}'
         )
 
         self.streaming = False
@@ -113,7 +122,8 @@ class MicStream:
         return [
             AudioDeviceInfo(
                 index=i,
-                max_input_channels=audio.get_device_info_by_host_api_device_index(host_api_idx, i).get('maxInputChannels'),
+                max_input_channels=audio.get_device_info_by_host_api_device_index(host_api_idx, i).get(
+                    'maxInputChannels'),
                 name=audio.get_device_info_by_host_api_device_index(host_api_idx, i).get('name'),
             )
             for i in range(audio.get_host_api_info_by_index(host_api_idx).get("deviceCount"))
@@ -186,16 +196,16 @@ class MicStream:
             self.logger.debug('Microphone: Saving Data to Disk...')
 
             wf = wave.open("decoded_mic_data.wav", "wb")
-            wf.setnchannels(self.CHANNELS)
-            wf.setsampwidth(self.p.get_sample_size(self.FORMAT))
+            wf.setnchannels(self.channels)
+            wf.setsampwidth(self.p.get_sample_size(self.format))
             wf.setframerate(self.fps)
             wf.writeframes(b"".join(self.frames))
             wf.close()
             self.logger.debug('Microphone: Saved Decoded Data to Disk')
 
             wf = wave.open("raw_mic_data.wav", "wb")
-            wf.setnchannels(self.CHANNELS)
-            wf.setsampwidth(self.p.get_sample_size(self.FORMAT))
+            wf.setnchannels(self.channels)
+            wf.setsampwidth(self.p.get_sample_size(self.format))
             wf.setframerate(self.fps)
             wf.writeframes(b"".join(self.frames_raw))
             wf.close()
