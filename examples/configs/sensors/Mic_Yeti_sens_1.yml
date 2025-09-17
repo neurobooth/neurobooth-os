@@ -3,6 +3,7 @@ sample_rate: 44100.0
 sample_chunk_size: 1024.0
 input: True
 output: True
-channels: paInt16
+channels: 1
+format: paInt16
 file_type: xdf
 arg_parser: iout.stim_param_reader.py::MicYetiSensorArgs()

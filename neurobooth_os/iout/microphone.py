@@ -50,8 +50,8 @@ class MicStream:
         self.fps = sensor.sample_rate
         self.sensor_ids = device_args.sensor_ids
         self.save_on_disk = save_on_disk
-        self.channels = SAMPLE_FORMATS[sensor.channels]
-        self.format = sensor.channels
+        self.channels = sensor.channels
+        self.format = SAMPLE_FORMATS[sensor.format]
 
         self.logger = logging.getLogger(APP_LOG_NAME)
 
