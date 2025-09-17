@@ -26,7 +26,8 @@ class AudioDeviceException(Exception):
     pass
 
 
-# available audio formats.  The format used is specified in the config file
+# available audio format constants.  The format used is specified in the config file as a string, with the actual
+# constant retrieved from this dictionary
 SAMPLE_FORMATS = {
     'paFloat32': pyaudio.paFloat32, # 32 bit float
     'paInt32': pyaudio.paInt32,  #: 32 bit int
