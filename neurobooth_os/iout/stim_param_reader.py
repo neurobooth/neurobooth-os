@@ -92,7 +92,7 @@ class MicYetiSensorArgs(SensorArgs):
     sample_chunk_size: PositiveInt
     input: bool
     output: bool
-    channels: PositiveInt
+    channels: str
 
 
 class EyelinkSensorArgs(SensorArgs):
