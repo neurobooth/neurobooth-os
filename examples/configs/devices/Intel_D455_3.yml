@@ -4,6 +4,7 @@ wearable_bool: false
 device_make: Intel RealSense
 device_model: D455
 device_firmware: 05.13.00.50
+auto_exposure_priority: 0.0
 sensor_ids:
 - Intel_D455_rgb_1
 - Intel_D455_depth_1
