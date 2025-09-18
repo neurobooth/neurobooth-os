@@ -50,7 +50,7 @@ class Stance(Task):
 
         trial_end_text = f"Trial {trial_number} ended\n\nTime Elapsed = {trial_time} s\n\nPress CONTINUE to proceed"
         trial_end_screen = utils.create_text_screen(self.win, trial_end_text)
-        utils.present(self.win, trial_end_screen, waitKeys=True)
+        utils.present(self.win, trial_end_screen, waitKeys=True, abort_keys=self.abort_keys)
 
 
 class Sitting(Stance):
