@@ -3,6 +3,8 @@ import uuid
 import threading
 import subprocess
 import logging
+from typing import Tuple
+
 import numpy as np
 
 import pylink
@@ -28,6 +30,9 @@ class EyeTracker:
     ):
         self.IP = device_args.ip
         self.sample_rate = device_args.sample_rate()
+        self.msec_delay = device_args.msec_delay()
+        self.calibration_area_proportion: Tuple[float, float] = device_args.calibration_area_proportion()
+        self.validation_area_proportion: Tuple[float, float] = device_args.validation_area_proportion()
         self.device_id = device_args.device_id
         self.sensor_ids = device_args.sensor_ids
         self.streamName = "EyeLink"
@@ -110,7 +115,7 @@ class EyeTracker:
         # self.tk.openDataFile('ev_test.edf')
 
         self.tk.setOfflineMode()
-        pylink.msecDelay(50)
+        pylink.msecDelay(self.msec_delay)
         self.tk.sendCommand(f"sample_rate {self.sample_rate}")
 
         # File and Link data control
@@ -146,9 +151,10 @@ class EyeTracker:
 
         # Choose a calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical)
         self.tk.sendCommand(f"calibration_type = {self.calibration_type}")
-
-        self.tk.sendCommand("calibration_area_proportion = 0.80 0.78")
-        self.tk.sendCommand("validation_area_proportion = 0.80 0.78")
+        calib_prop = self.calibration_area_proportion
+        valid_prop = self.validation_area_proportion
+        self.tk.sendCommand(f"calibration_area_proportion = {calib_prop[0]} {calib_prop[1]}")
+        self.tk.sendCommand(f"validation_area_proportion = {valid_prop[0]} {valid_prop[1]}")
 
         body = DeviceInitialization(
             stream_name=self.streamName,
@@ -158,7 +164,6 @@ class EyeTracker:
         msg = Request(source="EyeTracker", destination="CTR", body=body)
         with get_database_connection() as conn:
             post_message(msg, conn)
-
 
     def calibrate(self):
         self.logger.debug('EyeLink: Performing Calibration')
