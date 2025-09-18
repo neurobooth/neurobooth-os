@@ -90,6 +90,10 @@ class MicYetiSensorArgs(SensorArgs):
     # Attributes used as device parameters
     sample_rate: PositiveInt
     sample_chunk_size: PositiveInt
+    input: bool
+    output: bool
+    channels: PositiveInt
+    format: str
 
 
 class EyelinkSensorArgs(SensorArgs):
@@ -97,6 +101,9 @@ class EyelinkSensorArgs(SensorArgs):
     # Attributes used as device parameters
     sample_rate: PositiveInt
     calibration_type: str
+    msec_delay: NonNegativeInt
+    calibration_area_proportion: Tuple[float, float]
+    validation_area_proportion: Tuple[float, float]
 
 
 class IPhoneSensorArgs(SensorArgs):
@@ -177,6 +184,15 @@ class EyelinkDeviceArgs(DeviceArgs):
 
         super().__init__(**kwargs)
 
+    def msec_delay(self):
+        return self.sensor_array[0].msec_delay
+
+    def calibration_area_proportion(self):
+        return self.sensor_array[0].calibration_area_proportion
+
+    def validation_area_proportion(self):
+        return self.sensor_array[0].validation_area_proportion
+
     def sample_rate(self):
         return self.sensor_array[0].sample_rate
 
@@ -250,6 +266,7 @@ class IntelDeviceArgs(DeviceArgs):
 
     # Attributes required for program execution
     sensor_array: List[IntelSensorArgs] = []
+    auto_exposure_priority: NonNegativeFloat
 
     def sample_rate(self):
         """
