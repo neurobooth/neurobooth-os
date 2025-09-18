@@ -50,7 +50,10 @@ class Stance(Task):
 
         trial_end_text = f"Trial {trial_number} ended\n\nTime Elapsed = {trial_time} s\n\nPress CONTINUE to proceed"
         trial_end_screen = utils.create_text_screen(self.win, trial_end_text)
-        utils.present(self.win, trial_end_screen, waitKeys=True, abort_keys=self.abort_keys)
+        trial_end_screen.draw()
+        self.win.flip()
+        key_press = utils.get_keys(self.abort_keys + self.advance_keys)
+        return key_press
 
 
 class Sitting(Stance):
@@ -126,7 +129,9 @@ class Standing(Stance):
             trial_result = self.perform_standing_trial(duration, wait_keys, trial_text, screen_update_interval)
             if trial_result == 'QUIT_TASK':
                 break
-            self.present_trial_ended_msg(trial_number=nth+1, trial_time=round(trial_result))
+            key_press = self.present_trial_ended_msg(trial_number=nth+1, trial_time=round(trial_result))
+            if key_press==self.abort_keys:
+                break
 
         self.send_marker(self.marker_task_end)
 
@@ -193,17 +198,21 @@ class Standing(Stance):
 
             # check for various key presses
             press = event.getKeys()
+            
+            # if repeat key pressed - reset timer
             if any([k in self.repeat_keys for k in press]):
                 trial_time_elapsed = 0
                 self.send_marker(timer_reset_marker, True)
                 self.update_trial_screen(trial_text + f"\n\nTime elapsed = {round(trial_time_elapsed)} s")
                 screen_last_updated = trial_time_elapsed
 
+            # if continue key pressed - show trial result screen
             if any([k in self.advance_keys for k in press]):
                 self.update_trial_screen(trial_text + f"\n\nTime elapsed = {round(trial_time_elapsed)} s")
                 self.send_marker(f"{marker_prefix}_end", True)
                 return trial_time_elapsed
 
+            # if abort key hit during ongoing trial - quit task
             if any([k in self.abort_keys for k in press]):
                 self.send_marker(f"{marker_prefix}_end", True)
                 return 'QUIT_TASK'
