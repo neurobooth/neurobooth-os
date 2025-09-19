@@ -1,4 +1,5 @@
 sensor_id: mbient_acc_1
 sample_rate: 100
+data_range: 16
 file_type: xdf
 arg_parser: iout.stim_param_reader.py::MbientSensorArgs()
