@@ -483,10 +483,10 @@ class Mbient:
                 self.acc_hz = int(sensor.sample_rate)
             elif "gyro" in sensor.sensor_id:
                 self.gyro_hz = int(sensor.sample_rate)
-
+            self.data_range = sensor.data_range
         self.connection_params = ConnectionParameters()  # Use the default params
-        self.accel_params = SensorParameters(sample_rate=self.acc_hz, data_range=16.0)
-        self.gyro_params = SensorParameters(sample_rate=self.gyro_hz, data_range=2000)
+        self.accel_params = SensorParameters(sample_rate=self.acc_hz, data_range=self.data_range)
+        self.gyro_params = SensorParameters(sample_rate=self.gyro_hz, data_range=self.data_range)
 
         # Uninitialized Variables
         self.device_wrapper: Optional[MetaWearWrapper] = None
