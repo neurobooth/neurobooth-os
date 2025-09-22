@@ -1,5 +1,8 @@
 sensor_id: Eyelink_sens_1
 sample_rate: 1000.0
+msec_delay: 50
+calibration_area_proportion:  [0.80, 0.78]
+validation_area_proportion:  [0.80, 0.78]
 file_type: edf
 arg_parser: iout.stim_param_reader.py::EyelinkSensorArgs()
 calibration_type: HV5
