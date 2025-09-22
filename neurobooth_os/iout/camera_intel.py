@@ -142,7 +142,7 @@ class VidRec_Intel:
         # Avoid autoexposure frame drops
         dev = self.pipeline.get_active_profile().get_device()
         sens = dev.first_color_sensor()
-        sens.set_option(rs.option.auto_exposure_priority, 0.0)
+        sens.set_option(rs.option.auto_exposure_priority, self.device_args.auto_exposure_priority)
 
         self.toffset = time() - local_clock()
 
