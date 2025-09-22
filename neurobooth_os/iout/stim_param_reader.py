@@ -90,6 +90,10 @@ class MicYetiSensorArgs(SensorArgs):
     # Attributes used as device parameters
     sample_rate: PositiveInt
     sample_chunk_size: PositiveInt
+    input: bool
+    output: bool
+    channels: PositiveInt
+    format: str
 
 
 class EyelinkSensorArgs(SensorArgs):
