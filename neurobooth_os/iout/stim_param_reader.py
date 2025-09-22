@@ -83,6 +83,10 @@ class FlirSensorArgs(StandardSensorArgs):
     # Attributes used as device parameters
     offsetX: PositiveInt
     offsetY: PositiveInt
+    exposure: PositiveInt
+    gain: PositiveInt
+    gamma: PositiveFloat
+    fd: PositiveInt
 
 
 class MicYetiSensorArgs(SensorArgs):
@@ -245,6 +249,18 @@ class FlirDeviceArgs(DeviceArgs):
         sn = kwargs['ENV_devices'][my_id]['device_sn']
         kwargs['device_sn'] = sn
         super().__init__(**kwargs)
+
+    def exposure(self) -> PositiveInt:
+        return self.sensor_array[0].exposure
+
+    def gain(self) -> PositiveInt:
+        return self.sensor_array[0].gain
+
+    def gamma(self) -> PositiveFloat:
+        return self.sensor_array[0].gamma
+
+    def fd(self) -> PositiveInt:
+        return self.sensor_array[0].fd
 
     def sample_rate(self):
         return self.sensor_array[0].sample_rate
