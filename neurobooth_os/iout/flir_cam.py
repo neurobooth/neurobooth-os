@@ -40,10 +40,6 @@ class VidRec_Flir(CameraPreviewer):
     def __init__(
         self,
         device_args: FlirDeviceArgs,
-        exposure=4500,
-        gain=20,
-        gamma=0.6,
-        fd=1,
     ):
         self.device_args: FlirDeviceArgs = device_args
         # not currently using sizex, sizey --> need to update to use these parameters
@@ -56,12 +52,12 @@ class VidRec_Flir(CameraPreviewer):
 
         self.logger = logging.getLogger(APP_LOG_NAME)
 
-        self.exposure = exposure
-        self.gain = gain
-        self.gamma = gamma
+        self.exposure = device_args.exposure()
+        self.gain = device_args.gain()
+        self.gamma = device_args.gamma()
         self.device_id = device_args.device_id
         self.sensor_ids = device_args.sensor_ids
-        self.fd = fd
+        self.fd = device_args.fd()
         self.recording = False
 
         self.get_cam()
