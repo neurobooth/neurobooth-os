@@ -68,6 +68,7 @@ class MbientSensorArgs(SensorArgs):
 
     # Attributes used as device parameters
     sample_rate: PositiveInt
+    data_range: PositiveInt
 
 
 class IntelSensorArgs(StandardSensorArgs):
