@@ -101,6 +101,9 @@ class EyelinkSensorArgs(SensorArgs):
     # Attributes used as device parameters
     sample_rate: PositiveInt
     calibration_type: str
+    msec_delay: NonNegativeInt
+    calibration_area_proportion: Tuple[float, float]
+    validation_area_proportion: Tuple[float, float]
 
 
 class IPhoneSensorArgs(SensorArgs):
@@ -180,6 +183,15 @@ class EyelinkDeviceArgs(DeviceArgs):
         kwargs['ip'] = ip_addr
 
         super().__init__(**kwargs)
+
+    def msec_delay(self):
+        return self.sensor_array[0].msec_delay
+
+    def calibration_area_proportion(self):
+        return self.sensor_array[0].calibration_area_proportion
+
+    def validation_area_proportion(self):
+        return self.sensor_array[0].validation_area_proportion
 
     def sample_rate(self):
         return self.sensor_array[0].sample_rate
