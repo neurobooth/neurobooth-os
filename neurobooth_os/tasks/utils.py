@@ -48,7 +48,7 @@ def check_window_refresh_rate(win: visual.window.Window, min_rate: float, max_ra
     :return:
     """
     psychopy_rate = 1 / win.monitorFramePeriod
-    actual_rate = win.getActualFrameRate(nIdentical=30, nMaxFrames=300, nWarmUpFrames=10, threshold=1)
+    actual_rate = win.getActualFrameRate(nIdentical=30, nMaxFrames=300, nWarmUpFrames=30, threshold=2)
     if actual_rate is None:
         raise InvalidWindowRefreshRate("Window frame rate measurement returned 'None'.")
 
