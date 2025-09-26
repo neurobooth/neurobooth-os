@@ -40,7 +40,7 @@ class Passage_Reading(Eyelink_HostPC):
     def present_task(self, prompt=True, duration=0, **kwargs):
         self.Mouse.setVisible(1)  # Allow participants to use the mouse to assist their reading
         screen = utils.load_image(self.win, Passage_Reading.asset_path(self.image_to_render_on_HostPC))
-        self.show_text(screen=screen, msg="Task", audio=None, wait_time=5)
+        self.show_text(screen=screen, msg="Task", audio=None, wait_time=duration)
 
         if prompt:
             self.show_text(
