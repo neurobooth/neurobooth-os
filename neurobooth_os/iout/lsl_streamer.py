@@ -66,9 +66,11 @@ def start_yeti_stream(_, device_args):
 config.load_config(validate_paths=False)
 acq_devices: List[str] = config.neurobooth_config.acquisition.devices
 stm_devices: List[str] = config.neurobooth_config.presentation.devices
+ctr_devices: List[str] = config.neurobooth_config.control.devices
 SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
     'acquisition': acq_devices,
     'presentation':stm_devices,
+    'control':ctr_devices,
 }
 
 
