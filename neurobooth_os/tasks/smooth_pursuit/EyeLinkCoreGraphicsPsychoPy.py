@@ -25,9 +25,8 @@ import string
 import pylink
 import numpy
 import psychopy
-from psychopy import visual, event, core, logging, prefs, monitors
+from psychopy import visual, event, core, logging, monitors
 from psychopy.tools.coordinatetools import pol2cart
-from math import sin, cos, pi
 from PIL import Image, ImageDraw
 from psychopy.sound import Sound
 

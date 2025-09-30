@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul 20 10:00:03 2021
-
-@author: STM
+Screens to be presented at the start and end of a session
 """
 import neurobooth_os.tasks.utils as utl
 from psychopy import visual, prefs

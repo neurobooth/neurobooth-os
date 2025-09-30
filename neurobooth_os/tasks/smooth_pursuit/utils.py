@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Aug 13 15:07:20 2021
-
-@author: CTR
+Utils for Smooth pursuit tasks
 """
 
 import math
