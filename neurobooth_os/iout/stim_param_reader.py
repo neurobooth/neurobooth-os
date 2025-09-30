@@ -479,6 +479,10 @@ class SpeechStimArgs(EyeTrackerStimArgs):
     text_task: str
 
 
+class CountingStimArgs(StimulusArgs):
+    text_task: str
+
+
 class FixationTargetStimArgs(EyeTrackerStimArgs):
     target_size: NonNegativeFloat
     target_pos: List[float]
