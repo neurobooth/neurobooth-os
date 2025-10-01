@@ -9,7 +9,6 @@ from typing import Union
 
 from psychopy import visual, core, data, event
 from psychopy.constants import NOT_STARTED, STARTED, FINISHED
-from psychopy.hardware import keyboard
 
 from neurobooth_os.tasks import utils
 from neurobooth_os.tasks.task import Task_Eyetracker
@@ -132,8 +131,6 @@ class hevelius_task(Task_Eyetracker):
     def run_trials(self, block, block_type):
         utils.change_win_color(self.win, "white")
         # create a default keyboard (e.g. to check for escape)
-        # TODO: Is this needed? The result is never used, but maybe the constructor has side effects?
-        # defaultKeyboard = keyboard.Keyboard()
         mouse = event.Mouse(win=self.win)
 
         # An ExperimentHandler isn't essential but helps with data saving
@@ -177,8 +174,6 @@ class hevelius_task(Task_Eyetracker):
         i = 0  # current index for locations
 
         # Create some handy timers
-        # TODO: Is this needed? The result is never used.
-        # globalClock = core.Clock()  # to track the time since experiment started
         routineTimer = (
             core.CountdownTimer()
         )  # to track time remaining of each (non-slip) routine
@@ -222,8 +217,6 @@ class hevelius_task(Task_Eyetracker):
             mouse.rightButton = []
             mouse.time = []
             mouse.clicked_name = []
-            # TODO: This value seems to always be set again before use, making this line unnecessary
-            # gotValidClick = False  # until a click is received
             currentLoc = self.convert_pix(locs[i], offset)
             polygon.pos = currentLoc
             self.send_target_loc(
