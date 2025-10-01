@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Nov 2 11:03:01 2021
-
-Author: adonay Nunes <adonay.s.nunes@gmail.com>
-
-License: BSD-3-Clause
+A task that is run to calibrate the eyetracker
 """
 import os.path as op
 

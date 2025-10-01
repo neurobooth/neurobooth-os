@@ -53,7 +53,6 @@ class Task:
             marker_outlet=None,
             win=None,
             full_screen: bool = False,
-            text_continue_repeat=utils.text_continue_repeat,
             text_continue=utils.text_continue,
             text_practice_screen=utils.text_practice_screen,
             text_task=utils.text_task,
@@ -292,6 +291,11 @@ class Task:
 
 
 class Task_countdown(Task):
+    """
+        Task whose instances are experiments that run for a fixed amount of time (counting down in seconds).
+        It's used by speech tasks like 'La-La-La'
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 

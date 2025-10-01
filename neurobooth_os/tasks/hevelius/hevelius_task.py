@@ -7,10 +7,8 @@ import os
 import os.path as op
 from typing import Union
 
-import pylink
 from psychopy import visual, core, data, event
 from psychopy.constants import NOT_STARTED, STARTED, FINISHED
-from psychopy.hardware import keyboard
 
 from neurobooth_os.tasks import utils
 from neurobooth_os.tasks.task import Task_Eyetracker
@@ -133,7 +131,6 @@ class hevelius_task(Task_Eyetracker):
     def run_trials(self, block, block_type):
         utils.change_win_color(self.win, "white")
         # create a default keyboard (e.g. to check for escape)
-        defaultKeyboard = keyboard.Keyboard()
         mouse = event.Mouse(win=self.win)
 
         # An ExperimentHandler isn't essential but helps with data saving
@@ -177,7 +174,6 @@ class hevelius_task(Task_Eyetracker):
         i = 0  # current index for locations
 
         # Create some handy timers
-        globalClock = core.Clock()  # to track the time since experiment started
         routineTimer = (
             core.CountdownTimer()
         )  # to track time remaining of each (non-slip) routine
@@ -204,7 +200,6 @@ class hevelius_task(Task_Eyetracker):
 
             if "Practice" not in block_type:
                 self.sendMessage(self.marker_trial_start)
-            # self.screen_text.text = block_type + 'Task {} of {}'.format(index + 1, len(locs))
 
             # abbreviate parameter names if possible (e.g. rgb = thisTrial.rgb)
             if thisTrial is not None:
@@ -222,12 +217,8 @@ class hevelius_task(Task_Eyetracker):
             mouse.rightButton = []
             mouse.time = []
             mouse.clicked_name = []
-            gotValidClick = False  # until a click is received
             currentLoc = self.convert_pix(locs[i], offset)
             polygon.pos = currentLoc
-            #             if index == 0:
-            #                 mouse.setPos((currentLoc[0], currentLoc[1]))
-            # print(index, currentLoc, locs[i])
             self.send_target_loc(
                 currentLoc, "target", to_marker=True, no_interpolation=1
             )
@@ -276,7 +267,6 @@ class hevelius_task(Task_Eyetracker):
                         polygon, "tStartRefresh"
                     )  # time at next scr refresh
                     polygon.setAutoDraw(True)
-                    # self.screen_text.setAutoDraw(True)
                     # MARKER Trial start 1
                 # *mouse* updates
                 if mouse.status == NOT_STARTED and t >= 0.0 - self.frameTolerance:
@@ -293,7 +283,6 @@ class hevelius_task(Task_Eyetracker):
                         mouse.getPressed()
                     )  # if button is down already this ISN'T a new click
 
-                was_inside = False
                 if mouse.status == STARTED:  # only update if started and not finished!
                     x, y = mouse.getPos()
                     self.send_target_loc([x, y], "mouse", to_marker=False)

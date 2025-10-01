@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Nov 16 14:07:20 2021
-
-@author: Adonay Nunes
+DSST task
 """
 
 import os
@@ -10,7 +8,6 @@ import os.path as op
 from typing import Union, Tuple, NamedTuple, List, Optional
 import random
 import time
-from datetime import datetime
 import numpy as np
 import pandas as pd
 
@@ -22,25 +19,6 @@ import neurobooth_os
 from neurobooth_os.tasks import utils
 from neurobooth_os.tasks import Task_Eyetracker
 from neurobooth_os.iout.stim_param_reader import get_cfg_path
-
-
-def my_textbox2(win, text, pos=(0, 0), size=(None, None)):
-
-    tbx = TextBox2(
-        win,
-        pos=pos,
-        color="black",
-        units="pix",
-        lineSpacing=0.9,
-        letterHeight=20,
-        text=text,
-        font="Arial",  # size=(20, None),
-        borderColor=None,
-        fillColor=None,
-        editable=False,
-        alignment="center",
-    )
-    return tbx
 
 
 def present_msg(elems, win, key_resp="space"):
@@ -264,7 +242,7 @@ class DSC(Task_Eyetracker):
                 return rels
             utils.countdown(0.001)
 
-    def my_textbox2(self, text, pos=(0, 0), size=(None, None)):
+    def my_textbox2(self, text, pos=(0, 0)):
         tbx = TextBox2(
             self.win,
             pos=pos,

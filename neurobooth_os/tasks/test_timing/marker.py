@@ -5,6 +5,7 @@ import uuid
 from neurobooth_os.msg.messages import DeviceInitialization, Request
 import neurobooth_os.iout.metadator as meta
 
+
 def marker_stream():
     """Create marker stream to be pushed when needed with a string format:
     "%s_%d_%timestamp" aka code string, number, time"""

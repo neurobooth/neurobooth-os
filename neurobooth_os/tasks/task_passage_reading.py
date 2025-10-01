@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Nov 2 15:23:01 2021
-
-Author: adonay Nunes <adonay.s.nunes@gmail.com>
-
-License: BSD-3-Clause
+Task where subject is presented with a block of text to read
 """
 
 import os

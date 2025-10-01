@@ -1,15 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Nov 03 08:00:23 2021
-
-@author: Sheraz Khan: sheraz@khansheraz.com
-"""
-from math import sin, pi
-import os.path as op
-from psychopy import core
 import pylink
-import neurobooth_os
-from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
+from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 from neurobooth_os.tasks.task import Eyelink_HostPC
 import numpy as np
 from pylsl import local_clock
@@ -35,7 +26,6 @@ class Saccade(Eyelink_HostPC):
         trial_sign=[-1, -1, 1, -1, 1, -1, 1, 1, -1, -1, 1, 1],
         **kwargs,
     ):
-        # amplitude_deg=30, peak_velocity_deg=33.3, **kwargs):
 
         super().__init__(**kwargs)
         self.amplitude_deg = amplitude_deg
@@ -74,16 +64,10 @@ class Saccade(Eyelink_HostPC):
         tar_x = amp_x
         tar_y = amp_y
 
-        # Take the tracker offline
-        # self.setOfflineMode()
-
         self.countdown_to_stimulus()
 
         # Send a message to mark movement onset
         self.sendMessage(self.marker_task_start)
-
-        # Record_status_message : show some info on the Host PC
-        # self.sendCommand("record_status_message 'Pursuit task'")
 
         # Drift check/correction, params, x, y, draw_target, allow_setup
 
@@ -92,14 +76,8 @@ class Saccade(Eyelink_HostPC):
         self.target.draw()
         self.win.flip()
         self.update_screen(0, 0)
-        # self.doDriftCorrect([int(0 + self.mon_size[0] / 2.0),
-        #                        int(self.mon_size[1] / 2.0 - 0), 0, 1])
         self.win.color = (0, 0, 0)
         self.win.flip()
-
-        # self.sendMessage("TRIALID")
-        # Start recording
-        # self.startRecording()
 
         for index in range(self.ntrials):
 
@@ -109,7 +87,6 @@ class Saccade(Eyelink_HostPC):
             self.update_screen(0, 0)
             self.send_target_loc(self.target.pos)
 
-            # core.wait(self.wait_center + self.jitter_percent*self.wait_center*np.random.random(1)[0])
             countdown(
                 self.wait_center
                 + self.jitter_percent * self.wait_center * np.random.random(1)[0]
@@ -125,7 +102,6 @@ class Saccade(Eyelink_HostPC):
             tar_x = self.trial_sign[index] * amp_x
             tar_y = self.trial_sign[index] * amp_y
 
-            # core.wait(self.wait_offset + self.jitter_percent*self.wait_offset*np.random.random(1)[0])
             countdown(
                 self.wait_offset
                 + self.jitter_percent * self.wait_offset * np.random.random(1)[0]
