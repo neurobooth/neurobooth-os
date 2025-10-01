@@ -214,7 +214,6 @@ class SDMT(Eyelink_HostPC):
             clock.wait(0.05, hogCPUperiod=1)
         self.sendMessage(self.marker_trial_end, to_marker=True, add_event=True)
 
-
     def run_practice_trial(self) -> None:
         self.show_slide('before_practice')
         self.wait_for_advance()

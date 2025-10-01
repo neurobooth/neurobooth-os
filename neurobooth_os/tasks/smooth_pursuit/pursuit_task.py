@@ -1,15 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Nov 03 08:00:23 2021
-
-@author: adonay
-"""
 import numpy as np
 from math import sin, pi
-import os.path as op
 from psychopy import core
 import pylink
-import neurobooth_os
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
 from neurobooth_os.tasks.task import Eyelink_HostPC
 
@@ -30,7 +23,6 @@ class Pursuit(Eyelink_HostPC):
             self.peak_velocity_deg, self.peak_velocity_deg
         )
         self.ntrials = kwargs["ntrials"]
-        # [amp_x, amp_y, phase_x, phase_y, angular_freq_x, angular_freq_y]
         self.mov_pars = [
             self.amplitude_pixel,
             0,
@@ -80,7 +72,6 @@ class Pursuit(Eyelink_HostPC):
         frame = 0
         time_array = []
         while True:
-            # core.wait(1/480.)
             self.target.pos = (tar_x, tar_y)
             self.target.draw()
             self.win.flip()
@@ -102,14 +93,8 @@ class Pursuit(Eyelink_HostPC):
 
             # break if the time elapsed exceeds the trial duration
             if time_elapsed > self.ntrials * (1 / freq_x):
-                # print(frame)
                 time_array = np.array(time_array)
                 time_array = np.diff(time_array)
-                # print("mean time:",np.mean(time_array)*1000)
-                # print("med time:",np.median(time_array)*1000)
-                # print("std time:",np.std(time_array)*1000)
-                # print("max time:",np.max(time_array)*1000)
-                # print("min time:", np.min(time_array)*1000)
                 break
 
         self.time_array = time_array
@@ -120,7 +105,6 @@ class Pursuit(Eyelink_HostPC):
 
         # Stop recording
         self.setOfflineMode()
-        # self.et.paused = True
 
         self.sendMessage(self.marker_task_end)
 

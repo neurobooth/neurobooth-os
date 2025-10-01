@@ -7,18 +7,15 @@ class Stance(Task):
     """
         Common methods for Stance tasks
     """
-    
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-    
 
     def update_screen_color_to_white(self):
         # change screen color from grey to white and flip to update the screen
         # wrapper around utils.change_win_color
         white = (1, 1, 1)
         utils.change_win_color(self.win, white)
-
 
     def update_trial_screen(self, text):
         """
@@ -30,14 +27,12 @@ class Stance(Task):
         trial_screen.draw()
         self.win.flip()
 
-
     def display_trial_instructions(self, trl_instructions: str) -> None:
         """
             Shows text during a trial - intended as instruction to participant
         """
         trial_start_screen = utils.create_text_screen(self.win, trl_instructions + "\n\nPress CONTINUE to start trial")
         utils.present(self.win, trial_start_screen)
-
 
     def present_trial_ended_msg(self, trial_number: int, trial_time:int) -> None:
         """
@@ -59,7 +54,6 @@ class Stance(Task):
 class Sitting(Stance):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
 
     def present_task(
         self,
@@ -91,7 +85,6 @@ class Sitting(Stance):
                 waitKeys=False,
             )
 
-
     def perform_sitting_trial(self, duration: int, wait_keys: bool, trial_text: str):
         """
             Calls task.show_text to show a static screen for 'duration' seconds 
@@ -109,7 +102,6 @@ class Sitting(Stance):
 class Standing(Stance):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
 
     def present_task(
         self,
@@ -145,7 +137,6 @@ class Standing(Stance):
                 func_kwargs=func_kwargs,
                 waitKeys=False,
             )
-
     
     def perform_standing_trial(self, duration: int, wait_keys: bool, trial_text: str, screen_update_interval: int) -> float:
         """
@@ -177,7 +168,7 @@ class Standing(Stance):
         tone_played = False
         event.clearEvents(eventType='keyboard')
 
-        #start trial timer loop
+        # start trial timer loop
         while wait_keys:
 
             # delay loop for 10 ms

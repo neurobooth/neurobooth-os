@@ -1,20 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Nov 22 11:24:12 2021
 
-@author: STM
 """
 
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Nov 22 11:22:32 2021
-
-@author: STM
-"""
-
-import os.path as op
-
-import neurobooth_os
 from neurobooth_os.tasks.task import Task_Eyetracker
 from neurobooth_os.tasks.task import Eyelink_HostPC
 from neurobooth_os.tasks import utils

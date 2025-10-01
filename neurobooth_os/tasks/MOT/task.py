@@ -13,7 +13,6 @@ This module handles task-level aspects and organization, such as:
 import os
 import os.path as op
 from typing import List, Union
-from itertools import chain
 import pandas as pd
 from psychopy import visual
 

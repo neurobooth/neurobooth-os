@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul 20 10:00:23 2021
-
-@author: STM
+Utilities for executing tasks
 """
 
 from __future__ import absolute_import, division
@@ -21,9 +19,6 @@ from psychopy import visual
 
 from neurobooth_os.iout.stim_param_reader import get_cfg_path
 
-text_continue_repeat = (
-        'Please press:\n\t"Continue" to advance' + '\n\t"Repeat" to go back'
-)
 text_continue = 'Please press:\n\t"Continue" to advance'
 text_practice_screen = "Please practice the task \n\tPress any button when done"
 text_task = "Please do the task \n\tPress any button when done"
@@ -42,7 +37,7 @@ class InvalidWindowRefreshRate(Exception):
 def check_window_refresh_rate(win: visual.window.Window, min_rate: float, max_rate: float):
     """
     Measures the refresh rate of the window/screen, and raises an error if it is out of tolerances.
-    :param win: The PyschoPy window object
+    :param win: The PsychoPy window object
     :param min_rate: The minimum acceptable refresh rate (Hz)
     :param max_rate: The maximum acceptable refresh rate (Hz)
     :return:
@@ -200,12 +195,12 @@ def get_end_screen(win: visual.Window) -> visual.ImageStim:
 def delay(period: float) -> None:
     """
         Function which spins around doing nothing
-        so as to stall time. Uses lsl local_clock
+        to stall time. Uses lsl local_clock
         which is accurate even below millisecond 
         range. Useful for waiting while something
         else is happening, or to stall a loop for
         a defined period of time.
-        User defined time isspecified by
+        User defined time is specified by
         'period' in seconds
     """
     t1 = local_clock()

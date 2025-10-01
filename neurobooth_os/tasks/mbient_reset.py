@@ -1,6 +1,5 @@
 from datetime import datetime
 import time
-import os
 from typing import Optional, Dict, List
 from enum import IntEnum, auto
 from concurrent.futures import ThreadPoolExecutor, wait
@@ -181,11 +180,6 @@ class MbientResetPause(Task):
 
     def present_end_screen(self) -> None:
         self.show_text(screen=self.end_screen, msg="Task", audio=None, wait_time=self.duration, waitKeys=False)
-
-        # self.end_screen.draw()
-        # self.win.flip()
-        # self.send_status_msg(f'Pause: Press {self.continue_key.upper()} to continue.')  # Send message to GUI terminal
-        # get_keys([self.continue_key_for_comparison()])  # Wait until continue key is pressed
 
     def update_message(self, contents: List[str] = ()):
         """Update the message on the STM screen.
