@@ -42,7 +42,8 @@
         "user": "TEST_CTR",
         "password": "5519",
 	    "port": 12347,
-        "local_data_dir": "C:/Users/TEST_CTR/nb_os_env/neurobooth_data/"
+        "local_data_dir": "C:/Users/TEST_CTR/nb_os_env/neurobooth_data/",
+        "devices": []
     },
     "database": {
         "ssh_tunnel": true,
