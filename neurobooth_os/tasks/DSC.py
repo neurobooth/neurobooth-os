@@ -199,41 +199,6 @@ class DSC(Task_Eyetracker):
             )
         self.io.quit()
 
-    # def _run(self, prompt=True, subj_id="test", **kwarg):
-    #
-    #     self.results = []  # array to store trials details and responses
-    #     self.outcomes = {}  # object containing outcome variables
-    #     self.test_start_time = 0
-    #
-    #     # Check if run previously, create framesequence again
-    #     if len(self.frameSequence) == 0:
-    #         self.setFrameSequence()
-    #
-    #     self.subj_id = subj_id
-    #     self.present_instructions(prompt)
-    #
-    #     self.win.color = "white"
-    #     self.win.flip()
-    #
-    #     self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
-    #     self.nextTrial()
-    #     self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
-    #
-    #     if prompt:
-    #         func_kwargs_func = {"prompt": prompt}
-    #         self.rep += "_I"
-    #         self.show_text(
-    #             screen=self.press_task_screen,
-    #             msg="Task-continue-repeat",
-    #             func=self.run,
-    #             func_kwargs=func_kwargs_func,
-    #             waitKeys=False,
-    #         )
-    #
-    #     self.io.quit()
-    #     self.present_complete()
-    #     return self.events
-
     def wait_release(self, keys=None):
         while True:
             rels = self.keyboard.getReleases(keys=keys)
