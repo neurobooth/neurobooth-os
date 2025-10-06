@@ -6,7 +6,6 @@ import os.path as op
 
 from neurobooth_os.iout.metadator import post_message, get_database_connection
 from neurobooth_os.msg.messages import NewVideoFile, Request
-from neurobooth_os.tasks.task import Task_Eyetracker
 from neurobooth_os import config
 
 
@@ -43,7 +42,7 @@ class Calibrate(Task_Eyetracker):
 
 if __name__ == "__main__":
     from neurobooth_os.iout.eyelink_tracker import EyeTracker
-    from neurobooth_os.tasks import utils
+    from neurobooth_os.tasks import utils, Task_Eyetracker
 
     win = utils.make_win(False)
     eye_tracker = EyeTracker(win=win, ip="192.168.100.15")

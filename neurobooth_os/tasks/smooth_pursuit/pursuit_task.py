@@ -4,7 +4,7 @@ from math import sin, pi
 from psychopy import core
 import pylink
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
-from neurobooth_os.tasks.task import Eyelink_HostPC
+from neurobooth_os.tasks.task_eyetracker import Eyelink_HostPC
 
 
 class Pursuit(Eyelink_HostPC):

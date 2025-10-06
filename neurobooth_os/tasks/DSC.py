@@ -11,13 +11,12 @@ import time
 import numpy as np
 import pandas as pd
 
-from psychopy import core, visual, event, iohub
+from psychopy import visual, iohub
 from psychopy.iohub import launchHubServer
 from psychopy.visual.textbox2 import TextBox2
 
 import neurobooth_os
-from neurobooth_os.tasks import utils
-from neurobooth_os.tasks import Task_Eyetracker
+from neurobooth_os.tasks import utils, Task_Eyetracker
 from neurobooth_os.iout.stim_param_reader import get_cfg_path
 
 
@@ -200,40 +199,40 @@ class DSC(Task_Eyetracker):
             )
         self.io.quit()
 
-    def _run(self, prompt=True, subj_id="test", **kwarg):
-
-        self.results = []  # array to store trials details and responses
-        self.outcomes = {}  # object containing outcome variables
-        self.test_start_time = 0
-
-        # Check if run previously, create framesequence again
-        if len(self.frameSequence) == 0:
-            self.setFrameSequence()
-
-        self.subj_id = subj_id
-        self.present_instructions(prompt)
-
-        self.win.color = "white"
-        self.win.flip()
-
-        self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
-        self.nextTrial()
-        self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
-
-        if prompt:
-            func_kwargs_func = {"prompt": prompt}
-            self.rep += "_I"
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.run,
-                func_kwargs=func_kwargs_func,
-                waitKeys=False,
-            )
-
-        self.io.quit()
-        self.present_complete()
-        return self.events
+    # def _run(self, prompt=True, subj_id="test", **kwarg):
+    #
+    #     self.results = []  # array to store trials details and responses
+    #     self.outcomes = {}  # object containing outcome variables
+    #     self.test_start_time = 0
+    #
+    #     # Check if run previously, create framesequence again
+    #     if len(self.frameSequence) == 0:
+    #         self.setFrameSequence()
+    #
+    #     self.subj_id = subj_id
+    #     self.present_instructions(prompt)
+    #
+    #     self.win.color = "white"
+    #     self.win.flip()
+    #
+    #     self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
+    #     self.nextTrial()
+    #     self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
+    #
+    #     if prompt:
+    #         func_kwargs_func = {"prompt": prompt}
+    #         self.rep += "_I"
+    #         self.show_text(
+    #             screen=self.press_task_screen,
+    #             msg="Task-continue-repeat",
+    #             func=self.run,
+    #             func_kwargs=func_kwargs_func,
+    #             waitKeys=False,
+    #         )
+    #
+    #     self.io.quit()
+    #     self.present_complete()
+    #     return self.events
 
     def wait_release(self, keys=None):
         while True:
@@ -479,7 +478,7 @@ class DSC(Task_Eyetracker):
 
 
 if __name__ == "__main__":
-    from psychopy import sound, core, event, monitors, visual, monitors
+    from psychopy import core, event, monitors, visual, monitors
 
     monitor_width = 55
     monitor_distance = 60
