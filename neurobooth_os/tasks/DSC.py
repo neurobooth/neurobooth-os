@@ -11,7 +11,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from psychopy import visual, iohub
+from psychopy import core, visual, event, iohub
 from psychopy.iohub import launchHubServer
 from psychopy.visual.textbox2 import TextBox2
 
