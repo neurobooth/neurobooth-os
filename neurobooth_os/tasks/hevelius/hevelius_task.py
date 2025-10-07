@@ -10,8 +10,7 @@ from typing import Union
 from psychopy import visual, core, data, event
 from psychopy.constants import NOT_STARTED, STARTED, FINISHED
 
-from neurobooth_os.tasks import utils
-from neurobooth_os.tasks.task import Task_Eyetracker
+from neurobooth_os.tasks import utils, Task_Eyetracker
 from neurobooth_os.iout.stim_param_reader import get_cfg_path
 import neurobooth_os
 

@@ -8,7 +8,7 @@ from pylsl import local_clock
 from psychopy import sound
 
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
-from neurobooth_os.tasks.task import Task_Eyetracker
+from neurobooth_os.tasks import Task_Eyetracker
 
 
 def countdown(period):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pylink
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
-from neurobooth_os.tasks.task import Eyelink_HostPC
+from neurobooth_os.tasks.task_eyetracker import Eyelink_HostPC
 import numpy as np
 from pylsl import local_clock
 

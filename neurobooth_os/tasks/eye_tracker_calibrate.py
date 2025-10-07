@@ -4,9 +4,9 @@ A task that is run to calibrate the eyetracker
 """
 import os.path as op
 
+from neurobooth_os.tasks import Task_Eyetracker
 from neurobooth_os.iout.metadator import post_message, get_database_connection
 from neurobooth_os.msg.messages import NewVideoFile, Request
-from neurobooth_os.tasks.task import Task_Eyetracker
 from neurobooth_os import config
 
 
