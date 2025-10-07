@@ -3,7 +3,7 @@ from neurobooth_os.tasks import Task_Eyetracker, utils
 
 class Task_sidetrials(Task_Eyetracker):
     """
-    Tasks with two trials, one for each 'side', dominant or not dominant. It supports fixation tasks with side-trials,
+    Motor tasks with two trials, one for each 'side', dominant or not dominant. It supports fixation tasks with side-trials,
     such as finger-nose
     """
     def __init__(self, **kwargs):

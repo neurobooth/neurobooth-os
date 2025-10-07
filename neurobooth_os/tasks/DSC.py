@@ -443,7 +443,7 @@ class DSC(Task_Eyetracker):
 
 
 if __name__ == "__main__":
-    from psychopy import core, event, monitors, visual, monitors
+    from psychopy import monitors
 
     monitor_width = 55
     monitor_distance = 60

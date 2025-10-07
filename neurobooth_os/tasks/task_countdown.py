@@ -45,16 +45,3 @@ class Task_countdown(Task):
                 func_kwargs=func_kwargs,
                 waitKeys=False,
             )
-
-
-if __name__ == "__main__":
-
-    instruction_file = op.join(neurobooth_os.__path__[0], "tasks", "assets", "test.mp4")
-    if not op.isfile(instruction_file):
-        raise IOError(f'Required instruction file {instruction_file} does not exist.')
-
-    task = Task_countdown(
-        instruction_file=instruction_file
-    )
-
-    task.run(prompt=True, duration=3)

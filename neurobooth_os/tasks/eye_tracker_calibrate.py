@@ -43,7 +43,7 @@ class Calibrate(Task_Eyetracker):
 
 if __name__ == "__main__":
     from neurobooth_os.iout.eyelink_tracker import EyeTracker
-    from neurobooth_os.tasks import utils, Task_Eyetracker
+    from neurobooth_os.tasks import utils
 
     win = utils.make_win(False)
     eye_tracker = EyeTracker(win=win, ip="192.168.100.15")
