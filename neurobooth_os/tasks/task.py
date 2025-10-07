@@ -255,7 +255,7 @@ class Task:
             self.instruction_video.stop()
         self.countdown_video.stop()
         if self.win_temp:
-            self.win._close()
+            self.win.close()
 
     def present_practice(self, subj_id=None):
         pass
