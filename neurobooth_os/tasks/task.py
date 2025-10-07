@@ -247,15 +247,15 @@ class Task:
         self.show_text(
             screen=screen, msg="Completed-task", audio=None, wait_time=0, waitKeys=False
         )
-        self.close()
+        self._close()
 
     # Close videos and win if just created for the task
-    def close(self):
+    def _close(self):
         if self.instruction_video is not None:
             self.instruction_video.stop()
         self.countdown_video.stop()
         if self.win_temp:
-            self.win.close()
+            self.win._close()
 
     def present_practice(self, subj_id=None):
         pass
