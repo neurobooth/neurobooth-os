@@ -288,17 +288,3 @@ def advance():
     key = get_keys(keyList=["space"])
     if key == ["space"]:
         return True
-
-
-def run_task(task, prompt=True):
-    print("starting task")
-    task.present_instructions(prompt)
-    print("starting instructions")
-    task.present_practice(prompt)
-    print("starting task")
-    task.present_task(prompt)
-    print("end screen")
-    task.present_complete()
-    print("close window")
-    task.close()
-    print("task done")
