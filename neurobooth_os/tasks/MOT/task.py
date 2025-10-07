@@ -187,48 +187,6 @@ class MOT(Task_Eyetracker):
                 func_kwargs=func_kwargs_func,
                 waitKeys=False,
             )
-    
-    def _run(self, prompt=True, subj_id=None, **kwargs):
-        if subj_id is not None:  # The provided argument contains the full session timestamp...
-            self.subject_id = subj_id
-
-        if self.n_repetitions > 0:
-            self._init_frame_sequence(*self.stimulus_params)  # Create new frames for repeats to flush old data
-
-        self.score = 0
-        self.present_instructions(prompt)
-        self.win.color = "white"
-        self.win.flip()
-        self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
-        try:
-            for chunk in self.practice_chunks:
-                self.run_chunk(chunk)
-            for chunk in self.test_chunks:
-                self.run_chunk(chunk)
-                # Check early stopping criterion and stop if met
-                total_click_duration = MOT.chunk_click_duration(chunk)
-                if total_click_duration > self.chunk_timeout_sec:
-                    print(f'MOT timed out: total_click_duration={total_click_duration} s')
-                    break
-        except TaskAborted:
-            print('MOT aborted')
-        self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
-
-        self.save_results()
-
-        if prompt:  # Check if task should be repeated
-            func_kwargs_func = {"prompt": prompt}
-            self.n_repetitions += 1
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.run,
-                func_kwargs=func_kwargs_func,
-                waitKeys=False,
-            )
-
-        self.present_complete()
-        return self.events
 
     def run_chunk(self, chunk: List[MOTFrame]) -> None:
         for frame in chunk:

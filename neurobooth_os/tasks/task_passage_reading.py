@@ -7,7 +7,7 @@ import os
 import os.path as op
 from typing import Union
 
-from neurobooth_os.tasks.task import Eyelink_HostPC
+from neurobooth_os.tasks.task_eyetracker import Eyelink_HostPC
 from neurobooth_os.tasks import utils
 from neurobooth_os.iout.stim_param_reader import get_cfg_path
 
