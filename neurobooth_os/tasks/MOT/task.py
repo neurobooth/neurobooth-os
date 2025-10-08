@@ -17,7 +17,7 @@ from psychopy import visual
 
 import neurobooth_os
 from neurobooth_os.tasks.task import TaskAborted, Task
-from neurobooth_os.tasks import Task_Eyetracker
+from neurobooth_os.tasks import Task_Eyetracker, utils
 from neurobooth_os.tasks.MOT.frame import (
     MOTFrame,
     ImageFrame,
@@ -235,18 +235,7 @@ class MOT(Task_Eyetracker):
 
 
 if __name__ == "__main__":
-    from psychopy import monitors
-
-    monitor_width = 55
-    monitor_distance = 60
-    mon = monitors.getAllMonitors()[0]
-    customMon = monitors.Monitor(
-        "demoMon", width=monitor_width, distance=monitor_distance
-    )
-    win = visual.Window(
-        [1920, 1080], fullscr=False, monitor=customMon, units="pix", color="white"
-    )
-
+    win = utils.make_win(full_screen=False)
     self = MOT(win=win)
     self.run()
     win.close()
