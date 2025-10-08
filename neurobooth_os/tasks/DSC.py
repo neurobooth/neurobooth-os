@@ -16,8 +16,7 @@ from psychopy.iohub import launchHubServer
 from psychopy.visual.textbox2 import TextBox2
 
 import neurobooth_os
-from neurobooth_os.tasks import utils, Task_Eyetracker
-from neurobooth_os.iout.stim_param_reader import get_cfg_path
+from neurobooth_os.tasks import utils, Task_Eyetracker, Task
 
 
 def present_msg(elems, win, key_resp="space"):
@@ -81,19 +80,13 @@ class DSC(Task_Eyetracker):
 
         self.keyboard = self.io.devices.keyboard
 
-        self.setup(self.win)
-
-    @classmethod
-    def asset_path(cls, asset: Union[str, os.PathLike]) -> str:
-        """
-        Get the path to the specified asset.
-        :param asset: The name of the asset/file.
-        :return: The file system path to the asset in the config folder.
-        """
-        return op.join(get_cfg_path('assets'), 'DSC', asset)
+        self._setup(self.win)
 
     def load_image(self, asset: Union[str, os.PathLike], pos: Tuple[float, float] = (0, 0)) -> visual.ImageStim:
         """
+        TODO: Consider whether this can be moved to utils. There is a utils function of the same name, and
+            at least one other task type with a similar function (passage reading)
+
         Locate the specified image  and create an image stimulus.
         :param asset: The name/path of the asset.
         :param pos: Override the default position of the stimulus on the screen.
@@ -101,7 +94,7 @@ class DSC(Task_Eyetracker):
         """
         return visual.ImageStim(
             self.win,
-            image=DSC.asset_path(asset),
+            image=Task.asset_path(asset, 'DSC'),
             pos=pos,
             units="deg",
         )
@@ -114,7 +107,7 @@ class DSC(Task_Eyetracker):
 
         # Check if run previously, create framesequence again
         if len(self.frameSequence) == 0:
-            self.setFrameSequence()
+            self._setFrameSequence()
 
         self.subj_id = subj_id
         self.win.color = "white"
@@ -127,7 +120,7 @@ class DSC(Task_Eyetracker):
             if frame.type in ["begin", "message"]:  # Check if it is an image frame
                 present_msg([frame.message], self.win)
             elif frame.type in ["practice"]:  # Handle practice and test frames
-                self.execute_frame(frame)
+                self._execute_frame(frame)
             else: # Proceed with present_task
                 self.frameSequence.append(frame)
                 break
@@ -139,7 +132,7 @@ class DSC(Task_Eyetracker):
             if frame.type in ["begin", "message"]:  # Check if it is an image frame
                 present_msg([frame.message], self.win)
             elif frame.type in ["test"]:  # Handle practice and test frames
-                self.execute_frame(frame)
+                self._execute_frame(frame)
 
         # all test trials (excluding practice and timeouts)
         tmp1 = [
@@ -162,7 +155,7 @@ class DSC(Task_Eyetracker):
 
         if self.showresults:
             mes = [
-                self.my_textbox2(
+                self._my_textbox2(
                     f"Your score is {score}. \nThe test is "
                     + "over. \nThank you for participating!",
                     (0, 2),
@@ -199,14 +192,14 @@ class DSC(Task_Eyetracker):
             )
         self.io.quit()
 
-    def wait_release(self, keys=None):
+    def _wait_release(self, keys=None):
         while True:
             rels = self.keyboard.getReleases(keys=keys)
             if len(rels):
                 return rels
             utils.countdown(0.001)
 
-    def my_textbox2(self, text, pos=(0, 0)):
+    def _my_textbox2(self, text, pos=(0, 0)):
         tbx = TextBox2(
             self.win,
             pos=pos,
@@ -223,16 +216,16 @@ class DSC(Task_Eyetracker):
         )
         return tbx
 
-    def setup(self, win):
+    def _setup(self, win):
 
         self.tmbUI["UIevents"] = ["keys"]
         self.tmbUI["UIelements"] = ["resp1", "resp2", "resp3"]
         self.tmbUI["highlight"] = "red"
 
         # create the trials chain
-        self.setFrameSequence()
+        self._setFrameSequence()
 
-    def onreadyUI(self, frame: FrameDef, allow_next_frame: bool):
+    def _onreadyUI(self, frame: FrameDef, allow_next_frame: bool):
 
         # is the response correct?
         correct = self.tmbUI["response"][-1] == str(frame.digit)
@@ -263,7 +256,7 @@ class DSC(Task_Eyetracker):
                 message = [
                     self.load_image(frame.source, pos=(0, 10)),
                     self.load_image('key/key.png'),
-                    self.my_textbox2(
+                    self._my_textbox2(
                         f"You should press {frame.digit} on the keyboard when you see this symbol",
                         (0, -8),
                     ),
@@ -288,7 +281,7 @@ class DSC(Task_Eyetracker):
             if frame.type in ["begin", "message"]:  # Check if it is an image frame
                 present_msg([frame.message], self.win)
             else:  # Handle practice and test frames
-                self.execute_frame(frame)
+                self._execute_frame(frame)
 
         # all test trials (excluding practice and timeouts)
         tmp1 = [
@@ -311,7 +304,7 @@ class DSC(Task_Eyetracker):
 
         if self.showresults:
             mes = [
-                self.my_textbox2(
+                self._my_textbox2(
                     f"Your score is {score}. \nThe test is "
                     + "over. \nThank you for participating!",
                     (0, 2),
@@ -335,12 +328,12 @@ class DSC(Task_Eyetracker):
         if self.win_temp:
             self.win.close()
 
-    def elapsed_time(self) -> float:
+    def _elapsed_time(self) -> float:
         if self.test_start_time == 0:  # Set the test start on the first time this method is called.
             self.test_start_time = time.time()
         return time.time() - self.test_start_time
 
-    def execute_frame(self, frame: FrameDef) -> None:
+    def _execute_frame(self, frame: FrameDef) -> None:
         stim = [
             self.load_image(frame.source, pos=(0, 10)),
             self.load_image('key/key.png'),
@@ -353,7 +346,7 @@ class DSC(Task_Eyetracker):
             allow_next_frame = True
         # - for test trials -> what's left of self.duration seconds since start, with a minimum of 150 ms
         else:
-            time_remaining = self.tot_time - self.elapsed_time()
+            time_remaining = self.tot_time - self._elapsed_time()
             self.tmbUI["timeout"] = max(time_remaining, 0.150)
             allow_next_frame = time_remaining > 0
 
@@ -406,7 +399,7 @@ class DSC(Task_Eyetracker):
                 for ss in stim:
                     ss.draw()
                 self.win.flip()
-                response_events = self.wait_release()
+                response_events = self._wait_release()
                 self.sendMessage(self.marker_response_end)
                 break
             utils.countdown(0.001)
@@ -421,9 +414,9 @@ class DSC(Task_Eyetracker):
         else:
             self.sendMessage(self.marker_trial_end)
 
-        self.onreadyUI(frame, allow_next_frame)
+        self._onreadyUI(frame, allow_next_frame)
 
-    def setFrameSequence(self):
+    def _setFrameSequence(self):
         # Start with intro and instructions
         self.frameSequence.append(FrameDef(type='begin', message=self.load_image('frames/intro.png')))
         N_INSTR_FRAME = 8

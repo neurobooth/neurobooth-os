@@ -2,11 +2,8 @@ from __future__ import division, absolute_import
 
 from pylsl import local_clock
 
-import neurobooth_os
 from neurobooth_os.tasks import Task, utils
 from neurobooth_os.tasks.task import TaskAborted
-
-import os.path as op
 
 
 class Task_countdown(Task):
