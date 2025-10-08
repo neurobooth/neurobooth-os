@@ -25,7 +25,6 @@ from neurobooth_os.log_manager import APP_LOG_NAME
 from datetime import datetime
 from psychopy import visual, event
 
-
 psychopy_logging.console.setLevel(psychopy_logging.CRITICAL)
 
 
@@ -119,7 +118,6 @@ class Task:
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
         self.end_screen = utils.get_end_screen(self.win)
-
 
     @classmethod
     def asset_path(cls, asset: Union[str, os.PathLike], task_name: Optional[str] = None) -> str:
