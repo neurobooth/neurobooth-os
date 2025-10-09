@@ -92,7 +92,7 @@ class MOT(Task_Eyetracker):
         :param animation_file: The name of the animation file (extension included).
         :return: The path to the file in the config folder.
         """
-        return Task.asset_path(op.join('animations', animation_file))
+        return Task.asset_path(op.join('animations', animation_file), 'MOT')
 
     def _create_frame(self, params: FrameParameters) -> MOTFrame:
         if isinstance(params, TrialFrameParameters):
