@@ -10,15 +10,14 @@ This module handles task-level aspects and organization, such as:
 
 # TODO: Update CSV files with one-time v2 updator script as described in Slack/shortcut
 
-import os
 import os.path as op
-from typing import List, Union
+from typing import List
 import pandas as pd
 from psychopy import visual
 
 import neurobooth_os
-from neurobooth_os.tasks.task import TaskAborted
-from neurobooth_os.tasks import Task_Eyetracker
+from neurobooth_os.tasks.task import TaskAborted, Task
+from neurobooth_os.tasks import Task_Eyetracker, utils
 from neurobooth_os.tasks.MOT.frame import (
     MOTFrame,
     ImageFrame,
@@ -31,7 +30,7 @@ from neurobooth_os.tasks.MOT.frame import (
     ImageFrameParameters,
     FrameChunk,
 )
-from neurobooth_os.iout.stim_param_reader import EyeTrackerStimArgs, get_cfg_path
+from neurobooth_os.iout.stim_param_reader import EyeTrackerStimArgs
 
 
 class MotStimArgs(EyeTrackerStimArgs):
@@ -86,15 +85,6 @@ class MOT(Task_Eyetracker):
 
         self.results: List[TrialResult] = []
 
-    @classmethod
-    def asset_path(cls, asset: Union[str, os.PathLike]) -> str:
-        """
-        Get the path to the specified asset.
-        :param asset: The name of the asset/file.
-        :return: The file system path to the asset in the config folder.
-        """
-        return op.join(get_cfg_path('assets'), 'MOT', asset)
-
     @staticmethod
     def animation_path(animation_file: str) -> str:
         """
@@ -102,7 +92,7 @@ class MOT(Task_Eyetracker):
         :param animation_file: The name of the animation file (extension included).
         :return: The path to the file in the config folder.
         """
-        return MOT.asset_path(op.join('animations', animation_file))
+        return Task.asset_path(op.join('animations', animation_file), 'MOT')
 
     def _create_frame(self, params: FrameParameters) -> MOTFrame:
         if isinstance(params, TrialFrameParameters):
@@ -136,7 +126,7 @@ class MOT(Task_Eyetracker):
         """Create the sequences of frames that compose this task"""
         self.continue_message = visual.ImageStim(
             self.win,
-            image=MOT.asset_path(continue_message),
+            image=Task.asset_path(continue_message, 'MOT'),
             pos=(0, 0),
             units="deg",
         )
@@ -157,16 +147,16 @@ class MOT(Task_Eyetracker):
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
         try:
             for chunk in self.practice_chunks:
-                self.run_chunk(chunk)
+                self._run_chunk(chunk)
         except TaskAborted:
             print('MOT aborted')
 
     def present_task(self, prompt=True, duration=0, **kwargs):
         try:
             for chunk in self.test_chunks:
-                self.run_chunk(chunk)
+                self._run_chunk(chunk)
                 # Check early stopping criterion and stop if met
-                total_click_duration = MOT.chunk_click_duration(chunk)
+                total_click_duration = MOT._chunk_click_duration(chunk)
                 if total_click_duration > self.chunk_timeout_sec:
                     print(f'MOT timed out: total_click_duration={total_click_duration} s')
                     break
@@ -175,7 +165,7 @@ class MOT(Task_Eyetracker):
 
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
 
-        self.save_results()
+        self._save_results()
 
         if prompt:  # Check if task should be repeated
             func_kwargs_func = {"prompt": prompt}
@@ -188,7 +178,7 @@ class MOT(Task_Eyetracker):
                 waitKeys=False,
             )
 
-    def run_chunk(self, chunk: List[MOTFrame]) -> None:
+    def _run_chunk(self, chunk: List[MOTFrame]) -> None:
         for frame in chunk:
             try:
                 frame.run()
@@ -202,7 +192,7 @@ class MOT(Task_Eyetracker):
         self.results.append(result)
 
     @staticmethod
-    def chunk_click_duration(chunk: List[MOTFrame]) -> float:
+    def _chunk_click_duration(chunk: List[MOTFrame]) -> float:
         """Compute the total time spent during clicks for a chunk. Timeouts are only penalized once."""
         total_duration = 0
         for c in chunk:
@@ -214,7 +204,7 @@ class MOT(Task_Eyetracker):
                 total_duration += c.click_timeout
         return total_duration
 
-    def save_csv(self, data: pd.DataFrame, name: str) -> None:
+    def _save_csv(self, data: pd.DataFrame, name: str) -> None:
         """
         Save a CSV file generated from the given DataFrame
         :param data: The DataFrame to save
@@ -225,7 +215,7 @@ class MOT(Task_Eyetracker):
         data.to_csv(op.join(self.output_path, fname))
         self.task_files.append(fname)
 
-    def save_results(self):
+    def _save_results(self):
         results_df = pd.DataFrame(self.results, columns=TrialResult._fields)
 
         test_results = results_df.loc[(results_df['trial_type'] == 'test') & (results_df['state'] == 'click')]
@@ -238,25 +228,14 @@ class MOT(Task_Eyetracker):
             'total_click_duration': total_click_duration,
         }, orient="index", columns=["vals"])
 
-        self.save_csv(results_df, 'results')
-        self.save_csv(outcome_df, 'outcomes')
+        self._save_csv(results_df, 'results')
+        self._save_csv(outcome_df, 'outcomes')
 
         self.results = []  # Clear log of results in case the task repeats!
 
 
 if __name__ == "__main__":
-    from psychopy import monitors
-
-    monitor_width = 55
-    monitor_distance = 60
-    mon = monitors.getAllMonitors()[0]
-    customMon = monitors.Monitor(
-        "demoMon", width=monitor_width, distance=monitor_distance
-    )
-    win = visual.Window(
-        [1920, 1080], fullscr=False, monitor=customMon, units="pix", color="white"
-    )
-
+    win = utils.make_win(full_screen=False)
     self = MOT(win=win)
     self.run()
     win.close()

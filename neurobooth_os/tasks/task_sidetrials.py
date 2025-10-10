@@ -41,7 +41,7 @@ class Task_sidetrials(Task_Eyetracker):
             )
 
     def perform_trial(self, duration, target_pos, target_size):
-        self.calc_target_position_and_size(target_pos, target_size)
+        self._calc_target_position_and_size(target_pos, target_size)
         # Send event to eyetracker and to LSL separately
         self.sendMessage(self.marker_trial_start, False)
         self.show_text(
@@ -57,7 +57,7 @@ class Task_sidetrials(Task_Eyetracker):
         msg = utils.create_text_screen(self.win, "Task on one side ended")
         utils.present(self.win, msg, wait_time=2, waitKeys=False)
 
-    def calc_target_position_and_size(self, target_pos, target_size):
+    def _calc_target_position_and_size(self, target_pos, target_size):
         self.target.pos = [
             self.deg_2_pix(target_pos[0]),
             self.deg_2_pix(target_pos[1]),

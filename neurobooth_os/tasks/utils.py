@@ -235,7 +235,7 @@ def countdown(period: float, abort_keys: Optional[List] = None) -> None:
 
 def get_keys(keyList=()):
     """
-        Funtion to wait indefinitely until a
+        Function to wait indefinitely until a
         certain key is pressed 
     """
     event.clearEvents(eventType='keyboard')
