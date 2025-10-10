@@ -109,7 +109,7 @@ class ImageFrame(MOTFrame):
         :param image_name: The name of the image to display. (The image should be in MOT/assets.)
         """
         super().__init__(window)
-        image_path = task.asset_path(image_name)
+        image_path = task.asset_path(image_name, 'MOT')
         self.stimulus = visual.ImageStim(self.window, image=image_path, pos=(0, 0), units="deg")
 
     def run(self) -> None:
