@@ -120,7 +120,7 @@ class Task:
         self.end_screen = utils.get_end_screen(self.win)
 
     @classmethod
-    def asset_path(cls, asset: Union[str, os.PathLike], task_name: Optional[str] = None) -> str:
+    def asset_path(cls, asset: Union[str, os.PathLike], task_name: Optional[str] = '') -> str:
         """
         Get the path to the specified asset
         :param asset: The name of the asset/file
