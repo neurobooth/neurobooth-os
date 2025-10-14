@@ -1,7 +1,7 @@
 from psychopy import event
 
 from neurobooth_os.tasks import utils
-from neurobooth_os.tasks.task_stance import Stance
+from neurobooth_os.tasks.stance.task_stance import Stance
 
 
 class Standing(Stance):

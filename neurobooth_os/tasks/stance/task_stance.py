@@ -1,4 +1,3 @@
-from neurobooth_os.tasks.task_standing import Standing
 from neurobooth_os.tasks.task import Task
 from neurobooth_os.tasks import utils
 
