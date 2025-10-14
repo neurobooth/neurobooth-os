@@ -458,6 +458,7 @@ class StanceStimArgs(StimulusArgs):
     wait_keys: bool
     trial_text: str = 'Press CONTINUE to end trial'
     screen_update_interval: Optional[int] = None
+    countdown: Optional[str] = None # An mp4 filename
 
 
 class ClappingStimArgs(EyeTrackerStimArgs):
