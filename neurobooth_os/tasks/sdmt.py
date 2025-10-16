@@ -76,7 +76,7 @@ class SDMT(Eyelink_HostPC):
         self.rng = Random(self.seed)
         self.test_sequence: np.ndarray = np.array([])
 
-    def calc_symbol_locations(self, practice: bool) -> None:
+    def _calc_symbol_locations(self, practice: bool) -> None:
         grid = self.practice_grid if practice else self.grid
         grow, gcol = grid
 
@@ -105,7 +105,7 @@ class SDMT(Eyelink_HostPC):
         h -= (self.interline_gap * 2) + (self.continue_text_height / 2)
         self.continue_message_loc = (0, h)
 
-    def generate_test_sequence(self, practice: bool) -> np.ndarray:
+    def _generate_test_sequence(self, practice: bool) -> np.ndarray:
         grid = self.practice_grid if practice else self.grid
         h, w = grid
 
@@ -115,7 +115,7 @@ class SDMT(Eyelink_HostPC):
             seq[i+1] = self.rng.choice(np.setdiff1d(self.symbols, seq[i]))  # No back-to-back symbols
         return seq.reshape(grid)
 
-    def draw_symbol(self, loc: (float, float), symbol: str) -> None:
+    def _draw_symbol(self, loc: (float, float), symbol: str) -> None:
         # Draw  symbol and box to screen
         rstim = Rect(self.win, size=self.cell_size, lineColor='black', units='cm', pos=loc)
         tstim = TextStim(
@@ -133,19 +133,19 @@ class SDMT(Eyelink_HostPC):
 
             self.draw_box(x, y, size, size, EyelinkColor.BLACK)
 
-    def draw_key(self) -> None:
+    def _draw_key(self) -> None:
         for symbol, loc in zip(self.symbols, self.key_symbol_locs):
-            self.draw_symbol(loc, symbol)
+            self._draw_symbol(loc, symbol)
 
         for i, loc in enumerate(self.key_number_locs):
-            self.draw_symbol(loc, f'{i+1}')
+            self._draw_symbol(loc, f'{i + 1}')
 
-    def draw_test_grid(self) -> None:
+    def _draw_test_grid(self) -> None:
         for i, row in enumerate(self.test_symbol_locs):
             for j, loc in enumerate(row):
-                self.draw_symbol(loc, self.test_sequence[i, j])
+                self._draw_symbol(loc, self.test_sequence[i, j])
 
-    def draw_continue_message(self) -> None:
+    def _draw_continue_message(self) -> None:
         stim = TextStim(
             self.win,
             text='Press continue for the next slide',
@@ -157,17 +157,17 @@ class SDMT(Eyelink_HostPC):
         )
         stim.draw()
 
-    def draw(self) -> None:
+    def _draw(self) -> None:
         if self.draw_on_tablet:
             self.clear_screen(EyelinkColor.BRIGHTWHITE)
 
-        self.draw_key()
-        self.draw_test_grid()
-        self.draw_continue_message()
+        self._draw_key()
+        self._draw_test_grid()
+        self._draw_continue_message()
         self.win.flip()
 
     @classmethod
-    def asset_path(cls, asset: Union[str, os.PathLike]) -> str:
+    def _asset_path(cls, asset: Union[str, os.PathLike]) -> str:
         """
         Get the path to the specified asset.
         :param asset: The name of the asset/file.
@@ -178,7 +178,7 @@ class SDMT(Eyelink_HostPC):
     def show_slide(self, name: str) -> None:
         slide = ImageStim(
             self.win,
-            image=SDMT.asset_path(f'{name}.jpg'),
+            image=SDMT._asset_path(f'{name}.jpg'),
             pos=(0, 0),
             size=(2, 2),
             units="norm",
@@ -186,23 +186,23 @@ class SDMT(Eyelink_HostPC):
         slide.draw()
         self.win.flip()
 
-    def wait_for_advance(self) -> None:
+    def _wait_for_advance(self) -> None:
         event.clearEvents(eventType='keyboard')
         while not event.getKeys(self.advance_keys):
             self.check_if_aborted()
             clock.wait(0.05, hogCPUperiod=1)
 
-    def new_frame(self) -> None:
+    def _new_frame(self) -> None:
         self.draw_on_tablet = False  # Don't spend time redrawing the tablet grid
         self.sendMessage(self.marker_trial_end, to_marker=True, add_event=True)
-        self.test_sequence = self.generate_test_sequence(practice=False)
-        self.draw()
+        self.test_sequence = self._generate_test_sequence(practice=False)
+        self._draw()
         self.sendMessage(self.marker_trial_start, to_marker=True, add_event=True)
 
     def run_trial(self) -> None:
-        self.test_sequence = self.generate_test_sequence(practice=False)
-        self.calc_symbol_locations(practice=False)
-        self.draw()
+        self.test_sequence = self._generate_test_sequence(practice=False)
+        self._calc_symbol_locations(practice=False)
+        self._draw()
 
         event.clearEvents(eventType='keyboard')
         self.sendMessage(self.marker_trial_start, to_marker=True, add_event=True)
@@ -210,25 +210,25 @@ class SDMT(Eyelink_HostPC):
         while timer.getTime() > 0:
             self.check_if_aborted()
             if event.getKeys(self.advance_keys):
-                self.new_frame()
+                self._new_frame()
                 continue
             clock.wait(0.05, hogCPUperiod=1)
         self.sendMessage(self.marker_trial_end, to_marker=True, add_event=True)
 
     def run_practice_trial(self) -> None:
         self.show_slide('before_practice')
-        self.wait_for_advance()
+        self._wait_for_advance()
 
-        self.test_sequence = self.generate_test_sequence(practice=True)
-        self.calc_symbol_locations(practice=True)
-        self.draw()
+        self.test_sequence = self._generate_test_sequence(practice=True)
+        self._calc_symbol_locations(practice=True)
+        self._draw()
 
         self.sendMessage(self.marker_practice_trial_start, to_marker=True, add_event=True)
-        self.wait_for_advance()
+        self._wait_for_advance()
         self.sendMessage(self.marker_practice_trial_end, to_marker=True, add_event=True)
 
         self.show_slide('after_practice')
-        self.wait_for_advance()
+        self._wait_for_advance()
 
     def present_task(self, prompt=True, duration=0, **kwargs):
         self.Mouse.setVisible(self.mouse_visible)

@@ -5,6 +5,7 @@
 from __future__ import absolute_import, division
 
 import logging
+import os
 import os.path as op
 import time
 
@@ -12,17 +13,17 @@ import neurobooth_os
 import neurobooth_os.config as cfg
 import neurobooth_os.iout.metadator as meta
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from psychopy import logging as psychopy_logging
 
+from neurobooth_os.iout.stim_param_reader import get_cfg_path
 from neurobooth_os.msg.messages import StatusMessage, Request
 from neurobooth_os.tasks import utils
 from neurobooth_os.log_manager import APP_LOG_NAME
 
 from datetime import datetime
 from psychopy import visual, event
-
 
 psychopy_logging.console.setLevel(psychopy_logging.CRITICAL)
 
@@ -117,6 +118,16 @@ class Task:
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
         self.end_screen = utils.get_end_screen(self.win)
+
+    @classmethod
+    def asset_path(cls, asset: Union[str, os.PathLike], task_name: Optional[str] = '') -> str:
+        """
+        Get the path to the specified asset
+        :param asset: The name of the asset/file
+        :param task_name: identifier for the Task where this method is used, e.g. 'MOT'
+        :return: The file system path to the asset in the config folder.
+        """
+        return op.join(get_cfg_path('assets'), task_name, asset)
 
     def _load_instruction_video(self):
         """
