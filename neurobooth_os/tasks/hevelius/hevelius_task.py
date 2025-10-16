@@ -10,7 +10,7 @@ from typing import Union
 from psychopy import visual, core, data, event
 from psychopy.constants import NOT_STARTED, STARTED, FINISHED
 
-from neurobooth_os.tasks import utils, Task_Eyetracker
+from neurobooth_os.tasks import utils, Task_Eyetracker, Task
 from neurobooth_os.iout.stim_param_reader import get_cfg_path
 import neurobooth_os
 
@@ -34,18 +34,9 @@ class hevelius_task(Task_Eyetracker):
         self.rep = ""  # repeated task num to add to filename
         self.record_psychopy = record_psychopy
 
-        self.trial_data_fpath = hevelius_task.asset_path(trial_data_fname)
+        self.trial_data_fpath = Task.asset_path(trial_data_fname, 'hevelius')
         with open(op.join(neurobooth_os.__path__[0], self.trial_data_fpath)) as f:
             self.trials_data = json.load(f)
-
-    @classmethod
-    def asset_path(cls, asset: Union[str, os.PathLike]) -> str:
-        """
-        Get the path to the specified asset.
-        :param asset: The name of the asset/file.
-        :return: The file system path to the asset in the config folder.
-        """
-        return op.join(get_cfg_path('assets'), 'hevelius', asset)
 
     def convert_pix(self, loc, offset):
         newloc = [[], []]
