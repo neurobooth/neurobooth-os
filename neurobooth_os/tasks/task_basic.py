@@ -216,6 +216,7 @@ class BasicTask:
             self._add_event(msg)
 
     def run(self, prompt=True, duration=0, subj_id=None, **kwargs):
+        print(f"IN BasicTask: prompt = {prompt}")
         self.present_instructions(prompt)
         event.clearEvents(eventType='keyboard')
         self.present_practice(subj_id)
