@@ -10,8 +10,9 @@ import neurobooth_os.iout.metadator as meta
 from psychopy import logging as psychopy_logging
 
 from neurobooth_os.msg.messages import StatusMessage, Request
-from neurobooth_os.tasks import utils, InstructionTask
+from neurobooth_os.tasks import utils
 from neurobooth_os.tasks.task_basic import TaskAborted
+from neurobooth_os.tasks.task_instruction import InstructionTask
 
 from psychopy import event
 
