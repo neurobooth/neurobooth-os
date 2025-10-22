@@ -100,7 +100,7 @@ class BasicTask:
         """TODO: Is this useful?"""
         pass
 
-    def present_instructions(self, prompt):
+    def present_instructions(self, prompt: bool = True):
         pass
 
     def present_practice(self, subj_id: str):
