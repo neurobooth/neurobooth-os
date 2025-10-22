@@ -4,27 +4,23 @@
 """
 from __future__ import absolute_import, division
 
-import os
-import os.path as op
-
 import neurobooth_os
 import neurobooth_os.iout.metadator as meta
 
-from typing import List, Optional, Union
+from typing import List
 
 from psychopy import logging as psychopy_logging
 
-from neurobooth_os.iout.stim_param_reader import get_cfg_path
 from neurobooth_os.msg.messages import StatusMessage, Request
 from neurobooth_os.tasks import utils
-from neurobooth_os.tasks.task_shell import TaskShell, TaskAborted
+from neurobooth_os.tasks.task_basic import BasicTask, TaskAborted
 
 from psychopy import event
 
 psychopy_logging.console.setLevel(psychopy_logging.CRITICAL)
 
 
-class Task(TaskShell):
+class Task(BasicTask):
 
     def __init__(
             self,
@@ -56,32 +52,6 @@ class Task(TaskShell):
         self.continue_screen = utils.create_text_screen(self.win, text_continue)
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
-
-    @classmethod
-    def asset_path(cls, asset: Union[str, os.PathLike], task_name: Optional[str] = '') -> str:
-        """
-        Get the path to the specified asset
-        :param asset: The name of the asset/file
-        :param task_name: identifier for the Task where this method is used, e.g. 'MOT'
-        :return: The file system path to the asset in the config folder.
-        """
-        return op.join(get_cfg_path('assets'), task_name, asset)
-
-    def render_image(self):
-        """
-           Dummy method which does nothing.
-
-           Tasks which need to render an image on HostPC/Tablet screen, need to
-           render image before the eyetracker starts recording. This is done via
-           calling the render_image method inside start_acq in server_stm.py
-           This dummy method gets called for all tasks which don't need to send
-           an image to HostPC screen.
-
-           For tasks which do need to send an image to screen, a render_image
-           method must be implemented inside the task script which will get called
-           instead.
-        """
-        pass
 
     def _show_video(self, video, msg, stop=False):
         self.send_marker(f"{msg}_start", True)

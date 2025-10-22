@@ -1,5 +1,9 @@
+from __future__ import division, absolute_import
+
+import os
 import time
-from typing import List, Optional
+from os import path as op
+from typing import List, Optional, Union
 from datetime import datetime
 
 import logging
@@ -7,6 +11,7 @@ import os.path as op
 
 from psychopy import visual, event
 
+from neurobooth_os.iout.stim_param_reader import get_cfg_path
 from neurobooth_os.tasks import utils
 import neurobooth_os.config as cfg
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -17,7 +22,7 @@ class TaskAborted(Exception):
     pass
 
 
-class TaskShell:
+class BasicTask:
     """
     Skeletal Task implementation that doesn't do anything except implement a run method made up of
     steps that can be overridden in subclasses.
@@ -113,6 +118,22 @@ class TaskShell:
         )
         self._close()
 
+    def render_image(self):
+        """
+           Dummy method which does nothing.
+
+           Tasks which need to render an image on HostPC/Tablet screen, need to
+           render image before the eyetracker starts recording. This is done via
+           calling the render_image method inside start_acq in server_stm.py
+           This dummy method gets called for all tasks which don't need to send
+           an image to HostPC screen.
+
+           For tasks which do need to send an image to screen, a render_image
+           method must be implemented inside the task script which will get called
+           instead.
+        """
+        pass
+
     def _add_event(self, event_name):
         self.events.append(f"{event_name}:{datetime.now().strftime('%H:%M:%S')}")
 
@@ -204,3 +225,13 @@ class TaskShell:
         self.present_complete()
         event.clearEvents(eventType='keyboard')
         return self.events
+
+    @classmethod
+    def asset_path(cls, asset: Union[str, os.PathLike], task_name: Optional[str] = '') -> str:
+        """
+        Get the path to the specified asset
+        :param asset: The name of the asset/file
+        :param task_name: identifier for the Task where this method is used, e.g. 'MOT'
+        :return: The file system path to the asset in the config folder.
+        """
+        return op.join(get_cfg_path('assets'), task_name, asset)

@@ -1,9 +1,9 @@
 from __future__ import division, absolute_import
 
-from neurobooth_os.tasks import TaskShell, utils
+from neurobooth_os.tasks import BasicTask, utils
 
 
-class Task_ShowProgressBar(TaskShell):
+class Task_ShowProgressBar(BasicTask):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.screen = None
