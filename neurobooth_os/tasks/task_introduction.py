@@ -1,9 +1,9 @@
-from neurobooth_os.tasks import BasicTask
+from neurobooth_os.tasks import InstructionTask
 
 
-class Introduction_Task(BasicTask):
+class Introduction_Task(InstructionTask):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def run(self, **kwargs):
-        self.present_instructions(prompt=False)
+    def present_instructions(self, **kwargs):
+        super().present_instructions(prompt=False)

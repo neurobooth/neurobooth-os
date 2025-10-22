@@ -10,15 +10,15 @@ import neurobooth_os.iout.metadator as meta
 from psychopy import logging as psychopy_logging
 
 from neurobooth_os.msg.messages import StatusMessage, Request
-from neurobooth_os.tasks import utils
-from neurobooth_os.tasks.task_basic import BasicTask, TaskAborted
+from neurobooth_os.tasks import utils, InstructionTask
+from neurobooth_os.tasks.task_basic import TaskAborted
 
 from psychopy import event
 
 psychopy_logging.console.setLevel(psychopy_logging.CRITICAL)
 
 
-class Task(BasicTask):
+class Task(InstructionTask):
 
     def __init__(
             self,
@@ -61,23 +61,6 @@ class Task(BasicTask):
         """
         utils.play_video(self.win, self.countdown_video, wait_time=4, stop=False)
         utils.play_tone()
-
-    def present_instructions(self, prompt: bool = True):
-        """
-        Present instructions before stimulus
-        Parameters
-        ----------
-        prompt : bool
-        """
-        self._load_instruction_video()
-        self._show_video(video=self.instruction_video, msg="Intructions")
-        if prompt:
-            self.show_text(
-                screen=self.instruction_end_screen,
-                msg="Intructions-continue-repeat",
-                func=self.present_instructions,
-                waitKeys=False,
-            )
 
     def present_task(self, prompt=True, duration=0, **kwargs):
         self.countdown_to_stimulus()
