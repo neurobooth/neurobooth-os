@@ -134,6 +134,12 @@ class BasicTask:
         """
         pass
 
+    def _show_video(self, video, msg, stop=False):
+        self.send_marker(f"{msg}_start", True)
+        if video is not None:
+            utils.play_video(self.win, video, stop=stop)
+        self.send_marker(f"{msg}_end", True)
+
     def _add_event(self, event_name):
         self.events.append(f"{event_name}:{datetime.now().strftime('%H:%M:%S')}")
 

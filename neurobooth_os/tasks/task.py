@@ -50,12 +50,6 @@ class Task(InstructionTask):
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
 
-    def _show_video(self, video, msg, stop=False):
-        self.send_marker(f"{msg}_start", True)
-        if video is not None:
-            utils.play_video(self.win, video, stop=stop)
-        self.send_marker(f"{msg}_end", True)
-
     def countdown_to_stimulus(self):
         """
         Displays countdown video prior to the start of stimulus
