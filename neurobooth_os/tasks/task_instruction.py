@@ -1,4 +1,4 @@
-from neurobooth_os.tasks import BasicTask
+from neurobooth_os.tasks.task_basic import BasicTask
 
 
 class InstructionTask(BasicTask):
