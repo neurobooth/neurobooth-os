@@ -7,8 +7,6 @@ from __future__ import absolute_import, division
 import neurobooth_os
 import neurobooth_os.iout.metadator as meta
 
-from typing import List
-
 from psychopy import logging as psychopy_logging
 
 from neurobooth_os.msg.messages import StatusMessage, Request
@@ -40,8 +38,6 @@ class Task(BasicTask):
         self.marker_practice_trial_end = "PracticeTrial_end"
         self.marker_response_start = "Response_start"
         self.marker_response_end = "Response_end"
-
-        self.task_files: List[str] = []
 
         # Create mouse and set not visible
         self.Mouse = event.Mouse(visible=False, win=self.win)

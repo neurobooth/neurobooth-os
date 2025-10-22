@@ -7,7 +7,6 @@ from typing import List, Optional, Union
 from datetime import datetime
 
 import logging
-import os.path as op
 
 from psychopy import visual, event
 
@@ -52,6 +51,7 @@ class BasicTask:
         self.logger = logging.getLogger(APP_LOG_NAME)
 
         self.instruction_file = instruction_file
+        self.task_files: List[str] = []
 
         self.full_screen = full_screen
         self.win = win
