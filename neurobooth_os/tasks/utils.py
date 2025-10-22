@@ -151,7 +151,7 @@ def load_image(win: visual.Window, path: Union[str, os.PathLike]) -> visual.Imag
 
 def load_slide(win: visual.Window, name: Union[str, os.PathLike]) -> visual.ImageStim:
     """
-    Locate the specified image  and create an image stimulus.
+    Locate the specified image and create an image stimulus.
     :param win: The PsychoPy window object the task will be displayed on.
     :param name: The name of the slide, including the extension
     :return: An image stimulus containing the requested slide
@@ -188,7 +188,15 @@ def load_countdown(win: visual.Window, name: Union[str, os.PathLike]) -> visual.
     return load_video(win, video_path)
 
 
-def get_end_screen(win: visual.Window) -> visual.ImageStim:
+def load_inter_task_slide(win: visual.Window) -> visual.ImageStim:
+    """
+    Returns ImageStim for slide that appears between tasks to inform subject of what is happening.
+    Currently, the default is a slide that says "Thank you. Preparing next task"
+
+    Parameters
+    ----------
+    win     The Psychopy Window object on which to display the slice
+    """
     return load_slide(win, "task_complete.png")
 
 

@@ -93,7 +93,7 @@ class hevelius_task(Task_Eyetracker):
             func_kwargs_func = {"prompt": prompt}
             self.rep += "_I"
             self.show_text(
-                screen=self.press_task_screen,
+                screen=self.task_end_screen,
                 msg="Task-continue-repeat",
                 func=self.run,
                 func_kwargs=func_kwargs_func,

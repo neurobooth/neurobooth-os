@@ -83,7 +83,7 @@ def run_stm(logger):
                     paused = False
 
                     # display 'preparing next task'
-                    end_screen = utl.get_end_screen(session.win)
+                    end_screen = utl.load_inter_task_slide(session.win)
 
                     # TODO: msg is only needed if we need to do markers around this prepare step.
                     # See task.show_text()

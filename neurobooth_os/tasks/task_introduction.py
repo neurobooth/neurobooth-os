@@ -1,7 +1,7 @@
-from neurobooth_os.tasks import Task
+from neurobooth_os.tasks import TaskShell
 
 
-class Introduction_Task(Task):
+class Introduction_Task(TaskShell):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 

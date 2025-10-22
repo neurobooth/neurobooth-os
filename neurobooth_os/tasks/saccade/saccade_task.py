@@ -128,7 +128,7 @@ class Saccade(Eyelink_HostPC):
 
         if prompt:
             self.show_text(
-                screen=self.press_task_screen,
+                screen=self.task_end_screen,
                 msg="Task-continue-repeat",
                 func=self.run_trials,
                 waitKeys=False,

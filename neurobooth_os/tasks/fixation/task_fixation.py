@@ -36,7 +36,7 @@ class Fixation_Target(Task_Eyetracker):
             func_kwargs = locals()
             del func_kwargs["self"]
             self.show_text(
-                screen=self.press_task_screen,
+                screen=self.task_end_screen,
                 msg="Task-continue-repeat",
                 func=self.present_task,
                 func_kwargs=func_kwargs,
