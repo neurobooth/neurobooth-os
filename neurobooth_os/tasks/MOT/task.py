@@ -16,7 +16,8 @@ import pandas as pd
 from psychopy import visual
 
 import neurobooth_os
-from neurobooth_os.tasks.task import TaskAborted, Task
+from neurobooth_os.tasks.task import Task
+from neurobooth_os.tasks.task_basic import TaskAborted
 from neurobooth_os.tasks import Task_Eyetracker, utils
 from neurobooth_os.tasks.MOT.frame import (
     MOTFrame,

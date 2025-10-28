@@ -8,7 +8,7 @@ from psychopy.core import CountdownTimer
 from psychopy.visual import TextStim, ImageStim
 from psychopy.visual.rect import Rect
 
-from neurobooth_os.tasks.task import TaskAborted
+from neurobooth_os.tasks.task_basic import TaskAborted
 from neurobooth_os.tasks.task_eyetracker import Eyelink_HostPC, EyelinkColor
 from neurobooth_os.iout.stim_param_reader import get_cfg_path
 

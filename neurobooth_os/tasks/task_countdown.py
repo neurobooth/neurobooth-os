@@ -3,7 +3,7 @@ from __future__ import division, absolute_import
 from pylsl import local_clock
 
 from neurobooth_os.tasks import Task, utils
-from neurobooth_os.tasks.task import TaskAborted
+from neurobooth_os.tasks.task_basic import TaskAborted
 
 
 class Task_countdown(Task):
