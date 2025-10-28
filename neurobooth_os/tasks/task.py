@@ -25,7 +25,7 @@ class Task(InstructionTask):
             text_task=utils.text_task,
             **kwargs,
     ):
-        super().__init__()
+        super().__init__(**kwargs)
 
         # Common markers
         self.marker_task_start = "Task_start"
