@@ -5,13 +5,10 @@
 from __future__ import absolute_import, division
 
 import neurobooth_os
-import neurobooth_os.iout.metadator as meta
 
 from psychopy import logging as psychopy_logging
 
-from neurobooth_os.msg.messages import StatusMessage, Request
 from neurobooth_os.tasks import utils
-from neurobooth_os.tasks.task_basic import TaskAborted
 from neurobooth_os.tasks.task_instruction import InstructionTask
 
 from psychopy import event
@@ -50,13 +47,6 @@ class Task(InstructionTask):
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
 
-    def countdown_to_stimulus(self):
-        """
-        Displays countdown video prior to the start of stimulus
-        """
-        utils.play_video(self.win, self.countdown_video, wait_time=4, stop=False)
-        utils.play_tone()
-
     def present_task(self, prompt=True, duration=0, **kwargs):
         self.countdown_to_stimulus()
         self.show_text(screen=self.task_screen, msg="Task", audio=None, wait_time=3)
@@ -81,13 +71,3 @@ class Task(InstructionTask):
         self.present_complete()
         event.clearEvents(eventType='keyboard')
         return self.events
-
-    def check_if_aborted(self) -> None:
-        """Check to see if a task has been aborted. If so, raise an exception."""
-        # TODO: add Task aborted message to appropriate places in utils
-        if event.getKeys(keyList=self.abort_keys):
-            with meta.get_database_connection() as db_conn:
-                msg = StatusMessage(text="Task aborted")
-                req = Request(source="STM", destination="CTR", body=msg)
-                meta.post_message(req, db_conn)
-            raise TaskAborted()

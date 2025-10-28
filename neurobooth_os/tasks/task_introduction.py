@@ -6,5 +6,4 @@ class Introduction_Task(InstructionTask):
         super().__init__(**kwargs)
 
     def present_instructions(self, prompt: bool = False):
-        print("In Introduction_Task")
         super().present_instructions(prompt=False)

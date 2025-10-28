@@ -240,6 +240,19 @@ def _perform_task(db_conn, device_log_entry_dict, message, session, subj_id: str
 
 
 def _get_task_instance(session: StmSession, task_args: TaskArgs, edf_fname):
+    """
+    Instantiates a task instance and inserts it into task_args for subsequent use.
+
+    Parameters
+    ----------
+    session
+    task_args
+    edf_fname
+
+    Returns
+    -------
+
+    """
     global calib_instructions
     # Create task instance and load media
     t1 = time()

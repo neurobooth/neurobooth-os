@@ -10,7 +10,9 @@ import logging
 
 from psychopy import visual, event
 
+from neurobooth_os.iout import metadator as meta
 from neurobooth_os.iout.stim_param_reader import get_cfg_path
+from neurobooth_os.msg.messages import StatusMessage, Request
 from neurobooth_os.tasks import utils
 import neurobooth_os.config as cfg
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -55,13 +57,14 @@ class BasicTask:
 
         self.full_screen = full_screen
         self.win = win
+
         if win is None:
-            # Set up the Window
-            self.win = utils.make_win(self.full_screen)
-            self.win_temp = True
-        else:
-            self.win = win
-            self.win_temp = False
+            raise ValueError(f"No window provided in task {kwargs}")
+            # # Set up the Window
+            # self.win = utils.make_win(self.full_screen)
+            # self.win_temp = True
+
+        self.win_temp = False
 
         self.events = []
 
@@ -222,7 +225,6 @@ class BasicTask:
             self._add_event(msg)
 
     def run(self, prompt=True, duration=0, subj_id=None, **kwargs):
-        print(f"IN BasicTask: prompt = {prompt}")
         self.present_instructions(prompt)
         event.clearEvents(eventType='keyboard')
         self.present_practice(subj_id)
@@ -242,3 +244,20 @@ class BasicTask:
         :return: The file system path to the asset in the config folder.
         """
         return op.join(get_cfg_path('assets'), task_name, asset)
+
+    def countdown_to_stimulus(self):
+        """
+        Displays countdown video prior to the start of stimulus
+        """
+        utils.play_video(self.win, self.countdown_video, wait_time=4, stop=False)
+        utils.play_tone()
+
+    def check_if_aborted(self) -> None:
+        """Check to see if a task has been aborted. If so, raise an exception."""
+        # TODO: add Task aborted message to appropriate places in utils
+        if event.getKeys(keyList=self.abort_keys):
+            with meta.get_database_connection() as db_conn:
+                msg = StatusMessage(text="Task aborted")
+                req = Request(source="STM", destination="CTR", body=msg)
+                meta.post_message(req, db_conn)
+            raise TaskAborted()
