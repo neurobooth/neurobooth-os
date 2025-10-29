@@ -52,6 +52,7 @@ class Saccade(Eyelink_HostPC):
 
     def run(self, prompt=True, **kwarg):
         self.present_instructions(prompt)
+        self.present_countdown()
         self.run_trials(prompt)
         self.present_complete()
         return self.events
@@ -63,8 +64,6 @@ class Saccade(Eyelink_HostPC):
         amp_x, amp_y = self.movement_pars
         tar_x = amp_x
         tar_y = amp_y
-
-        self.countdown_to_stimulus()
 
         # Send a message to mark movement onset
         self.sendMessage(self.marker_task_start)
