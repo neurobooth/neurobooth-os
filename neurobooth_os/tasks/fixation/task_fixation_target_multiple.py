@@ -19,7 +19,6 @@ class Fixation_Target_Multiple(Eyelink_HostPC):
     ):
 
         self.sendMessage(self.marker_task_start)
-        self.countdown_to_stimulus()
 
         for pos in trial_pos:
             self.target.pos = [self.deg_2_pix(pos[0]), self.deg_2_pix(pos[1])]

@@ -10,6 +10,10 @@ class Stance(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def present_countdown(self) -> None:
+        """No countdown before present_task"""
+        pass
+
     def update_screen_color_to_white(self):
         # change screen color from grey to white and flip to update the screen
         # wrapper around utils.change_win_color

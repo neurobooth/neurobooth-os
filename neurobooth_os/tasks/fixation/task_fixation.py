@@ -15,7 +15,6 @@ class Fixation_Target(Task_Eyetracker):
     def present_task(
         self, prompt=True, duration=3, target_pos=(-10, 5), target_size=0.7, **kwargs
     ):
-        self.countdown_to_stimulus()
         self.target.pos = [self.deg_2_pix(target_pos[0]), self.deg_2_pix(target_pos[1])]
         self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
         if sum(self.target.size):

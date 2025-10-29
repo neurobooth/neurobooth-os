@@ -47,8 +47,13 @@ class Task(InstructionTask):
         self.practice_screen = utils.create_text_screen(self.win, text_practice_screen)
         self.task_screen = utils.create_text_screen(self.win, text_task)
 
-    def present_task(self, prompt=True, duration=0, **kwargs):
+    def present_countdown(self) -> None:
+        """
+        Overrides present_countdown to perform a countdown prior to present_task for my subclasses
+        """
         self.countdown_to_stimulus()
+
+    def present_task(self, prompt=True, duration=0, **kwargs):
         self.show_text(screen=self.task_screen, msg="Task", audio=None, wait_time=3)
         if prompt:
             self.show_text(
@@ -60,14 +65,3 @@ class Task(InstructionTask):
 
     def present_practice(self, subj_id=None):
         pass
-
-    def run(self, prompt=True, duration=0, subj_id=None, **kwargs):
-        self.present_instructions(prompt)
-        event.clearEvents(eventType='keyboard')
-        self.present_practice(subj_id)
-        event.clearEvents(eventType='keyboard')
-        self.present_task(prompt=prompt, duration=duration, **kwargs)
-        event.clearEvents(eventType='keyboard')
-        self.present_complete()
-        event.clearEvents(eventType='keyboard')
-        return self.events

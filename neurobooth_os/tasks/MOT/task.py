@@ -152,6 +152,10 @@ class MOT(Task_Eyetracker):
         except TaskAborted:
             print('MOT aborted')
 
+    def present_countdown(self) -> None:
+        """No countdown before present_task"""
+        pass
+
     def present_task(self, prompt=True, duration=0, **kwargs):
         try:
             for chunk in self.test_chunks:

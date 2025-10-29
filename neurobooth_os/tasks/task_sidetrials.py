@@ -9,6 +9,10 @@ class Task_sidetrials(Task_Eyetracker):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def present_countdown(self) -> None:
+        """ No countdown prior to start of task. Countdown is presented in each trial"""
+        pass
+
     def present_task(
         self,
         prompt=True,

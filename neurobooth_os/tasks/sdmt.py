@@ -230,6 +230,10 @@ class SDMT(Eyelink_HostPC):
         self.show_slide('after_practice')
         self._wait_for_advance()
 
+    def present_countdown(self) -> None:
+        """ No countdown prior to start of task."""
+        pass
+
     def present_task(self, prompt=True, duration=0, **kwargs):
         self.Mouse.setVisible(self.mouse_visible)
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)

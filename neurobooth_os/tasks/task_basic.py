@@ -100,7 +100,6 @@ class BasicTask:
         self.task_end_screen = utils.load_slide(self.win, task_end_img)
 
     def present_countdown(self):
-        """TODO: Is this useful?"""
         pass
 
     def present_instructions(self, prompt: bool = True):
@@ -228,6 +227,8 @@ class BasicTask:
         self.present_instructions(prompt)
         event.clearEvents(eventType='keyboard')
         self.present_practice(subj_id)
+        event.clearEvents(eventType='keyboard')
+        self.present_countdown()
         event.clearEvents(eventType='keyboard')
         self.present_task(prompt=prompt, duration=duration, **kwargs)
         event.clearEvents(eventType='keyboard')
