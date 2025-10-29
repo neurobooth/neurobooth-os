@@ -4,6 +4,8 @@ from neurobooth_os.tasks.task_basic import BasicTask
 class InstructionTask(BasicTask):
     """
     A basic task that includes presenting instructions by default
+
+    It also includes present_complete through inheritance from BasicTask
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
