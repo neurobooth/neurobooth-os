@@ -34,6 +34,7 @@ class Pursuit(Eyelink_HostPC):
 
     def run(self, prompt=True, **kwarg):
         self.present_instructions(prompt)
+        self.present_countdown()
         self.run_trial(prompt, self.mov_pars)
         self.present_complete()
         return self.events
@@ -50,12 +51,6 @@ class Pursuit(Eyelink_HostPC):
 
         # Parse the movement pattern parameters
         amp_x, amp_y, phase_x, phase_y, freq_x, freq_y = movement_pars
-
-        # Record_status_message : show some info on the Host PC
-        # self.sendCommand("record_status_message 'Pursuit task'")
-        # self.startRecording()
-
-        self.countdown_to_stimulus()
 
         # Send a message to mark movement onset
         self.sendMessage(self.marker_task_start)
