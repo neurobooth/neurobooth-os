@@ -197,7 +197,8 @@ def load_inter_task_slide(win: visual.Window) -> visual.ImageStim:
     ----------
     win     The Psychopy Window object on which to display the slice
     """
-    # TODO: Move the slide name to config
+    # TODO: Move the slide name to config if possible. This is made difficult by the fact that Tasks are reused
+    #   across collections and the inter-task slide should really be dependent on the position in collection.
     return load_slide(win, "task_complete.png")
 
 

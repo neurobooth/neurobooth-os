@@ -108,6 +108,19 @@ class BasicTask:
     def present_task(self, duration, **kwargs):
         pass
 
+    def present_countdown_and_task(self, duration: int, **kwargs):
+        self.present_countdown()
+        event.clearEvents(eventType='keyboard')
+        self.present_task(duration=duration, **kwargs)
+        event.clearEvents(eventType='keyboard')
+
+        self.show_text(
+            screen=self.task_end_screen,
+            msg="Task-continue-repeat",
+            func=self.present_countdown_and_task,
+            waitKeys=False,
+        )
+
     def present_complete(self) -> None:
         """Presents a slide to subjects while they are waiting for the following task to start"""
 
@@ -227,24 +240,18 @@ class BasicTask:
         self.present_practice(subj_id)
         event.clearEvents(eventType='keyboard')
 
-        self.present_countdown()
-        event.clearEvents(eventType='keyboard')
-        self.present_task(duration=duration, **kwargs)
-        event.clearEvents(eventType='keyboard')
+        self.present_countdown_and_task(duration, **kwargs)
 
-        if show_continue_repeat_slide:
-            self.present_countdown()
-            event.clearEvents(eventType='keyboard')
-            self.present_task(duration=duration, **kwargs)
-            event.clearEvents(eventType='keyboard')
+        # self.present_countdown()
+        # event.clearEvents(eventType='keyboard')
+        # self.present_task(duration=duration, **kwargs)
+        # event.clearEvents(eventType='keyboard')
 
-        # self.show_text(
-        #     screen=self.task_end_screen,
-        #     msg="Task-continue-repeat",
-        #     func=self.present_task,
-        #     waitKeys=False,
-        # )
-
+        # if show_continue_repeat_slide:
+        #     self.present_countdown()
+        #     event.clearEvents(eventType='keyboard')
+        #     self.present_task(duration=duration, **kwargs)
+        #     event.clearEvents(eventType='keyboard')
 
         self.present_complete()
         event.clearEvents(eventType='keyboard')
