@@ -125,7 +125,7 @@ class DSC(Task_Eyetracker):
                 self.frameSequence.append(frame)
                 break
 
-    def present_task(self, prompt=True, duration=0, **kwargs):
+    def present_task(self, duration=0, **kwargs):
 
         while len(self.frameSequence):
             frame: FrameDef = self.frameSequence.pop(0)
@@ -180,16 +180,16 @@ class DSC(Task_Eyetracker):
             self.win.close()
 
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
-        if prompt:
-            func_kwargs_func = {"prompt": prompt}
-            self.rep += "_I"
-            self.show_text(
-                screen=self.task_end_screen,
-                msg="Task-continue-repeat",
-                func=self.run,
-                func_kwargs=func_kwargs_func,
-                waitKeys=False,
-            )
+        # if show_continue_repeat_slide:
+        #     func_kwargs_func = {"prompt": show_continue_repeat_slide}
+        #     self.rep += "_I"
+        #     self.show_text(
+        #         screen=self.task_end_screen,
+        #         msg="Task-continue-repeat",
+        #         func=self.run,
+        #         func_kwargs=func_kwargs_func,
+        #         waitKeys=False,
+        #     )
         self.io.quit()
 
     def _wait_release(self, keys=None):

@@ -10,7 +10,7 @@ class Standing(Stance):
 
     def present_task(
         self,
-        prompt=True,
+        show_continue_repeat_slide=True,
         duration=0,
         wait_keys=True,
         trial_intruct=["Standing Trial 1", "Standing Trial 2"],
@@ -32,16 +32,16 @@ class Standing(Stance):
 
         self.send_marker(self.marker_task_end)
 
-        if prompt:
-            func_kwargs = locals()
-            del func_kwargs["self"]
-            self.show_text(
-                screen=self.task_end_screen,
-                msg="Task-continue-repeat",
-                func=self.present_task,
-                func_kwargs=func_kwargs,
-                waitKeys=False,
-            )
+        # if show_continue_repeat_slide:
+        #     func_kwargs = locals()
+        #     del func_kwargs["self"]
+        #     self.show_text(
+        #         screen=self.task_end_screen,
+        #         msg="Task-continue-repeat",
+        #         func=self.present_task,
+        #         func_kwargs=func_kwargs,
+        #         waitKeys=False,
+        #     )
 
     def _perform_standing_trial(self, duration: int, wait_keys: bool, trial_text: str, screen_update_interval: int) -> float:
         """

@@ -8,7 +8,6 @@ class Sitting(Stance):
 
     def present_task(
         self,
-        prompt=True,
         duration=5,
         wait_keys=False,
         trial_intruct=["Sitting Posture"],
@@ -25,16 +24,16 @@ class Sitting(Stance):
 
         self.send_marker(self.marker_task_end)
 
-        if prompt:
-            func_kwargs = locals()
-            del func_kwargs["self"]
-            self.show_text(
-                screen=self.task_end_screen,
-                msg="Task-continue-repeat",
-                func=self.present_task,
-                func_kwargs=func_kwargs,
-                waitKeys=False,
-            )
+        # if show_continue_repeat_slide:
+        #     func_kwargs = locals()
+        #     del func_kwargs["self"]
+        #     self.show_text(
+        #         screen=self.task_end_screen,
+        #         msg="Task-continue-repeat",
+        #         func=self.present_task,
+        #         func_kwargs=func_kwargs,
+        #         waitKeys=False,
+        #     )
 
     def _perform_sitting_trial(self, duration: int, wait_keys: bool, trial_text: str):
         """

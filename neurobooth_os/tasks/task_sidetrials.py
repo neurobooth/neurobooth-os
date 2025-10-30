@@ -15,7 +15,7 @@ class Task_sidetrials(Task_Eyetracker):
 
     def present_task(
         self,
-        prompt=True,
+        show_continue_repeat_slide=True,
         duration=3,
         target_pos=(-10, 10),
         target_size=0.7,
@@ -33,7 +33,7 @@ class Task_sidetrials(Task_Eyetracker):
 
         self.sendMessage(self.marker_task_end)
 
-        if prompt:
+        if show_continue_repeat_slide:
             func_kwargs = locals()
             del func_kwargs["self"]
             self.show_text(

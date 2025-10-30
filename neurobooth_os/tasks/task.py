@@ -53,7 +53,7 @@ class Task(InstructionTask):
         """
         self.countdown_to_stimulus()
 
-    def present_task(self, prompt=True, duration=0, **kwargs):
+    def present_task(self, duration=0, **kwargs):
         self.show_text(screen=self.task_screen, msg="Task", audio=None, wait_time=3)
         # if prompt:
         #     self.show_text(

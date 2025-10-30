@@ -108,7 +108,7 @@ class BasicTask:
     def present_practice(self, subj_id: str):
         pass
 
-    def present_task(self, prompt, duration, **kwargs):
+    def present_task(self, duration, **kwargs):
         pass
 
     def present_complete(self) -> None:
@@ -234,12 +234,12 @@ class BasicTask:
 
         self.present_countdown()
         event.clearEvents(eventType='keyboard')
-        self.present_task(prompt=show_continue_repeat_slide, duration=duration, **kwargs)
+        self.present_task(duration=duration, **kwargs)
         event.clearEvents(eventType='keyboard')
         if show_continue_repeat_slide:
             self.present_countdown()
             event.clearEvents(eventType='keyboard')
-            self.present_task(prompt=show_continue_repeat_slide, duration=duration, **kwargs)
+            self.present_task(duration=duration, **kwargs)
             event.clearEvents(eventType='keyboard')
 
         # self.show_text(

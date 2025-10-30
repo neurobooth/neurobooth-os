@@ -13,7 +13,7 @@ class Fixation_Target(Task_Eyetracker):
         super().__init__(**kwargs)
 
     def present_task(
-        self, prompt=True, duration=3, target_pos=(-10, 5), target_size=0.7, **kwargs
+        self, duration=3, target_pos=(-10, 5), target_size=0.7, **kwargs
     ):
         self.target.pos = [self.deg_2_pix(target_pos[0]), self.deg_2_pix(target_pos[1])]
         self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
@@ -31,13 +31,13 @@ class Fixation_Target(Task_Eyetracker):
         )
         self.sendMessage(self.marker_task_end, False)
 
-        if prompt:
-            func_kwargs = locals()
-            del func_kwargs["self"]
-            self.show_text(
-                screen=self.task_end_screen,
-                msg="Task-continue-repeat",
-                func=self.present_task,
-                func_kwargs=func_kwargs,
-                waitKeys=False,
-            )
+        # if show_continue_repeat_slide:
+        #     func_kwargs = locals()
+        #     del func_kwargs["self"]
+        #     self.show_text(
+        #         screen=self.task_end_screen,
+        #         msg="Task-continue-repeat",
+        #         func=self.present_task,
+        #         func_kwargs=func_kwargs,
+        #         waitKeys=False,
+        #     )

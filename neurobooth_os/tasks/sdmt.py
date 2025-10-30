@@ -234,7 +234,7 @@ class SDMT(Eyelink_HostPC):
         """ No countdown prior to start of task."""
         pass
 
-    def present_task(self, prompt=True, duration=0, **kwargs):
+    def present_task(self, duration=0, **kwargs):
         self.Mouse.setVisible(self.mouse_visible)
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
         try:
@@ -244,13 +244,13 @@ class SDMT(Eyelink_HostPC):
             print('SDMT aborted')
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
 
-        if prompt:
-            self.show_text(
-                screen=self.task_end_screen,
-                msg="Task-continue-repeat",
-                func=self.present_task,
-                waitKeys=False,
-            )
+        # if show_continue_repeat_slide:
+        #     self.show_text(
+        #         screen=self.task_end_screen,
+        #         msg="Task-continue-repeat",
+        #         func=self.present_task,
+        #         waitKeys=False,
+        #     )
 
 
 def test_script() -> None:
