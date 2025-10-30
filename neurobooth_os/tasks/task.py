@@ -55,13 +55,13 @@ class Task(InstructionTask):
 
     def present_task(self, prompt=True, duration=0, **kwargs):
         self.show_text(screen=self.task_screen, msg="Task", audio=None, wait_time=3)
-        if prompt:
-            self.show_text(
-                screen=self.task_end_screen,
-                msg="Task-continue-repeat",
-                func=self.present_task,
-                waitKeys=False,
-            )
+        # if prompt:
+        #     self.show_text(
+        #         screen=self.task_end_screen,
+        #         msg="Task-continue-repeat",
+        #         func=self.present_task,
+        #         waitKeys=False,
+        #     )
 
     def present_practice(self, subj_id=None):
         pass

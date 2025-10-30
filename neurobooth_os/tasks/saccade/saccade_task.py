@@ -50,10 +50,10 @@ class Saccade(Eyelink_HostPC):
         else:
             raise ValueError("Only horizontal and vertical saccade is supported")
 
-    def run(self, prompt=True, **kwarg):
-        self.present_instructions(prompt)
+    def run(self, show_continue_repeat_slide=True, **kwarg):
+        self.present_instructions(show_continue_repeat_slide)
         self.present_countdown()
-        self.run_trials(prompt)
+        self.run_trials(show_continue_repeat_slide)
         self.present_complete()
         return self.events
 
@@ -138,4 +138,4 @@ if __name__ == "__main__":
     from neurobooth_os import config
     config.load_config()
     task = Saccade(direction="vertical", amplitude_deg=30)
-    task.run(prompt=False)
+    task.run(show_continue_repeat_slide=False)

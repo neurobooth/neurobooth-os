@@ -32,10 +32,10 @@ class Pursuit(Eyelink_HostPC):
             self.angular_freq,
         ]
 
-    def run(self, prompt=True, **kwarg):
-        self.present_instructions(prompt)
+    def run(self, show_continue_repeat_slide=True, **kwarg):
+        self.present_instructions(show_continue_repeat_slide)
         self.present_countdown()
-        self.run_trial(prompt, self.mov_pars)
+        self.run_trial(show_continue_repeat_slide, self.mov_pars)
         self.present_complete()
         return self.events
 
@@ -138,7 +138,7 @@ if __name__ == "__main__":
         start_phase_deg=0,
         ntrials=5,
         )
-    task.run(prompt=True)
+    task.run(show_continue_repeat_slide=True)
 
     tstmp = task.time_array
     plt.figure()

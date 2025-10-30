@@ -37,4 +37,4 @@ class Passage_Reading(Eyelink_HostPC):
 
 if __name__ == "__main__":
     task = Passage_Reading()
-    task.run(prompt=True, duration=10)
+    task.run(show_continue_repeat_slide=True, duration=10)

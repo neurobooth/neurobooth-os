@@ -49,9 +49,9 @@ class Saccade_synch(Task_Eyetracker):
 
         self.target_positions = [(0, 0), (-480, 0), (0, 0), (480, 0)]
 
-    def run(self, prompt=True, **kwarg):
-        self.present_instructions(prompt)
-        self.run_trials(prompt)
+    def run(self, show_continue_repeat_slide=True, **kwarg):
+        self.present_instructions(show_continue_repeat_slide)
+        self.run_trials(show_continue_repeat_slide)
         self.present_complete()
         return self.events
 
@@ -99,7 +99,7 @@ def test_script() -> None:
     from neurobooth_os.iout.metadator import read_stimuli
     kwargs = read_stimuli()['timing_test_task_1'].model_dump()
     task = Saccade_synch(**kwargs)
-    task.run(prompt=False)
+    task.run(show_continue_repeat_slide=False)
 
 
 if __name__ == "__main__":

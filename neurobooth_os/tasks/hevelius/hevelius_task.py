@@ -44,7 +44,7 @@ class hevelius_task(Task_Eyetracker):
         newloc[1] = int(offset["y"] - loc[1])
         return newloc
 
-    def run(self, prompt=False, last_Task=False, **kwarg):
+    def run(self, show_continue_repeat_slide=False, last_Task=False, **kwarg):
 
         practice_blocks = sorted(
             list(
@@ -59,7 +59,7 @@ class hevelius_task(Task_Eyetracker):
 
         utils.change_win_color(self.win, "grey")
 
-        self.present_instructions(prompt)
+        self.present_instructions(show_continue_repeat_slide)
         self.screen_text = visual.TextStim(
             win=self.win,
             name="",
@@ -89,8 +89,8 @@ class hevelius_task(Task_Eyetracker):
         self.run_blocks(trials_blocks, "")
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
 
-        if prompt:
-            func_kwargs_func = {"prompt": prompt}
+        if show_continue_repeat_slide:
+            func_kwargs_func = {"prompt": show_continue_repeat_slide}
             self.rep += "_I"
             self.show_text(
                 screen=self.task_end_screen,
@@ -383,4 +383,4 @@ if __name__ == "__main__":
     task = hevelius_task(
         record_psychopy=False, full_screen=False, blocks=2, num_iterations=2
     )
-    task.run(prompt=True)
+    task.run(show_continue_repeat_slide=True)

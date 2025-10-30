@@ -223,15 +223,33 @@ class BasicTask:
         if add_event:
             self._add_event(msg)
 
-    def run(self, prompt=True, duration=0, subj_id=None, **kwargs):
-        self.present_instructions(prompt)
+    # TODO: have separate prompts for repeating task and repeating instructions
+    def run(self, show_continue_repeat_slide=True, duration=0, subj_id=None, **kwargs):
+
+        self.present_instructions(show_continue_repeat_slide)
         event.clearEvents(eventType='keyboard')
+
         self.present_practice(subj_id)
         event.clearEvents(eventType='keyboard')
+
         self.present_countdown()
         event.clearEvents(eventType='keyboard')
-        self.present_task(prompt=prompt, duration=duration, **kwargs)
+        self.present_task(prompt=show_continue_repeat_slide, duration=duration, **kwargs)
         event.clearEvents(eventType='keyboard')
+        if show_continue_repeat_slide:
+            self.present_countdown()
+            event.clearEvents(eventType='keyboard')
+            self.present_task(prompt=show_continue_repeat_slide, duration=duration, **kwargs)
+            event.clearEvents(eventType='keyboard')
+
+        # self.show_text(
+        #     screen=self.task_end_screen,
+        #     msg="Task-continue-repeat",
+        #     func=self.present_task,
+        #     waitKeys=False,
+        # )
+
+
         self.present_complete()
         event.clearEvents(eventType='keyboard')
         return self.events
