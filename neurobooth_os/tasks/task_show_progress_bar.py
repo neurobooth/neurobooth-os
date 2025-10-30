@@ -8,6 +8,6 @@ class Task_ShowProgressBar(BasicTask):
         super().__init__(**kwargs)
         self.screen = None
 
-    def present_task(self, show_continue_repeat_slide, duration, **kwargs) -> None:
+    def present_task(self, duration, **kwargs) -> None:
         self.screen = utils.load_slide(self.win, kwargs['slide_image'])
         self.show_text(screen=self.screen, msg="Task", audio=None, wait_time=duration, waitKeys=kwargs['wait_keys'])
