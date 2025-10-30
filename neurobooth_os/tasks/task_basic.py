@@ -60,11 +60,6 @@ class BasicTask:
 
         if win is None:
             raise ValueError(f"No window provided in task {kwargs}")
-            # # Set up the Window
-            # self.win = utils.make_win(self.full_screen)
-            # self.win_temp = True
-
-        self.win_temp = False
 
         self.events = []
 
@@ -76,6 +71,8 @@ class BasicTask:
         else:
             self.with_lsl = False
 
+        # TODO: The countdown file should always be specified in the config. None should throw an exception if
+        #   a countdown file is needed for the task
         if countdown is None:
             countdown = "countdown_2025_06_17.mp4"
         self.countdown_video = utils.load_countdown(self.win, countdown)
@@ -150,8 +147,6 @@ class BasicTask:
         if self.instruction_video is not None:
             self.instruction_video.stop()
         self.countdown_video.stop()
-        if self.win_temp:
-            self.win.close()
 
     def _load_instruction_video(self):
         """
@@ -236,6 +231,7 @@ class BasicTask:
         event.clearEvents(eventType='keyboard')
         self.present_task(duration=duration, **kwargs)
         event.clearEvents(eventType='keyboard')
+
         if show_continue_repeat_slide:
             self.present_countdown()
             event.clearEvents(eventType='keyboard')

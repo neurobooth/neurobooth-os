@@ -176,8 +176,8 @@ class DSC(Task_Eyetracker):
         self.task_files.extend([res_fname, out_fname])
 
         # Close win if just created for the task
-        if self.win_temp:
-            self.win.close()
+        # if self.win_temp:
+        #     self.win.close()
 
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
         # if show_continue_repeat_slide:
@@ -325,8 +325,8 @@ class DSC(Task_Eyetracker):
         self.task_files.extend([res_fname, out_fname])
 
         # Close win if just created for the task
-        if self.win_temp:
-            self.win.close()
+        # if self.win_temp:
+        #     self.win.close()
 
     def _elapsed_time(self) -> float:
         if self.test_start_time == 0:  # Set the test start on the first time this method is called.

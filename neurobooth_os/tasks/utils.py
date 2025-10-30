@@ -197,6 +197,7 @@ def load_inter_task_slide(win: visual.Window) -> visual.ImageStim:
     ----------
     win     The Psychopy Window object on which to display the slice
     """
+    # TODO: Move the slide name to config
     return load_slide(win, "task_complete.png")
 
 
