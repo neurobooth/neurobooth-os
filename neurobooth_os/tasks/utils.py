@@ -280,9 +280,3 @@ def play_video(win, mov, wait_time=1, stop=True):
                 mov.pause()
                 mov.seek(0)
             break
-
-
-def advance():
-    key = get_keys(keyList=["space"])
-    if key == ["space"]:
-        return True
