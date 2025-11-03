@@ -282,18 +282,6 @@ def play_video(win, mov, wait_time=1, stop=True):
             break
 
 
-def rewind_video(win, mov):
-    key = get_keys(keyList=["space", "r"])
-    if key == ["space"]:
-        mov.stop()
-        return False
-    elif key == ["r"]:
-        win.color = [0, 0, 0]
-        win.flip()
-        mov.seek(0)
-        return True
-
-
 def advance():
     key = get_keys(keyList=["space"])
     if key == ["space"]:
