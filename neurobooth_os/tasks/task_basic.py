@@ -146,7 +146,11 @@ class BasicTask:
         """
         pass
 
-    def _show_video(self, video, msg, stop=False):
+    def _show_video(self, video, msg: str, stop=False) -> None:
+        """
+        Plays video, wrapping it in LSL start and end markers
+        TODO: Why are markers sent even if the video is None?
+        """
         self.send_marker(f"{msg}_start", True)
         if video is not None:
             utils.play_video(self.win, video, stop=stop)
