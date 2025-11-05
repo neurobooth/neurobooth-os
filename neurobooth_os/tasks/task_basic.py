@@ -287,7 +287,7 @@ class BasicTask:
             event.clearEvents(eventType='keyboard')
             self.present_task(duration=duration, **kwargs)
             event.clearEvents(eventType='keyboard')
-            repeat_task = self.present_repeat_task_option()
+            repeat_task = self.present_repeat_task_option(show_continue_repeat_slide)
             if not repeat_task:
                 break
 
