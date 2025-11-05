@@ -99,7 +99,7 @@ class BasicTask:
     def present_countdown(self):
         pass
 
-    def present_instructions(self, prompt: bool = True):
+    def present_instructions(self):
         pass
 
     def present_practice(self, subj_id: str):
@@ -107,19 +107,6 @@ class BasicTask:
 
     def present_task(self, duration, **kwargs):
         pass
-
-    def present_countdown_and_task(self, duration: int, **kwargs):
-        self.present_countdown()
-        event.clearEvents(eventType='keyboard')
-        self.present_task(duration=duration, **kwargs)
-        event.clearEvents(eventType='keyboard')
-
-        self.show_text(
-            screen=self.task_end_screen,
-            msg="Task-continue-repeat",
-            func=self.present_countdown_and_task,
-            waitKeys=False,
-        )
 
     def present_complete(self) -> None:
         """Presents a slide to subjects while they are waiting for the following task to start"""
@@ -216,6 +203,49 @@ class BasicTask:
             if self.repeat_advance():
                 func(**func_kwargs)
 
+    def show_repeat_continue_option(
+            self,
+            screen,
+            msg,
+            audio=None,
+            wait_time=0,
+            win_color=(0, 0, 0),
+            waitKeys=True,
+            first_screen=False,
+            abort_keys=None,
+    ) -> bool:
+        """
+        Displays text and returns true if the task or instructions should be repeated
+
+        Parameters
+        ----------
+        screen
+        msg
+        audio
+        wait_time
+        win_color
+        waitKeys
+        first_screen
+        abort_keys
+
+        Returns
+        -------
+        True if the task or instructions referenced in the displayed text should be repeated and False otherwise
+        """
+        self.send_marker(f"{msg}_start", True)
+        utils.present(
+            self.win,
+            screen,
+            audio=audio,
+            wait_time=wait_time,
+            win_color=win_color,
+            waitKeys=waitKeys,
+            first_screen=first_screen,
+            abort_keys=abort_keys,
+        )
+        self.send_marker(f"{msg}_end", True)
+        return self.repeat_advance()
+
     def repeat_advance(self):
         """
          Repeat the current task or continue to next, based on the key pressed.
@@ -238,25 +268,30 @@ class BasicTask:
     # TODO: have separate prompts for repeating task and repeating instructions
     def run(self, show_continue_repeat_slide=True, duration=0, subj_id=None, **kwargs):
 
-        self.present_instructions(show_continue_repeat_slide)
-        event.clearEvents(eventType='keyboard')
+        # Instruction phase (with potential repeat)
+        while True:
+            self.present_instructions()
+            event.clearEvents(eventType='keyboard')
+            repeat_instructions = self.present_repeat_instruction_option(show_continue_repeat_slide)
+            if not repeat_instructions:
+                break
 
+        # Practice phase
+        event.clearEvents(eventType='keyboard')
         self.present_practice(subj_id)
+
+        # Core task phase (with potential repeat)
         event.clearEvents(eventType='keyboard')
+        while True:
+            self.present_countdown()
+            event.clearEvents(eventType='keyboard')
+            self.present_task(duration=duration, **kwargs)
+            event.clearEvents(eventType='keyboard')
+            repeat_task = self.present_repeat_task_option()
+            if not repeat_task:
+                break
 
-        self.present_countdown_and_task(duration, **kwargs)
-
-        # self.present_countdown()
-        # event.clearEvents(eventType='keyboard')
-        # self.present_task(duration=duration, **kwargs)
-        # event.clearEvents(eventType='keyboard')
-
-        # if show_continue_repeat_slide:
-        #     self.present_countdown()
-        #     event.clearEvents(eventType='keyboard')
-        #     self.present_task(duration=duration, **kwargs)
-        #     event.clearEvents(eventType='keyboard')
-
+        event.clearEvents(eventType='keyboard')
         self.present_complete()
         event.clearEvents(eventType='keyboard')
         return self.events
@@ -287,3 +322,31 @@ class BasicTask:
                 req = Request(source="STM", destination="CTR", body=msg)
                 meta.post_message(req, db_conn)
             raise TaskAborted()
+
+    # TODO: Combine with task version to eliminate redundant code
+    def present_repeat_instruction_option(self, show_continue_repeat_slide: bool) -> bool:
+        """
+        Present the option to repeat instructions before stimulus
+        Parameters
+        ----------
+        show_continue_repeat_slide : bool   if true, show the subject a slide offering the option to repeat the
+        instructions. Otherwise, do nothing
+        """
+
+        if show_continue_repeat_slide:
+            return self.show_repeat_continue_option(
+                screen=self.instruction_end_screen,
+                msg="Intructions-continue-repeat",
+                waitKeys=False,
+            )
+
+    def present_repeat_task_option(self, show_continue_repeat_slide: bool) -> bool:
+        if show_continue_repeat_slide:
+            return self.show_repeat_continue_option(
+                screen=self.task_end_screen,
+                msg="Task-continue-repeat",
+                waitKeys=False,
+            )
+
+
+

@@ -88,7 +88,7 @@ def change_win_color(win, color):
     win.flip()
 
 
-def create_text_screen(win, text, text_color: str = "white"):
+def create_text_screen(win, text, text_color: str = "white") -> visual.TextStim:
     screen = visual.TextStim(
         win=win,
         name="",
@@ -245,8 +245,7 @@ def countdown(period: float, abort_keys: Optional[List] = None) -> None:
 
 def get_keys(keyList=()):
     """
-        Function to wait indefinitely until a
-        certain key is pressed 
+        Function to wait indefinitely until a certain key is pressed
     """
     event.clearEvents(eventType='keyboard')
     # Wait for keys checking every 5 ms

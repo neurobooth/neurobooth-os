@@ -71,7 +71,7 @@ class MOTFrame(ABC):
         :param window: The PsychoPy window to draw to.
         """
         self.window = window
-        self.wait_key = 'space'
+        self.wait_key = 'space'   # System waits for this key, but the key ends the waiting and continues the session
 
     @abstractmethod
     def run(self) -> None:

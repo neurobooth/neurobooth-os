@@ -8,5 +8,5 @@ class Introduction_Task(InstructionTask):
     def present_complete(self):
         pass
 
-    def present_instructions(self, show_continue_repeat_slide: bool = False):
-        super().present_instructions(show_continue_repeat_slide=False)
+    def present_repeat_instruction_option(self, show_continue_repeat_slide: bool = False):
+        super().present_repeat_instruction_option(show_continue_repeat_slide=False)

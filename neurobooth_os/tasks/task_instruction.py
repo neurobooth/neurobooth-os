@@ -10,20 +10,9 @@ class InstructionTask(BasicTask):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_instructions(self, show_continue_repeat_slide: bool = True):
+    def present_instructions(self):
         """
-        Present instructions before stimulus
-        Parameters
-        ----------
-        show_continue_repeat_slide : bool   if true, show the subject a slide offering the option to repeat the
-        instructions.
+        Present instructions before stimulus.
         """
         self._load_instruction_video()
         self._show_video(video=self.instruction_video, msg="Intructions")
-        if show_continue_repeat_slide:
-            self.show_text(
-                screen=self.instruction_end_screen,
-                msg="Intructions-continue-repeat",
-                func=self.present_instructions,
-                waitKeys=False,
-            )
