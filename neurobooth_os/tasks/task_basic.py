@@ -23,6 +23,10 @@ class TaskAborted(Exception):
     pass
 
 
+# Clears keyboard events
+def clear(evt):
+    evt.clearEvents(eventType='keyboard')
+
 class BasicTask:
     """
     Skeletal Task implementation that doesn't do anything except implement a run method made up of
@@ -271,29 +275,28 @@ class BasicTask:
         # Instruction phase (with potential repeat)
         while True:
             self.present_instructions()
-            event.clearEvents(eventType='keyboard')
+            clear(event)
             repeat_instructions = self.present_repeat_instruction_option(show_continue_repeat_slide)
             if not repeat_instructions:
                 break
 
         # Practice phase
-        event.clearEvents(eventType='keyboard')
+        clear(event)
         self.present_practice(subj_id)
 
         # Core task phase (with potential repeat)
-        event.clearEvents(eventType='keyboard')
+        clear(event)
         while True:
             self.present_countdown()
-            event.clearEvents(eventType='keyboard')
+            clear(event)
             self.present_task(duration=duration, **kwargs)
-            event.clearEvents(eventType='keyboard')
+            clear(event)
             repeat_task = self.present_repeat_task_option(show_continue_repeat_slide)
             if not repeat_task:
                 break
-
-        event.clearEvents(eventType='keyboard')
+        clear(event)
         self.present_complete()
-        event.clearEvents(eventType='keyboard')
+        clear(event)
         return self.events
 
     @classmethod
