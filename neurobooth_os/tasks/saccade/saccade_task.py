@@ -50,14 +50,7 @@ class Saccade(Eyelink_HostPC):
         else:
             raise ValueError("Only horizontal and vertical saccade is supported")
 
-    def run(self, show_continue_repeat_slide=True, **kwarg):
-        self.present_instructions(show_continue_repeat_slide)
-        self.present_countdown()
-        self.run_trials(show_continue_repeat_slide)
-        self.present_complete()
-        return self.events
-
-    def run_trials(self, prompt=True):
+    def present_task(self, prompt=True, **kwargs):
         """Run a smooth pursuit trial"""
 
         # Parse the movement pattern parameters
@@ -124,14 +117,6 @@ class Saccade(Eyelink_HostPC):
 
         # Send a 'TRIAL_RESULT' message to mark the end of the trial
         self.sendMessage("TRIAL_RESULT")
-
-        if prompt:
-            self.show_text(
-                screen=self.task_end_screen,
-                msg="Task-continue-repeat",
-                func=self.run_trials,
-                waitKeys=False,
-            )
 
 
 if __name__ == "__main__":
