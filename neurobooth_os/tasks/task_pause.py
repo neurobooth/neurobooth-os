@@ -7,7 +7,8 @@ from neurobooth_os.tasks.task_basic import BasicTask
 class Task_pause(BasicTask):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.slide_image = "end_slide_01_23_25.jpg"
+
+        self.slide_image = kwargs['slide_image']
         self.wait_key = kwargs['wait_key']
         self.screen = None
 
