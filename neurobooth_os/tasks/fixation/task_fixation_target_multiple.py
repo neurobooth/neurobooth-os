@@ -40,17 +40,6 @@ class Fixation_Target_Multiple(Eyelink_HostPC):
         self.sendMessage(self.marker_task_end)
         self.clear_screen()
 
-        # if show_continue_repeat_slide:
-        #     func_kwargs = locals()
-        #     del func_kwargs["self"]
-        #     self.show_text(
-        #         screen=self.task_end_screen,
-        #         msg="Task-continue-repeat",
-        #         func=self.present_task,
-        #         func_kwargs=func_kwargs,
-        #         waitKeys=False,
-        #     )
-
 
 if __name__ == "__main__":
 
