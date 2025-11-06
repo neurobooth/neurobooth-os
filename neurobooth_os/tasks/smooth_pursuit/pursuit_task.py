@@ -32,14 +32,10 @@ class Pursuit(Eyelink_HostPC):
             self.angular_freq,
         ]
 
-    def run(self, show_continue_repeat_slide=True, **kwarg):
-        self.present_instructions(show_continue_repeat_slide)
-        self.present_countdown()
-        self.run_trial(show_continue_repeat_slide, self.mov_pars)
-        self.present_complete()
-        return self.events
+    def present_task(self, duration=0, **kwargs):
+        self.run_trial(self.mov_pars)
 
-    def run_trial(self, prompt, movement_pars):
+    def run_trial(self, movement_pars):
         """Run a smooth pursuit trial
 
         trial_duration: the duration of the pursuit movement
@@ -116,15 +112,15 @@ class Pursuit(Eyelink_HostPC):
         # Send a 'TRIAL_RESULT' message to mark the end of the trial
         self.sendMessage("TRIAL_RESULT")
 
-        if prompt:
-            func_kwargs_func = {"prompt": prompt, "movement_pars": movement_pars}
-            self.show_text(
-                screen=self.task_end_screen,
-                msg="Task-continue-repeat",
-                func=self.run_trial,
-                func_kwargs=func_kwargs_func,
-                waitKeys=False,
-            )
+        # if prompt:
+        #     func_kwargs_func = {"prompt": prompt, "movement_pars": movement_pars}
+        #     self.show_text(
+        #         screen=self.task_end_screen,
+        #         msg="Task-continue-repeat",
+        #         func=self.run_trial,
+        #         func_kwargs=func_kwargs_func,
+        #         waitKeys=False,
+        #     )
 
 
 if __name__ == "__main__":
