@@ -23,15 +23,6 @@ class Passage_Reading(Eyelink_HostPC):
         self.Mouse.setVisible(1)  # Allow participants to use the mouse to assist their reading
         screen = utils.load_image(self.win, Task.asset_path(self.image_to_render_on_HostPC, 'passage_reading'))
         self.show_text(screen=screen, msg="Task", audio=None, wait_time=duration)
-
-        if show_continue_repeat_slide:
-            self.show_text(
-                screen=self.task_end_screen,
-                msg="Task-continue-repeat",
-                func=self.present_task,
-                waitKeys=False,
-            )
-
         self.clear_screen()
 
 
