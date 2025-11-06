@@ -55,13 +55,28 @@ class Task(InstructionTask):
 
     def present_task(self, duration=0, **kwargs):
         self.show_text(screen=self.task_screen, msg="Task", audio=None, wait_time=3)
-        # if prompt:
-        #     self.show_text(
-        #         screen=self.task_end_screen,
-        #         msg="Task-continue-repeat",
-        #         func=self.present_task,
-        #         waitKeys=False,
-        #     )
 
-    def present_practice(self, subj_id=None):
-        pass
+    # TODO: Combine with task version to eliminate redundant code
+    def present_repeat_instruction_option(self, show_continue_repeat_slide: bool) -> bool:
+        """
+        Present the option to repeat instructions before stimulus
+        Parameters
+        ----------
+        show_continue_repeat_slide : bool   if true, show the subject a slide offering the option to repeat the
+        instructions. Otherwise, do nothing
+        """
+
+        if show_continue_repeat_slide:
+            return self.show_repeat_continue_option(
+                screen=self.instruction_end_screen,
+                msg="Intructions-continue-repeat",
+                waitKeys=False,
+            )
+
+    def present_repeat_task_option(self, show_continue_repeat_slide: bool) -> bool:
+        if show_continue_repeat_slide:
+            return self.show_repeat_continue_option(
+                screen=self.task_end_screen,
+                msg="Task-continue-repeat",
+                waitKeys=False,
+            )

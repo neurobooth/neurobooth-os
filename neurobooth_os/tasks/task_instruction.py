@@ -10,12 +10,6 @@ class InstructionTask(BasicTask):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_repeat_task_option(self, show_continue_repeat_slide: bool) -> bool:
-        """
-        Don't offer to repeat instructions
-        """
-        pass
-
     def present_instructions(self):
         """
         Present instructions before stimulus.

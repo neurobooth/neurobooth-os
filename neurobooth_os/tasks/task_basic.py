@@ -27,6 +27,7 @@ class TaskAborted(Exception):
 def clear(evt):
     evt.clearEvents(eventType='keyboard')
 
+
 class BasicTask:
     """
     Skeletal Task implementation that doesn't do anything except implement a run method made up of
@@ -326,30 +327,14 @@ class BasicTask:
                 meta.post_message(req, db_conn)
             raise TaskAborted()
 
-    # TODO: Combine with task version to eliminate redundant code
+    def present_repeat_task_option(self, show_continue_repeat_slide: bool) -> bool:
+        """
+        Don't offer to repeat tasks
+        """
+        pass
+
     def present_repeat_instruction_option(self, show_continue_repeat_slide: bool) -> bool:
         """
-        Present the option to repeat instructions before stimulus
-        Parameters
-        ----------
-        show_continue_repeat_slide : bool   if true, show the subject a slide offering the option to repeat the
-        instructions. Otherwise, do nothing
+        Don't offer to repeat instructions
         """
-
-        if show_continue_repeat_slide:
-            return self.show_repeat_continue_option(
-                screen=self.instruction_end_screen,
-                msg="Intructions-continue-repeat",
-                waitKeys=False,
-            )
-
-    def present_repeat_task_option(self, show_continue_repeat_slide: bool) -> bool:
-        if show_continue_repeat_slide:
-            return self.show_repeat_continue_option(
-                screen=self.task_end_screen,
-                msg="Task-continue-repeat",
-                waitKeys=False,
-            )
-
-
-
+        pass
