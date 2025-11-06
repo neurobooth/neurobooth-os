@@ -11,11 +11,7 @@ class Task_pause(BasicTask):
         self.wait_key = kwargs['wait_key']
         self.screen = None
 
-    def present_task(self, **kwarg):
-        if self.wait_key is None:
-            raise Exception("self.wait_key is none")
-        else:
-            print(f"wait_key = {self.wait_key}")
+    def present_task(self, duration, **kwarg):
         self.screen = utils.load_slide(self.win, self.slide_image)
         self.screen.draw()
         self.win.flip()
