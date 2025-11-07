@@ -112,16 +112,6 @@ class Pursuit(Eyelink_HostPC):
         # Send a 'TRIAL_RESULT' message to mark the end of the trial
         self.sendMessage("TRIAL_RESULT")
 
-        # if prompt:
-        #     func_kwargs_func = {"prompt": prompt, "movement_pars": movement_pars}
-        #     self.show_text(
-        #         screen=self.task_end_screen,
-        #         msg="Task-continue-repeat",
-        #         func=self.run_trial,
-        #         func_kwargs=func_kwargs_func,
-        #         waitKeys=False,
-        #     )
-
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt

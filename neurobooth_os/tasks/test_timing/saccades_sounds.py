@@ -49,13 +49,10 @@ class Saccade_synch(Task_Eyetracker):
 
         self.target_positions = [(0, 0), (-480, 0), (0, 0), (480, 0)]
 
-    def run(self, show_continue_repeat_slide=True, **kwarg):
-        self.present_instructions(show_continue_repeat_slide)
-        self.run_trials(show_continue_repeat_slide)
-        self.present_complete()
-        return self.events
+    def present_task(self, duration=0, **kwargs):
+        self.run_trials()
 
-    def run_trials(self, prompt=True):
+    def run_trials(self):
         """Run an altered saccades task that changes the screen color and plays a tone at every transition."""
         self.target.size = self.pointer_size_pixel
         self.target.pos = self.target_positions[-1]
@@ -86,13 +83,12 @@ class Saccade_synch(Task_Eyetracker):
 
         self.sendMessage(self.marker_task_end)
 
-        if prompt:
-            self.show_text(
-                screen=self.task_end_screen,
-                msg="Task-continue-repeat",
-                func=self.run_trials,
-                waitKeys=False,
-            )
+        self.show_text(
+            screen=self.task_end_screen,
+            msg="Task-continue-repeat",
+            func=self.run_trials,
+            waitKeys=False,
+        )
 
 
 def test_script() -> None:
