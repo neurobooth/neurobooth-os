@@ -32,17 +32,6 @@ class Task_sidetrials(Task_Eyetracker):
 
         self.sendMessage(self.marker_task_end)
 
-        # if show_continue_repeat_slide:
-        #     func_kwargs = locals()
-        #     del func_kwargs["self"]
-        #     self.show_text(
-        #         screen=self.task_end_screen,
-        #         msg="Task-continue-repeat",
-        #         func=self.present_task,
-        #         func_kwargs=func_kwargs,
-        #         waitKeys=False,
-        #     )
-
     def perform_trial(self, duration, target_pos, target_size):
         self._calc_target_position_and_size(target_pos, target_size)
         # Send event to eyetracker and to LSL separately

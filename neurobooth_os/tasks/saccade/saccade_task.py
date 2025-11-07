@@ -50,7 +50,7 @@ class Saccade(Eyelink_HostPC):
         else:
             raise ValueError("Only horizontal and vertical saccade is supported")
 
-    def present_task(self, prompt=True, **kwargs):
+    def present_task(self, **kwargs):
         """Run a smooth pursuit trial"""
 
         # Parse the movement pattern parameters
