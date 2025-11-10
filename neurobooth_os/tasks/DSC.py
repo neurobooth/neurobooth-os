@@ -99,6 +99,9 @@ class DSC(Task_Eyetracker):
             units="deg",
         )
 
+    def present_countdown(self) -> None:
+        pass
+
     def present_practice(self, subj_id=None):
 
         self.results = []  # array to store trials details and responses
