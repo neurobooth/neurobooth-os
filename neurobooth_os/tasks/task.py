@@ -9,14 +9,14 @@ import neurobooth_os
 from psychopy import logging as psychopy_logging
 
 from neurobooth_os.tasks import utils
-from neurobooth_os.tasks.task_instruction import InstructionTask
+from neurobooth_os.tasks.task_basic import BasicTask
 
 from psychopy import event
 
 psychopy_logging.console.setLevel(psychopy_logging.CRITICAL)
 
 
-class Task(InstructionTask):
+class Task(BasicTask):
 
     def __init__(
             self,
@@ -52,6 +52,13 @@ class Task(InstructionTask):
         Overrides present_countdown to perform a countdown prior to present_task for my subclasses
         """
         self.countdown_to_stimulus()
+
+    def present_instructions(self):
+        """
+        Present instructions before stimulus.
+        """
+        self._load_instruction_video()
+        self._show_video(video=self.instruction_video, msg="Intructions")
 
     def present_task(self, duration=0, **kwargs):
         self.show_text(screen=self.task_screen, msg="Task", audio=None, wait_time=3)
