@@ -13,7 +13,7 @@ class Task_sidetrials(Task_Eyetracker):
         """ No countdown prior to start of task. Countdown is presented in each trial"""
         pass
 
-    def present_task(
+    def present_stimulus(
         self,
         duration=3,
         target_pos=(-10, 10),

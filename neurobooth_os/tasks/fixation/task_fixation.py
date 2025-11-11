@@ -12,7 +12,7 @@ class Fixation_Target(Task_Eyetracker):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_task(
+    def present_stimulus(
         self, duration=3, target_pos=(-10, 5), target_size=0.7, **kwargs
     ):
         self.target.pos = [self.deg_2_pix(target_pos[0]), self.deg_2_pix(target_pos[1])]

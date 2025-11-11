@@ -8,7 +8,7 @@ class Standing(Stance):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_task(
+    def present_stimulus(
         self,
         show_continue_repeat_slide=True,
         duration=0,

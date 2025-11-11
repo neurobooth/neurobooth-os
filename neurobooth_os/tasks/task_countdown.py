@@ -15,7 +15,7 @@ class Task_countdown(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_task(self, duration, **kwargs):
+    def present_stimulus(self, duration, **kwargs):
 
         self.send_marker(self.marker_task_start, True)
         utils.present(self.win, self.task_screen, waitKeys=False)

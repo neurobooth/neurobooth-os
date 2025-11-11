@@ -234,7 +234,7 @@ class SDMT(Eyelink_HostPC):
         """ No countdown prior to start of task."""
         pass
 
-    def present_task(self, duration=0, **kwargs):
+    def present_stimulus(self, duration=0, **kwargs):
         self.Mouse.setVisible(self.mouse_visible)
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
         try:

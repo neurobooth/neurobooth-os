@@ -31,9 +31,10 @@ def clear(evt):
 class BasicTask:
     """
     Skeletal Task implementation that doesn't do anything except implement a run method made up of
-    steps that can be overridden in subclasses.
+    steps that can be overridden in subclasses.  See the run() method comment for details
 
-    Should never be instantiated directly
+    Should never be instantiated directly. Most tasks should subclass from Task, which provides real implementations for
+    most of the steps.  Very simple tasks may subclass from here directly.
 
     Note: incorrect file paths passed to Psychopy may cause the python interpreter to crash without raising an error.
     These file paths must be checked before passing and an appropriate error raised, so they're checked inline
@@ -102,15 +103,32 @@ class BasicTask:
         self.task_end_screen = utils.load_slide(self.win, task_end_img)
 
     def present_countdown(self):
+        """ Present a countdown video before the task starts """
         pass
 
     def present_instructions(self):
+        """ Present instructions for the task. If the 'task' is strictly informational,
+        this may be the only thing presented """
+        pass
+
+    def present_repeat_instruction_option(self, show_continue_repeat_slide: bool) -> bool:
+        """
+        Offer to repeat instructions if show_continue_repeat_slide is True
+        """
         pass
 
     def present_practice(self, subj_id: str):
+        """ Give the subject the opportunity to practice before beginning the stimuls """
         pass
 
-    def present_task(self, duration, **kwargs):
+    def present_stimulus(self, duration, **kwargs):
+        """ Present the core task functionality for assessing subject performance """
+        pass
+
+    def present_repeat_task_option(self, show_continue_repeat_slide: bool) -> bool:
+        """
+        Offer to repeat the task beginning with the countdown if show_continue_repeat_slide is True
+        """
         pass
 
     def present_complete(self) -> None:
@@ -271,7 +289,33 @@ class BasicTask:
             self._add_event(msg)
 
     # TODO: have separate prompts for repeating task and repeating instructions
-    def run(self, show_continue_repeat_slide=True, duration=0, subj_id=None, **kwargs):
+    def run(self, show_continue_repeat_slide=True, duration=0, subj_id=None, **kwargs) -> None:
+        """
+        This method implements the standard structure for running a task. The steps are:
+        - Presenting instructions
+        - Offering the opportunity to repeat instructions
+        - Presenting a practice phase
+        - Presenting a countdown to the actual task start
+        - Presenting the core task itself
+        - Offering the opportunity to repeat the task, beginning with the countdown
+        - Presenting a message that another task will follow
+
+        In this class all the steps are implemented as separate functions. And they all have 'pass' implementations,
+        except the last one. They should be overridden in subtasks as needed.
+
+        For completely novel Tasks, the entire run method can be overridden
+
+        Parameters
+        ----------
+        show_continue_repeat_slide  If true, the continue_repeat option is presented to subjects.
+        duration    If the core task has a timeout, this is a positive integer, otherwise 0
+        subj_id     The id of the subject
+        kwargs      Any additional args.  # TODO: get rid of these and make the args explicit (to the degree possible)
+
+        Returns     None
+        -------
+
+        """
 
         # Instruction phase (with potential repeat)
         while True:
@@ -290,7 +334,7 @@ class BasicTask:
         while True:
             self.present_countdown()
             clear(event)
-            self.present_task(duration=duration, **kwargs)
+            self.present_stimulus(duration=duration, **kwargs)
             clear(event)
             repeat_task = self.present_repeat_task_option(show_continue_repeat_slide)
             if not repeat_task:
@@ -298,7 +342,6 @@ class BasicTask:
         clear(event)
         self.present_complete()
         clear(event)
-        return self.events
 
     @classmethod
     def asset_path(cls, asset: Union[str, os.PathLike], task_name: Optional[str] = '') -> str:
@@ -326,15 +369,3 @@ class BasicTask:
                 req = Request(source="STM", destination="CTR", body=msg)
                 meta.post_message(req, db_conn)
             raise TaskAborted()
-
-    def present_repeat_task_option(self, show_continue_repeat_slide: bool) -> bool:
-        """
-        Don't offer to repeat tasks
-        """
-        pass
-
-    def present_repeat_instruction_option(self, show_continue_repeat_slide: bool) -> bool:
-        """
-        Don't offer to repeat instructions
-        """
-        pass

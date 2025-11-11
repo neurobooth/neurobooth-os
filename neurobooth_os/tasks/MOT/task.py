@@ -156,7 +156,7 @@ class MOT(Task_Eyetracker):
         """No countdown before present_task"""
         pass
 
-    def present_task(self, duration=0, **kwargs):
+    def present_stimulus(self, duration=0, **kwargs):
         try:
             for chunk in self.test_chunks:
                 self._run_chunk(chunk)

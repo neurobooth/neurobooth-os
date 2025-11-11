@@ -12,7 +12,7 @@ class Task_pause(BasicTask):
         self.wait_key = kwargs['wait_key']
         self.screen = None
 
-    def present_task(self, duration, **kwarg):
+    def present_stimulus(self, duration, **kwarg):
         self.screen = utils.load_slide(self.win, self.slide_image)
         self.screen.draw()
         self.win.flip()

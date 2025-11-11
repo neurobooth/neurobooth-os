@@ -9,7 +9,7 @@ class Fixation_Target_Multiple(Eyelink_HostPC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_task(
+    def present_stimulus(
         self,
         duration=3,
         trial_pos=[(0, 0), (0, 15)],

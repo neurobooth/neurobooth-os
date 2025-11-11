@@ -60,7 +60,7 @@ class Task(BasicTask):
         self._load_instruction_video()
         self._show_video(video=self.instruction_video, msg="Intructions")
 
-    def present_task(self, duration=0, **kwargs):
+    def present_stimulus(self, duration=0, **kwargs):
         self.show_text(screen=self.task_screen, msg="Task", audio=None, wait_time=3)
 
     # TODO: Combine with task version to eliminate redundant code

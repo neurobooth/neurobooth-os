@@ -32,7 +32,7 @@ class Pursuit(Eyelink_HostPC):
             self.angular_freq,
         ]
 
-    def present_task(self, duration=0, **kwargs):
+    def present_stimulus(self, duration=0, **kwargs):
         self.run_trial(self.mov_pars)
 
     def run_trial(self, movement_pars):

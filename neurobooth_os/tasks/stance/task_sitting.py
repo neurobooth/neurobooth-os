@@ -6,7 +6,7 @@ class Sitting(Stance):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_task(
+    def present_stimulus(
         self,
         duration=5,
         wait_keys=False,

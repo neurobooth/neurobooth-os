@@ -15,7 +15,7 @@ class Calibrate(Task_Eyetracker):
 
         super().__init__(**kwargs)
 
-    def present_task(self, **kwargs):
+    def present_stimulus(self, **kwargs):
         fname = kwargs["fname"]
 
         body = NewVideoFile(stream_name=self.eye_tracker.streamName, filename=op.split(fname)[-1])

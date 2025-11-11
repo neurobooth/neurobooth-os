@@ -128,7 +128,7 @@ class DSC(Task_Eyetracker):
                 self.frameSequence.append(frame)
                 break
 
-    def present_task(self, duration=0, **kwargs):
+    def present_stimulus(self, duration=0, **kwargs):
 
         while len(self.frameSequence):
             frame: FrameDef = self.frameSequence.pop(0)
