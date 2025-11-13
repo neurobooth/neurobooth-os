@@ -52,3 +52,9 @@ class Stance(Task):
         self.win.flip()
         key_press = utils.get_keys(self.abort_keys + self.advance_keys)
         return key_press
+
+    def present_repeat_instruction_option(self, show_continue_repeat_slide: bool) -> bool:
+        pass
+
+    def present_repeat_task_option(self, show_continue_repeat_slide: bool) -> bool:
+        pass
