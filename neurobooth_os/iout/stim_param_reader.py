@@ -453,6 +453,11 @@ class ProgressBarStimArgs(StimulusArgs):
     wait_keys: bool = False
 
 
+class BreakVideoStimArgs(StimulusArgs):
+    video_file: str
+    wait_keys: bool = False
+
+
 class StanceStimArgs(StimulusArgs):
     trial_intruct: List[str]
     wait_keys: bool
