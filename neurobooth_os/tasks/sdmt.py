@@ -244,14 +244,6 @@ class SDMT(Eyelink_HostPC):
             print('SDMT aborted')
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
 
-        # if show_continue_repeat_slide:
-        #     self.show_text(
-        #         screen=self.task_end_screen,
-        #         msg="Task-continue-repeat",
-        #         func=self.present_task,
-        #         waitKeys=False,
-        #     )
-
 
 def test_script() -> None:
     from psychopy import monitors, visual

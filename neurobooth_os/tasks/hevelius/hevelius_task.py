@@ -84,29 +84,6 @@ class hevelius_task(Task_Eyetracker):
         self.run_blocks(trials_blocks, "")
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
 
-    # def run(self, show_continue_repeat_slide=False, **kwarg):
-    #
-    #     trials_blocks = sorted(
-    #         list(filter(lambda x: x.startswith("block"), list(self.trials_data.keys())))
-    #     )
-    #
-    #     self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
-    #     self.run_blocks(trials_blocks, "")
-    #     self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
-
-        # if show_continue_repeat_slide:
-        #     func_kwargs_func = {"prompt": show_continue_repeat_slide}
-        #     self.rep += "_I"
-        #     self.show_text(
-        #         screen=self.task_end_screen,
-        #         msg="Task-continue-repeat",
-        #         func=self.run,
-        #         func_kwargs=func_kwargs_func,
-        #         waitKeys=False,
-        #     )
-        # self.present_complete()
-        # return self.events
-
     def run_blocks(self, blocks, block_type):
         for index, block in enumerate(blocks):
             text_continue = (

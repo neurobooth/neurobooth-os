@@ -172,17 +172,6 @@ class MOT(Task_Eyetracker):
 
         self._save_results()
 
-        # if show_continue_repeat_slide:  # Check if task should be repeated
-        #     func_kwargs_func = {"prompt": show_continue_repeat_slide}
-        #     self.n_repetitions += 1
-        #     self.show_text(
-        #         screen=self.task_end_screen,
-        #         msg="Task-continue-repeat",
-        #         func=self.run,
-        #         func_kwargs=func_kwargs_func,
-        #         waitKeys=False,
-        #     )
-
     def _run_chunk(self, chunk: List[MOTFrame]) -> None:
         for frame in chunk:
             try:
