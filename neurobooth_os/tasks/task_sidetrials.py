@@ -9,9 +9,12 @@ class Task_sidetrials(Task_Eyetracker):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_task(
+    def present_countdown(self) -> None:
+        """ No countdown prior to start of task. Countdown is presented in each trial"""
+        pass
+
+    def present_stimulus(
         self,
-        prompt=True,
         duration=3,
         target_pos=(-10, 10),
         target_size=0.7,
@@ -28,17 +31,6 @@ class Task_sidetrials(Task_Eyetracker):
             self.present_trial_ended_msg()
 
         self.sendMessage(self.marker_task_end)
-
-        if prompt:
-            func_kwargs = locals()
-            del func_kwargs["self"]
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.present_task,
-                func_kwargs=func_kwargs,
-                waitKeys=False,
-            )
 
     def perform_trial(self, duration, target_pos, target_size):
         self._calc_target_position_and_size(target_pos, target_size)

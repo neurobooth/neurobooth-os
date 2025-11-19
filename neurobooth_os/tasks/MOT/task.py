@@ -16,7 +16,8 @@ import pandas as pd
 from psychopy import visual
 
 import neurobooth_os
-from neurobooth_os.tasks.task import TaskAborted, Task
+from neurobooth_os.tasks.task import Task
+from neurobooth_os.tasks.task_basic import TaskAborted
 from neurobooth_os.tasks import Task_Eyetracker, utils
 from neurobooth_os.tasks.MOT.frame import (
     MOTFrame,
@@ -151,7 +152,11 @@ class MOT(Task_Eyetracker):
         except TaskAborted:
             print('MOT aborted')
 
-    def present_task(self, prompt=True, duration=0, **kwargs):
+    def present_countdown(self) -> None:
+        """No countdown before present_task"""
+        pass
+
+    def present_stimulus(self, duration=0, **kwargs):
         try:
             for chunk in self.test_chunks:
                 self._run_chunk(chunk)
@@ -166,17 +171,6 @@ class MOT(Task_Eyetracker):
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
 
         self._save_results()
-
-        if prompt:  # Check if task should be repeated
-            func_kwargs_func = {"prompt": prompt}
-            self.n_repetitions += 1
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.run,
-                func_kwargs=func_kwargs_func,
-                waitKeys=False,
-            )
 
     def _run_chunk(self, chunk: List[MOTFrame]) -> None:
         for frame in chunk:

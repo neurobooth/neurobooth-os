@@ -88,7 +88,7 @@ def change_win_color(win, color):
     win.flip()
 
 
-def create_text_screen(win, text, text_color: str = "white"):
+def create_text_screen(win, text, text_color: str = "white") -> visual.TextStim:
     screen = visual.TextStim(
         win=win,
         name="",
@@ -151,7 +151,7 @@ def load_image(win: visual.Window, path: Union[str, os.PathLike]) -> visual.Imag
 
 def load_slide(win: visual.Window, name: Union[str, os.PathLike]) -> visual.ImageStim:
     """
-    Locate the specified image  and create an image stimulus.
+    Locate the specified image and create an image stimulus.
     :param win: The PsychoPy window object the task will be displayed on.
     :param name: The name of the slide, including the extension
     :return: An image stimulus containing the requested slide
@@ -188,7 +188,17 @@ def load_countdown(win: visual.Window, name: Union[str, os.PathLike]) -> visual.
     return load_video(win, video_path)
 
 
-def get_end_screen(win: visual.Window) -> visual.ImageStim:
+def load_inter_task_slide(win: visual.Window) -> visual.ImageStim:
+    """
+    Returns ImageStim for slide that appears between tasks to inform subject of what is happening.
+    Currently, the default is a slide that says "Thank you. Preparing next task"
+
+    Parameters
+    ----------
+    win     The Psychopy Window object on which to display the slice
+    """
+    # TODO: Move the slide name to config if possible. This is made difficult by the fact that Tasks are reused
+    #   across collections and the inter-task slide should really be dependent on the position in collection.
     return load_slide(win, "task_complete.png")
 
 
@@ -235,8 +245,7 @@ def countdown(period: float, abort_keys: Optional[List] = None) -> None:
 
 def get_keys(keyList=()):
     """
-        Function to wait indefinitely until a
-        certain key is pressed 
+        Function to wait indefinitely until a certain key is pressed
     """
     event.clearEvents(eventType='keyboard')
     # Wait for keys checking every 5 ms
@@ -270,21 +279,3 @@ def play_video(win, mov, wait_time=1, stop=True):
                 mov.pause()
                 mov.seek(0)
             break
-
-
-def rewind_video(win, mov):
-    key = get_keys(keyList=["space", "r"])
-    if key == ["space"]:
-        mov.stop()
-        return False
-    elif key == ["r"]:
-        win.color = [0, 0, 0]
-        win.flip()
-        mov.seek(0)
-        return True
-
-
-def advance():
-    key = get_keys(keyList=["space"])
-    if key == ["space"]:
-        return True

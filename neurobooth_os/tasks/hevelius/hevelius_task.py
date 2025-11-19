@@ -3,15 +3,12 @@
 
 from __future__ import absolute_import, division
 import json
-import os
 import os.path as op
-from typing import Union
 
 from psychopy import visual, core, data, event
 from psychopy.constants import NOT_STARTED, STARTED, FINISHED
 
 from neurobooth_os.tasks import utils, Task_Eyetracker, Task
-from neurobooth_os.iout.stim_param_reader import get_cfg_path
 import neurobooth_os
 
 
@@ -44,8 +41,7 @@ class hevelius_task(Task_Eyetracker):
         newloc[1] = int(offset["y"] - loc[1])
         return newloc
 
-    def run(self, prompt=False, last_Task=False, **kwarg):
-
+    def present_practice(self, subj_id: str):
         practice_blocks = sorted(
             list(
                 filter(
@@ -53,13 +49,7 @@ class hevelius_task(Task_Eyetracker):
                 )
             )
         )
-        trials_blocks = sorted(
-            list(filter(lambda x: x.startswith("block"), list(self.trials_data.keys())))
-        )
-
         utils.change_win_color(self.win, "grey")
-
-        self.present_instructions(prompt)
         self.screen_text = visual.TextStim(
             win=self.win,
             name="",
@@ -85,22 +75,14 @@ class hevelius_task(Task_Eyetracker):
         continue_screen = utils.create_text_screen(self.win, text_practice_done)
         self.show_text(continue_screen, msg="Practice session completed")
 
+    def present_stimulus(self, duration=0, **kwargs):
+        trials_blocks = sorted(
+            list(filter(lambda x: x.startswith("block"), list(self.trials_data.keys())))
+        )
+
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
         self.run_blocks(trials_blocks, "")
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
-
-        if prompt:
-            func_kwargs_func = {"prompt": prompt}
-            self.rep += "_I"
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.run,
-                func_kwargs=func_kwargs_func,
-                waitKeys=False,
-            )
-        self.present_complete()
-        return self.events
 
     def run_blocks(self, blocks, block_type):
         for index, block in enumerate(blocks):
@@ -383,4 +365,4 @@ if __name__ == "__main__":
     task = hevelius_task(
         record_psychopy=False, full_screen=False, blocks=2, num_iterations=2
     )
-    task.run(prompt=True)
+    task.run(show_continue_repeat_slide=True)

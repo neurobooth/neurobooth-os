@@ -49,13 +49,10 @@ class Saccade_synch(Task_Eyetracker):
 
         self.target_positions = [(0, 0), (-480, 0), (0, 0), (480, 0)]
 
-    def run(self, prompt=True, **kwarg):
-        self.present_instructions(prompt)
-        self.run_trials(prompt)
-        self.present_complete()
-        return self.events
+    def present_stimulus(self, duration=0, **kwargs):
+        self.run_trials()
 
-    def run_trials(self, prompt=True):
+    def run_trials(self):
         """Run an altered saccades task that changes the screen color and plays a tone at every transition."""
         self.target.size = self.pointer_size_pixel
         self.target.pos = self.target_positions[-1]
@@ -86,20 +83,19 @@ class Saccade_synch(Task_Eyetracker):
 
         self.sendMessage(self.marker_task_end)
 
-        if prompt:
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.run_trials,
-                waitKeys=False,
-            )
+        self.show_text(
+            screen=self.task_end_screen,
+            msg="Task-continue-repeat",
+            func=self.run_trials,
+            waitKeys=False,
+        )
 
 
 def test_script() -> None:
     from neurobooth_os.iout.metadator import read_stimuli
     kwargs = read_stimuli()['timing_test_task_1'].model_dump()
     task = Saccade_synch(**kwargs)
-    task.run(prompt=False)
+    task.run(show_continue_repeat_slide=False)
 
 
 if __name__ == "__main__":

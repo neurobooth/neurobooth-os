@@ -82,7 +82,7 @@ class MbientResetPause(Task):
         """
         :param mbients: Stream names and associated Mbient objects for STM Mbients
         :param continue_key: Which key will continue/complete the task.
-        :param repeat_key: Which key will trigger a repeated Mbient reset after a successful reset has already occured.
+        :param repeat_key: Which key will trigger a repeated Mbient reset after a successful reset has already occurred.
         :param skip_key: Which key will skip the reset.
         :param end_screen: If not None, present the specified image after the reset is complete
         :param kwargs: Keyword arguments to be passed on to the task constructor

@@ -50,21 +50,13 @@ class Saccade(Eyelink_HostPC):
         else:
             raise ValueError("Only horizontal and vertical saccade is supported")
 
-    def run(self, prompt=True, **kwarg):
-        self.present_instructions(prompt)
-        self.run_trials(prompt)
-        self.present_complete()
-        return self.events
-
-    def run_trials(self, prompt=True):
+    def present_stimulus(self, **kwargs):
         """Run a smooth pursuit trial"""
 
         # Parse the movement pattern parameters
         amp_x, amp_y = self.movement_pars
         tar_x = amp_x
         tar_y = amp_y
-
-        self.countdown_to_stimulus()
 
         # Send a message to mark movement onset
         self.sendMessage(self.marker_task_start)
@@ -126,17 +118,9 @@ class Saccade(Eyelink_HostPC):
         # Send a 'TRIAL_RESULT' message to mark the end of the trial
         self.sendMessage("TRIAL_RESULT")
 
-        if prompt:
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.run_trials,
-                waitKeys=False,
-            )
-
 
 if __name__ == "__main__":
     from neurobooth_os import config
     config.load_config()
     task = Saccade(direction="vertical", amplitude_deg=30)
-    task.run(prompt=False)
+    task.run(show_continue_repeat_slide=False)

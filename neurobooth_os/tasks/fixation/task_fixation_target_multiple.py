@@ -9,9 +9,8 @@ class Fixation_Target_Multiple(Eyelink_HostPC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_task(
+    def present_stimulus(
         self,
-        prompt=True,
         duration=3,
         trial_pos=[(0, 0), (0, 15)],
         target_size=0.7,
@@ -19,7 +18,6 @@ class Fixation_Target_Multiple(Eyelink_HostPC):
     ):
 
         self.sendMessage(self.marker_task_start)
-        self.countdown_to_stimulus()
 
         for pos in trial_pos:
             self.target.pos = [self.deg_2_pix(pos[0]), self.deg_2_pix(pos[1])]
@@ -41,17 +39,6 @@ class Fixation_Target_Multiple(Eyelink_HostPC):
 
         self.sendMessage(self.marker_task_end)
         self.clear_screen()
-
-        if prompt:
-            func_kwargs = locals()
-            del func_kwargs["self"]
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.present_task,
-                func_kwargs=func_kwargs,
-                waitKeys=False,
-            )
 
 
 if __name__ == "__main__":
