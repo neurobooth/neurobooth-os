@@ -15,10 +15,7 @@ class Calibrate(Task_Eyetracker):
 
         super().__init__(**kwargs)
 
-    def run(self, prompt=True, instructions=True, **kwargs):
-        if instructions:
-            self.present_instructions(prompt)
-
+    def present_stimulus(self, **kwargs):
         fname = kwargs["fname"]
 
         body = NewVideoFile(stream_name=self.eye_tracker.streamName, filename=op.split(fname)[-1])
@@ -37,8 +34,6 @@ class Calibrate(Task_Eyetracker):
         self.eye_tracker.tk.closeDataFile()
         # Download file
         self.eye_tracker.tk.receiveDataFile(self.fname_temp, self.fname)
-
-        self.present_complete()
 
 
 if __name__ == "__main__":

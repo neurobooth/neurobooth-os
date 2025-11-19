@@ -28,6 +28,9 @@ class EyeTracker:
         win=None,
         with_lsl=True,
     ):
+        if win is None:
+            raise Exception("Window should never be None.")
+
         self.IP = device_args.ip
         self.sample_rate = device_args.sample_rate()
         self.msec_delay = device_args.msec_delay()
@@ -40,18 +43,7 @@ class EyeTracker:
         mon = monitors.getAllMonitors()[0]
         self.monitor_width, self.monitor_height = monitors.Monitor(mon).getSizePix()
         self.calibration_type = device_args.calibration_type()
-
-        if win is None:
-            customMon = monitors.Monitor(
-                "demoMon", width=55, distance=60
-            )  # distance subject to screen specified in task/utils:make_win() here just for testing
-            self.win = visual.Window(
-                (self.monitor_width, self.monitor_height), fullscr=False, monitor=customMon, units="pix"
-            )
-            self.win_temp = True
-        else:
-            self.win = win
-            self.win_temp = False
+        self.win = win
 
         # Setup outlet stream info
         self.oulet_id = str(uuid.uuid4())
@@ -111,9 +103,6 @@ class EyeTracker:
             return
 
         self.tk.setAddress(self.IP)
-        # # Open an EDF data file on the Host PC
-        # self.tk.openDataFile('ev_test.edf')
-
         self.tk.setOfflineMode()
         pylink.msecDelay(self.msec_delay)
         self.tk.sendCommand(f"sample_rate {self.sample_rate}")

@@ -19,23 +19,13 @@ class Passage_Reading(Eyelink_HostPC):
             0, 0, 1920, 1080, 0, 0
         )
 
-    def present_task(self, prompt=True, duration=0, **kwargs):
-        self.countdown_to_stimulus()
+    def present_stimulus(self, duration=0, **kwargs):
         self.Mouse.setVisible(1)  # Allow participants to use the mouse to assist their reading
         screen = utils.load_image(self.win, Task.asset_path(self.image_to_render_on_HostPC, 'passage_reading'))
         self.show_text(screen=screen, msg="Task", audio=None, wait_time=duration)
-
-        if prompt:
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.present_task,
-                waitKeys=False,
-            )
-
         self.clear_screen()
 
 
 if __name__ == "__main__":
     task = Passage_Reading()
-    task.run(prompt=True, duration=10)
+    task.run(duration=10)

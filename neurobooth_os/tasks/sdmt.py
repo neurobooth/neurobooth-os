@@ -8,7 +8,7 @@ from psychopy.core import CountdownTimer
 from psychopy.visual import TextStim, ImageStim
 from psychopy.visual.rect import Rect
 
-from neurobooth_os.tasks.task import TaskAborted
+from neurobooth_os.tasks.task_basic import TaskAborted
 from neurobooth_os.tasks.task_eyetracker import Eyelink_HostPC, EyelinkColor
 from neurobooth_os.iout.stim_param_reader import get_cfg_path
 
@@ -230,7 +230,11 @@ class SDMT(Eyelink_HostPC):
         self.show_slide('after_practice')
         self._wait_for_advance()
 
-    def present_task(self, prompt=True, duration=0, **kwargs):
+    def present_countdown(self) -> None:
+        """ No countdown prior to start of task."""
+        pass
+
+    def present_stimulus(self, duration=0, **kwargs):
         self.Mouse.setVisible(self.mouse_visible)
         self.sendMessage(self.marker_task_start, to_marker=True, add_event=True)
         try:
@@ -239,14 +243,6 @@ class SDMT(Eyelink_HostPC):
         except TaskAborted:
             print('SDMT aborted')
         self.sendMessage(self.marker_task_end, to_marker=True, add_event=True)
-
-        if prompt:
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.present_task,
-                waitKeys=False,
-            )
 
 
 def test_script() -> None:

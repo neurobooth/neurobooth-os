@@ -32,13 +32,10 @@ class Pursuit(Eyelink_HostPC):
             self.angular_freq,
         ]
 
-    def run(self, prompt=True, **kwarg):
-        self.present_instructions(prompt)
-        self.run_trial(prompt, self.mov_pars)
-        self.present_complete()
-        return self.events
+    def present_stimulus(self, duration=0, **kwargs):
+        self.run_trial(self.mov_pars)
 
-    def run_trial(self, prompt, movement_pars):
+    def run_trial(self, movement_pars):
         """Run a smooth pursuit trial
 
         trial_duration: the duration of the pursuit movement
@@ -50,12 +47,6 @@ class Pursuit(Eyelink_HostPC):
 
         # Parse the movement pattern parameters
         amp_x, amp_y, phase_x, phase_y, freq_x, freq_y = movement_pars
-
-        # Record_status_message : show some info on the Host PC
-        # self.sendCommand("record_status_message 'Pursuit task'")
-        # self.startRecording()
-
-        self.countdown_to_stimulus()
 
         # Send a message to mark movement onset
         self.sendMessage(self.marker_task_start)
@@ -121,16 +112,6 @@ class Pursuit(Eyelink_HostPC):
         # Send a 'TRIAL_RESULT' message to mark the end of the trial
         self.sendMessage("TRIAL_RESULT")
 
-        if prompt:
-            func_kwargs_func = {"prompt": prompt, "movement_pars": movement_pars}
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.run_trial,
-                func_kwargs=func_kwargs_func,
-                waitKeys=False,
-            )
-
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -143,7 +124,7 @@ if __name__ == "__main__":
         start_phase_deg=0,
         ntrials=5,
         )
-    task.run(prompt=True)
+    task.run(show_continue_repeat_slide=True)
 
     tstmp = task.time_array
     plt.figure()

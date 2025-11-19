@@ -3,7 +3,7 @@ from __future__ import division, absolute_import
 from pylsl import local_clock
 
 from neurobooth_os.tasks import Task, utils
-from neurobooth_os.tasks.task import TaskAborted
+from neurobooth_os.tasks.task_basic import TaskAborted
 
 
 class Task_countdown(Task):
@@ -15,8 +15,7 @@ class Task_countdown(Task):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_task(self, prompt, duration, **kwargs):
-        self.countdown_to_stimulus()
+    def present_stimulus(self, duration, **kwargs):
 
         self.send_marker(self.marker_task_start, True)
         utils.present(self.win, self.task_screen, waitKeys=False)
@@ -31,14 +30,3 @@ class Task_countdown(Task):
 
         self.win.flip()
         self.send_marker(self.marker_task_end, True)
-
-        if prompt:
-            func_kwargs = locals()
-            del func_kwargs["self"]
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.present_task,
-                func_kwargs=func_kwargs,
-                waitKeys=False,
-            )

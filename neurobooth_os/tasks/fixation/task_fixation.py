@@ -12,10 +12,9 @@ class Fixation_Target(Task_Eyetracker):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def present_task(
-        self, prompt=True, duration=3, target_pos=(-10, 5), target_size=0.7, **kwargs
+    def present_stimulus(
+        self, duration=3, target_pos=(-10, 5), target_size=0.7, **kwargs
     ):
-        self.countdown_to_stimulus()
         self.target.pos = [self.deg_2_pix(target_pos[0]), self.deg_2_pix(target_pos[1])]
         self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
         if sum(self.target.size):
@@ -31,14 +30,3 @@ class Fixation_Target(Task_Eyetracker):
             waitKeys=False,
         )
         self.sendMessage(self.marker_task_end, False)
-
-        if prompt:
-            func_kwargs = locals()
-            del func_kwargs["self"]
-            self.show_text(
-                screen=self.press_task_screen,
-                msg="Task-continue-repeat",
-                func=self.present_task,
-                func_kwargs=func_kwargs,
-                waitKeys=False,
-            )
