@@ -41,9 +41,9 @@ class BasicTask:
     below. We cannot check paths with pydantic when loading the params because the path strings there are partial.
 
     """
-
     instruction_video = None
     instruction_file: Optional[str] = None,
+    inst_end_task_img = None
     start_task_slide: Optional[str] = None,
     start_task_repeat_instr_slide: Optional[str] = None,
 
@@ -96,16 +96,13 @@ class BasicTask:
 
         if task_repeatable_by_subject:
             task_end_img = 'task_end.png'                           # slide: 'repeat task or continue to next task'
-            inst_end_task_img = self.start_task_repeat_instr_slide  # slice: 'start task or repeat instructions'
+            self.inst_end_task_img = self.start_task_repeat_instr_slide  # slice: 'start task or repeat instructions'
             self.repeat_keys: List[str] = ['r', 'comma']
         else:
             # Note: By overriding repeat_keys, disabling a task repeats also disables instruction repeats!
             task_end_img = 'task_end_disabled.png'          # slide that says 'continue to next task' only.
-            inst_end_task_img = self.start_task_slide       # slide that says 'start task' only
+            self.inst_end_task_img = self.start_task_slide       # slide that says 'start task' only
             self.repeat_keys: List[str] = ['r']
-
-        # slide that appears immediately after instructions
-        self.instruction_end_screen = utils.load_slide(self.win, inst_end_task_img)
 
         # slide that appears immediately after task
         self.task_end_screen = utils.load_slide(self.win, task_end_img)
