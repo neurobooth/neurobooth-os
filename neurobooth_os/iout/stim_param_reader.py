@@ -381,8 +381,8 @@ class InstructionArgs(EnvArgs):
     instruction_filetype: Optional[str] = None
     instruction_file: Optional[str] = None
 
-    start_task_slide: str = 'inst_end_task.png'
-    start_task_repeat_instr_slide: str = 'inst_end_task_disabled.png'
+    start_task_slide: str = 'inst_end_task_disabled.png'
+    start_task_repeat_instr_slide: str = 'inst_end_task.png'
 
 
 class StimulusArgs(EnvArgs):

@@ -57,8 +57,8 @@ class BasicTask:
                  # TODO: Make instr_repeatable_by_subject a separate flag
                  # TODO: Make every task config have an entry for task_repeatable_by_subject
                  task_repeatable_by_subject: bool = True,
-                 start_task_slide=None,
-                 start_task_repeat_instr_slide=None,
+                 start_task_slide='',
+                 start_task_repeat_instr_slide='',
                  **kwargs):
         self.logger = logging.getLogger(APP_LOG_NAME)
 
