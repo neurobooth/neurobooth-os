@@ -8,7 +8,7 @@ from datetime import datetime
 
 import logging
 
-from psychopy import visual, event
+from psychopy import event
 
 from neurobooth_os.iout import metadator as meta
 from neurobooth_os.iout.stim_param_reader import get_cfg_path
@@ -187,9 +187,7 @@ class BasicTask:
                 path_instruction_video = op.join(
                     cfg.neurobooth_config.video_task_dir, self.instruction_file
                 )
-                self.instruction_video = visual.MovieStim3(
-                    win=self.win, filename=path_instruction_video, noAudio=False
-                )
+                self.instruction_video = utils.load_video(win=self.win, path=path_instruction_video)
 
     def show_text(
             self,
