@@ -183,16 +183,13 @@ class BasicTask:
 
         """
         if self.instruction_file is not None:
-            video = self.instruction_video
-            if video is None or video.status == "STOPPED":
+            if self.instruction_video.status == "STOPPED":
                 path_instruction_video = op.join(
                     cfg.neurobooth_config.video_task_dir, self.instruction_file
                 )
                 self.instruction_video = visual.MovieStim3(
                     win=self.win, filename=path_instruction_video, noAudio=False
                 )
-        else:
-            self.instruction_video = None
 
     def show_text(
             self,
