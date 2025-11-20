@@ -44,6 +44,8 @@ class BasicTask:
 
     instruction_video = None
     instruction_file: Optional[str] = None,
+    start_task_slide: Optional[str] = None,
+    start_task_repeat_instr_slide: Optional[str] = None,
 
     def __init__(self,
                  instruction_file=None,
@@ -55,10 +57,16 @@ class BasicTask:
                  # TODO: Make instr_repeatable_by_subject a separate flag
                  # TODO: Make every task config have an entry for task_repeatable_by_subject
                  task_repeatable_by_subject: bool = True,
+                 start_task_slide=None,
+                 start_task_repeat_instr_slide=None,
                  **kwargs):
         self.logger = logging.getLogger(APP_LOG_NAME)
 
+        # Set instruction attributes
         self.instruction_file = instruction_file
+        self.start_task_slide = start_task_slide
+        self.start_task_repeat_instr_slide = start_task_repeat_instr_slide
+
         self.task_files: List[str] = []
 
         self.full_screen = full_screen
@@ -87,13 +95,13 @@ class BasicTask:
         self.abort_keys: List[str] = ['q']
 
         if task_repeatable_by_subject:
-            task_end_img = 'task_end.png'                   # slide that says 'repeat task or continue to next task'
-            inst_end_task_img = 'inst_end_task.png'         # slice that says 'start task or repeat instructions'
+            task_end_img = 'task_end.png'                           # slide: 'repeat task or continue to next task'
+            inst_end_task_img = self.start_task_repeat_instr_slide  # slice: 'start task or repeat instructions'
             self.repeat_keys: List[str] = ['r', 'comma']
         else:
             # Note: By overriding repeat_keys, disabling a task repeats also disables instruction repeats!
-            task_end_img = 'task_end_disabled.png'            # slide that says 'continue to next task' only.
-            inst_end_task_img = 'inst_end_task_disabled.png'  # slide that says 'start task' only
+            task_end_img = 'task_end_disabled.png'          # slide that says 'continue to next task' only.
+            inst_end_task_img = self.start_task_slide       # slide that says 'start task' only
             self.repeat_keys: List[str] = ['r']
 
         # slide that appears immediately after instructions
