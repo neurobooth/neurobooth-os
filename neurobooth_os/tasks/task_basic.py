@@ -8,7 +8,7 @@ from datetime import datetime
 
 import logging
 
-from psychopy import visual, event
+from psychopy import event
 
 from neurobooth_os.iout import metadator as meta
 from neurobooth_os.iout.stim_param_reader import get_cfg_path
@@ -41,9 +41,11 @@ class BasicTask:
     below. We cannot check paths with pydantic when loading the params because the path strings there are partial.
 
     """
-
     instruction_video = None
     instruction_file: Optional[str] = None,
+    inst_end_task_img = None
+    start_task_slide: Optional[str] = None,
+    start_task_repeat_instr_slide: Optional[str] = None,
 
     def __init__(self,
                  instruction_file=None,
@@ -55,10 +57,16 @@ class BasicTask:
                  # TODO: Make instr_repeatable_by_subject a separate flag
                  # TODO: Make every task config have an entry for task_repeatable_by_subject
                  task_repeatable_by_subject: bool = True,
+                 start_task_slide='',
+                 start_task_repeat_instr_slide='',
                  **kwargs):
         self.logger = logging.getLogger(APP_LOG_NAME)
 
+        # Set instruction attributes
         self.instruction_file = instruction_file
+        self.start_task_slide = start_task_slide
+        self.start_task_repeat_instr_slide = start_task_repeat_instr_slide
+
         self.task_files: List[str] = []
 
         self.full_screen = full_screen
@@ -87,17 +95,14 @@ class BasicTask:
         self.abort_keys: List[str] = ['q']
 
         if task_repeatable_by_subject:
-            task_end_img = 'task_end.png'                   # slide that says 'repeat task or continue to next task'
-            inst_end_task_img = 'inst_end_task.png'         # slice that says 'start task or repeat instructions'
+            task_end_img = 'task_end.png'                           # slide: 'repeat task or continue to next task'
+            self.inst_end_task_img = self.start_task_repeat_instr_slide  # slice: 'start task or repeat instructions'
             self.repeat_keys: List[str] = ['r', 'comma']
         else:
             # Note: By overriding repeat_keys, disabling a task repeats also disables instruction repeats!
-            task_end_img = 'task_end_disabled.png'            # slide that says 'continue to next task' only.
-            inst_end_task_img = 'inst_end_task_disabled.png'  # slide that says 'start task' only
+            task_end_img = 'task_end_disabled.png'          # slide that says 'continue to next task' only.
+            self.inst_end_task_img = self.start_task_slide       # slide that says 'start task' only
             self.repeat_keys: List[str] = ['r']
-
-        # slide that appears immediately after instructions
-        self.instruction_end_screen = utils.load_slide(self.win, inst_end_task_img)
 
         # slide that appears immediately after task
         self.task_end_screen = utils.load_slide(self.win, task_end_img)
@@ -159,7 +164,6 @@ class BasicTask:
     def _show_video(self, video, msg: str, stop=False) -> None:
         """
         Plays video, wrapping it in LSL start and end markers
-        TODO: Why are markers sent even if the video is None?
         """
         self.send_marker(f"{msg}_start", True)
         if video is not None:
@@ -188,9 +192,7 @@ class BasicTask:
                 path_instruction_video = op.join(
                     cfg.neurobooth_config.video_task_dir, self.instruction_file
                 )
-                self.instruction_video = visual.MovieStim3(
-                    win=self.win, filename=path_instruction_video, noAudio=False
-                )
+                self.instruction_video = utils.load_video(win=self.win, path=path_instruction_video)
         else:
             self.instruction_video = None
 

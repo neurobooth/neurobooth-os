@@ -381,6 +381,9 @@ class InstructionArgs(EnvArgs):
     instruction_filetype: Optional[str] = None
     instruction_file: Optional[str] = None
 
+    start_task_slide: str = 'inst_end_task_disabled.png'
+    start_task_repeat_instr_slide: str = 'inst_end_task.png'
+
 
 class StimulusArgs(EnvArgs):
     """
@@ -450,6 +453,11 @@ class EyeTrackerStimArgs(StimulusArgs):
 
 class ProgressBarStimArgs(StimulusArgs):
     slide_image: str
+    wait_keys: bool = False
+
+
+class BreakVideoStimArgs(StimulusArgs):
+    video_file: str
     wait_keys: bool = False
 
 
