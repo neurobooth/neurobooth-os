@@ -1,9 +1,11 @@
+from neurobooth_os.tasks import utils
 from neurobooth_os.tasks.task_basic import BasicTask
 
 
 class Introduction_Task(BasicTask):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.instruction_end_screen = None
 
     def present_complete(self):
         pass
@@ -12,6 +14,8 @@ class Introduction_Task(BasicTask):
         """
         Present instructions before stimulus.
         """
+        self.instruction_end_screen = utils.load_slide(self.win, self.inst_end_task_img)
+
         self._load_instruction_video()
         self._show_video(video=self.instruction_video, msg="Intructions")
 

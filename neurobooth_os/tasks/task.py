@@ -28,6 +28,7 @@ class Task(BasicTask):
         super().__init__(**kwargs)
 
         # Common markers
+        self.instruction_end_screen = None
         self.marker_task_start = "Task_start"
         self.marker_task_end = "Task_end"
         self.marker_trial_start = "Trial_start"
@@ -57,6 +58,9 @@ class Task(BasicTask):
         """
         Present instructions before stimulus.
         """
+        # slide that appears immediately after instructions
+        self.instruction_end_screen = utils.load_slide(self.win, self.inst_end_task_img)
+
         self._load_instruction_video()
         self._show_video(video=self.instruction_video, msg="Intructions")
 
