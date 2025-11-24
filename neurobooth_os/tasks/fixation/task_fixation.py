@@ -28,5 +28,6 @@ class Fixation_Target(Task_Eyetracker):
             audio=None,
             wait_time=duration,
             waitKeys=False,
+            abort_keys=self.abort_keys
         )
         self.sendMessage(self.marker_task_end, False)
