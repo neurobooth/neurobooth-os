@@ -37,6 +37,7 @@ class Fixation_Target_Multiple(Eyelink_HostPC):
                 abort_keys=self.abort_keys
             )
             self.sendMessage(self.marker_trial_end, False)
+            self.check_if_aborted()
 
         self.sendMessage(self.marker_task_end)
         self.clear_screen()
