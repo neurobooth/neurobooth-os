@@ -177,7 +177,7 @@ def _perform_task(db_conn, device_log_entry_dict, message, session, subj_id: str
         this_task_kwargs = create_task_kwargs(session, task_args)
 
         # Do not record if non-behavior/pause/break tasks
-        if "pause_" in task_id or "progress_" in task_id or "break_" in task_id:
+        if task_args.stim_args.record_data:
             load_task_media(session, task_args)
             task: Task = task_args.task_instance
             task.run(**this_task_kwargs)

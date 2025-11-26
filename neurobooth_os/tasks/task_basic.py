@@ -46,8 +46,10 @@ class BasicTask:
     inst_end_task_img = None
     start_task_slide: Optional[str] = None,
     start_task_repeat_instr_slide: Optional[str] = None,
+    record_data: bool
 
     def __init__(self,
+                 record_data: bool,
                  instruction_file=None,
                  win=None,
                  marker_outlet=None,
@@ -61,6 +63,8 @@ class BasicTask:
                  start_task_repeat_instr_slide='',
                  **kwargs):
         self.logger = logging.getLogger(APP_LOG_NAME)
+
+        self.record_data = record_data
 
         # Set instruction attributes
         self.instruction_file = instruction_file
