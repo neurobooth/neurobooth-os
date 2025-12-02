@@ -6,12 +6,12 @@ import numpy as np
 from pylsl import local_clock
 
 
-def countdown(period):
-    t1 = local_clock()
-    t2 = t1
-
-    while t2 - t1 < period:
-        t2 = local_clock()
+# def countdown(period):
+#     t1 = local_clock()
+#     t2 = t1
+#
+#     while t2 - t1 < period:
+#         t2 = local_clock()
 
 
 class Saccade(Eyelink_HostPC):
@@ -79,9 +79,10 @@ class Saccade(Eyelink_HostPC):
             self.update_screen(0, 0)
             self.send_target_loc(self.target.pos)
 
-            countdown(
+            self.countdown(
                 self.wait_center
-                + self.jitter_percent * self.wait_center * np.random.random(1)[0]
+                + self.jitter_percent * self.wait_center * np.random.random(1)[0],
+                abort_keys=self.abort_keys
             )
 
             self.target.pos = (tar_x, tar_y)
@@ -98,6 +99,8 @@ class Saccade(Eyelink_HostPC):
                 self.wait_offset
                 + self.jitter_percent * self.wait_offset * np.random.random(1)[0]
             )
+            if self.quit_stimulus:
+                break
 
         # clear the window
         self.win.color = (0, 0, 0)
