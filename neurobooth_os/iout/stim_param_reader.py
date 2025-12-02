@@ -415,6 +415,7 @@ class TaskArgs(BaseModel):
     task_instance: Optional[object] = None  # created by client code from above callable
     device_args: List[SerializeAsAny[DeviceArgs]] = []
     arg_parser: str
+    record_data: Optional[bool] = True     # should data from the task be recorded
 
     class Config:
         arbitrary_types_allowed = True
