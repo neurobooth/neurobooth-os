@@ -62,6 +62,9 @@ class BasicTask:
                  **kwargs):
         self.logger = logging.getLogger(APP_LOG_NAME)
 
+        # Set quit flag indicating whether the stimulus part of task is to be exited
+        self.quit_stimulus = False
+
         # Set instruction attributes
         self.instruction_file = instruction_file
         self.start_task_slide = start_task_slide
@@ -370,4 +373,5 @@ class BasicTask:
                 msg = StatusMessage(text="Task aborted")
                 req = Request(source="STM", destination="CTR", body=msg)
                 meta.post_message(req, db_conn)
+            self.quit_stimulus = True
             raise TaskAborted()
