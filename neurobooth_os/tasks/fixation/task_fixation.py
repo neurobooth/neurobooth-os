@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
 
-"""
 from neurobooth_os.tasks import Task_Eyetracker
 
 

@@ -3,15 +3,6 @@ import pylink
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
 from neurobooth_os.tasks.task_eyetracker import Eyelink_HostPC
 import numpy as np
-from pylsl import local_clock
-
-
-# def countdown(period):
-#     t1 = local_clock()
-#     t2 = t1
-#
-#     while t2 - t1 < period:
-#         t2 = local_clock()
 
 
 class Saccade(Eyelink_HostPC):

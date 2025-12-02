@@ -1,4 +1,3 @@
-from neurobooth_os.tasks.task_basic import TaskAborted
 from neurobooth_os.tasks.task_eyetracker import Eyelink_HostPC
 
 
@@ -20,7 +19,6 @@ class Fixation_Target_Multiple(Eyelink_HostPC):
 
         self.sendMessage(self.marker_task_start)
 
-        # try:
         for pos in trial_pos:
             self.target.pos = [self.deg_2_pix(pos[0]), self.deg_2_pix(pos[1])]
             self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
@@ -39,11 +37,8 @@ class Fixation_Target_Multiple(Eyelink_HostPC):
                 abort_keys=self.abort_keys
             )
             self.sendMessage(self.marker_trial_end, False)
-            # self.check_if_aborted()
             if self.quit_stimulus:
                 break
-        # except TaskAborted:
-        #    print('Fixation Multiple aborted')
 
         self.sendMessage(self.marker_task_end)
         self.clear_screen()
