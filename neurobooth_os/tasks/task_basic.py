@@ -249,7 +249,7 @@ class BasicTask:
                 utils.get_keys()
         if audio is not None:
             audio.play()
-        self.countdown(wait_time, abort_keys)  # TODO: add abort keys back after debugging
+        self.countdown(wait_time, abort_keys)
         if waitKeys:
             utils.get_keys()
 
@@ -259,24 +259,24 @@ class BasicTask:
             keypress - after which it simply times out
         """
 
-        def get_abort_key(keyList=()):
-            press = event.getKeys()
-            if press:
-                if not keyList:
-                    return press
-                elif any([k in keyList for k in press]):
-                    return press
-            return None
-
         t1 = utils.local_clock()
         t2 = t1
 
         while t2 - t1 < period:
             if abort_keys is not None and abort_keys:
-                if get_abort_key(abort_keys):
+                if self.get_abort_key(abort_keys):
                     self.quit_stimulus = True
                     return
             t2 = utils.local_clock()
+
+    def get_abort_key(self, keyList=()):
+        press = event.getKeys()
+        if press:
+            if not keyList:
+                return press
+            elif any([k in keyList for k in press]):
+                return press
+        return None
 
     def show_repeat_continue_option(
             self,
