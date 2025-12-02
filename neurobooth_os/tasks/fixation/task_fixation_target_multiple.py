@@ -20,30 +20,30 @@ class Fixation_Target_Multiple(Eyelink_HostPC):
 
         self.sendMessage(self.marker_task_start)
 
-        try:
-            for pos in trial_pos:
-                self.target.pos = [self.deg_2_pix(pos[0]), self.deg_2_pix(pos[1])]
-                self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
-                if sum(self.target.size):
-                    self.send_target_loc(self.target.pos)
+        # try:
+        for pos in trial_pos:
+            self.target.pos = [self.deg_2_pix(pos[0]), self.deg_2_pix(pos[1])]
+            self.target.size = self.deg_2_pix(target_size)  # target_size from deg to cms
+            if sum(self.target.size):
+                self.send_target_loc(self.target.pos)
 
-                # Send event to eyetracker and to LSL separately
-                self.sendMessage(self.marker_trial_start, False)
-                self.update_screen(self.target.pos[0], self.target.pos[1])
-                self.show_text(
-                    screen=self.target,
-                    msg="Trial",
-                    audio=None,
-                    wait_time=duration,
-                    waitKeys=False,
-                    abort_keys=self.abort_keys
-                )
-                self.sendMessage(self.marker_trial_end, False)
-                self.check_if_aborted()
-                if self.quit_stimulus:
-                    break
-        except TaskAborted:
-            print('Fixation Multiple aborted')
+            # Send event to eyetracker and to LSL separately
+            self.sendMessage(self.marker_trial_start, False)
+            self.update_screen(self.target.pos[0], self.target.pos[1])
+            self.show_text(
+                screen=self.target,
+                msg="Trial",
+                audio=None,
+                wait_time=duration,
+                waitKeys=False,
+                abort_keys=self.abort_keys
+            )
+            self.sendMessage(self.marker_trial_end, False)
+            # self.check_if_aborted()
+            if self.quit_stimulus:
+                break
+        # except TaskAborted:
+        #    print('Fixation Multiple aborted')
 
         self.sendMessage(self.marker_task_end)
         self.clear_screen()
