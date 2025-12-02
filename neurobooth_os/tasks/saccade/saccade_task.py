@@ -95,9 +95,10 @@ class Saccade(Eyelink_HostPC):
             tar_x = self.trial_sign[index] * amp_x
             tar_y = self.trial_sign[index] * amp_y
 
-            countdown(
+            self.countdown(
                 self.wait_offset
-                + self.jitter_percent * self.wait_offset * np.random.random(1)[0]
+                + self.jitter_percent * self.wait_offset * np.random.random(1)[0],
+                abort_keys=self.abort_keys
             )
             if self.quit_stimulus:
                 break
