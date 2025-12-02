@@ -255,8 +255,8 @@ class BasicTask:
 
     def countdown(self, period: float, abort_keys: Optional[List] = None) -> None:
         """
-            Function to wait for a specified amount of time for a certain
-            keypress - after which it simply times out
+            Function to wait for a specified amount of time for a certain keypress,
+            after which it simply times out. It is used by tasks that have a time-limit
         """
 
         t1 = utils.local_clock()
