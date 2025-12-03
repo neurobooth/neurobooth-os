@@ -32,7 +32,7 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         TerminateServerRequest, MsgBody, MbientDisconnected, NewVideoFile,
                                         TaskCompletion, TaskInitialization,
                                         DeviceInitialization, LslRecording,
-                                        TasksFinished, FramePreviewRequest,
+                                        TasksFinished, FramePreviewRequest, StandardFramePreviewRequest,
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
                                         CancelSessionRequest, MEDIUM_HIGH_PRIORITY)
 from util.nb_types import Subject
@@ -486,8 +486,13 @@ def resize_frame_preview(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def _request_frame_preview(conn, device_id: str) -> None:
-    msg = FramePreviewRequest(device_id=device_id)
+def _schedule_frame_preview(conn, is_standard: bool, device_id: str) -> None:
+    if is_standard:
+        msg = StandardFramePreviewRequest(device_id=device_id)
+    else:
+        msg = FramePreviewRequest(device_id=device_id)
+
+    # TODO: lookup the destination for message based on the device used for the preview. May require API change
     req = Request(source="CTR", destination="ACQ", body=msg)
     meta.post_message(req, conn)
 
@@ -665,11 +670,18 @@ def gui(logger):
 
             elif event == "tasks_created":
                 _session_button_state(window, disabled=False)
+
+                # get the device id for frame previews
+                outlet_name = values["-frame_preview_opts-"]
+                device_id = frame_preview_devices[outlet_name]
+
                 for task_id in task_list:
-                    msg_body = PerformTaskRequest(task_id=task_id)
-                    msg = Request(source="CTR", destination="STM", body=msg_body)
-                    meta.post_message(msg, conn)
-                # PerformTask Messages queued for all tasks, now queue a TasksFinished message
+                    # Queue Frame Previews for every task
+                    _schedule_frame_preview(conn, is_standard=True, device_id=device_id)
+                    # Queue PerformTask requests for every task
+                    _schedule_task(conn, task_id)
+
+                # PerformTask Messages are queued for all tasks, now queue a TasksFinished message
                 msg_body = TasksFinished()
                 msg = Request(source="CTR", destination="STM", body=msg_body)
                 meta.post_message(msg, conn)
@@ -811,13 +823,31 @@ def gui(logger):
             elif event == "-frame_preview-":
                 outlet_name = values["-frame_preview_opts-"]
                 device_id = frame_preview_devices[outlet_name]
-                _request_frame_preview(conn, device_id)
+                _schedule_frame_preview(conn, is_standard=False, device_id=device_id)
 
             # Print LSL inlet names in GUI
             if inlet_keys != list(inlets):
                  inlet_keys = list(inlets)
                  window["inlet_State"].update("\n".join(inlet_keys))
     close(window)
+
+
+def _schedule_task(conn, task_id) -> None:
+    """
+    Schedule a PerformTask request for the given task
+
+    Parameters
+    ----------
+    conn    a DB Connection
+    task_id the ID for the Task to be scheduled
+
+    Returns
+    -------
+    None
+    """
+    msg_body = PerformTaskRequest(task_id=task_id)
+    msg = Request(source="CTR", destination="STM", body=msg_body)
+    meta.post_message(msg, conn)
 
 
 def close(window):
