@@ -396,11 +396,12 @@ class FramePreviewRequest(MsgBody):
     device_id: str
 
     def __init__(self, **data):
-        data['priority'] = HIGH_PRIORITY
+        if 'priority' not in data:
+            data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
 
 
-class StandardFramePreviewRequest(MsgBody):
+class StandardFramePreviewRequest(FramePreviewRequest):
     """
     Message from controller to ACQ asking for a frame preview image from the specified device.
     Requests are generated automatically by the system to be processed before every task and scheduled at session
@@ -408,8 +409,6 @@ class StandardFramePreviewRequest(MsgBody):
     Specifically, it runs at the same priority as a PerformTaskRequest (MEDIUM_PRIORITY), so the order
     relative to those requests is ultimately based on the time when it was scheduled in a FIFO manner.
     """
-    device_id: str
-
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
