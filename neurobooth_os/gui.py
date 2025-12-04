@@ -32,7 +32,7 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         TerminateServerRequest, MsgBody, MbientDisconnected, NewVideoFile,
                                         TaskCompletion, TaskInitialization,
                                         DeviceInitialization, LslRecording,
-                                        TasksFinished, FramePreviewRequest, StandardFramePreviewRequest,
+                                        TasksFinished, FramePreviewRequest, StdFramePreviewRequest,
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
                                         CancelSessionRequest, MEDIUM_HIGH_PRIORITY)
 from util.nb_types import Subject
@@ -488,7 +488,7 @@ def resize_frame_preview(img: np.ndarray) -> np.ndarray:
 
 def _schedule_frame_preview(conn, is_standard: bool, device_id: str) -> None:
     if is_standard:
-        msg = StandardFramePreviewRequest(device_id=device_id)
+        msg = StdFramePreviewRequest(device_id=device_id)
     else:
         msg = FramePreviewRequest(device_id=device_id)
 

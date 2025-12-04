@@ -391,7 +391,7 @@ class MbientResetResults(MsgBody):
 class FramePreviewRequest(MsgBody):
     """
     Message from controller to ACQ asking for a frame preview image from the specified device initiated by RC
-    through the GUI. See also StandardFramePreviewRequest
+    through the GUI. See also StdFramePreviewRequest
     """
     device_id: str
 
@@ -401,7 +401,7 @@ class FramePreviewRequest(MsgBody):
         super().__init__(**data)
 
 
-class StandardFramePreviewRequest(FramePreviewRequest):
+class StdFramePreviewRequest(FramePreviewRequest):
     """
     Message from controller to ACQ asking for a frame preview image from the specified device.
     Requests are generated automatically by the system to be processed before every task and scheduled at session
