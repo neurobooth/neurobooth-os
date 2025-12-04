@@ -34,8 +34,11 @@ class Fixation_Target_Multiple(Eyelink_HostPC):
                 audio=None,
                 wait_time=duration,
                 waitKeys=False,
+                abort_keys=self.abort_keys
             )
             self.sendMessage(self.marker_trial_end, False)
+            if self.quit_stimulus:
+                break
 
         self.sendMessage(self.marker_task_end)
         self.clear_screen()

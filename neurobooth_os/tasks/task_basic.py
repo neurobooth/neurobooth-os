@@ -62,6 +62,9 @@ class BasicTask:
                  **kwargs):
         self.logger = logging.getLogger(APP_LOG_NAME)
 
+        # Set quit flag indicating whether the stimulus part of task is to be exited
+        self.quit_stimulus = False
+
         # Set instruction attributes
         self.instruction_file = instruction_file
         self.start_task_slide = start_task_slide
@@ -212,7 +215,7 @@ class BasicTask:
         if func_kwargs is None:
             func_kwargs = {}
         self.send_marker(f"{msg}_start", True)
-        utils.present(
+        self.present(
             self.win,
             screen,
             audio=audio,
@@ -227,6 +230,53 @@ class BasicTask:
         if func is not None:
             if self.repeat_advance():
                 func(**func_kwargs)
+
+    def present(self,
+            win,
+            screen,
+            audio=None,
+            wait_time=0,
+            win_color=(0, 0, 0),
+            waitKeys=True,
+            first_screen=False,
+            abort_keys: Optional[List] = None,  # Pass a list of abort keys ('q') if you want to make a task quit-able.
+    ):
+        win.color = win_color
+        if screen is not None:
+            screen.draw()
+            win.flip()
+            if first_screen:
+                utils.get_keys()
+        if audio is not None:
+            audio.play()
+        self.countdown(wait_time, abort_keys)
+        if waitKeys:
+            utils.get_keys()
+
+    def countdown(self, period: float, abort_keys: Optional[List] = None) -> None:
+        """
+            Function to wait for a specified amount of time for a certain keypress,
+            after which it simply times out. It is used by tasks that have a time-limit
+        """
+
+        t1 = utils.local_clock()
+        t2 = t1
+
+        while t2 - t1 < period:
+            if abort_keys is not None and abort_keys:
+                if self.get_abort_key(abort_keys):
+                    self.quit_stimulus = True
+                    return
+            t2 = utils.local_clock()
+
+    def get_abort_key(self, keyList=()):
+        press = event.getKeys()
+        if press:
+            if not keyList:
+                return press
+            elif any([k in keyList for k in press]):
+                return press
+        return None
 
     def show_repeat_continue_option(
             self,
@@ -370,4 +420,5 @@ class BasicTask:
                 msg = StatusMessage(text="Task aborted")
                 req = Request(source="STM", destination="CTR", body=msg)
                 meta.post_message(req, db_conn)
+            self.quit_stimulus = True
             raise TaskAborted()
