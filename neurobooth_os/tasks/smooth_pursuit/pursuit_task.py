@@ -115,7 +115,7 @@ class Pursuit(Eyelink_HostPC):
         self.sendMessage(f"!V TRIAL_VAR ntrials {self.ntrials:.2f}")
 
         if self.quit_stimulus:
-            self.sendMessage("TASK ABORTED")
+            self.sendMessage("TASK_ABORTED")
             return
 
         # Send a 'TRIAL_RESULT' message to mark the end of the trial
