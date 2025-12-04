@@ -88,6 +88,11 @@ class Pursuit(Eyelink_HostPC):
                 time_array = np.diff(time_array)
                 break
 
+            if self.abort_keys is not None and self.abort_keys:
+                if self.get_abort_key(self.abort_keys):
+                    self.quit_stimulus = True
+                    break
+
         self.time_array = time_array
         # clear the window
         self.win.color = (0, 0, 0)
@@ -108,6 +113,10 @@ class Pursuit(Eyelink_HostPC):
         self.sendMessage(f"!V TRIAL_VAR freq_x {freq_x:.2f}")
         self.sendMessage(f"!V TRIAL_VAR freq_y {freq_y:.2f}")
         self.sendMessage(f"!V TRIAL_VAR ntrials {self.ntrials:.2f}")
+
+        if self.quit_stimulus:
+            self.sendMessage("TASK_ABORTED")
+            return
 
         # Send a 'TRIAL_RESULT' message to mark the end of the trial
         self.sendMessage("TRIAL_RESULT")
