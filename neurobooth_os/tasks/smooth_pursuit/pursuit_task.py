@@ -114,12 +114,12 @@ class Pursuit(Eyelink_HostPC):
         self.sendMessage(f"!V TRIAL_VAR freq_y {freq_y:.2f}")
         self.sendMessage(f"!V TRIAL_VAR ntrials {self.ntrials:.2f}")
 
+        if self.quit_stimulus:
+            self.sendMessage("TASK ABORTED")
+            return
+
         # Send a 'TRIAL_RESULT' message to mark the end of the trial
         self.sendMessage("TRIAL_RESULT")
-
-        # TODO: Should this go before the message sending above?
-        if self.quit_stimulus:
-            return
 
 
 if __name__ == "__main__":
