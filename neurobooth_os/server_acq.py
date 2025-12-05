@@ -98,7 +98,8 @@ def run_acq(logger):
                 updator = Request(source="ACQ", destination="CTR", body=SessionPrepared())
                 meta.post_message(updator, db_conn)
 
-            elif "FramePreviewRequest" == current_msg_type and not recording:
+            # Check for FramePreviewRequest and StdFramePreviewRequest in msg type
+            elif ("FramePreviewRequest" in current_msg_type) and not recording:
                 msg_body: FramePreviewRequest = message.body
                 camera_frame_preview(msg_body.device_id, db_conn, device_manager, logger)
 

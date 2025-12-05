@@ -390,12 +390,27 @@ class MbientResetResults(MsgBody):
 
 class FramePreviewRequest(MsgBody):
     """
-    Message from controller to ACQ asking for a frame preview image from the specified device
+    Message from controller to ACQ asking for a frame preview image from the specified device initiated by RC
+    through the GUI. See also StdFramePreviewRequest
     """
     device_id: str
 
     def __init__(self, **data):
-        data['priority'] = HIGH_PRIORITY
+        if 'priority' not in data:
+            data['priority'] = HIGH_PRIORITY
+        super().__init__(**data)
+
+
+class StdFramePreviewRequest(FramePreviewRequest):
+    """
+    Message from controller to ACQ asking for a frame preview image from the specified device.
+    Requests are generated automatically by the system to be processed before every task and scheduled at session
+    start time.  This is essentially the same as a FramePreviewRequest, except it runs at a lower priority.
+    Specifically, it runs at the same priority as a PerformTaskRequest (MEDIUM_PRIORITY), so the order
+    relative to those requests is ultimately based on the time when it was scheduled in a FIFO manner.
+    """
+    def __init__(self, **data):
+        data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
 
 
