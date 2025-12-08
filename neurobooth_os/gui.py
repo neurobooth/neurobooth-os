@@ -819,10 +819,11 @@ def gui(logger):
             # Conditionals handling inlets for plotting and recording
             ##################################################################################
 
+            # handle a user request for a frame-preview
             elif event == "-frame_preview-":
                 outlet_name = values["-frame_preview_opts-"]
                 device_id = frame_preview_devices[outlet_name]
-                _schedule_frame_preview(conn, is_standard=False, device_id=device_id)
+                _schedule_frame_preview(conn, device_id=device_id)
 
             # Print LSL inlet names in GUI
             if inlet_keys != list(inlets):

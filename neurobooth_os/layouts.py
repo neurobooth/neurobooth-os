@@ -279,6 +279,7 @@ def _main_layout(sess_info):
                 size=(40, 1),
                 readonly=True,
                 key="-frame_preview_opts-",
+                enable_events=True,
                 visible=False,
             ),
         ],
