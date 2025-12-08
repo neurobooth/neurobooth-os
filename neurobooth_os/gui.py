@@ -350,8 +350,9 @@ def _start_ctr_msg_reader(logger, frame_preview_devices, window):
                 tsk_strt_time = msg_body.tsk_start_time
 
                 # get the device id for frame previews
-                event, values = window.read(0.1)
-                outlet_name = values["-frame_preview_opts-"]
+                # event, values = window.read(0.1)
+                # outlet_name = values["-frame_preview_opts-"]
+                outlet_name = window["-frame_preview_opts-"].get()
                 device_id = frame_preview_devices[outlet_name]
                 _schedule_frame_preview(db_conn, device_id)
 
@@ -442,6 +443,7 @@ def _plot_realtime(window, plttr, inlets):
 
 
 def enable_frame_preview(window, preview_devices: Dict[str, str]) -> None:
+    print("Frame preview is enabling")
     if not preview_devices:
         return  # No registered devices; do not enable the preview
 
@@ -821,7 +823,8 @@ def gui(logger):
 
             # handle a user request for a frame-preview
             elif event == "-frame_preview-":
-                outlet_name = values["-frame_preview_opts-"]
+                outlet_name = window["-frame_preview_opts-"].get()
+                # outlet_name = values["-frame_preview_opts-"]
                 device_id = frame_preview_devices[outlet_name]
                 _schedule_frame_preview(conn, device_id=device_id)
 
