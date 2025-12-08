@@ -32,7 +32,7 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         TerminateServerRequest, MsgBody, MbientDisconnected, NewVideoFile,
                                         TaskCompletion, TaskInitialization,
                                         DeviceInitialization, LslRecording,
-                                        TasksFinished, FramePreviewRequest, StdFramePreviewRequest,
+                                        TasksFinished, FramePreviewRequest,
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
                                         CancelSessionRequest, MEDIUM_HIGH_PRIORITY)
 from util.nb_types import Subject
@@ -301,7 +301,7 @@ def _start_servers(window, nodes):
     return event, values
 
 
-def _start_ctr_server(window, logger):
+def _start_ctr_server(window, logger, frame_preview_devices):
     """Start threaded control server and new window."""
 
     # Start a threaded socket CTR server once main window generated
@@ -310,6 +310,7 @@ def _start_ctr_server(window, logger):
         target=_start_ctr_msg_reader,
         args=(
             logger,
+            frame_preview_devices,
             callback_args,
         ),
         daemon=True,
@@ -317,7 +318,7 @@ def _start_ctr_server(window, logger):
     server_thread.start()
 
 
-def _start_ctr_msg_reader(logger, window):
+def _start_ctr_msg_reader(logger, frame_preview_devices, window):
     with meta.get_database_connection() as db_conn:
         while True:
             message: Message = meta.read_next_message("CTR", conn=db_conn)
@@ -347,6 +348,13 @@ def _start_ctr_msg_reader(logger, window):
                 task_id = msg_body.task_id
                 log_task_id = msg_body.log_task_id
                 tsk_strt_time = msg_body.tsk_start_time
+
+                # get the device id for frame previews
+                event, values = window.read(0.1)
+                outlet_name = values["-frame_preview_opts-"]
+                device_id = frame_preview_devices[outlet_name]
+                _schedule_frame_preview(db_conn, device_id)
+
                 window.write_event_value(
                     "task_initiated",
                     f"['{task_id}', '{task_id}', '{log_task_id}', '{tsk_strt_time}']",
@@ -486,11 +494,8 @@ def resize_frame_preview(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def _schedule_frame_preview(conn, is_standard: bool, device_id: str) -> None:
-    if is_standard:
-        msg = StdFramePreviewRequest(device_id=device_id)
-    else:
-        msg = FramePreviewRequest(device_id=device_id)
+def _schedule_frame_preview(conn, device_id: str) -> None:
+    msg = FramePreviewRequest(device_id=device_id)
 
     # TODO: lookup the destination for message based on the device used for the preview. May require API change
     req = Request(source="CTR", destination="ACQ", body=msg)
@@ -621,7 +626,7 @@ def gui(logger):
                     )
                     # Open new layout with main window
                     window = _win_gen(_main_layout, sess_info)
-                    _start_ctr_server(window, logger)
+                    _start_ctr_server(window, logger, frame_preview_devices)
                     logger.debug(f"ctr msg reader started")
 
             ############################################################
@@ -671,13 +676,7 @@ def gui(logger):
             elif event == "tasks_created":
                 _session_button_state(window, disabled=False)
 
-                # get the device id for frame previews
-                outlet_name = values["-frame_preview_opts-"]
-                device_id = frame_preview_devices[outlet_name]
-
                 for task_id in task_list:
-                    # Queue Frame Previews for every task
-                    _schedule_frame_preview(conn, is_standard=True, device_id=device_id)
                     # Queue PerformTask requests for every task
                     _schedule_task(conn, task_id)
 
