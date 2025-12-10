@@ -42,6 +42,7 @@ running_servers = []
 last_task = None
 start_pressed = False
 session_prepared_count = 0      # How many SessionPrepared messages were received. the number required = node count
+auto_frame_preview_device: Optional[str] = None  # which device to use for automated frame previews for every task
 
 
 def setup_log(sg_handler=None):
@@ -131,7 +132,11 @@ def _start_task_presentation(window, task_list: List[str], subject_id: str, sess
     write_output(window, "\nSession started")
     last_task = task_list[-1]
     if len(task_list) > 0:
-        msg_body = CreateTasksRequest(tasks=task_list, subj_id=subject_id, session_id=session_id)
+        msg_body = CreateTasksRequest(
+            tasks=task_list,
+            subj_id=subject_id,
+            session_id=session_id,
+            frame_preview_device_id=auto_frame_preview_device)
         msg = Request(
             source='CTR',
             destination='STM',
@@ -301,7 +306,7 @@ def _start_servers(window, nodes):
     return event, values
 
 
-def _start_ctr_server(window, logger, frame_preview_devices):
+def _start_ctr_server(window, logger):
     """Start threaded control server and new window."""
 
     # Start a threaded socket CTR server once main window generated
@@ -310,7 +315,6 @@ def _start_ctr_server(window, logger, frame_preview_devices):
         target=_start_ctr_msg_reader,
         args=(
             logger,
-            frame_preview_devices,
             callback_args,
         ),
         daemon=True,
@@ -318,7 +322,9 @@ def _start_ctr_server(window, logger, frame_preview_devices):
     server_thread.start()
 
 
-def _start_ctr_msg_reader(logger, frame_preview_devices, window):
+def _start_ctr_msg_reader(logger, window):
+    global auto_frame_preview_device
+
     with meta.get_database_connection() as db_conn:
         while True:
             message: Message = meta.read_next_message("CTR", conn=db_conn)
@@ -333,6 +339,8 @@ def _start_ctr_msg_reader(logger, frame_preview_devices, window):
                 outlet_name = msg_body.stream_name
                 outlet_id = msg_body.outlet_id
                 device_id = msg_body.device_id
+                if msg_body.auto_camera_preview:
+                    auto_frame_preview_device = device_id
                 outlet_values = f"['{outlet_name}', '{outlet_id}']"
                 window.write_event_value("-OUTLETID-", outlet_values)
                 if msg_body.camera_preview:
@@ -348,13 +356,6 @@ def _start_ctr_msg_reader(logger, frame_preview_devices, window):
                 task_id = msg_body.task_id
                 log_task_id = msg_body.log_task_id
                 tsk_strt_time = msg_body.tsk_start_time
-
-                # get the device id for frame previews
-                # event, values = window.read(0.1)
-                # outlet_name = values["-frame_preview_opts-"]
-                outlet_name = window["-frame_preview_opts-"].get()
-                device_id = frame_preview_devices[outlet_name]
-                _schedule_frame_preview(db_conn, device_id)
 
                 window.write_event_value(
                     "task_initiated",
@@ -496,7 +497,7 @@ def resize_frame_preview(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def _schedule_frame_preview(conn, device_id: str) -> None:
+def _perform_frame_preview(conn, device_id: str) -> None:
     msg = FramePreviewRequest(device_id=device_id)
 
     # TODO: lookup the destination for message based on the device used for the preview. May require API change
@@ -739,7 +740,6 @@ def gui(logger):
 
             # Signal a task started: record LSL data and update gui
             elif event == "task_initiated":
-                # event values -> f"['{task_id}', '{t_obs_id}', '{log_task_id}, '{tsk_strt_time}']
                 window["-frame_preview-"].update(disabled=True)
                 task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
                 write_output(window, f"\nTask initiated: {task_id}")
@@ -826,7 +826,7 @@ def gui(logger):
                 outlet_name = window["-frame_preview_opts-"].get()
                 # outlet_name = values["-frame_preview_opts-"]
                 device_id = frame_preview_devices[outlet_name]
-                _schedule_frame_preview(conn, device_id=device_id)
+                _perform_frame_preview(conn, device_id=device_id)
 
             # Print LSL inlet names in GUI
             if inlet_keys != list(inlets):

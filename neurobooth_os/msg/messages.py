@@ -114,6 +114,7 @@ class CreateTasksRequest(MsgBody):
     tasks: List[str]
     subj_id: str
     session_id: int
+    frame_preview_device_id: Optional[str]  # The device used to perform automated frame previews for each task
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
@@ -226,14 +227,23 @@ class CalibrationRequest(MsgBody):
 class DeviceInitialization(MsgBody):
     """
     Msg sent from Device modules to indicate that they've been initialized
+
+    Note:
+    auto_camera_preview should only be set to true for one device in a given session
+    if more than one device has auto_camera_preview set to True, the one that will be used is undefined.
+    if auto_camera preview is True, camera_preview must also be true or an exception is raised
     """
     stream_name: str
     outlet_id: str
     device_id: str = ''
     camera_preview: bool = False
+    auto_camera_preview: bool = False # Is this the device for automated previews for each task?
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
+        if self.auto_camera_preview and not self.camera_preview:
+            raise RuntimeError(f"Device configuration error for device {self.device_id}. auto_camera_preview "
+                               f"set to True, but camera_preview is False.")
         super().__init__(**data)
 
 
@@ -254,6 +264,7 @@ class LslRecording(MsgBody):
     f"""
     Message sent from CTR to STM in response to a {TaskInitialization} message confirming that LSL recording has started
     """
+
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
@@ -301,6 +312,7 @@ class StartRecording(MsgBody):
     """
     fname: str
     task_id: str
+    frame_preview_device_id: Optional[str] = None
     session_name: str
 
     def __init__(self, **data):
@@ -390,27 +402,13 @@ class MbientResetResults(MsgBody):
 
 class FramePreviewRequest(MsgBody):
     """
-    Message from controller to ACQ asking for a frame preview image from the specified device initiated by RC
-    through the GUI. See also StdFramePreviewRequest
+    Message from controller to ACQ asking for a frame preview image from the specified device initiated by an RC
+    through the GUI.
     """
     device_id: str
 
     def __init__(self, **data):
-        if 'priority' not in data:
-            data['priority'] = HIGH_PRIORITY
-        super().__init__(**data)
-
-
-class StdFramePreviewRequest(FramePreviewRequest):
-    """
-    Message from controller to ACQ asking for a frame preview image from the specified device.
-    Requests are generated automatically by the system to be processed before every task and scheduled at session
-    start time.  This is essentially the same as a FramePreviewRequest, except it runs at a lower priority.
-    Specifically, it runs at the same priority as a PerformTaskRequest (MEDIUM_PRIORITY), so the order
-    relative to those requests is ultimately based on the time when it was scheduled in a FIFO manner.
-    """
-    def __init__(self, **data):
-        data['priority'] = MEDIUM_PRIORITY
+        data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
 
 
