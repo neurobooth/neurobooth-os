@@ -444,7 +444,6 @@ def _plot_realtime(window, plttr, inlets):
 
 
 def enable_frame_preview(window, preview_devices: Dict[str, str]) -> None:
-    print("Frame preview is enabling")
     if not preview_devices:
         return  # No registered devices; do not enable the preview
 

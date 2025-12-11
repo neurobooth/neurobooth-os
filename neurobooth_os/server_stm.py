@@ -135,7 +135,6 @@ def run_stm(logger):
                     device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
                     msg_body: CreateTasksRequest = message.body
                     frame_preview_device_id = msg_body.frame_preview_device_id
-                    print(f"dev id = {frame_preview_device_id}")
 
                 elif "PerformTaskRequest" == current_msg_type:
                     _perform_task(db_conn, device_log_entry_dict, message, session, subj_id, task_log_entry)
@@ -394,7 +393,6 @@ def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_
 
     t1 = time()
     file_name = f"{session.session_name}_{tsk_start_time}_{task_id}"
-    print(f"frame preview device id = {frame_preview_device_id}")
     body = StartRecording(
         session_name=session.session_name,
         fname=file_name,
