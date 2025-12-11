@@ -629,7 +629,7 @@ def gui(logger):
                     )
                     # Open new layout with main window
                     window = _win_gen(_main_layout, sess_info)
-                    _start_ctr_server(window, logger, frame_preview_devices)
+                    _start_ctr_server(window, logger)
                     logger.debug(f"ctr msg reader started")
 
             ############################################################
