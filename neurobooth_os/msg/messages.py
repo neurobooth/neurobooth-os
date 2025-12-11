@@ -13,7 +13,7 @@ from uuid import uuid4, UUID
 from datetime import datetime
 from typing import List, Optional, Any, Dict
 
-from pydantic import BaseModel, SerializeAsAny
+from pydantic import BaseModel, SerializeAsAny, model_validator
 
 # Standard priority levels for messages, Higher priority messages are processed before lower priority messages
 # If two messages have equal priorities, the one created first (based on Message_Queue table's ID column value)
@@ -37,7 +37,7 @@ class MsgBody(BaseModel):
     priority: Optional[int]
 
     def __init__(self, **data):
-        data['msg_type']=self.__class__.__name__
+        data['msg_type'] = self.__class__.__name__
         data['module'] = self.__module__
         super().__init__(**data)
 
@@ -47,14 +47,14 @@ class Message(BaseModel):
     """
     Superclass of all messages. Message defines the attributes shared by all message types
     """
-    uuid: UUID = uuid4()                        # Unique id for message
-    msg_type: Optional[str]                     # Filled-in automatically from the MsgBody subtype class name
-    source: Optional[str]                       # Service sending request (e.g. 'CTR')
-    destination: Optional[str]                  # Service handling the request
-    time_created: Optional[datetime] = None     # Database server-time of message creation
-    time_read: Optional[datetime] = None        # Database server-time when message was read
-    priority: Optional[int]                     # message priority, filled-in automatically from MsgBody field
-    body: Optional[SerializeAsAny[MsgBody]]     # Message body
+    uuid: UUID = uuid4()  # Unique id for message
+    msg_type: Optional[str]  # Filled-in automatically from the MsgBody subtype class name
+    source: Optional[str]  # Service sending request (e.g. 'CTR')
+    destination: Optional[str]  # Service handling the request
+    time_created: Optional[datetime] = None  # Database server-time of message creation
+    time_read: Optional[datetime] = None  # Database server-time when message was read
+    priority: Optional[int]  # message priority, filled-in automatically from MsgBody field
+    body: Optional[SerializeAsAny[MsgBody]]  # Message body
 
     def __init__(self, **data: Any):
         super().__init__(**data)
@@ -71,6 +71,7 @@ class Request(Message):
     A standard message. Extracts type specific information from the message body and puts it in the message itself,
     so that it's easily queryable in the database.
     """
+
     def __init__(self, **data):
         body: MsgBody = data['body']
         data['msg_type'] = body.msg_type
@@ -100,7 +101,7 @@ class SessionPrepared(MsgBody):
     """
     Message sent to controller in reply to PrepareRequest to tell it that that preparation is complete
     """
-    elem_key: str ="-Connect-"
+    elem_key: str = "-Connect-"
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
@@ -125,6 +126,7 @@ class TasksCreated(MsgBody):
     f"""
     Message sent to controller in reply to {CreateTasksRequest} to tell it that all necessary tasks were created along with their media
     """
+
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
@@ -158,6 +160,7 @@ class TasksFinished(MsgBody):
     Message sent from controller to STM to tell it that all tasks have been performed and it should display the
     "Thank you for participating" message
     """
+
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
@@ -168,6 +171,7 @@ class PauseSessionRequest(MsgBody):
     Message from controller to STM telling it to pause. It is received by the backend after the currently executing task
      and before any remaining tasks due to its higher priority
     """
+
     def __init__(self, **data):
         data['priority'] = MEDIUM_HIGH_PRIORITY
         super().__init__(**data)
@@ -178,6 +182,7 @@ class CancelSessionRequest(MsgBody):
     Request to cancel the remaining tasks in the session after the current task completes.
     Session must be paused, or have a pending PauseRequest queued, when this request is made
     """
+
     def __init__(self, **data):
         data['priority'] = MEDIUM_HIGH_PRIORITY
         super().__init__(**data)
@@ -188,6 +193,7 @@ class ResumeSessionRequest(MsgBody):
     Message from controller to STM telling it to resume processing tasks. This message is only valid after a 
     {PauseSessionRequest} message.
     """
+
     def __init__(self, **data):
         data['priority'] = MEDIUM_HIGH_PRIORITY
         super().__init__(**data)
@@ -219,6 +225,7 @@ class CalibrationRequest(MsgBody):
     """
     Message sent from controller to STM to indicate that Eyetracker should be calibrated after the current task
     """
+
     def __init__(self, **data):
         data['priority'] = MEDIUM_HIGH_PRIORITY
         super().__init__(**data)
@@ -237,14 +244,18 @@ class DeviceInitialization(MsgBody):
     outlet_id: str
     device_id: str = ''
     camera_preview: bool = False
-    auto_camera_preview: bool = False # Is this the device for automated previews for each task?
+    auto_camera_preview: bool = False  # Is this the device for automated previews for each task?
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
-        if self.auto_camera_preview and not self.camera_preview:
-            raise RuntimeError(f"Device configuration error for device {self.device_id}. auto_camera_preview "
-                               f"set to True, but camera_preview is False.")
         super().__init__(**data)
+
+    @model_validator(mode='after')
+    def validate_auto_preview(self):
+        if self.auto_camera_preview and not self.camera_preview:
+            raise ValueError(f"Device configuration error for device {self.device_id}. "
+                             f"auto_camera_preview set to True, but camera_preview is False.")
+        return self
 
 
 class TaskInitialization(MsgBody):
@@ -324,6 +335,7 @@ class StartRecordingMsg(Request):
     """
     Convenience Request subclass. Sets the source and destination to be STM and ACQ to start recording task data
     """
+
     def __init__(self, **data):
         data['source'] = 'STM'
         data['destination'] = 'ACQ'
@@ -334,6 +346,7 @@ class StopRecording(MsgBody):
     """
     Message sent from STM to ACQ telling it to stop recording LSL as the task being recorded has completed.
     """
+
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
         super().__init__(**data)
@@ -343,6 +356,7 @@ class RecordingStarted(MsgBody):
     f"""
     Confirmation message sent from ACQ to STM in response to a {StartRecording} message
     """
+
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
@@ -352,6 +366,7 @@ class RecordingStopped(MsgBody):
     f"""
         Confirmation message sent from ACQ to STM in response to a {StopRecording} message
     """
+
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
         super().__init__(**data)
@@ -361,6 +376,7 @@ class RecordingStoppedMsg(Request):
     f"""
     Specialized {Request} subclass wrapping a RecordingStopped {MsgBody}
     """
+
     def __init__(self, **data):
         data['source'] = 'ACQ'
         data['destination'] = 'STM'
@@ -372,6 +388,7 @@ class RecordingStartedMsg(Request):
     f"""
     Specialized {Request} subclass wrapping a RecordingStarted {MsgBody}
     """
+
     def __init__(self, **data):
         data['source'] = 'ACQ'
         data['destination'] = 'STM'
