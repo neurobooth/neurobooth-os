@@ -118,6 +118,9 @@ def run_acq(logger):
 
             elif "StartRecording" == current_msg_type:
                 msg_body: StartRecording = message.body
+                dev_id = msg_body.frame_preview_device_id
+                if dev_id is not None:
+                    camera_frame_preview(dev_id, db_conn, device_manager, logger)
 
                 task = msg_body.task_id
                 fname = msg_body.fname

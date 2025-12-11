@@ -636,6 +636,7 @@ class IPhone(CameraPreviewer):
             outlet_id=self.outlet_id,
             device_id=self.device_id,
             camera_preview=True,
+            auto_camera_preview=True    # Use this device for automated frame previews taken with each task
         )
         msg = Request(source="IPhone", destination="CTR", body=body)
         with get_database_connection() as conn:
