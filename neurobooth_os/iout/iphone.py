@@ -636,6 +636,7 @@ class IPhone(CameraPreviewer):
             outlet_id=self.outlet_id,
             device_id=self.device_id,
             camera_preview=True,
+            auto_camera_preview=True
         )
         msg = Request(source="IPhone", destination="CTR", body=body)
         with get_database_connection() as conn:
