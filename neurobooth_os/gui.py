@@ -823,7 +823,6 @@ def gui(logger):
             # handle a user request for a frame-preview
             elif event == "-frame_preview-":
                 outlet_name = window["-frame_preview_opts-"].get()
-                # outlet_name = values["-frame_preview_opts-"]
                 device_id = frame_preview_devices[outlet_name]
                 _perform_frame_preview(conn, device_id=device_id)
 
