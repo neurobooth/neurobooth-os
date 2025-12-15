@@ -29,6 +29,7 @@ from neurobooth_os.log_manager import make_db_logger, log_message_received
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
 calib_instructions: bool = True  # True if we have not yet performed an eyetracker calibration task
+frame_preview_device_id: Optional[str] = None
 
 
 def main():
@@ -48,6 +49,8 @@ def main():
 
 
 def run_stm(logger):
+    global frame_preview_device_id
+
     def _finish_tasks(session):
         session.logger.debug('FINISH SCREEN')
         finish_screen(session.win, session.session_end_slide)
@@ -130,6 +133,8 @@ def run_stm(logger):
 
                 elif 'CreateTasksRequest' == current_msg_type:
                     device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
+                    msg_body: CreateTasksRequest = message.body
+                    frame_preview_device_id = msg_body.frame_preview_device_id
 
                 elif "PerformTaskRequest" == current_msg_type:
                     _perform_task(db_conn, device_log_entry_dict, message, session, subj_id, task_log_entry)
@@ -205,7 +210,7 @@ def _perform_task(db_conn, device_log_entry_dict, message, session, subj_id: str
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 future1 = executor.submit(_wait_for_lsl_recording_to_start, db_conn, session)
-                future2 = executor.submit(_start_acq, session, task_id, tsk_start_time)
+                future2 = executor.submit(_start_acq, session, task_id, tsk_start_time, frame_preview_device_id)
                 # Wait for all futures to complete
                 concurrent.futures.wait([future1, future2])
             _get_task_instance(session, task_args, edf_fname)
@@ -367,7 +372,7 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
         attempts = attempts + 1
 
 
-def _start_acq(session: StmSession, task_id: str, tsk_start_time):
+def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_device_id:str):
     """
     Start recording on ACQ in parallel to starting on STM
 
@@ -391,7 +396,8 @@ def _start_acq(session: StmSession, task_id: str, tsk_start_time):
     body = StartRecording(
         session_name=session.session_name,
         fname=file_name,
-        task_id=task_id
+        task_id=task_id,
+        frame_preview_device_id=frame_preview_device_id
     )
     sr_msg = StartRecordingMsg(body=body)
     meta.post_message(sr_msg, session.db_conn)

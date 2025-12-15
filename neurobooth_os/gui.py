@@ -42,6 +42,7 @@ running_servers = []
 last_task = None
 start_pressed = False
 session_prepared_count = 0      # How many SessionPrepared messages were received. the number required = node count
+auto_frame_preview_device: Optional[str] = None  # which device to use for automated frame previews for every task
 
 
 def setup_log(sg_handler=None):
@@ -131,7 +132,11 @@ def _start_task_presentation(window, task_list: List[str], subject_id: str, sess
     write_output(window, "\nSession started")
     last_task = task_list[-1]
     if len(task_list) > 0:
-        msg_body = CreateTasksRequest(tasks=task_list, subj_id=subject_id, session_id=session_id)
+        msg_body = CreateTasksRequest(
+            tasks=task_list,
+            subj_id=subject_id,
+            session_id=session_id,
+            frame_preview_device_id=auto_frame_preview_device)
         msg = Request(
             source='CTR',
             destination='STM',
@@ -318,6 +323,8 @@ def _start_ctr_server(window, logger):
 
 
 def _start_ctr_msg_reader(logger, window):
+    global auto_frame_preview_device
+
     with meta.get_database_connection() as db_conn:
         while True:
             message: Message = meta.read_next_message("CTR", conn=db_conn)
@@ -332,6 +339,8 @@ def _start_ctr_msg_reader(logger, window):
                 outlet_name = msg_body.stream_name
                 outlet_id = msg_body.outlet_id
                 device_id = msg_body.device_id
+                if msg_body.auto_camera_preview:
+                    auto_frame_preview_device = device_id
                 outlet_values = f"['{outlet_name}', '{outlet_id}']"
                 window.write_event_value("-OUTLETID-", outlet_values)
                 if msg_body.camera_preview:
@@ -347,6 +356,7 @@ def _start_ctr_msg_reader(logger, window):
                 task_id = msg_body.task_id
                 log_task_id = msg_body.log_task_id
                 tsk_strt_time = msg_body.tsk_start_time
+
                 window.write_event_value(
                     "task_initiated",
                     f"['{task_id}', '{task_id}', '{log_task_id}', '{tsk_strt_time}']",
@@ -445,8 +455,8 @@ def enable_frame_preview(window, preview_devices: Dict[str, str]) -> None:
         preview_default = available_streams[0]
 
     # Enable the preview button and the Combo picker
-    window["-frame_preview-"].update(visible=True)
-    window["-frame_preview_opts-"].update(visible=True, value=preview_default, values=available_streams)
+    window["-frame_preview-"].update(disabled=False)
+    window["-frame_preview_opts-"].update(disabled=False, value=preview_default, values=available_streams)
 
 
 def handle_frame_preview_reply(window, frame_reply: FramePreviewReply) -> None:
@@ -486,8 +496,10 @@ def resize_frame_preview(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def _request_frame_preview(conn, device_id: str) -> None:
+def _perform_frame_preview(conn, device_id: str) -> None:
     msg = FramePreviewRequest(device_id=device_id)
+
+    # TODO: lookup the destination for message based on the device used for the preview. May require API change
     req = Request(source="CTR", destination="ACQ", body=msg)
     meta.post_message(req, conn)
 
@@ -665,11 +677,12 @@ def gui(logger):
 
             elif event == "tasks_created":
                 _session_button_state(window, disabled=False)
+
                 for task_id in task_list:
-                    msg_body = PerformTaskRequest(task_id=task_id)
-                    msg = Request(source="CTR", destination="STM", body=msg_body)
-                    meta.post_message(msg, conn)
-                # PerformTask Messages queued for all tasks, now queue a TasksFinished message
+                    # Queue PerformTask requests for every task
+                    _schedule_task(conn, task_id)
+
+                # PerformTask Messages are queued for all tasks, now queue a TasksFinished message
                 msg_body = TasksFinished()
                 msg = Request(source="CTR", destination="STM", body=msg_body)
                 meta.post_message(msg, conn)
@@ -726,8 +739,7 @@ def gui(logger):
 
             # Signal a task started: record LSL data and update gui
             elif event == "task_initiated":
-                # event values -> f"['{task_id}', '{t_obs_id}', '{log_task_id}, '{tsk_strt_time}']
-                window["-frame_preview-"].update(visible=False)
+                window["-frame_preview-"].update(disabled=True)
                 task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
                 write_output(window, f"\nTask initiated: {task_id}")
 
@@ -808,16 +820,35 @@ def gui(logger):
             # Conditionals handling inlets for plotting and recording
             ##################################################################################
 
+            # handle a user request for a frame-preview
             elif event == "-frame_preview-":
-                outlet_name = values["-frame_preview_opts-"]
+                outlet_name = window["-frame_preview_opts-"].get()
                 device_id = frame_preview_devices[outlet_name]
-                _request_frame_preview(conn, device_id)
+                _perform_frame_preview(conn, device_id=device_id)
 
             # Print LSL inlet names in GUI
             if inlet_keys != list(inlets):
                  inlet_keys = list(inlets)
                  window["inlet_State"].update("\n".join(inlet_keys))
     close(window)
+
+
+def _schedule_task(conn, task_id) -> None:
+    """
+    Schedule a PerformTask request for the given task
+
+    Parameters
+    ----------
+    conn    a DB Connection
+    task_id the ID for the Task to be scheduled
+
+    Returns
+    -------
+    None
+    """
+    msg_body = PerformTaskRequest(task_id=task_id)
+    msg = Request(source="CTR", destination="STM", body=msg_body)
+    meta.post_message(msg, conn)
 
 
 def close(window):

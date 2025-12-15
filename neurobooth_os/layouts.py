@@ -270,7 +270,7 @@ def _main_layout(sess_info):
                 "Preview Camera",
                 button_color=("white", "black"),
                 key="-frame_preview-",
-                visible=False,
+                disabled=True,
             )
         ],
         [
@@ -279,7 +279,8 @@ def _main_layout(sess_info):
                 size=(40, 1),
                 readonly=True,
                 key="-frame_preview_opts-",
-                visible=False,
+                enable_events=True,
+                disabled=True,
             ),
         ],
         [_space()],
