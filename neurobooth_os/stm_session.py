@@ -43,7 +43,6 @@ class StmSession(BaseModel):
             self.session_name: str = kwargs["session_name"]
         self.collection_id = kwargs["collection_id"]
         self.selected_tasks = kwargs["selected_tasks"]
-        self.db_conn = kwargs["db_conn"]
         self.logger = kwargs["logger"]
         self.session_folder = self.create_session_folder(self.logger, self.session_name)
         self.system_resource_logger: SystemResourceLogger = self.create_sys_resource_logger()
