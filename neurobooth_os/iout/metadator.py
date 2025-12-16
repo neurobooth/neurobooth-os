@@ -120,16 +120,17 @@ def post_message(msg: Message, conn: connection = None) -> str:
         with get_database_connection() as conn:
             post_message(msg, conn)
 
-    table = Table("message_queue", conn=conn)
-    body = msg.body.model_dump_json()
-    return table.insert_rows([(str(msg.uuid),
-                               msg.msg_type,
-                               msg.full_msg_type(),
-                               msg.source,
-                               msg.destination,
-                               msg.priority,
-                               body)],
-                             cols=["uuid", "msg_type", "full_msg_type", "source", "destination", 'priority', 'body'])
+    else:
+        table = Table("message_queue", conn=conn)
+        body = msg.body.model_dump_json()
+        return table.insert_rows([(str(msg.uuid),
+                                   msg.msg_type,
+                                   msg.full_msg_type(),
+                                   msg.source,
+                                   msg.destination,
+                                   msg.priority,
+                                   body)],
+                                 cols=["uuid", "msg_type", "full_msg_type", "source", "destination", 'priority', 'body'])
 
 
 def read_next_message(destination: str, conn: connection, msg_type: str = None) -> Optional[Message]:
