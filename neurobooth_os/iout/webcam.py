@@ -78,8 +78,7 @@ class VidRec_Webcam(CameraPreviewer):
             device_id=self.device_args.device_id,
             camera_preview=True,
         )
-        with meta.get_database_connection() as db_conn:
-            meta.post_message(Request(source='Webcam', destination='CTR', body=msg_body), conn=db_conn)
+        meta.post_message(Request(source='Webcam', destination='CTR', body=msg_body))
         return StreamOutlet(info)
 
     def open_stream(self) -> None:
@@ -128,8 +127,7 @@ class VidRec_Webcam(CameraPreviewer):
         self.video_out = cv2.VideoWriter(self.video_filename, fourcc, fps, frame_size)
 
         msg_body = NewVideoFile(stream_name=self.stream_name, filename=op.split(self.video_filename)[-1])
-        with meta.get_database_connection() as db_conn:
-            meta.post_message(Request(source='Webcam', destination='CTR', body=msg_body), conn=db_conn)
+        meta.post_message(Request(source='Webcam', destination='CTR', body=msg_body))
         self.streaming = True
 
     def record(self) -> None:

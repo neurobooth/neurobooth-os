@@ -3,7 +3,6 @@ import os
 
 from typing import Optional, Dict, List
 from pydantic import BaseModel
-from psycopg2.extensions import connection
 
 from psychopy import visual
 
@@ -24,7 +23,6 @@ class StmSession(BaseModel):
     selected_tasks: List[str]
     collection_id: str
     logger: logging.Logger
-    db_conn: connection
     win: Optional[visual.Window] = None
     session_folder: Optional[str] = None
     system_resource_logger: Optional[object] = None

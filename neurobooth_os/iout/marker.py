@@ -46,8 +46,7 @@ def marker_stream(name="Marker", outlet_id=None):
 
     msg_body = DeviceInitialization(stream_name=name, outlet_id=outlet_id)
     message = Request(source="marker", destination='CTR', body=msg_body)
-    with meta.get_database_connection() as conn:
-        meta.post_message(message, conn)
+    meta.post_message(message)
 
     outlet_marker.stop = outlet_marker.__del__
     outlet_marker.streaming = True

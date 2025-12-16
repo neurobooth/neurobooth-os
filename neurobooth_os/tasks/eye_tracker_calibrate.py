@@ -5,7 +5,7 @@ A task that is run to calibrate the eyetracker
 import os.path as op
 
 from neurobooth_os.tasks import Task_Eyetracker
-from neurobooth_os.iout.metadator import post_message, get_database_connection
+from neurobooth_os.iout.metadator import post_message
 from neurobooth_os.msg.messages import NewVideoFile, Request
 from neurobooth_os import config
 
@@ -20,7 +20,7 @@ class Calibrate(Task_Eyetracker):
 
         body = NewVideoFile(stream_name=self.eye_tracker.streamName, filename=op.split(fname)[-1])
         msg = Request(source="EyeTracker", destination="CTR", body=body)
-        post_message(msg, get_database_connection())
+        post_message(msg)
 
         self.fname = fname
         self.fname_temp = "name8chr.edf"
