@@ -17,7 +17,7 @@ from hashlib import md5
 from base64 import b64decode
 
 from neurobooth_os.iout.device import CameraPreviewer
-from neurobooth_os.iout.metadator import post_message, get_database_connection, read_sensors
+from neurobooth_os.iout.metadator import post_message, read_sensors
 from neurobooth_os.iout.stim_param_reader import IPhoneDeviceArgs
 from neurobooth_os.iout.usbmux import USBMux
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -236,8 +236,7 @@ class IPhone(CameraPreviewer):
         :param disconnect: Whether to trigger a disconnect as a result of the panic.
         """
         self.logger.exception(f'iPhone [state={self._state}]: PANIC Message: {e}')
-        with get_database_connection() as conn:
-            IPhone.send_status_msg(f'iPhone PANIC (Please restart iphone app and session): {e}', conn)
+        IPhone.send_status_msg(f'iPhone PANIC (Please restart iphone app and session): {e}')
 
         with self._state_lock:
             self._state = "#ERROR"
@@ -639,8 +638,7 @@ class IPhone(CameraPreviewer):
             auto_camera_preview=True    # Use this device for automated frame previews taken with each task
         )
         msg = Request(source="IPhone", destination="CTR", body=body)
-        with get_database_connection() as conn:
-            post_message(msg, conn)
+        post_message(msg)
 
         return StreamOutlet(info)
 
@@ -770,23 +768,22 @@ class IPhone(CameraPreviewer):
         filename += "_IPhone"
         filename = op.split(filename)[-1]
         if not DISABLE_LSL:
-            with get_database_connection() as conn:
-                IPhone.send_file_msg(self.streamName, f"{filename}.mov", conn)
-                time.sleep(0.05)
-                IPhone.send_file_msg(self.streamName, f"{filename}.json", conn)
+            IPhone.send_file_msg(self.streamName, f"{filename}.mov")
+            time.sleep(0.05)
+            IPhone.send_file_msg(self.streamName, f"{filename}.json")
         self._start_recording(filename)
 
     @staticmethod
-    def send_file_msg(stream_name, file_name, conn):
+    def send_file_msg(stream_name, file_name):
         body = NewVideoFile(stream_name=stream_name, filename=f"{file_name}")
         msg = Request(source="IPhone", destination="CTR", body=body)
-        post_message(msg, conn)
+        post_message(msg)
 
     @staticmethod
-    def send_status_msg(txt, conn):
+    def send_status_msg(txt):
         body = StatusMessage(text=txt)
         msg = Request(source="IPhone", destination="CTR", body=body)
-        post_message(msg, conn)
+        post_message(msg)
 
     def stop(self) -> None:
         """Called during a START message to the server. Stop data capture."""
@@ -987,8 +984,7 @@ def script_capture_data(subject_id: str, recording_folder: str, capture_duration
 
     default_config = iphone.read_default_sensor_args()
     if not iphone.prepare(config=default_config):
-        with get_database_connection() as conn:
-            IPhone.send_status_msg("Could not connect to iphone", conn)
+        IPhone.send_status_msg("Could not connect to iphone")
     iphone.frame_preview()
 
     # Start LSL

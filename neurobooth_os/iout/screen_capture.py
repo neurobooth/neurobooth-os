@@ -68,8 +68,7 @@ class ScreenMirror:
         self.info_stream = info_stream
         self.outlet_screen = StreamOutlet(info_stream)
         msg_body = DeviceInitialization(stream_name="Screen", outlet_id=self.oulet_id)
-        with meta.get_database_connection() as db_conn:
-            meta.post_message(Request(source='ScreenMirror', destination='CTR', body=msg_body), conn=db_conn)
+        meta.post_message(Request(source='ScreenMirror', destination='CTR', body=msg_body))
 
 
     def start(self):
