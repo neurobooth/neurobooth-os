@@ -30,7 +30,7 @@ class LogSession(BaseModel):
     study_id: Optional[str] = None
     staff_id: Optional[str] = None
     collection_id: Optional[str] = None
-    application_id: Optional[str] = None
+    application_id: str = "neurobooth_os"
     date: datetime = datetime.now()
 
 
@@ -344,18 +344,6 @@ def new_task_log_dict():
     log_task["date_times"] = "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "}"
     log_task["event_array"] = []  # marker_name:timestamp
     return log_task
-
-
-def new_session_log_dict(application_id="neurobooth_os"):
-    """Create a new session_log dict."""
-    session_log = OrderedDict()
-    session_log["subject_id"] = ""
-    session_log["study_id"] = ""
-    session_log["staff_id"] = ""
-    session_log["collection_id"] = ""
-    session_log["application_id"] = application_id
-    session_log["date"] = datetime.now().strftime("%Y-%m-%d")
-    return session_log
 
 
 def make_new_task_row(conn: connection, subject_id):
