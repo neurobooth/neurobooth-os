@@ -12,7 +12,7 @@ class TestTaskParamReader(unittest.TestCase):
     def test_task_log_entry_creation(self):
         collection_id = 'foo'
         database_name = 'mock_neurobooth_1'
-        log_task = meta._new_tech_log_dict()
+        log_task = meta.new_task_log_dict()
         log_task["subject_id-date"] = "foobar"
         msg = f"prepare:{collection_id}:{database_name}:{str(log_task)}"
         log_task_entry = extract_task_log_entry(collection_id, msg, database_name)
@@ -23,7 +23,7 @@ class TestTaskParamReader(unittest.TestCase):
     def test_task_log_entry_write(self):
         collection_id = 'foo'
         database_name = 'mock_neurobooth_1'
-        log_task = meta._new_tech_log_dict()
+        log_task = meta.new_task_log_dict()
         log_task["subject_id-date"] = "foobar"
         msg = f"prepare:{collection_id}:{database_name}:{str(log_task)}"
         log_task_entry = extract_task_log_entry(collection_id, msg, database_name)
@@ -45,7 +45,7 @@ class TestTaskParamReader(unittest.TestCase):
 
         collection_id = 'testing'
         database_name = 'mock_neurobooth_1'
-        log_task = meta._new_tech_log_dict()
+        log_task = meta.new_task_log_dict()
         log_task["subject_id-date"] = "foobar"
         msg = f"prepare:{collection_id}:{database_name}:{str(log_task)}"
         stm_session, task_log_entry = prepare_session(msg)
@@ -60,7 +60,7 @@ class TestTaskParamReader(unittest.TestCase):
         database_name = 'mock_neurobooth'
         subject_id = "72"
         selected_tasks = ['task_1']
-        log_task = meta._new_tech_log_dict()
+        log_task = meta.new_task_log_dict()
         log_task["subject_id-date"] = "foobar"
         msg = PrepareRequest(database_name=database_name, subject_id=subject_id, collection_id=collection_id,
                        selected_tasks=selected_tasks, date="2024-08-28")

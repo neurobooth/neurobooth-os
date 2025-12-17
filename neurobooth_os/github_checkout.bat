@@ -41,7 +41,7 @@ if errorlevel 1 (
 )
 
 REM Write tag to file
-set TAG_FILE=current_release.txt
+set TAG_FILE=current_release.py
 echo %TAG% > %TAG_FILE%
 if errorlevel 1 (
     echo Error: Failed to write tag to file

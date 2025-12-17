@@ -80,7 +80,7 @@ class TestTask(unittest.TestCase):
 
         collection_id = 'testing'
         database_name = 'mock_neurobooth_1'
-        log_task = meta._new_tech_log_dict()
+        log_task = meta.new_task_log_dict()
         log_task["subject_id-date"] = "foobar"
         from neurobooth_os.log_manager import make_default_logger
         logger = make_default_logger(log_path, logging.DEBUG, False)
@@ -152,7 +152,7 @@ class TestTask(unittest.TestCase):
         log_path = r"C:\neurobooth\test_data\test_logs"
         collection_id = 'testing'
         database_name = 'mock_neurobooth_1'
-        log_task = meta._new_tech_log_dict()
+        log_task = meta.new_task_log_dict()
         log_task["subject_id-date"] = "foobar"
         from neurobooth_os.log_manager import make_default_logger
         logger = make_default_logger(log_path, logging.DEBUG, False)
