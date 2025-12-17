@@ -18,6 +18,7 @@ from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
 
 import neurobooth_os
+from neurobooth_os import current_release as release
 from neurobooth_os import config
 
 from neurobooth_os.iout import metadator as meta
@@ -61,7 +62,7 @@ def run_stm(logger):
     session_canceled: bool = False  # True if message received that RC requests that the session be canceled
     finished: bool = False  # True if the "Thank you" screen has been displayed
     shutdown: bool = False  # True if message received that this server should be terminated
-    init_servers = Request(source="STM", destination="CTR", body=ServerStarted())
+    init_servers = Request(source="STM", destination="CTR", body=ServerStarted(neurobooth_version=release.version))
     meta.post_message(init_servers, db_conn)
 
     while not shutdown:

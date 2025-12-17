@@ -8,6 +8,7 @@ from pylsl import local_clock
 import logging
 
 import neurobooth_os
+import neurobooth_os.current_release as release
 
 from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs, DeviceArgs
@@ -56,7 +57,7 @@ def run_acq(logger):
     system_resource_logger = None
     task_args: Dict[str, TaskArgs] = {}
     shutdown_flag = False
-    init_servers = Request(source="ACQ", destination="CTR", body=ServerStarted())
+    init_servers = Request(source="ACQ", destination="CTR", body=ServerStarted(neurobooth_version=release.version))
     meta.post_message(init_servers, db_conn)
     task: Optional[str] = None  # id of currently executing task, if any
     while not shutdown_flag:
