@@ -42,8 +42,16 @@ if errorlevel 1 (
 
 REM Write tag to file
 set TAG_FILE=current_release.py
-echo %TAG% > %TAG_FILE%
-if errorlevel 1 (
+(
+    echo.
+    echo.
+    echo """
+    echo     Stores neurobooth version number.
+    echo     GENERATED FILE. DO NOT EDIT MANUALLY
+    echo """
+    echo.
+    echo version = '%TAG%'
+) > %TAG_FILE%if errorlevel 1 (
     echo Error: Failed to write tag to file
     exit /b 1
 )
