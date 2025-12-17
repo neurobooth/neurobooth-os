@@ -25,6 +25,7 @@ from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes, PREVIEW_AREA
 from neurobooth_os.log_manager import make_db_logger, log_message_received
 import neurobooth_os.iout.metadator as meta
+from neurobooth_os.iout.metadator import LogSession
 from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
@@ -66,9 +67,9 @@ class Handler(logging.StreamHandler):
 ########## Database functions ############
 
 
-def _get_subject_by_id(window, log_sess, conn, subject_id: str):
+def _get_subject_by_id(window, log_sess: LogSession, conn, subject_id: str):
     """Returns the subject record corresponding to the provided subject ID"""
-    log_sess["subject_id"] = subject_id.strip()
+    log_sess.subject_id = subject_id.strip()
     subject = meta.get_subject_by_id(conn, subject_id)
     if subject is not None:
         subject_text = (
@@ -573,8 +574,8 @@ def gui(logger):
         window = _win_gen(_init_layout, conn)
 
         plttr = stream_plotter()
-        log_task = meta._new_tech_log_dict()
-        log_sess = meta._new_session_log_dict()
+        log_task = meta.new_task_log_dict()
+        log_sess = LogSession()
         stream_ids, inlets = {}, {}
         plot_elem, inlet_keys = [], []
         steps = list()  # keep track of steps done
@@ -587,7 +588,7 @@ def gui(logger):
             ############################################################
             if event == "study_id":
                 study_id = values[event]
-                log_sess["study_id"] = study_id
+                log_sess.study_id = study_id
                 collection_ids = _get_collections(window, study_id)
 
             elif event == "find_subject":
@@ -595,7 +596,7 @@ def gui(logger):
 
             elif event == "collection_id":
                 collection_id: str = values[event]
-                log_sess["collection_id"] = collection_id
+                log_sess.collection_id = collection_id
                 task_string = _get_tasks(window, collection_id)
 
             elif event == "_init_sess_save_":
@@ -606,7 +607,7 @@ def gui(logger):
                 elif window["subject_info"].get() == "":
                     sg.PopupError("Please select a Subject", location=get_popup_location(window))
                 else:
-                    log_sess["staff_id"] = values["staff_id"]
+                    log_sess.staff_id = values["staff_id"]
                     sess_info = _create_session_dict(
                         window,
                         log_task,
@@ -659,7 +660,7 @@ def gui(logger):
                 if not start_pressed:
                     window["Start"].Update(disabled=True)
                     start_pressed = True
-                    session_id = meta._make_session_id(conn, log_sess)
+                    session_id = meta.make_session_id(conn, log_sess)
                     task_list: List[str] = [k for k, v in values.items() if "obs" in k and v is True]
                     _start_task_presentation(window, task_list, sess_info["subject_id"], session_id, steps, conn)
 
@@ -710,8 +711,8 @@ def gui(logger):
                     continue
                 else:
                     response = sg.popup_ok_cancel("System will terminate!  \n\n"
-                                                  "Please ensure that any task in progress is completed and that STM and "
-                                                  "ACQ shut down properly.\n", title="Warning",
+                                                  "Please ensure that any task in progress is completed and that STM "
+                                                  "and ACQ shut down properly.\n", title="Warning",
                                                   location=get_popup_location(window))
                     if response == "OK":
                         write_output(window, "System termination scheduled. "
