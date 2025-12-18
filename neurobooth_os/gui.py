@@ -322,30 +322,17 @@ def _start_ctr_server(window, logger):
     """Start threaded control server and new window."""
 
     # Start a threaded socket CTR server once main window generated
-    # callback_args = window
-    # args = (
-    #     logger,
-    #     callback_args,
-    # )
-    #
-    # server_thread = threading.Thread(
-    #     target=_start_ctr_msg_reader,
-    #     args=(
-    #         logger,
-    #         callback_args,
-    #     ),
-    #     daemon=True,
-    # )
-    # server_thread.start()
+    callback_args = window
+    server_thread = threading.Thread(
+        target=_start_ctr_msg_reader,
+        args=(
+            logger,
+            callback_args,
+        ),
+        daemon=True,
+    )
+    server_thread.start()
 
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(_start_ctr_msg_reader, logger, window)
-
-        try:
-            result = future.result()  # Exception raised here in main thread
-        except RuntimeError as e:
-            logger.error(f"Error in thread {e}")
-            raise e
 
 def _start_ctr_msg_reader(logger, window):
     with meta.get_database_connection() as db_conn:
@@ -370,11 +357,12 @@ def _start_ctr_msg_reader(logger, window):
                 window.write_event_value("devices_connected", True)
             elif "ServerStarted" == message.msg_type:
                 msg_body: ServerStarted = message.body
-                version = msg_body.neurobooth_version
-                if version != gui_release_version:
-                    raise VersionMismatchError(gui_release_version, version, message.source)
-                # TODO: Check version against version in log_sess (LogSession) and raise error on conflict
-                window.write_event_value("server_started", message.source)
+                server_version = msg_body.neurobooth_version
+                if server_version != gui_release_version:
+                    version_error = VersionMismatchError(gui_release_version, server_version, message.source)
+                    write_version_error(logger, version_error, window)
+                else:
+                    window.write_event_value("server_started", message.source)
             elif "TasksCreated" == message.msg_type:
                 window.write_event_value("tasks_created", "")
             elif "TaskInitialization" == message.msg_type:
@@ -427,6 +415,19 @@ def _start_ctr_msg_reader(logger, window):
                 logger.debug(f"Unhandled message: {message.msg_type}")
 
 
+def write_version_error(logger, version_error: VersionMismatchError, window):
+    pause_secs = 20
+    msg = str(version_error)
+    heading = "Critical Error: "
+    msg = (f"Neurobooth versions are not consistent!"
+           f"The system will shutdown in {pause_secs} seconds. \n"
+           f"The full error was: '{msg}'")
+    text_color = "red"
+    write_output(window=window, text=f"{heading}: {msg}", text_color=text_color)
+    time.sleep(pause_secs)
+    raise version_error
+
+
 def write_message_to_output(logger, message: Request, window):
     msg_body = message.body
     text_color: Optional[str]
@@ -442,7 +443,7 @@ def write_message_to_output(logger, message: Request, window):
                f"before restarting the session.\n"
                f"The error was: '{msg_body.text}'")
         text_color = "red"
-
+        time.sleep(20)
     elif msg_body.status.upper() == "ERROR":
         text_color = "red"
     elif msg_body.status == "WARNING":
