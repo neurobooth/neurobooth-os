@@ -9,7 +9,6 @@ import logging
 import sys
 import time
 import threading
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Dict, Optional, List
 
@@ -626,12 +625,13 @@ def gui(logger):
             if event == "study_id":
                 study_id = values[event]
                 log_sess.study_id = study_id
-                collection_ids = _get_collections(window, study_id)
+                _get_collections(window, study_id)
 
             elif event == '-version_error-':
                 server_version, server = values[event]
                 version_error = VersionMismatchError(gui_release_version, server_version, server)
                 write_version_error_and_fail(version_error, window)
+                terminate_system(conn, plttr, sess_info, values, window)
 
             elif event == "find_subject":
                 subject: Subject = _get_subject_by_id(window, log_sess, conn, values["subject_id"])
