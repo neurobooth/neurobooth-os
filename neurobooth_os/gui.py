@@ -19,6 +19,7 @@ import FreeSimpleGUI as sg
 import liesl
 from FreeSimpleGUI import Multiline
 
+from neurobooth_os import current_release as release
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 
@@ -35,7 +36,7 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         DeviceInitialization, LslRecording,
                                         TasksFinished, FramePreviewRequest,
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
-                                        CancelSessionRequest, MEDIUM_HIGH_PRIORITY)
+                                        CancelSessionRequest, MEDIUM_HIGH_PRIORITY, ServerStarted)
 from util.nb_types import Subject
 
 #  State variables used to help ensure in-order GUI steps
@@ -43,6 +44,20 @@ running_servers = []
 last_task = None
 start_pressed = False
 session_prepared_count = 0      # How many SessionPrepared messages were received. the number required = node count
+gui_release_version: str = ''
+
+
+class VersionMismatchError(RuntimeError):
+    """Raised when Neurobooth versions across servers are inconsistent."""
+
+    def __init__(self, gui_version: str, other_version: str, server: str):
+        self.gui_version = gui_version
+        self.other_version = other_version
+        self.server = server
+        super().__init__(
+            f"Version mismatch between GUI and {server}: GUI is on {gui_version}, "
+            f"and {server} is on {other_version}"
+        )
 
 
 def setup_log(sg_handler=None):
@@ -340,6 +355,11 @@ def _start_ctr_msg_reader(logger, window):
             elif "SessionPrepared" == message.msg_type:
                 window.write_event_value("devices_connected", True)
             elif "ServerStarted" == message.msg_type:
+                msg_body: ServerStarted = message.body
+                version = msg_body.neurobooth_version
+                if version != gui_release_version:
+                    raise VersionMismatchError(gui_release_version, version, message.source)
+                # TODO: Check version against version in log_sess (LogSession) and raise error on conflict
                 window.write_event_value("server_started", message.source)
             elif "TasksCreated" == message.msg_type:
                 window.write_event_value("tasks_created", "")
@@ -557,9 +577,11 @@ Calibration instructions:
 def gui(logger):
     """Start the Graphical User Interface.
     """
-    global running_servers, start_pressed
+    global running_servers, start_pressed, gui_release_version
 
     database = cfg.neurobooth_config.database.dbname
+
+    gui_release_version = release.version
 
     nodes = _get_nodes()
 
@@ -576,6 +598,7 @@ def gui(logger):
         plttr = stream_plotter()
         log_task = meta.new_task_log_dict()
         log_sess = LogSession()
+        log_sess.application_version = gui_release_version
         stream_ids, inlets = {}, {}
         plot_elem, inlet_keys = [], []
         steps = list()  # keep track of steps done
