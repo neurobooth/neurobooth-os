@@ -597,8 +597,7 @@ def gui(logger):
 
         plttr = stream_plotter()
         log_task = meta.new_task_log_dict()
-        log_sess = LogSession()
-        log_sess.application_version = gui_release_version
+        log_sess = LogSession(application_version=gui_release_version)
         stream_ids, inlets = {}, {}
         plot_elem, inlet_keys = [], []
         steps = list()  # keep track of steps done
