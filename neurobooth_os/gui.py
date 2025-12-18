@@ -56,7 +56,7 @@ class VersionMismatchError(RuntimeError):
         self.other_version = other_version
         self.server = server
         super().__init__(
-            f"Version mismatch between GUI and {server}: GUI is on {gui_version}, "
+            f"Neurobooth installed incorrectly. Version mismatch between GUI and {server}: GUI is on {gui_version}, "
             f"and {server} is on {other_version}"
         )
 
@@ -442,7 +442,7 @@ def write_message_to_output(logger, message: Request, window):
                f"before restarting the session.\n"
                f"The error was: '{msg_body.text}'")
         text_color = "red"
-        time.sleep(20)
+
     elif msg_body.status.upper() == "ERROR":
         text_color = "red"
     elif msg_body.status == "WARNING":
