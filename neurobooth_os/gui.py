@@ -344,8 +344,8 @@ def _start_ctr_server(window, logger):
         try:
             result = future.result()  # Exception raised here in main thread
         except RuntimeError as e:
+            logger.error(f"Error in thread {e}")
             raise e
-
 
 def _start_ctr_msg_reader(logger, window):
     with meta.get_database_connection() as db_conn:
@@ -596,6 +596,7 @@ def gui(logger):
     database = cfg.neurobooth_config.database.dbname
 
     gui_release_version = release.version
+    logger.info(f"Neurobooth application version = {gui_release_version}")
 
     nodes = _get_nodes()
 
