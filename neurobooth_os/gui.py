@@ -360,8 +360,8 @@ def _start_ctr_msg_reader(logger, window):
                 server_version = msg_body.neurobooth_version
                 if server_version != gui_release_version:
                     window.write_event_value('-version_error-', [server_version, message.source])
-                else:
-                    window.write_event_value("server_started", message.source)
+                    return
+                window.write_event_value("server_started", message.source)
             elif "TasksCreated" == message.msg_type:
                 window.write_event_value("tasks_created", "")
             elif "TaskInitialization" == message.msg_type:
