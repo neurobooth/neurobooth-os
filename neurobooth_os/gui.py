@@ -630,8 +630,8 @@ def gui(logger):
             elif event == '-version_error-':
                 server_version, server = values[event]
                 version_error = VersionMismatchError(gui_release_version, server_version, server)
-                write_version_error_and_fail(version_error, window)
                 terminate_system(conn, plttr, sess_info, values, window)
+                write_version_error_and_fail(version_error, window)
 
             elif event == "find_subject":
                 subject: Subject = _get_subject_by_id(window, log_sess, conn, values["subject_id"])
