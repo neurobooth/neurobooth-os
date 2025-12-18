@@ -9,6 +9,7 @@ import logging
 import sys
 import time
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Dict, Optional, List
 
@@ -321,16 +322,29 @@ def _start_ctr_server(window, logger):
     """Start threaded control server and new window."""
 
     # Start a threaded socket CTR server once main window generated
-    callback_args = window
-    server_thread = threading.Thread(
-        target=_start_ctr_msg_reader,
-        args=(
-            logger,
-            callback_args,
-        ),
-        daemon=True,
-    )
-    server_thread.start()
+    # callback_args = window
+    # args = (
+    #     logger,
+    #     callback_args,
+    # )
+    #
+    # server_thread = threading.Thread(
+    #     target=_start_ctr_msg_reader,
+    #     args=(
+    #         logger,
+    #         callback_args,
+    #     ),
+    #     daemon=True,
+    # )
+    # server_thread.start()
+
+    with ThreadPoolExecutor() as executor:
+        future = executor.submit(_start_ctr_msg_reader, logger, window)
+
+        try:
+            result = future.result()  # Exception raised here in main thread
+        except RuntimeError as e:
+            raise e
 
 
 def _start_ctr_msg_reader(logger, window):
