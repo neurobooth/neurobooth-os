@@ -1,6 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
 
+REM This script checks out the provided tag and updates the version number in the installed system to be the tag number
+
 REM Check if tag argument is provided
 if "%~1"=="" (
     echo Usage: %~nx0 ^<tag^>
