@@ -413,17 +413,17 @@ def _start_ctr_msg_reader(logger, window):
                 logger.debug(f"Unhandled message: {message.msg_type}")
 
 
-def write_version_error_and_fail(version_error: VersionMismatchError, window):
-    pause_secs = 20
-    msg = str(version_error)
+def report_version_error_and_close(logger, version_error: VersionMismatchError, window):
     heading = "Critical Error: "
     msg = (f"Neurobooth versions are not consistent!"
-           f"The system will shutdown in {pause_secs} seconds. \n"
-           f"The full error was: '{msg}'")
+           f"The system will shutdown when you press OK. \n"
+           f"The full error was: '{str(version_error)}'")
     text_color = "red"
-    write_output(window=window, text=f"{heading}: {msg}", text_color=text_color)
-    time.sleep(pause_secs)
-    raise version_error
+
+    result = sg.popup_ok_cancel(msg, title=heading, text_color=text_color, location=get_popup_location(window))
+    if result == "OK":
+        # User clicked OK
+        logger.critical(f"An uncaught exception occurred. Exiting: {repr(version_error)}")
 
 
 def write_message_to_output(logger, message: Request, window):
@@ -630,8 +630,9 @@ def gui(logger):
             elif event == '-version_error-':
                 server_version, server = values[event]
                 version_error = VersionMismatchError(gui_release_version, server_version, server)
-                terminate_system(conn, plttr, sess_info, values, window)
-                write_version_error_and_fail(version_error, window)
+                terminate_system(conn, plttr, sess_info, values, window) # kill other servers
+                report_version_error_and_close(logger, version_error, window)
+                break
 
             elif event == "find_subject":
                 subject: Subject = _get_subject_by_id(window, log_sess, conn, values["subject_id"])
