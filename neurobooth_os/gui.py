@@ -415,7 +415,7 @@ def _start_ctr_msg_reader(logger, window):
 
 def report_version_error_and_close(logger, version_error: VersionMismatchError, window):
     heading = "Critical Error: "
-    msg = (f"Neurobooth versions are not consistent!"
+    msg = (f"Neurobooth versions are not consistent! "
            f"The system will shutdown when you press OK. \n\n"
            f"The full error was: '{str(version_error)}'")
 
