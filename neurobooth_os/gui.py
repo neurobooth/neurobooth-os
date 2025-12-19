@@ -416,11 +416,10 @@ def _start_ctr_msg_reader(logger, window):
 def report_version_error_and_close(logger, version_error: VersionMismatchError, window):
     heading = "Critical Error: "
     msg = (f"Neurobooth versions are not consistent!"
-           f"The system will shutdown when you press OK. \n"
+           f"The system will shutdown when you press OK. \n\n"
            f"The full error was: '{str(version_error)}'")
-    text_color = "red"
 
-    result = sg.popup_ok_cancel(msg, title=heading, text_color=text_color, location=get_popup_location(window))
+    result = sg.popup_ok(msg, title=heading, text_color=text_color, location=get_popup_location(window))
     if result == "OK":
         # User clicked OK
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(version_error)}")
