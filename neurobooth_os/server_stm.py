@@ -18,6 +18,8 @@ from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
 
 import neurobooth_os
+import neurobooth_os.current_release as release
+
 from neurobooth_os import config
 
 from neurobooth_os.iout import metadator as meta
@@ -67,7 +69,8 @@ def run_stm(logger):
     while not shutdown:
         try:
             while paused:
-                message: Message = meta.read_next_message("STM", msg_type='paused_msg_types', conn=db_conn)
+                message: Message = (
+                    meta.read_next_message("STM", msg_type='paused_msg_types', conn=read_msg_conn))
                 if message is None:
                     sleep(.25)
                     continue
@@ -108,7 +111,7 @@ def run_stm(logger):
                     logger.error(f"Received an unexpected message while paused {current_msg_type}")
                     raise RuntimeError(text)
 
-            message: Message = meta.read_next_message("STM", conn=db_conn)
+            message: Message = meta.read_next_message("STM", conn=read_msg_conn)
             if message is None:
                 sleep(1)
                 continue
@@ -132,7 +135,7 @@ def run_stm(logger):
                     device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
 
                 elif "PerformTaskRequest" == current_msg_type:
-                    _perform_task(db_conn, device_log_entry_dict, message, session, subj_id, task_log_entry)
+                    _perform_task(paused_msg_conn, device_log_entry_dict, message, session, subj_id, task_log_entry)
 
                 elif "PauseSessionRequest" == current_msg_type:
                     paused = _pause(session)
