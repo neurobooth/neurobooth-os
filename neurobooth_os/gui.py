@@ -19,7 +19,7 @@ import FreeSimpleGUI as sg
 import liesl
 from FreeSimpleGUI import Multiline
 
-import neurobooth_os.current_release as release 
+import neurobooth_os.current_release as release
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 
