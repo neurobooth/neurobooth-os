@@ -68,7 +68,7 @@ class TestMetadator(unittest.TestCase):
         subj_id = "Test"
         task_id = meta.make_new_task_row(conn, subj_id)
 
-        vals_dict = meta._new_tech_log_dict()
+        vals_dict = meta.new_task_log_dict()
         vals_dict["subject_id"] = subj_id
         vals_dict["study_id"] = "mock_study"
         vals_dict["task_id"] = "mock_obs_1"

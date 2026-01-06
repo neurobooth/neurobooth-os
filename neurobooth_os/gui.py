@@ -19,12 +19,14 @@ import FreeSimpleGUI as sg
 import liesl
 from FreeSimpleGUI import Multiline
 
+from neurobooth_os import current_release as release
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes, PREVIEW_AREA
 from neurobooth_os.log_manager import make_db_logger, log_message_received
 import neurobooth_os.iout.metadator as meta
+from neurobooth_os.iout.metadator import LogSession
 from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
@@ -34,7 +36,7 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         DeviceInitialization, LslRecording,
                                         TasksFinished, FramePreviewRequest,
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
-                                        CancelSessionRequest, MEDIUM_HIGH_PRIORITY)
+                                        CancelSessionRequest, MEDIUM_HIGH_PRIORITY, ServerStarted)
 from util.nb_types import Subject
 
 #  State variables used to help ensure in-order GUI steps
@@ -43,6 +45,20 @@ last_task = None
 start_pressed = False
 session_prepared_count = 0      # How many SessionPrepared messages were received. the number required = node count
 auto_frame_preview_device: Optional[str] = None  # which device to use for automated frame previews for every task
+gui_release_version: str = ''
+
+
+class VersionMismatchError(RuntimeError):
+    """Raised when Neurobooth versions across servers are inconsistent."""
+
+    def __init__(self, gui_version: str, other_version: str, server: str):
+        self.gui_version = gui_version
+        self.other_version = other_version
+        self.server = server
+        super().__init__(
+            f"Neurobooth installed incorrectly. Version mismatch between GUI and {server}: GUI is on {gui_version}, "
+            f"and {server} is on {other_version}"
+        )
 
 
 def setup_log(sg_handler=None):
@@ -62,6 +78,7 @@ class Handler(logging.StreamHandler):
     def emit(self, record):
         buffer = str(record).strip()
         window['log'].update(value=buffer)
+
 
 ########## Database functions ############
 
@@ -345,6 +362,11 @@ def _start_ctr_msg_reader(logger, window):
             elif "SessionPrepared" == message.msg_type:
                 window.write_event_value("devices_connected", True)
             elif "ServerStarted" == message.msg_type:
+                msg_body: ServerStarted = message.body
+                server_version = msg_body.neurobooth_version
+                if server_version != gui_release_version:
+                    window.write_event_value('-version_error-', [server_version, message.source])
+                    return
                 window.write_event_value("server_started", message.source)
             elif "TasksCreated" == message.msg_type:
                 window.write_event_value("tasks_created", "")
@@ -397,6 +419,18 @@ def _start_ctr_msg_reader(logger, window):
                 handle_frame_preview_reply(window, frame_reply)
             else:
                 logger.debug(f"Unhandled message: {message.msg_type}")
+
+
+def report_version_error_and_close(logger, version_error: VersionMismatchError, window):
+    heading = "Critical Error: "
+    msg = (f"Neurobooth versions are not consistent! "
+           f"The system will shutdown when you press OK. \n\n"
+           f"The full error was: '{str(version_error)}'")
+
+    result = sg.popup_ok(msg, title=heading, location=get_popup_location(window))
+    if result == "OK":
+        # User clicked OK
+        logger.critical(f"An uncaught exception occurred. Exiting: {repr(version_error)}")
 
 
 def write_message_to_output(logger, message: Request, window):
@@ -452,8 +486,8 @@ def enable_frame_preview(window, preview_devices: Dict[str, str]) -> None:
         preview_default = available_streams[0]
 
     # Enable the preview button and the Combo picker
-    window["-frame_preview-"].update(disabled=False)
-    window["-frame_preview_opts-"].update(disabled=False, value=preview_default, values=available_streams)
+    window["-frame_preview-"].update(visible=True)
+    window["-frame_preview_opts-"].update(visible=True, value=preview_default, values=available_streams)
 
 
 def handle_frame_preview_reply(window, frame_reply: FramePreviewReply) -> None:
@@ -493,16 +527,14 @@ def resize_frame_preview(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def _perform_frame_preview(device_id: str) -> None:
+def _request_frame_preview(conn, device_id: str) -> None:
     msg = FramePreviewRequest(device_id=device_id)
-
-    # TODO: lookup the destination for message based on the device used for the preview. May require API change
     req = Request(source="CTR", destination="ACQ", body=msg)
-    meta.post_message(req)
+    meta.post_message(req, conn)
 
 
 def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dict, database, tasks: str,
-                     selected_tasks: List[str]):
+                     selected_tasks: List[str], conn):
     """Prepare devices. Mainly ensuring devices are connected"""
 
     # disable button so it can't be pushed twice, and disable changes to task selection
@@ -519,23 +551,22 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
     video_marker_stream = marker_stream("videofiles")
 
     nodes = ctr_rec._get_nodes(nodes)
-    with meta.get_database_connection() as db_conn:
-        for node in nodes:
-            if node == 'acquisition':
-                dest = "ACQ"
-            else:
-                dest = "STM"
-            body = PrepareRequest(database_name=database,
-                                  subject_id=log_task['subject_id'],
-                                  collection_id=collection_id,
-                                  selected_tasks=selected_tasks,
-                                  date=log_task['date']
-                                  )
-            msg = Request(source='CTR',
-                          destination=dest,
-                          body=body)
+    for node in nodes:
+        if node == 'acquisition':
+            dest = "ACQ"
+        else:
+            dest = "STM"
+        body = PrepareRequest(database_name=database,
+                              subject_id=log_task['subject_id'],
+                              collection_id=collection_id,
+                              selected_tasks=selected_tasks,
+                              date=log_task['date']
+                              )
+        msg = Request(source='CTR',
+                      destination=dest,
+                      body=body)
 
-            meta.post_message(msg, db_conn)
+        meta.post_message(msg, conn)
     return video_marker_stream
 
 
@@ -660,7 +691,7 @@ def gui(logger):
                     continue
 
                 video_marker_stream = _prepare_devices(window,
-                    nodes, collection_id, log_task, database, task_string, selected_tasks)
+                    nodes, collection_id, log_task, database, task_string, selected_tasks, conn)
 
             elif event == "plot":
                 _plot_realtime(window, plttr, inlets)
@@ -669,30 +700,29 @@ def gui(logger):
                 if not start_pressed:
                     window["Start"].Update(disabled=True)
                     start_pressed = True
-                    session_id = meta.make_session_id(conn, log_sess)
+                    session_id = meta._make_session_id(conn, log_sess)
                     task_list: List[str] = [k for k, v in values.items() if "obs" in k and v is True]
-                    _start_task_presentation(window, task_list, sess_info["subject_id"], session_id, steps)
+                    _start_task_presentation(window, task_list, sess_info["subject_id"], session_id, steps, conn)
 
             elif event == "tasks_created":
                 _session_button_state(window, disabled=False)
-
                 for task_id in task_list:
-                    # Queue PerformTask requests for every task
-                    _schedule_task(task_id)
-
-                # PerformTask Messages are queued for all tasks, now queue a TasksFinished message
+                    msg_body = PerformTaskRequest(task_id=task_id)
+                    msg = Request(source="CTR", destination="STM", body=msg_body)
+                    meta.post_message(msg, conn)
+                # PerformTask Messages queued for all tasks, now queue a TasksFinished message
                 msg_body = TasksFinished()
                 msg = Request(source="CTR", destination="STM", body=msg_body)
-                meta.post_message(msg)
+                meta.post_message(msg, conn)
 
             elif event == "Pause tasks":
-                _pause_tasks(window)
+                _pause_tasks(window, steps, conn=conn)
 
             elif event == "Stop tasks":
-                _stop_task_dialog(window, resume_on_cancel=False)
+                _stop_task_dialog(window, conn=conn, resume_on_cancel=False)
 
             elif event == "Calibrate":
-                _calibrate(window)
+                _calibrate(window, conn=conn)
 
             # Save notes to a txt
             elif event == "_save_notes_":
@@ -728,7 +758,7 @@ def gui(logger):
                         write_output(window, "System termination scheduled. "
                                              "Servers will shut down after the current task.")
 
-                        terminate_system(plttr, sess_info, values, window)
+                        terminate_system(conn, plttr, sess_info, values, window)
                         break
 
             ##################################################################################
@@ -737,7 +767,8 @@ def gui(logger):
 
             # Signal a task started: record LSL data and update gui
             elif event == "task_initiated":
-                window["-frame_preview-"].update(disabled=True)
+                # event values -> f"['{task_id}', '{t_obs_id}', '{log_task_id}, '{tsk_strt_time}']
+                window["-frame_preview-"].update(visible=False)
                 task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
                 write_output(window, f"\nTask initiated: {task_id}")
 
@@ -750,6 +781,7 @@ def gui(logger):
                     t_obs_id,
                     obs_log_id,
                     tsk_strt_time,
+                    conn
                 )
                 if "calibration" in task_id.lower():
                     display_calibration_key_info(window)
@@ -760,7 +792,7 @@ def gui(logger):
                 boolean_value = has_lsl_stream.lower() == 'true'
                 if boolean_value:
                     logger.debug(f"Stopping LSL for task: {task_id}")
-                    handle_task_finished(obs_log_id, rec_fname, sess_info, session, task_id, values, window)
+                    handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, task_id, values, window)
                 if task_id == last_task:
                     _session_button_state(window, disabled=True)
                     write_output(window, "\nSession complete: OK to terminate", 'blue')
@@ -817,35 +849,16 @@ def gui(logger):
             # Conditionals handling inlets for plotting and recording
             ##################################################################################
 
-            # handle a user request for a frame-preview
             elif event == "-frame_preview-":
-                outlet_name = window["-frame_preview_opts-"].get()
+                outlet_name = values["-frame_preview_opts-"]
                 device_id = frame_preview_devices[outlet_name]
-                _perform_frame_preview(device_id=device_id)
+                _request_frame_preview(conn, device_id)
 
             # Print LSL inlet names in GUI
             if inlet_keys != list(inlets):
                  inlet_keys = list(inlets)
                  window["inlet_State"].update("\n".join(inlet_keys))
     close(window)
-
-
-def _schedule_task(task_id) -> None:
-    """
-    Schedule a PerformTask request for the given task
-
-    Parameters
-    ----------
-    conn    a DB Connection
-    task_id the ID for the Task to be scheduled
-
-    Returns
-    -------
-    None
-    """
-    msg_body = PerformTaskRequest(task_id=task_id)
-    msg = Request(source="CTR", destination="STM", body=msg_body)
-    meta.post_message(msg)
 
 
 def close(window):
@@ -855,7 +868,7 @@ def close(window):
     print("Session terminated")
 
 
-def terminate_system(plttr, sess_info, values, window):
+def terminate_system(conn, plttr, sess_info, values, window):
     if sess_info and values:
         _save_session_notes(sess_info, values, window)
     plttr.stop()
@@ -866,14 +879,15 @@ def terminate_system(plttr, sess_info, values, window):
     shutdown_stm_msg: Message = Request(source="CTR",
                                         destination="ACQ",
                                         body=TerminateServerRequest())
-    meta.post_message(shutdown_acq_msg)
-    meta.post_message(shutdown_stm_msg)
+    meta.post_message(shutdown_acq_msg, conn)
+    meta.post_message(shutdown_stm_msg, conn)
 
 
-def handle_task_finished(obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window):
+def handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window):
     _stop_lsl_and_save(
         window,
         session,
+        conn,
         rec_fname,
         t_obs_id,
         obs_log_id,

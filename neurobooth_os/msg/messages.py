@@ -137,6 +137,7 @@ class ServerStarted(MsgBody):
     Message sent from backend servers (e.g. ACQ, STM) to the controller to tell it they have started successfully
     """
     elem_key: str = "-init_servs-"
+    neurobooth_version: str
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
