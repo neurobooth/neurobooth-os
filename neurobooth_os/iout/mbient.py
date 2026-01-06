@@ -553,10 +553,9 @@ class Mbient:
         t0 = time()
         if notify:
             txt = f"-WARNING mbient- {self.dev_name} disconnected prematurely"
-            with get_database_connection() as conn:
-                body = MbientDisconnected(warning=txt)
-                msg = Request(source="Mbient", destination="CTR", body=body)
-                post_message(msg, conn)
+            body = MbientDisconnected(warning=txt)
+            msg = Request(source="Mbient", destination="CTR", body=body)
+            post_message(msg)
             self.logger.warning(self.format_message(f'Disconnected Prematurely (status={status})'))
 
         self.device_wrapper.on_disconnect = lambda status_: self.logger.info(self.format_message(
@@ -573,13 +572,11 @@ class Mbient:
         except MbientFailedConnection as e:
             txt = f"Failed to reconnect {self.dev_name}"
             status = "Error"
-            with get_database_connection() as conn:
-                self.send_status_msg(txt, conn, status)
+            self.send_status_msg(txt, status)
             self.logger.error(self.format_message(f'Failed to Reconnect: {e}'))
         except Exception as e:
             txt = f"Couldn't setup for {self.dev_name}"
-            with get_database_connection() as conn:
-                self.send_status_msg(txt, conn, status)
+            self.send_status_msg(txt, status)
             self.logger.error(self.format_message(f'Error during reconnect: {e}'), exc_info=sys.exc_info())
         finally:
             self.logger.debug(self.format_message(f'attempt_reconnect took {time() - t0} seconds.'))
@@ -597,8 +594,7 @@ class Mbient:
         # Print message to GUI terminal
         device_names = [dev.dev_name for dev in disconnected_devices]
         txt = f'The following Mbients are disconnected: {device_names}. Attempting to reconnect...'
-        with get_database_connection() as conn:
-            Mbient.send_status_msg(txt, conn, "WARNING")
+        Mbient.send_status_msg(txt, "WARNING")
 
         # Attempt reconnection in parallel
         with ThreadPoolExecutor(max_workers=len(disconnected_devices)) as executor:
@@ -608,8 +604,7 @@ class Mbient:
             wait(results)  # Wait for reconnects to complete
 
         txt = 'Pre-task reconnect attempts complete.'
-        with get_database_connection() as conn:
-            Mbient.send_status_msg(txt, conn, "INFO")
+        Mbient.send_status_msg(txt, "INFO")
 
     def reset(self, timeout_sec: float = 10) -> None:
         """
@@ -642,8 +637,7 @@ class Mbient:
         :return: Whether the device is connected after the function call is complete.
         """
         txt = f'Resetting {self.dev_name}.'
-        with get_database_connection() as conn:
-            Mbient.send_status_msg(txt, conn, "INFO")
+        Mbient.send_status_msg(txt, "INFO")
 
         self.logger.info(self.format_message('Resetting'))
 
@@ -695,13 +689,12 @@ class Mbient:
                     device_id=self.device_id,
                 )
                 msg = Request(source="Mbient", destination="CTR", body=body)
-                post_message(msg, get_database_connection())
+                post_message(msg)
 
             return True
         except (MbientFailedConnection, MbientResetTimeout) as e:
             txt = f"Failed to connect mbient {self.dev_name}"
-            with get_database_connection() as conn:
-                self.send_status_msg(txt, conn, "ERROR")
+            self.send_status_msg(txt, "ERROR")
             self.logger.error(self.format_message(str(e)))
             return False
         except Exception as e:
@@ -763,8 +756,7 @@ class Mbient:
         self.subscribed_signals.append(processor)
 
         txt = f"Mbient {self.dev_name} is connected"  # Send message to GUI terminal
-        with get_database_connection() as conn:
-            self.send_status_msg(txt, conn, "INFO")
+        self.send_status_msg(txt, "INFO")
         self.logger.debug(self.format_message('Setup Completed'))
 
     def log_battery_info(self) -> None:
@@ -825,10 +817,10 @@ class Mbient:
             self.disconnect()
 
     @staticmethod
-    def send_status_msg(txt: str, conn, status: Optional[str] = None):
+    def send_status_msg(txt: str, status: Optional[str] = None):
         body = StatusMessage(text=txt, status=status)
         msg = Request(source="Mbient", destination="CTR", body=body)
-        post_message(msg, conn)
+        post_message(msg)
 
 
 # --------------------------------------------------------------------------------
@@ -891,8 +883,7 @@ def test_script() -> None:
         """Prints data to the console"""
         if (device.n_samples_streamed - 1) % args.decimate == 0:
             txt = f'Epoch={epoch}, Accel={acc}, Gyro={gyro}'
-            with get_database_connection() as conn:
-                Mbient.send_status_msg(txt, conn, "INFO")
+            Mbient.send_status_msg(txt, "INFO")
 
     device.register_data_handler(_test_data_handler)
     success = device.prepare()

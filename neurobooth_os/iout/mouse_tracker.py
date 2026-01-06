@@ -4,7 +4,7 @@ import logging
 from pynput import mouse
 from pylsl import StreamInfo, StreamOutlet
 
-from neurobooth_os.iout.metadator import get_database_connection, post_message
+from neurobooth_os.iout.metadator import post_message
 from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -40,8 +40,7 @@ class MouseStream:
             device_id=device_args.device_id,
         )
         msg = Request(source="MouseStream", destination="CTR", body=body)
-        with get_database_connection() as conn:
-            post_message(msg, conn)
+        post_message(msg)
 
         self.streaming = False
 

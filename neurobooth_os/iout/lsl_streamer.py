@@ -277,5 +277,4 @@ class DeviceManager:
                 stream.start()
             msg_body = DeviceInitialization(stream_name=stream_name, outlet_id=stream.outlet_id)
             msg = Request(source="lsl_streamer", destination="CTR", body=msg_body)
-            with meta.get_database_connection() as conn:
-                meta.post_message(msg, conn)
+            meta.post_message(msg)

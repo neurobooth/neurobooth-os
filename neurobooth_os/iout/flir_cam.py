@@ -13,9 +13,6 @@ from typing import Callable, Any, ByteString
 import cv2
 import PySpin
 from pylsl import StreamInfo, StreamOutlet
-import skvideo
-import skvideo.io
-import h5py
 
 from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
@@ -32,11 +29,6 @@ class FlirException(Exception):
 
 
 class VidRec_Flir(CameraPreviewer):
-    # def __init__(self,
-    #              sizex=round(1936 / 2), sizey=round(1216 / 2), fps=196,
-    #              camSN="20522874", exposure=4500, gain=20, gamma=.6,
-    #              device_id="FLIR_blackfly_1", sensor_ids=['FLIR_rgb_1'], fd= .5):
-    # Staging FLIR SN is 22348141
     def __init__(
         self,
         device_args: FlirDeviceArgs,
@@ -146,8 +138,7 @@ class VidRec_Flir(CameraPreviewer):
             device_id=self.device_id,
             camera_preview=True,
         )
-        with meta.get_database_connection() as db_conn:
-            meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)
+        meta.post_message(Request(source='Flir', destination='CTR', body=msg_body))
         return StreamOutlet(info)
 
     # function to capture images, convert to numpy, send to queue, and release
@@ -189,8 +180,7 @@ class VidRec_Flir(CameraPreviewer):
         )
         msg_body = NewVideoFile(stream_name=self.streamName,
                                 filename=op.split(self.video_filename)[-1])
-        with meta.get_database_connection() as db_conn:
-            meta.post_message(Request(source='Flir', destination='CTR', body=msg_body), conn=db_conn)
+        meta.post_message(Request(source='Flir', destination='CTR', body=msg_body))
         self.streaming = True
 
     def record(self):

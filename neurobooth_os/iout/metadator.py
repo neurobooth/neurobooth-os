@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib
 import json
-import logging
+import threading
 import os
 import sys
 from collections import OrderedDict
@@ -23,6 +23,10 @@ from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, ge
     RawTaskParams, TaskArgs, StudyArgs, CollectionArgs
 from neurobooth_os.msg.messages import Message, MsgBody
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
+
+
+# This is called ONCE at module level (shared by all threads)
+thread_local = threading.local()
 
 
 def str_fileid_to_eval(stim_file_str):
@@ -49,11 +53,6 @@ def str_fileid_to_eval(stim_file_str):
 
 
 def get_database_connection(database: Optional[str] = None) -> connection:
-    """Gets connector to the database
-
-    :param database: If provided, override the database name in the configration.
-    :returns: Connector to psycopg database
-    """
     database_info = cfg.neurobooth_config.database
     if database_info.ssh_tunnel and database_info.host not in ["127.0.0.1", "localhost"]:
         # If the DB is not on this host, use SSH tunneling for access
@@ -101,7 +100,7 @@ def clear_msg_queue(conn):
     table.delete_row()
 
 
-def post_message(msg: Message, conn: connection) -> str:
+def post_message(msg: Message, conn: connection = None) -> str:
     """
     Posts a new message to the database that mediates between message senders and receivers
 
@@ -117,16 +116,21 @@ def post_message(msg: Message, conn: connection) -> str:
             If multiple rows are inserted, returns None.
 
     """
-    table = Table("message_queue", conn=conn)
-    body = msg.body.model_dump_json()
-    return table.insert_rows([(str(msg.uuid),
-                               msg.msg_type,
-                               msg.full_msg_type(),
-                               msg.source,
-                               msg.destination,
-                               msg.priority,
-                               body)],
-                             cols=["uuid", "msg_type", "full_msg_type", "source", "destination", 'priority', 'body'])
+    if conn is None:
+        with get_database_connection() as conn:
+            post_message(msg, conn)
+
+    else:
+        table = Table("message_queue", conn=conn)
+        body = msg.body.model_dump_json()
+        return table.insert_rows([(str(msg.uuid),
+                                   msg.msg_type,
+                                   msg.full_msg_type(),
+                                   msg.source,
+                                   msg.destination,
+                                   msg.priority,
+                                   body)],
+                                 cols=["uuid", "msg_type", "full_msg_type", "source", "destination", 'priority', 'body'])
 
 
 def read_next_message(destination: str, conn: connection, msg_type: str = None) -> Optional[Message]:
@@ -361,7 +365,7 @@ def _make_new_appl_log_row(conn: connection, log_entry):
     return table.insert_rows([log_entry.values], cols=[log_entry.keys])
 
 
-def _make_session_id(conn: connection, session_log):
+def make_session_id(conn: connection, session_log):
     """Gets or creates session id"""
 
     table = Table("log_session", conn=conn)
@@ -455,7 +459,7 @@ def _fill_device_param_row(conn: connection, device: DeviceArgs) -> Optional[str
     return pkey
 
 
-def log_devices(conn: connection, task_args_list: List[TaskArgs]) -> Dict[str, str]:
+def log_devices(conn: connection = None, task_args_list: Optional[List[TaskArgs]] = None) -> Dict[str, str]:
     """
     Logs all the devices used in a session so that they can be shared in the db across the tasks that use them
     Parameters
@@ -473,6 +477,8 @@ def log_devices(conn: connection, task_args_list: List[TaskArgs]) -> Dict[str, s
     for task in task_args_list:
         for device in task.device_args:
             device_id_dict[device.device_id] = device
+    if conn is None:
+        conn = get_database_connection()
     for device in list(device_id_dict.values()):
         primary_key = _fill_device_param_row(conn, device)
         device_pkey_dict[device.device_id] = primary_key

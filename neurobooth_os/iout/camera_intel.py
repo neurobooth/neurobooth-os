@@ -93,8 +93,7 @@ class VidRec_Intel:
         self.config.enable_record_to_file(self.video_filename)
         msg_body = NewVideoFile(stream_name=self.streamName,
                                 filename=op.split(self.video_filename)[-1])
-        with meta.get_database_connection() as db_conn:
-            meta.post_message(Request(source='Intel', destination='CTR', body=msg_body), conn=db_conn)
+        meta.post_message(Request(source='Intel', destination='CTR', body=msg_body))
 
     def createOutlet(self):
         self.streamName = f"IntelFrameIndex_cam{self.device_index}"
@@ -124,8 +123,7 @@ class VidRec_Intel:
             fps_depth=str(self.device_args.sample_rate()[1]),
         )
         msg_body = DeviceInitialization(stream_name=self.streamName, outlet_id=self.outlet_id)
-        with meta.get_database_connection() as conn:
-            meta.post_message(Request(source='VidRec_Intel', destination='CTR', body=msg_body), conn=conn)
+        meta.post_message(Request(source='VidRec_Intel', destination='CTR', body=msg_body))
         return StreamOutlet(info)
 
     def record(self):

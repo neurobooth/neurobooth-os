@@ -11,7 +11,7 @@ import pylink
 from psychopy import visual, monitors
 from pylsl import StreamInfo, StreamOutlet, local_clock
 
-from neurobooth_os.iout.metadator import get_database_connection, post_message
+from neurobooth_os.iout.metadator import post_message
 from neurobooth_os.iout.stim_param_reader import EyelinkDeviceArgs
 from neurobooth_os.msg.messages import NoEyetracker, Request, DeviceInitialization, NewVideoFile
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
@@ -97,8 +97,7 @@ class EyeTracker:
                        "Please be sure to start Eyetracker before starting Neurobooth." % self.IP
             body = NoEyetracker(warning=msg_text)
             msg = Request(source="EyeTracker", destination="CTR", body=body)
-            with get_database_connection() as conn:
-                post_message(msg, conn)
+            post_message(msg)
             self.logger.error(msg_text)
             return
 
@@ -151,8 +150,7 @@ class EyeTracker:
             device_id=self.device_id,
         )
         msg = Request(source="EyeTracker", destination="CTR", body=body)
-        with get_database_connection() as conn:
-            post_message(msg, conn)
+        post_message(msg)
 
     def calibrate(self):
         self.logger.debug('EyeLink: Performing Calibration')
@@ -182,8 +180,7 @@ class EyeTracker:
             if not pout.stderr:
                 body = NewVideoFile(stream_name=self.streamName, filename=op.split(fname_asc)[-1])
                 msg = Request(source="EyeTracker", destination="CTR", body=body)
-                with get_database_connection() as conn:
-                    post_message(msg, conn)
+                post_message(msg)
 
         else:
             print(f"FILE {fname_asc} already exists")
@@ -193,8 +190,7 @@ class EyeTracker:
         self.filename = filename
         body = NewVideoFile(stream_name=self.streamName, filename=op.split(filename)[-1])
         msg = Request(source="EyeTracker", destination="CTR", body=body)
-        with get_database_connection() as conn:
-            post_message(msg, conn)
+        post_message(msg)
 
         self.fname_temp = "name8chr.edf"
         self.tk.openDataFile(self.fname_temp)
