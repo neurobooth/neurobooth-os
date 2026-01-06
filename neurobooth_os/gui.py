@@ -596,9 +596,12 @@ Calibration instructions:
 def gui(logger):
     """Start the Graphical User Interface.
     """
-    global running_servers, start_pressed
+    global running_servers, start_pressed, gui_release_version
 
     database = cfg.neurobooth_config.database.dbname
+
+    gui_release_version = release.version
+    logger.info(f"Neurobooth application version = {gui_release_version}")
 
     nodes = _get_nodes()
 
@@ -614,7 +617,7 @@ def gui(logger):
 
         plttr = stream_plotter()
         log_task = meta.new_task_log_dict()
-        log_sess = LogSession()
+        log_sess = LogSession(application_version=gui_release_version)
         stream_ids, inlets = {}, {}
         plot_elem, inlet_keys = [], []
         steps = list()  # keep track of steps done
@@ -628,7 +631,14 @@ def gui(logger):
             if event == "study_id":
                 study_id = values[event]
                 log_sess.study_id = study_id
-                collection_ids = _get_collections(window, study_id)
+                _get_collections(window, study_id)
+
+            elif event == '-version_error-':
+                server_version, server = values[event]
+                version_error = VersionMismatchError(gui_release_version, server_version, server)
+                terminate_system(conn, plttr, sess_info, values, window) # kill other servers
+                report_version_error_and_close(logger, version_error, window)
+                break
 
             elif event == "find_subject":
                 subject: Subject = _get_subject_by_id(window, log_sess, conn, values["subject_id"])
@@ -699,7 +709,7 @@ def gui(logger):
                 if not start_pressed:
                     window["Start"].Update(disabled=True)
                     start_pressed = True
-                    session_id = meta._make_session_id(conn, log_sess)
+                    session_id = meta.make_session_id(conn, log_sess)
                     task_list: List[str] = [k for k, v in values.items() if "obs" in k and v is True]
                     _start_task_presentation(window, task_list, sess_info["subject_id"], session_id, steps, conn)
 
