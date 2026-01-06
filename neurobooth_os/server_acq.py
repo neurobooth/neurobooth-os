@@ -96,13 +96,13 @@ def run_acq(logger):
                     else:
                         device_manager.create_streams(task_params=task_args)
                     updator = Request(source="ACQ", destination="CTR", body=SessionPrepared())
-                    meta.post_message(updator, db_conn)
+                    meta.post_message(updator)
 
                 elif "FramePreviewRequest" == current_msg_type and not recording:
                     msg_body: FramePreviewRequest = message.body
-                    camera_frame_preview(msg_body.device_id, db_conn, device_manager, logger)
+                    camera_frame_preview(msg_body.device_id, device_manager, logger)
 
-                # TODO: Both reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
+                # TODO: reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
                 elif "ResetMbients" == current_msg_type:
 
                     reset_results = device_manager.mbient_reset()
@@ -113,7 +113,7 @@ def run_acq(logger):
                         destination="STM",
                         body=reply_body
                     )
-                    meta.post_message(reply, db_conn)
+                    meta.post_message(reply)
                     logger.debug('Reset results sent')
 
                 elif "StartRecording" == current_msg_type:
@@ -127,14 +127,14 @@ def run_acq(logger):
                     elapsed_time = start_recording(device_manager, fname, task_args[task].device_args)
                     logger.info(f'Device start took {elapsed_time:.2f} for {task}')
                     reply = RecordingStartedMsg()
-                    meta.post_message(reply, db_conn)
+                    meta.post_message(reply)
                     recording = True
 
                 elif "StopRecording" == current_msg_type:
                     elapsed_time = stop_recording(device_manager, task_args[task].device_args)
                     logger.info(f'Device stop took {elapsed_time:.2f} for {task}')
                     reply = RecordingStoppedMsg()
-                    meta.post_message(reply, db_conn)
+                    meta.post_message(reply)
                     recording = False
 
                 elif "TerminateServerRequest" == current_msg_type:
@@ -152,14 +152,13 @@ def run_acq(logger):
                 else:
                     logger.error(f'Unexpected message received: {message.model_dump_json()}')
             except Exception as argument:
-                with meta.get_database_connection() as db_conn:
-                    err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
-                    req = Request(body=err_msg, source="ACQ", destination="CTR")
-                    meta.post_message(req, db_conn)
+                err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
+                req = Request(body=err_msg, source="ACQ", destination="CTR")
+                meta.post_message(req)
                 raise argument
 
 
-def camera_frame_preview(device_id: str, db_conn, device_manager, logger):
+def camera_frame_preview(device_id: str, device_manager, logger):
     try:
         frame = device_manager.camera_frame_preview(device_id)
         b64_frame = base64.b64encode(frame).decode('utf-8')
@@ -168,7 +167,7 @@ def camera_frame_preview(device_id: str, db_conn, device_manager, logger):
         body = FramePreviewReply(image=None, image_available=False, unavailable_message=str(e))
 
     reply = Request(source="ACQ", destination="CTR", body=body)
-    meta.post_message(reply, db_conn)
+    meta.post_message(reply)
     if body.image_available:
         logger.debug('Frame preview sent')
     else:
