@@ -26,7 +26,6 @@ from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes, PREVIEW_AREA
 from neurobooth_os.log_manager import make_db_logger, log_message_received
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.iout.metadator import LogSession
 from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
 from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
