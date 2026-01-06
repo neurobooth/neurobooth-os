@@ -63,7 +63,6 @@ class Handler(logging.StreamHandler):
         buffer = str(record).strip()
         window['log'].update(value=buffer)
 
-
 ########## Database functions ############
 
 
@@ -125,7 +124,7 @@ def _create_session_dict(window, log_task, staff_id, subject: Subject, tasks):
 ########## Task-related functions ############
 
 
-def _start_task_presentation(window, task_list: List[str], subject_id: str, session_id: int, steps, conn):
+def _start_task_presentation(window, task_list: List[str], subject_id: str, session_id: int, steps):
     """Present tasks"""
     global last_task
     window['Start'].update(disabled=True)
@@ -142,20 +141,20 @@ def _start_task_presentation(window, task_list: List[str], subject_id: str, sess
             destination='STM',
             body=msg_body
         )
-        meta.post_message(msg, conn)
+        meta.post_message(msg)
         steps.append("task_started")
     else:
         sg.PopupError("No task selected", location=get_popup_location(window))
 
 
-def _pause_tasks(window, steps, conn):
+def _pause_tasks(window):
     write_output(window, "Pause scheduled. Session will pause after the current task.")
     continue_msg = "Continue tasks"
     stop_msg = "Stop tasks"
 
     msg_body = PauseSessionRequest()
     req = Request(source="CTR", destination="STM", body=msg_body)
-    meta.post_message(req, conn)
+    meta.post_message(req)
     resp = sg.Popup(
         "The session will pause after the current task.\n", title="Pausing session",
         custom_text=(continue_msg, stop_msg),
@@ -165,15 +164,15 @@ def _pause_tasks(window, steps, conn):
     if resp == continue_msg or resp is None:
         body = ResumeSessionRequest()
         request = Request(source="CTR", destination="STM", body=body)
-        meta.post_message(request, conn)
+        meta.post_message(request)
         write_output(window, "Continue scheduled")
     elif resp == stop_msg:
-        _stop_task_dialog(window, conn, resume_on_cancel=True)
+        _stop_task_dialog(window, resume_on_cancel=True)
     else:
         raise RuntimeError("Unknown Response from Pause Session dialog")
 
 
-def _stop_task_dialog(window, conn, resume_on_cancel: bool):
+def _stop_task_dialog(window, resume_on_cancel: bool):
     """
 
     Parameters
@@ -195,24 +194,22 @@ def _stop_task_dialog(window, conn, resume_on_cancel: bool):
         write_output(window, "Stop session scheduled. Session will end after the current task.")
         body = CancelSessionRequest()
         request = Request(source="CTR", destination="STM", body=body)
-        meta.post_message(request, conn)
+        meta.post_message(request)
         _session_button_state(window, disabled=True)
     else:
         if resume_on_cancel:
             body = ResumeSessionRequest()
             request = Request(source="CTR", destination="STM", body=body)
-            meta.post_message(request, conn)
+            meta.post_message(request)
             _session_button_state(window, disabled=False)
 
 
-def _calibrate(window, conn):
+def _calibrate(window):
     write_output(window, "Eyetracker recalibration scheduled. Calibration will start after the current task.")
     msg_body = PerformTaskRequest(task_id="calibration_obs_1", priority=MEDIUM_HIGH_PRIORITY)
     msg = Request(source="CTR", destination="STM", body=msg_body)
-    meta.post_message(msg, conn)
-    resp = sg.Popup(
-        "Eyetracker Recalibration will start after the current task.", location=get_popup_location(window)
-    )
+    meta.post_message(msg)
+    sg.Popup("Eyetracker Recalibration will start after the current task.", location=get_popup_location(window))
 
 
 ########## LSL functions ############
@@ -242,8 +239,7 @@ def _record_lsl(
         task_id,
         t_obs_id,
         obs_log_id,
-        tsk_strt_time,
-        conn
+        tsk_strt_time
 ):
     # Start LSL recording
     rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
@@ -251,7 +247,7 @@ def _record_lsl(
 
     msg_body = LslRecording()
     msg_req = Request(source="CTR", destination='STM', body=msg_body)
-    meta.post_message(msg_req, conn=conn)
+    meta.post_message(msg_req)
 
     window["task_title"].update("Running Task:")
     window["task_running"].update(task_id, background_color="red")
@@ -268,7 +264,7 @@ def _create_lsl_inlet(stream_ids, outlet_values, inlets):
 
 
 def _stop_lsl_and_save(
-        window, session, conn, rec_fname, task_id, obs_log_id, t_obs_id, folder
+        window, session, rec_fname, task_id, obs_log_id, t_obs_id, folder
 ):
     """Stop LSL stream and save"""
     # Stop LSL recording
@@ -284,12 +280,13 @@ def _stop_lsl_and_save(
         write_output(window, f"SPLIT XDF {t_obs_id} took: {time.time() - t0}")
     else:
         # Split XDF in a thread
-        xdf_split = threading.Thread(
-            target=split_sens_files,
-            args=(xdf_path, obs_log_id, t_obs_id, conn),
-            daemon=True,
-        )
-        xdf_split.start()
+        with meta.get_database_connection() as db_conn:
+            xdf_split = threading.Thread(
+                target=split_sens_files,
+                args=(xdf_path, obs_log_id, t_obs_id, db_conn),
+                daemon=True,
+            )
+            xdf_split.start()
         write_output(window, f"SPLIT XDF {task_id} took: {time.time() - t0}")
 
 
@@ -496,16 +493,16 @@ def resize_frame_preview(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def _perform_frame_preview(conn, device_id: str) -> None:
+def _perform_frame_preview(device_id: str) -> None:
     msg = FramePreviewRequest(device_id=device_id)
 
     # TODO: lookup the destination for message based on the device used for the preview. May require API change
     req = Request(source="CTR", destination="ACQ", body=msg)
-    meta.post_message(req, conn)
+    meta.post_message(req)
 
 
 def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dict, database, tasks: str,
-                     selected_tasks: List[str], conn):
+                     selected_tasks: List[str]):
     """Prepare devices. Mainly ensuring devices are connected"""
 
     # disable button so it can't be pushed twice, and disable changes to task selection
@@ -522,22 +519,23 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
     video_marker_stream = marker_stream("videofiles")
 
     nodes = ctr_rec._get_nodes(nodes)
-    for node in nodes:
-        if node == 'acquisition':
-            dest = "ACQ"
-        else:
-            dest = "STM"
-        body = PrepareRequest(database_name=database,
-                              subject_id=log_task['subject_id'],
-                              collection_id=collection_id,
-                              selected_tasks=selected_tasks,
-                              date=log_task['date']
-                              )
-        msg = Request(source='CTR',
-                      destination=dest,
-                      body=body)
+    with meta.get_database_connection() as db_conn:
+        for node in nodes:
+            if node == 'acquisition':
+                dest = "ACQ"
+            else:
+                dest = "STM"
+            body = PrepareRequest(database_name=database,
+                                  subject_id=log_task['subject_id'],
+                                  collection_id=collection_id,
+                                  selected_tasks=selected_tasks,
+                                  date=log_task['date']
+                                  )
+            msg = Request(source='CTR',
+                          destination=dest,
+                          body=body)
 
-        meta.post_message(msg, conn)
+            meta.post_message(msg, db_conn)
     return video_marker_stream
 
 
@@ -662,7 +660,7 @@ def gui(logger):
                     continue
 
                 video_marker_stream = _prepare_devices(window,
-                    nodes, collection_id, log_task, database, task_string, selected_tasks, conn)
+                    nodes, collection_id, log_task, database, task_string, selected_tasks)
 
             elif event == "plot":
                 _plot_realtime(window, plttr, inlets)
@@ -671,30 +669,30 @@ def gui(logger):
                 if not start_pressed:
                     window["Start"].Update(disabled=True)
                     start_pressed = True
-                    session_id = meta._make_session_id(conn, log_sess)
+                    session_id = meta.make_session_id(conn, log_sess)
                     task_list: List[str] = [k for k, v in values.items() if "obs" in k and v is True]
-                    _start_task_presentation(window, task_list, sess_info["subject_id"], session_id, steps, conn)
+                    _start_task_presentation(window, task_list, sess_info["subject_id"], session_id, steps)
 
             elif event == "tasks_created":
                 _session_button_state(window, disabled=False)
 
                 for task_id in task_list:
                     # Queue PerformTask requests for every task
-                    _schedule_task(conn, task_id)
+                    _schedule_task(task_id)
 
                 # PerformTask Messages are queued for all tasks, now queue a TasksFinished message
                 msg_body = TasksFinished()
                 msg = Request(source="CTR", destination="STM", body=msg_body)
-                meta.post_message(msg, conn)
+                meta.post_message(msg)
 
             elif event == "Pause tasks":
-                _pause_tasks(window, steps, conn=conn)
+                _pause_tasks(window)
 
             elif event == "Stop tasks":
-                _stop_task_dialog(window, conn=conn, resume_on_cancel=False)
+                _stop_task_dialog(window, resume_on_cancel=False)
 
             elif event == "Calibrate":
-                _calibrate(window, conn=conn)
+                _calibrate(window)
 
             # Save notes to a txt
             elif event == "_save_notes_":
@@ -730,7 +728,7 @@ def gui(logger):
                         write_output(window, "System termination scheduled. "
                                              "Servers will shut down after the current task.")
 
-                        terminate_system(conn, plttr, sess_info, values, window)
+                        terminate_system(plttr, sess_info, values, window)
                         break
 
             ##################################################################################
@@ -752,7 +750,6 @@ def gui(logger):
                     t_obs_id,
                     obs_log_id,
                     tsk_strt_time,
-                    conn
                 )
                 if "calibration" in task_id.lower():
                     display_calibration_key_info(window)
@@ -763,7 +760,7 @@ def gui(logger):
                 boolean_value = has_lsl_stream.lower() == 'true'
                 if boolean_value:
                     logger.debug(f"Stopping LSL for task: {task_id}")
-                    handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, task_id, values, window)
+                    handle_task_finished(obs_log_id, rec_fname, sess_info, session, task_id, values, window)
                 if task_id == last_task:
                     _session_button_state(window, disabled=True)
                     write_output(window, "\nSession complete: OK to terminate", 'blue')
@@ -824,7 +821,7 @@ def gui(logger):
             elif event == "-frame_preview-":
                 outlet_name = window["-frame_preview_opts-"].get()
                 device_id = frame_preview_devices[outlet_name]
-                _perform_frame_preview(conn, device_id=device_id)
+                _perform_frame_preview(device_id=device_id)
 
             # Print LSL inlet names in GUI
             if inlet_keys != list(inlets):
@@ -833,7 +830,7 @@ def gui(logger):
     close(window)
 
 
-def _schedule_task(conn, task_id) -> None:
+def _schedule_task(task_id) -> None:
     """
     Schedule a PerformTask request for the given task
 
@@ -848,7 +845,7 @@ def _schedule_task(conn, task_id) -> None:
     """
     msg_body = PerformTaskRequest(task_id=task_id)
     msg = Request(source="CTR", destination="STM", body=msg_body)
-    meta.post_message(msg, conn)
+    meta.post_message(msg)
 
 
 def close(window):
@@ -858,7 +855,7 @@ def close(window):
     print("Session terminated")
 
 
-def terminate_system(conn, plttr, sess_info, values, window):
+def terminate_system(plttr, sess_info, values, window):
     if sess_info and values:
         _save_session_notes(sess_info, values, window)
     plttr.stop()
@@ -869,15 +866,14 @@ def terminate_system(conn, plttr, sess_info, values, window):
     shutdown_stm_msg: Message = Request(source="CTR",
                                         destination="ACQ",
                                         body=TerminateServerRequest())
-    meta.post_message(shutdown_acq_msg, conn)
-    meta.post_message(shutdown_stm_msg, conn)
+    meta.post_message(shutdown_acq_msg)
+    meta.post_message(shutdown_stm_msg)
 
 
-def handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window):
+def handle_task_finished(obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window):
     _stop_lsl_and_save(
         window,
         session,
-        conn,
         rec_fname,
         t_obs_id,
         obs_log_id,
