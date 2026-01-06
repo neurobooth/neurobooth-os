@@ -29,7 +29,6 @@ from neurobooth_os.log_manager import make_db_logger, log_message_received
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
 calib_instructions: bool = True  # True if we have not yet performed an eyetracker calibration task
-frame_preview_device_id: Optional[str] = None
 
 
 def main():
@@ -49,8 +48,6 @@ def main():
 
 
 def run_stm(logger):
-    global frame_preview_device_id
-
     def _finish_tasks(session):
         session.logger.debug('FINISH SCREEN')
         finish_screen(session.win, session.session_end_slide)
@@ -62,14 +59,15 @@ def run_stm(logger):
     session_canceled: bool = False  # True if message received that RC requests that the session be canceled
     finished: bool = False  # True if the "Thank you" screen has been displayed
     shutdown: bool = False  # True if message received that this server should be terminated
-    init_servers = Request(source="STM", destination="CTR", body=ServerStarted())
+    init_servers = Request(source="STM", destination="CTR", body=ServerStarted(neurobooth_version=release.version))
     meta.post_message(init_servers)
     paused_msg_conn = meta.get_database_connection()
     read_msg_conn = meta.get_database_connection()
+
     while not shutdown:
         try:
             while paused:
-                message: Message = meta.read_next_message("STM", msg_type='paused_msg_types', conn=paused_msg_conn)
+                message: Message = meta.read_next_message("STM", msg_type='paused_msg_types', conn=db_conn)
                 if message is None:
                     sleep(.25)
                     continue
@@ -106,11 +104,11 @@ def run_stm(logger):
                             f'{message.model_dump_json()}')
                     body = ErrorMessage(text=text, status="CRITICAL")
                     err_msg = Request(source='STM', destination='CTR', body=body)
-                    meta.post_message(err_msg)
+                    meta.post_message(err_msg, session.db_conn)
                     logger.error(f"Received an unexpected message while paused {current_msg_type}")
                     raise RuntimeError(text)
 
-            message: Message = meta.read_next_message("STM", read_msg_conn)
+            message: Message = meta.read_next_message("STM", conn=db_conn)
             if message is None:
                 sleep(1)
                 continue
@@ -132,11 +130,9 @@ def run_stm(logger):
 
                 elif 'CreateTasksRequest' == current_msg_type:
                     device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
-                    msg_body: CreateTasksRequest = message.body
-                    frame_preview_device_id = msg_body.frame_preview_device_id
 
                 elif "PerformTaskRequest" == current_msg_type:
-                    _perform_task(device_log_entry_dict, message, session, subj_id, task_log_entry)
+                    _perform_task(db_conn, device_log_entry_dict, message, session, subj_id, task_log_entry)
 
                 elif "PauseSessionRequest" == current_msg_type:
                     paused = _pause(session)
@@ -155,19 +151,17 @@ def run_stm(logger):
             if session_canceled and not finished:
                 finished = _finish_tasks(session)
         except Exception as argument:
-            err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
-            req = Request(body=err_msg, source="STM", destination="CTR")
-            meta.post_message(req)
-            paused_msg_conn.close()
-            read_msg_conn.close()
+            with meta.get_database_connection() as db_conn:
+                err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
+                req = Request(body=err_msg, source="STM", destination="CTR")
+                meta.post_message(req, db_conn)
             raise argument
 
-    paused_msg_conn.close()
-    read_msg_conn.close()
     exit()
 
 
-def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_log_entry):
+def _perform_task(db_conn, device_log_entry_dict, message, session, subj_id: str,
+                  task_log_entry):
     global calib_instructions
     msg_body = message.body
     task_id: str = msg_body.task_id
@@ -189,16 +183,15 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
             task.run(**this_task_kwargs)
             # Signal CTR to stop LSL rec
             meta.post_message(Request(source='STM', destination='CTR',
-                                      body=TaskCompletion(task_id=task_id, has_lsl_stream=False)))
+                                      body=TaskCompletion(task_id=task_id, has_lsl_stream=False)), db_conn)
         else:
-            with meta.get_database_connection() as log_conn:
-                log_task_id = meta.make_new_task_row(log_conn, subj_id)
-                meta.log_task_params(
-                    log_conn,
-                    log_task_id,
-                    device_log_entry_dict,
-                    session.task_func_dict[task_id]
-                )
+            log_task_id = meta.make_new_task_row(session.db_conn, subj_id)
+            meta.log_task_params(
+                session.db_conn,
+                log_task_id,
+                device_log_entry_dict,
+                session.task_func_dict[task_id]
+            )
             task_log_entry.date_times = ("{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ",")
             task_log_entry.log_task_id = log_task_id
 
@@ -207,12 +200,12 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
             init_task_body = TaskInitialization(task_id=task_id,
                                                 log_task_id=log_task_id,
                                                 tsk_start_time=tsk_start_time)
-            meta.post_message(Request(source='STM', destination='CTR', body=init_task_body))
+            meta.post_message(Request(source='STM', destination='CTR', body=init_task_body), conn=db_conn)
             session.logger.info(f'Initiating task:{task_id}:{task_id}:{log_task_id}:{tsk_start_time}')
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                future1 = executor.submit(_wait_for_lsl_recording_to_start, session)
-                future2 = executor.submit(_start_acq, session, task_id, tsk_start_time, frame_preview_device_id)
+                future1 = executor.submit(_wait_for_lsl_recording_to_start, db_conn, session)
+                future2 = executor.submit(_start_acq, session, task_id, tsk_start_time)
                 # Wait for all futures to complete
                 concurrent.futures.wait([future1, future2])
             _get_task_instance(session, task_args, edf_fname)
@@ -234,7 +227,7 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
             stop_acq(session, task_args)
 
             # Signal CTR to stop LSL rec
-            meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)))
+            meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)), db_conn)
             session.logger.info(f'FINISHED TASK: {task_id}')
             log_task(events, session, task_id, task_id, task_log_entry, task_args.task_instance)
 
@@ -288,12 +281,12 @@ def _create_tasks(message, session, task_log_entry):
         if task_id in session.tasks():
             setup_task(session, task_id, task_list)
 
-    device_log_entry_dict = meta.log_devices(None, task_list)
+    device_log_entry_dict = meta.log_devices(session.db_conn, task_list)
 
     session.win = welcome_screen(win=session.win, slide=session.session_start_slide)
     reply_body = TasksCreated()
     reply = Request(source="STM", destination=message.source, body=reply_body)
-    meta.post_message(reply)
+    meta.post_message(reply, session.db_conn)
     session.logger.debug(task_list)
     return device_log_entry_dict, subj_id
 
@@ -313,12 +306,15 @@ def load_task_media(session: StmSession, task_args: TaskArgs):
     session.logger.info(f'Waiting for media to load took: {elapsed_time:.2f}')
 
 
-def _wait_for_lsl_recording_to_start(session):
+def _wait_for_lsl_recording_to_start(db_conn, session):
     """
     Polls the database waiting for a message from the GUI saying LSL is recording
 
+    # TODO: Run this in its own thread
     Parameters
     ----------
+    db_conn
+    logger
     session
 
     Returns
@@ -328,11 +324,10 @@ def _wait_for_lsl_recording_to_start(session):
     t1 = time()
     ctr_msg_found: bool = False
     attempt = 0
-    with meta.get_database_connection() as db_conn:
-        while not ctr_msg_found and attempt < 30:
-            ctr_msg_found = meta.read_next_message("STM", db_conn, 'LslRecording') is not None
-            sleep(1)
-            attempt = attempt + 1
+    while not ctr_msg_found and attempt < 30:
+        ctr_msg_found = meta.read_next_message("STM", db_conn, 'LslRecording') is not None
+        sleep(1)
+        attempt = attempt + 1
     if not ctr_msg_found:
         session.logger.warning("Message LsLRecording not received in STM")
     else:
@@ -354,7 +349,7 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
 
     body = StopRecording()
     sr_msg = Request(source="STM", destination='ACQ', body=body)
-    meta.post_message(sr_msg)
+    meta.post_message(sr_msg, session.db_conn)
 
     # Stop eyetracker
     device_ids = [x.device_id for x in task_args.device_args]
@@ -364,16 +359,15 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
 
     acq_reply = None
     attempts = 0
-    with meta.get_database_connection() as poll_conn:
-        while acq_reply is None and attempts < 30:
-            acq_reply = meta.read_next_message("STM", poll_conn, msg_type="RecordingStopped")
-            # TODO: Handle higher priority msgs
-            # TODO: Handle error conditions reported by ACQ -> Consider adding an error field to the RecordingStopped msg
-            sleep(1)
-            attempts = attempts + 1
+    while acq_reply is None and attempts < 30:
+        acq_reply = meta.read_next_message("STM", session.db_conn, msg_type="RecordingStopped")
+        # TODO: Handle higher priority msgs
+        # TODO: Handle error conditions reported by ACQ -> Consider adding an error field to the RecordingStopped msg
+        sleep(1)
+        attempts = attempts + 1
 
 
-def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_device_id:str):
+def _start_acq(session: StmSession, task_id: str, tsk_start_time):
     """
     Start recording on ACQ in parallel to starting on STM
 
@@ -397,19 +391,17 @@ def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_
     body = StartRecording(
         session_name=session.session_name,
         fname=file_name,
-        task_id=task_id,
-        frame_preview_device_id=frame_preview_device_id
+        task_id=task_id
     )
     sr_msg = StartRecordingMsg(body=body)
-    meta.post_message(sr_msg)
+    meta.post_message(sr_msg, session.db_conn)
 
     acq_reply = None
-    with meta.get_database_connection() as conn:
-        while acq_reply is None:
-            acq_reply = meta.read_next_message("STM", conn, msg_type="RecordingStarted")
-            # TODO: Handle higher priority msgs
-            # TODO: Handle error conditions reported by ACQ  -> Consider adding an error field to the RecordingStarted msg
-            sleep(1)
+    while acq_reply is None:
+        acq_reply = meta.read_next_message("STM", session.db_conn, msg_type="RecordingStarted")
+        # TODO: Handle higher priority msgs
+        # TODO: Handle error conditions reported by ACQ  -> Consider adding an error field to the RecordingStarted msg
+        sleep(1)
     elapsed_time = time() - t1
     session.logger.info(f'Waiting for ACQ to start took: {elapsed_time:.2f}')
 
@@ -457,13 +449,10 @@ def log_task(events: List,
     task_log_entry.task_notes_file = f"{stm_session.session_name}-{stimulus_id}-notes.txt"
     if task.task_files is not None:
         task_log_entry.task_output_files = task.task_files
-    with meta.get_database_connection() as conn:
-        meta.fill_task_row(task_log_entry, conn)
+    meta.fill_task_row(task_log_entry, stm_session.db_conn)
 
 
 def prepare_session(prepare_req: PrepareRequest, logger):
-    global database_name
-
     logger.info("Preparing STM for operation.")
     collection_id = prepare_req.collection_id
     database_name = prepare_req.database_name
@@ -475,13 +464,14 @@ def prepare_session(prepare_req: PrepareRequest, logger):
         session_name=task_log_entry.subject_id_date,
         collection_id=collection_id,
         selected_tasks=prepare_req.selected_tasks,
+        db_conn=meta.get_database_connection(database=database_name),
     )
     #  TODO(larry): See about refactoring so we don't need to create a new logger here.
     #   (continued) We already have a db_logger, it just needs session attributes
     stm_session.logger = make_db_logger(subject_id, stm_session.session_name)
     stm_session.logger.info('LOGGER CREATED FOR SESSION')
     updator = Request(source="STM", destination="CTR", body=SessionPrepared())
-    meta.post_message(updator)
+    meta.post_message(updator, stm_session.db_conn)
     return stm_session, task_log_entry
 
 

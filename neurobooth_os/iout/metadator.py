@@ -29,6 +29,17 @@ from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_lit
 thread_local = threading.local()
 
 
+class LogSession(BaseModel):
+    log_session_id: Optional[int] = None
+    subject_id: Optional[str] = None
+    study_id: Optional[str] = None
+    staff_id: Optional[str] = None
+    collection_id: Optional[str] = None
+    application_id: str = "neurobooth_os"
+    application_version: Optional[str]
+    date: datetime = datetime.now()
+
+
 def str_fileid_to_eval(stim_file_str):
     """ Converts string path.to.module.py::function() to callable
 
@@ -326,10 +337,9 @@ def get_session_start_end_slides_for_collection(collection_id) -> (str, str):
     return collection.session_start_slide, collection.session_end_slide
 
 
-def _new_tech_log_dict():
+def new_task_log_dict():
     """Create a new log_task dict.
     TODO(larry): Consider removing.
-        Note the name should be ...task_log... not tech_log
     """
     log_task = OrderedDict()
     log_task["subject_id"] = ""
@@ -340,18 +350,6 @@ def _new_tech_log_dict():
     log_task["date_times"] = "{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "}"
     log_task["event_array"] = []  # marker_name:timestamp
     return log_task
-
-
-def _new_session_log_dict(application_id="neurobooth_os"):
-    """Create a new session_log dict."""
-    session_log = OrderedDict()
-    session_log["subject_id"] = ""
-    session_log["study_id"] = ""
-    session_log["staff_id"] = ""
-    session_log["collection_id"] = ""
-    session_log["application_id"] = application_id
-    session_log["date"] = datetime.now().strftime("%Y-%m-%d")
-    return session_log
 
 
 def make_new_task_row(conn: connection, subject_id):
@@ -365,13 +363,14 @@ def _make_new_appl_log_row(conn: connection, log_entry):
     return table.insert_rows([log_entry.values], cols=[log_entry.keys])
 
 
-def make_session_id(conn: connection, session_log):
+def make_session_id(conn: connection, log_session: LogSession) -> str:
     """Gets or creates session id"""
 
     table = Table("log_session", conn=conn)
+    datetime_str = log_session.date.strftime("%Y-%m-%d")
     task_df = table.query(
-        where=f"subject_id = '{session_log['subject_id']}' AND date = '{session_log['date']}'"
-              + f" AND collection_id = '{session_log['collection_id']}'"
+        where=f"subject_id = '{log_session.subject_id}' AND date = '{datetime_str}'"
+              + f" AND collection_id = '{log_session.collection_id}'"
     )
 
     # Check if session already exists
@@ -379,9 +378,8 @@ def make_session_id(conn: connection, session_log):
         assert len(task_df) < 2, "More than one 'session_id' found"
         return task_df.index[0]
     # Create new session log otherwise
-    log_sess = _new_session_log_dict()
-    for k in log_sess:
-        log_sess[k] = session_log[k]
+    log_sess: Dict = log_session.model_dump()
+    del log_sess["log_session_id"]
     vals = list(log_sess.values())
     session_id = table.insert_rows([tuple(vals)], cols=list(log_sess))
     return session_id
