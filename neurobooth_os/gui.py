@@ -726,13 +726,13 @@ def gui(logger):
                 meta.post_message(msg, conn)
 
             elif event == "Pause tasks":
-                _pause_tasks(window, steps, conn=conn)
+                _pause_tasks(window)
 
             elif event == "Stop tasks":
-                _stop_task_dialog(window, conn=conn, resume_on_cancel=False)
+                _stop_task_dialog(window, resume_on_cancel=False)
 
             elif event == "Calibrate":
-                _calibrate(window, conn=conn)
+                _calibrate(window)
 
             # Save notes to a txt
             elif event == "_save_notes_":
