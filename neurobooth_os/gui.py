@@ -712,7 +712,7 @@ def gui(logger):
                     start_pressed = True
                     session_id = meta.make_session_id(conn, log_sess)
                     task_list: List[str] = [k for k, v in values.items() if "obs" in k and v is True]
-                    _start_task_presentation(window, task_list, sess_info["subject_id"], session_id, steps, conn)
+                    _start_task_presentation(window, task_list, sess_info["subject_id"], session_id, steps)
 
             elif event == "tasks_created":
                 _session_button_state(window, disabled=False)

@@ -363,7 +363,7 @@ def _make_new_appl_log_row(conn: connection, log_entry):
     return table.insert_rows([log_entry.values], cols=[log_entry.keys])
 
 
-def make_session_id(conn: connection, log_session: LogSession) -> str:
+def make_session_id(conn: connection, log_session: LogSession) -> int:
     """Gets or creates session id"""
 
     table = Table("log_session", conn=conn)
@@ -382,7 +382,7 @@ def make_session_id(conn: connection, log_session: LogSession) -> str:
     del log_sess["log_session_id"]
     vals = list(log_sess.values())
     session_id = table.insert_rows([tuple(vals)], cols=list(log_sess))
-    return session_id
+    return int(session_id)
 
 
 def fill_task_row(task_log_entry: TaskLogEntry, conn: connection) -> None:
