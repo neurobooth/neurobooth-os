@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import importlib
 import json
-import threading
 import os
 import sys
 from collections import OrderedDict
@@ -23,10 +22,6 @@ from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, ge
     RawTaskParams, TaskArgs, StudyArgs, CollectionArgs
 from neurobooth_os.msg.messages import Message, MsgBody
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
-
-
-# This is called ONCE at module level (shared by all threads)
-thread_local = threading.local()
 
 
 class LogSession(BaseModel):
