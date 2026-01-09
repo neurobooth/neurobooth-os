@@ -791,7 +791,6 @@ def gui(logger):
                     t_obs_id,
                     obs_log_id,
                     tsk_strt_time,
-                    conn
                 )
                 if "calibration" in task_id.lower():
                     display_calibration_key_info(window)
