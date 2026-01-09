@@ -454,7 +454,8 @@ def log_task(events: List,
     task_log_entry.task_notes_file = f"{stm_session.session_name}-{stimulus_id}-notes.txt"
     if task.task_files is not None:
         task_log_entry.task_output_files = task.task_files
-    meta.fill_task_row(task_log_entry)
+    with meta.get_database_connection() as conn:
+        meta.fill_task_row(task_log_entry, conn)
 
 
 def prepare_session(prepare_req: PrepareRequest, logger):
