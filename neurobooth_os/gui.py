@@ -896,7 +896,6 @@ def handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_
     _stop_lsl_and_save(
         window,
         session,
-        conn,
         rec_fname,
         t_obs_id,
         obs_log_id,
