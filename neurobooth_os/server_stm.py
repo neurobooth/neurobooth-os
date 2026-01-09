@@ -135,7 +135,7 @@ def run_stm(logger):
                     device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
 
                 elif "PerformTaskRequest" == current_msg_type:
-                    _perform_task(paused_msg_conn, device_log_entry_dict, message, session, subj_id, task_log_entry)
+                    _perform_task(device_log_entry_dict, message, session, subj_id, task_log_entry)
 
                 elif "PauseSessionRequest" == current_msg_type:
                     paused = _pause(session)
