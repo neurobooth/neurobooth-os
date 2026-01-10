@@ -149,6 +149,7 @@ def run_acq(logger):
                         system_resource_logger.stop()
                     logging.shutdown()
                     shutdown_flag = True
+                    break
                 else:
                     logger.error(f'Unexpected message received: {message.model_dump_json()}')
             except Exception as argument:
