@@ -143,9 +143,7 @@ def run_acq(logger):
 
                 if device_manager is not None:
                     device_manager.close_streams()
-
-                if system_resource_logger is not None:
-                    system_resource_logger.stop()
+                read_conn.close()
                 shutdown_flag = True
                 break
             else:
@@ -156,8 +154,10 @@ def run_acq(logger):
             meta.post_message(req)
             raise argument
         finally:
-            read_conn.close()
-            logging.shutdown()
+            if system_resource_logger is not None:
+                system_resource_logger.stop()
+            if not read_conn.closed:
+                read_conn.close()
 
 
 def camera_frame_preview(device_id: str, device_manager, logger):
