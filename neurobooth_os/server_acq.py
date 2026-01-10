@@ -147,6 +147,7 @@ def run_acq(logger):
 
                     if system_resource_logger is not None:
                         system_resource_logger.stop()
+                    read_conn.close()
                     logging.shutdown()
                     shutdown_flag = True
                     break
