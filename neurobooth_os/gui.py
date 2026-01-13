@@ -486,8 +486,8 @@ def enable_frame_preview(window, preview_devices: Dict[str, str]) -> None:
         preview_default = available_streams[0]
 
     # Enable the preview button and the Combo picker
-    window["-frame_preview-"].update(visible=True)
-    window["-frame_preview_opts-"].update(visible=True, value=preview_default, values=available_streams)
+    window["-frame_preview-"].update(disabled=False)
+    window["-frame_preview_opts-"].update(disabled=False, value=preview_default, values=available_streams)
 
 
 def handle_frame_preview_reply(window, frame_reply: FramePreviewReply) -> None:
@@ -778,7 +778,7 @@ def gui(logger):
             # Signal a task started: record LSL data and update gui
             elif event == "task_initiated":
                 # event values -> f"['{task_id}', '{t_obs_id}', '{log_task_id}, '{tsk_strt_time}']
-                window["-frame_preview-"].update(visible=False)
+                window["-frame_preview-"].update(disabled=True)
                 task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
                 write_output(window, f"\nTask initiated: {task_id}")
 
@@ -905,7 +905,7 @@ def handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_
     write_task_notes(
         sess_info["subject_id_date"], sess_info["staff_id"], t_obs_id, ""
     )
-    window["-frame_preview-"].update(visible=True)
+    window["-frame_preview-"].update(disabled=False)
 
 
 def _save_session_notes(sess_info, values, window):
