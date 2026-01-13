@@ -2,6 +2,7 @@ import base64
 import os
 import sys
 from time import time, sleep
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from pylsl import local_clock
@@ -43,24 +44,21 @@ def main():
         logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                         exc_info=sys.exc_info())
         raise argument
-
     finally:
         logging.shutdown()
 
 
 def run_acq(logger):
-
+    read_conn = meta.get_database_connection()
     device_manager = None
     recording = False
     system_resource_logger = None
     task_args: Dict[str, TaskArgs] = {}
-    shutdown_flag = False
     init_servers = Request(source="ACQ", destination="CTR", body=ServerStarted(neurobooth_version=release.version))
     meta.post_message(init_servers)
     task: Optional[str] = None  # id of currently executing task, if any
-    while not shutdown_flag:
-        read_conn = meta.get_database_connection()
-        try:
+    try:
+        while True:
             message: Message = meta.read_next_message("ACQ", conn=read_conn)
             if message is None:
                 sleep(.25)
@@ -143,21 +141,19 @@ def run_acq(logger):
 
                 if device_manager is not None:
                     device_manager.close_streams()
-                read_conn.close()
-                shutdown_flag = True
                 break
             else:
                 logger.error(f'Unexpected message received: {message.model_dump_json()}')
-        except Exception as argument:
-            err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
-            req = Request(body=err_msg, source="ACQ", destination="CTR")
-            meta.post_message(req)
-            raise argument
-        finally:
-            if system_resource_logger is not None:
-                system_resource_logger.stop()
-            if not read_conn.closed:
-                read_conn.close()
+    except Exception as argument:
+        err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
+        req = Request(body=err_msg, source="ACQ", destination="CTR")
+        meta.post_message(req)
+        raise argument
+    finally:
+        if read_conn is not None and not read_conn.closed:
+            read_conn.close()
+        if system_resource_logger is not None:
+            system_resource_logger.stop()
 
 
 def camera_frame_preview(device_id: str, device_manager, logger):
