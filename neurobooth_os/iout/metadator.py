@@ -32,6 +32,7 @@ class LogSession(BaseModel):
     collection_id: Optional[str] = None
     application_id: str = "neurobooth_os"
     application_version: Optional[str]
+    config_version: Optional[str]
     date: datetime = datetime.now()
 
 
