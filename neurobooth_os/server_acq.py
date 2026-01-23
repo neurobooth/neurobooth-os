@@ -10,6 +10,7 @@ import logging
 
 import neurobooth_os
 import neurobooth_os.current_release as release
+import neurobooth_os.current_config as current_config
 
 from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs, DeviceArgs
@@ -54,7 +55,8 @@ def run_acq(logger):
     recording = False
     system_resource_logger = None
     task_args: Dict[str, TaskArgs] = {}
-    init_servers = Request(source="ACQ", destination="CTR", body=ServerStarted(neurobooth_version=release.version))
+    init_servers = Request(source="ACQ", destination="CTR", body=ServerStarted(neurobooth_version=release.version,
+                                                                               config_version=current_config.version))
     meta.post_message(init_servers)
     task: Optional[str] = None  # id of currently executing task, if any
     try:
