@@ -138,6 +138,7 @@ class ServerStarted(MsgBody):
     """
     elem_key: str = "-init_servs-"
     neurobooth_version: str
+    config_version: str
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
