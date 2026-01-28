@@ -20,6 +20,8 @@ import liesl
 from FreeSimpleGUI import Multiline
 
 import neurobooth_os.current_release as release
+import neurobooth_os.current_config as current_config
+
 import neurobooth_os.main_control_rec as ctr_rec
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 
@@ -46,17 +48,20 @@ start_pressed = False
 session_prepared_count = 0      # How many SessionPrepared messages were received. the number required = node count
 auto_frame_preview_device: Optional[str] = None  # which device to use for automated frame previews for every task
 gui_release_version: str = ''
+gui_config_version: str = ''
 
 
 class VersionMismatchError(RuntimeError):
     """Raised when Neurobooth versions across servers are inconsistent."""
 
-    def __init__(self, gui_version: str, other_version: str, server: str):
+    def __init__(self, gui_version: str, other_version: str, server: str, error_type: str):
         self.gui_version = gui_version
         self.other_version = other_version
         self.server = server
+        self.error_type = error_type
         super().__init__(
-            f"Neurobooth installed incorrectly. Version mismatch between GUI and {server}: GUI is on {gui_version}, "
+            f"Neurobooth installed incorrectly. Error Type is {error_type}. \n\n "
+            f"Version mismatch between GUI and {server}: GUI is on {gui_version}, "
             f"and {server} is on {other_version}"
         )
 
@@ -364,8 +369,12 @@ def _start_ctr_msg_reader(logger, window):
             elif "ServerStarted" == message.msg_type:
                 msg_body: ServerStarted = message.body
                 server_version = msg_body.neurobooth_version
+                server_config_version = msg_body.config_version
                 if server_version != gui_release_version:
                     window.write_event_value('-version_error-', [server_version, message.source])
+                    return
+                if server_config_version != gui_config_version:
+                    window.write_event_value('-config_version_error-', [server_config_version, message.source])
                     return
                 window.write_event_value("server_started", message.source)
             elif "TasksCreated" == message.msg_type:
@@ -422,8 +431,9 @@ def _start_ctr_msg_reader(logger, window):
 
 
 def report_version_error_and_close(logger, version_error: VersionMismatchError, window):
+
     heading = "Critical Error: "
-    msg = (f"Neurobooth versions are not consistent! "
+    msg = (f"Neurobooth {version_error.error_type} versions are not consistent! "
            f"The system will shutdown when you press OK. \n\n"
            f"The full error was: '{str(version_error)}'")
 
@@ -597,12 +607,14 @@ Calibration instructions:
 def gui(logger):
     """Start the Graphical User Interface.
     """
-    global running_servers, start_pressed, gui_release_version
+    global running_servers, start_pressed, gui_release_version, gui_config_version
 
     database = cfg.neurobooth_config.database.dbname
 
     gui_release_version = release.version
+    gui_config_version = current_config.version
     logger.info(f"Neurobooth application version = {gui_release_version}")
+    logger.info(f"Neurobooth config version = {gui_config_version}")
 
     nodes = _get_nodes()
 
@@ -618,7 +630,7 @@ def gui(logger):
 
         plttr = stream_plotter()
         log_task = meta.new_task_log_dict()
-        log_sess = LogSession(application_version=gui_release_version)
+        log_sess = LogSession(application_version=gui_release_version, config_version=gui_config_version)
         stream_ids, inlets = {}, {}
         plot_elem, inlet_keys = [], []
         steps = list()  # keep track of steps done
@@ -636,7 +648,15 @@ def gui(logger):
 
             elif event == '-version_error-':
                 server_version, server = values[event]
-                version_error = VersionMismatchError(gui_release_version, server_version, server)
+                version_error = VersionMismatchError(gui_release_version, server_version, server, "CODE")
+                terminate_system(conn, plttr, sess_info, values, window) # kill other servers
+                report_version_error_and_close(logger, version_error, window)
+                break
+
+            elif event == '-config_version_error-':
+                server_config_version, server = values[event]
+                version_error = VersionMismatchError(gui_config_version, server_config_version, server,
+                                                     "CONFIG")
                 terminate_system(conn, plttr, sess_info, values, window) # kill other servers
                 report_version_error_and_close(logger, version_error, window)
                 break
@@ -761,8 +781,8 @@ def gui(logger):
                     continue
                 else:
                     response = sg.popup_ok_cancel("System will terminate!  \n\n"
-                                                  "Please ensure that any task in progress is completed and that STM and "
-                                                  "ACQ shut down properly.\n", title="Warning",
+                                                  "Please ensure that any task in progress is completed and that STM "
+                                                  "and ACQ shut down properly.\n", title="Warning",
                                                   location=get_popup_location(window))
                     if response == "OK":
                         write_output(window, "System termination scheduled. "
