@@ -19,6 +19,7 @@ from neurobooth_os.util.task_log_entry import TaskLogEntry
 
 import neurobooth_os
 import neurobooth_os.current_release as release
+import neurobooth_os.current_config as current_config
 
 from neurobooth_os import config
 
@@ -63,7 +64,8 @@ def run_stm(logger):
     session_canceled: bool = False  # True if message received that RC requests that the session be canceled
     finished: bool = False  # True if the "Thank you" screen has been displayed
     shutdown: bool = False  # True if message received that this server should be terminated
-    init_servers = Request(source="STM", destination="CTR", body=ServerStarted(neurobooth_version=release.version))
+    init_servers = Request(source="STM", destination="CTR", body=ServerStarted(neurobooth_version=release.version,
+                                                                               config_version=current_config.version))
     meta.post_message(init_servers)
     paused_msg_conn = meta.get_database_connection()
     read_msg_conn = meta.get_database_connection()
