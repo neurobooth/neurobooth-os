@@ -56,6 +56,12 @@ def start_iphone_stream(_, device_args):
     return device if device.prepare() else None
 
 
+def start_mock_iphone_stream(_, device_args):
+    from neurobooth_os.iout.mocks.mock_iphone import MockIPhone
+    device = MockIPhone(name="IPhoneFrameIndex", device_args=device_args)
+    return device if device.prepare() else None
+
+
 def start_yeti_stream(_, device_args):
     from neurobooth_os.iout.microphone import MicStream
     device = MicStream(device_args)
