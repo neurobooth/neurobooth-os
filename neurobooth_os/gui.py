@@ -988,7 +988,6 @@ def main():
     except Exception as argument:
         logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                         exc_info=sys.exc_info())
-        # Don't raise - we'll exit in finally block
         exit_code = 1
     finally:
         logging.shutdown()
