@@ -992,7 +992,7 @@ def main():
         exit_code = 1
     finally:
         logging.shutdown()
-        sys.exit(exit_code)
+        os._exit(exit_code)
 
 
 if __name__ == "__main__":
