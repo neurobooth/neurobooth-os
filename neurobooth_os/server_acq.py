@@ -35,6 +35,7 @@ def countdown(period):
 def main():
     config.load_config_by_service_name("ACQ")  # Load Neurobooth-OS configuration
     logger = make_db_logger()  # Initialize default logger
+    exit_code = 0
     try:
         logger.debug("Starting ACQ")
         os.chdir(neurobooth_os.__path__[0])
@@ -44,9 +45,10 @@ def main():
     except Exception as argument:
         logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                         exc_info=sys.exc_info())
-        raise argument
+        exit_code = 1
     finally:
         logging.shutdown()
+        os._exit(exit_code)
 
 
 def run_acq(logger):
