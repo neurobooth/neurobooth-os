@@ -34,9 +34,11 @@ prefs.hardware["audioLatencyMode"] = 3
 calib_instructions: bool = True  # True if we have not yet performed an eyetracker calibration task
 frame_preview_device_id: Optional[str] = None
 
+
 def main():
     config.load_config_by_service_name("STM")  # Load Neurobooth-OS configuration
     logger = make_db_logger()  # Initialize logging to default
+    exit_code = 0
     try:
         logger.debug("Starting STM")
         os.chdir(neurobooth_os.__path__[0])
@@ -45,9 +47,10 @@ def main():
     except Exception as argument:
         logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                         exc_info=sys.exc_info())
-        raise argument
+        exit_code = 1
     finally:
         logging.shutdown()
+        sys.exit(exit_code)
 
 
 def run_stm(logger):

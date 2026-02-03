@@ -978,9 +978,9 @@ def get_popup_location(window):
 
 def main():
     """The starting point of Neurobooth"""
-
     cfg.load_config_by_service_name("CTR")  # Load Neurobooth-OS configuration
     logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
+    exit_code = 0
     try:
         logger.debug("Starting GUI")
         gui(logger)
@@ -988,10 +988,11 @@ def main():
     except Exception as argument:
         logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                         exc_info=sys.exc_info())
-        raise argument
-
+        # Don't raise - we'll exit in finally block
+        exit_code = 1
     finally:
         logging.shutdown()
+        sys.exit(exit_code)
 
 
 if __name__ == "__main__":
