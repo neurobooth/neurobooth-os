@@ -19,7 +19,6 @@ lib64/
 parts/
 sdist/
 var/
-.gemini/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -74,3 +73,7 @@ venv-*
 
 # Misc
 server_pids.txt
+
+# AI Tools
+.gemini/
+GEMINI.md
