@@ -215,10 +215,6 @@ def start_server(node_name, save_pid_txt=True):
     return pid
 
 
-
-
-
-
 def kill_remote_pid(pids, node_name):
 
     if node_name not in ["acquisition", "presentation"]:
