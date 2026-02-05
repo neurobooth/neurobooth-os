@@ -73,3 +73,7 @@ venv-*
 
 # Misc
 server_pids.txt
+
+# AI Tools
+.gemini/
+GEMINI.md
