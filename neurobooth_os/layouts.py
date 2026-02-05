@@ -347,7 +347,7 @@ def write_task_notes(subject_id, staff_id, task_name, task_notes):
     if not op.exists(fname):
         task_txt += f"{subject_id}, {staff_id}\n"
 
-    with open(fname, "a") as fp:
+    with open(fname, "a", encoding="utf-8") as fp:
         datestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         task_txt += f"[\t{datestamp}]: {task_notes}\n"
         fp.write(task_txt)
