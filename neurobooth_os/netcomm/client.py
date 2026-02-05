@@ -4,7 +4,6 @@ import re
 import os
 import subprocess
 import ast
-from io import StringIO
 
 import neurobooth_os.config as cfg
 
