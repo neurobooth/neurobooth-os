@@ -1,9 +1,10 @@
 import logging
 from time import time, sleep
-import re
 import os
 import subprocess
 import ast
+import json
+import socket
 
 import neurobooth_os.config as cfg
 
@@ -17,248 +18,242 @@ def setup_log(name):
 logger = setup_log(__name__)
 
 
-def _run_cmd(cmd_list: list, server_name: str = None, user: str = None, password: str = None) -> str:
-    full_cmd = list(cmd_list)
-    if server_name:
-        full_cmd = full_cmd[:1] + ["/S", server_name, "/U", user, "/P", password] + full_cmd[1:]
+def _is_local_machine(server_name: str) -> bool:
+    """Check if server_name refers to the local machine."""
+    if not server_name:
+        return False
+
+    hostname = socket.gethostname().upper()
+    return server_name.upper() in [hostname, 'LOCALHOST', '127.0.0.1']
+
+
+def _run_ps_remote_cmd(
+        script_block: str, server_name: str, user: str, password: str, timeout: int = 60
+) -> str:
+    """
+    Executes a PowerShell script block on a remote machine using Invoke-Command.
+    If the target is the local machine, runs directly without remoting.
+    """
+
+    # Check if this is the local machine - if so, run locally
+    if _is_local_machine(server_name):
+        logger.debug(f"Running PowerShell command locally (detected {server_name} as localhost):\n{script_block}")
+        try:
+            result = subprocess.run(
+                ["powershell.exe", "-ExecutionPolicy", "Bypass", "-Command", script_block],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=timeout,
+                encoding='utf8'
+            )
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Local PowerShell command failed: {e.cmd}")
+            logger.error(f"STDOUT: {e.stdout}")
+            logger.error(f"STDERR: {e.stderr}")
+            raise
+        except subprocess.TimeoutExpired as e:
+            logger.error(f"Local PowerShell command timed out: {e.cmd}")
+            logger.error(f"STDOUT: {e.stdout}")
+            logger.error(f"STDERR: {e.stderr}")
+            raise
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while running local PowerShell command: {e}")
+            raise
+
+    # Remote execution with credentials
+    ps_cmd = f"""
+    $secpasswd = ConvertTo-SecureString -String '{password}' -AsPlainText -Force
+    $credential = New-Object System.Management.Automation.PSCredential ('{user}', $secpasswd)
+    Invoke-Command -ComputerName '{server_name}' -Credential $credential -ScriptBlock {{
+        {script_block}
+    }}
+    """
 
     try:
-        logger.debug(f"Running command: {' '.join(full_cmd)}")
-        result = subprocess.run(full_cmd, capture_output=True, text=True, check=True, timeout=30)
+        logger.debug(f"Running remote PowerShell command on {server_name}:\n{script_block}")
+        result = subprocess.run(
+            ["powershell.exe", "-ExecutionPolicy", "Bypass", "-Command", ps_cmd],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=timeout,
+            encoding='utf8'
+        )
         return result.stdout
     except subprocess.CalledProcessError as e:
-        logger.error(f"Command failed: {e.cmd}, stdout: {e.stdout}, stderr: {e.stderr}")
+        logger.error(f"Remote PowerShell command failed on {server_name}: {e.cmd}")
+        logger.error(f"STDOUT: {e.stdout}")
+        logger.error(f"STDERR: {e.stderr}")
         raise
     except subprocess.TimeoutExpired as e:
-        logger.error(f"Command timed out: {e.cmd}, stdout: {e.stdout}, stderr: {e.stderr}")
+        logger.error(f"Remote PowerShell command timed out on {server_name}: {e.cmd}")
+        logger.error(f"STDOUT: {e.stdout}")
+        logger.error(f"STDERR: {e.stderr}")
+        raise
+    except Exception as e:
+        logger.error(f"An unexpected error occurred while running remote PowerShell command: {e}")
         raise
 
 
-def get_python_pids(server_name: str = None, user: str = None, password: str = None) -> list:
-    """Gets a list of Python process IDs from the local or remote computer.
-
-    Parameters
-    ----------
-    server_name : str, optional
-        Name of the remote server. If None, gets local PIDs.
-    user : str, optional
-        Username for remote server.
-    password : str, optional
-        Password for remote server.
-
-    Returns
-    -------
-    list
-        List of Python process identifiers.
+def get_ps_processes(server_name: str, user: str, password: str, process_name: str = "python") -> list:
     """
-    cmd_args = ["tasklist.exe"]
-    # _run_cmd handles adding remote credentials if server_name is not None
+    Gets a list of processes (PID and CommandLine) from a remote computer.
+    """
+    script_block = f"""
+    $p = Get-Process -Name '{process_name}' -ErrorAction SilentlyContinue;
+    if ($p) {{ $p | Select-Object Id, CommandLine | ConvertTo-Json -Compress }}
+    """
     try:
-        output_tasklist = _run_cmd(cmd_args, server_name, user, password)
-    except Exception:
+        json_output = _run_ps_remote_cmd(script_block, server_name, user, password)
+        if not json_output.strip():
+            return []
+
+        # PowerShell ConvertTo-Json might output a single object or an array of objects
+        processes_data = json.loads(json_output)
+
+        if not isinstance(processes_data, list):
+            processes_data = [processes_data]
+
+        result = []
+        for p in processes_data:
+            result.append({"pid": str(p["Id"]), "commandline": p.get("CommandLine", "")})
+        return result
+
+    except Exception as e:
+        logger.warning(f"Could not retrieve processes from {server_name}: {e}")
         return []
 
-    procs = output_tasklist.split("\n")
-    re_pyth = re.compile("python.exe[\\s]*([0-9]*)")
 
-    pyth_pids = []
-    for prc in procs:
-        srch = re_pyth.search(prc)
-        if srch is not None:
-            pyth_pids.append(srch.groups()[0])
-    return pyth_pids
-
-
-def get_all_python_processes_with_cmd(server_name: str = None, user: str = None, password: str = None) -> list:
-    """Gets a list of Python process IDs and their command lines from the local or remote computer.
-
-    Parameters
-    ----------
-    server_name : str, optional
-        Name of the remote server. If None, gets local PIDs.
-    user : str, optional
-        Username for remote server.
-    password : str, optional
-        Password for remote server.
-
-    Returns
-    -------
-    list
-        List of dictionaries, each with 'pid' and 'commandline' for Python processes.
+def kill_ps_remote_pid(pids: list, node_name: str):
     """
-    cmd_args = ["WMIC", "process", "where", "name='python.exe'", "get", "ProcessId,CommandLine", "/FORMAT:CSV"]
-    try:
-        output_wmic = _run_cmd(cmd_args, server_name, user, password)
-    except Exception:
-        return []
+    Kills processes on a remote machine using PowerShell's Stop-Process.
+    Derives server details from node_name.
+    """
+    if not pids:
+        return
 
-    processes = []
-    # Skip the first line (header) and the last empty line
-    lines = output_wmic.strip().split("\n")
-    if len(lines) > 1:
-        for line in lines[1:]:  # Skip header
-            parts = line.split(',')
-            if len(parts) >= 2:
-                try:
-                    pid = parts[0].strip()
-                    cmd_line = parts[1].strip()
-                    processes.append({"pid": pid, "commandline": cmd_line})
-                except ValueError:
-                    logger.warning(f"Could not parse WMIC output line: {line}")
-    return processes
+    if node_name not in ["acquisition", "presentation"]:
+        logger.warning(f"Node name '{node_name}' not recognized for killing PIDs.")
+        return None
+
+    s = cfg.neurobooth_config.server_by_name(node_name)
+
+    # Ensure PIDs are strings for PowerShell
+    pid_list_str = ",".join([str(p) for p in pids])
+
+    script_block = f"""
+    Stop-Process -Id {pid_list_str} -Force -ErrorAction SilentlyContinue; $null
+    """
+    try:
+        _run_ps_remote_cmd(script_block, s.name, s.user, s.password)
+        logger.info(f"Killed PIDs {pids} on {s.name}.")
+    except Exception as e:
+        logger.warning(f"Failed to kill PIDs {pids} on {s.name}: {e}")
+
+
+def kill_pid_txt(txt_name="server_pids.txt", node_name=None):
+    """
+    Reads PIDs from a file, attempts to kill them, and updates the file.
+    """
+    if not os.path.exists(txt_name):
+        return
+
+    with open(txt_name, "r+") as f:
+        lines = f.readlines()
+
+        if len(lines):
+            print(f"Closing {len(lines)} remote processes recorded in {txt_name}")
+
+        new_lines = []
+        for line in lines:
+            try:
+                pid_str, node, tsmp = line.strip().split("|")
+                pid_list = ast.literal_eval(pid_str)
+
+                if node_name is not None and node_name != node:
+                    new_lines.append(line)
+                    continue
+
+                kill_ps_remote_pid(pid_list, node)
+            except Exception as e:
+                logger.warning(f"Error processing PID line '{line.strip()}': {e}. Skipping.")
+                continue
+
+        f.seek(0)
+        if new_lines:
+            f.writelines(new_lines)
+        else:
+            f.write("")
+        f.truncate()
 
 
 def start_server(node_name, save_pid_txt=True):
-    """Makes a network call to run script serv_{node_name}.bat
-
-    First remote processes are logged, then a scheduled task is created to run
-    the remote batch file, then task runs, and new python PIDs are captured with
-    the option to save to save_pid_txt. If saved, when the function is called it
-    will kill the PIDs in the file.
-
-    Parameters
-    ----------
-    node_name : str
-        PC node name defined in config.neurobooth_config`
-    save_pid_txt : bool
-        Option to save PID to file for killing PID in the future.
-
-    Returns
-    -------
-    pid : list
-        Python process identifiers found in remote computer after server started.
     """
-
+    Starts a remote server using PowerShell Remoting.
+    """
     if node_name not in ["acquisition", "presentation"]:
         print("Not a known node name")
         return None
     s = cfg.neurobooth_config.server_by_name(node_name)
-    
-    # Identify and kill any existing Python processes for this node
-    expected_script = None
-    if node_name == "acquisition":
-        expected_script = "server_acq.py"
-    elif node_name == "presentation":
-        expected_script = "server_stm.py"
 
-    if expected_script:
-        logger.info(f"Proactively checking for and killing existing '{expected_script}' processes on {node_name}.")
-        running_python_procs = get_all_python_processes_with_cmd(s.name, s.user, s.password)
+    # 1. Proactively kill any existing relevant Python processes
+    expected_script_part = None
+    if node_name == "acquisition":
+        expected_script_part = "server_acq.py"
+    elif node_name == "presentation":
+        expected_script_part = "server_stm.py"
+
+    if expected_script_part:
+        logger.info(f"Proactively checking for and killing existing '{expected_script_part}' processes on {s.name}.")
+        running_python_procs = get_ps_processes(s.name, s.user, s.password, process_name="python")
+        pids_to_kill_proactive = []
         for proc in running_python_procs:
-            if expected_script in proc.get('commandline', ''):
-                logger.warning(f"Found existing '{expected_script}' process (PID: {proc['pid']}). Attempting to kill.")
-                kill_remote_pid([proc['pid']], node_name)
-    
-    # Kill any previous server that were recorded
+            commandline = proc.get('commandline') or ''  # Handle None case
+            if expected_script_part in commandline:
+                logger.warning(
+                    f"Found existing '{expected_script_part}' process (PID: {proc['pid']}). Attempting to kill.")
+                pids_to_kill_proactive.append(proc['pid'])
+        if pids_to_kill_proactive:
+            kill_ps_remote_pid(pids_to_kill_proactive, node_name)
+
+    # 2. Kill any processes recorded in server_pids.txt
     kill_pid_txt(node_name=node_name)
 
-    # Get list of python processes before starting new one
-    pids_old = get_python_pids(s.name, s.user, s.password)
+    # 3. Get PIDs before starting new server
+    pids_old = [p['pid'] for p in get_ps_processes(s.name, s.user, s.password, process_name="python")]
     logger.debug(f"Python processes found before: {pids_old}")
 
-    # Get list of scheduled tasks and run TaskOnEvent if not running
+    # 4. Start the server
+    if not s.bat:
+        logger.error(f"No .bat file specified for {node_name}. Cannot start server.")
+        return None
+
+    # Expand environment variables in the bat path
+    bat_path = os.path.expandvars(s.bat)
+    logger.debug(f"Expanded bat path from '{s.bat}' to '{bat_path}'")
+
+    script_block_start = f"""
+    Start-Process -FilePath '{bat_path}' -PassThru | ConvertTo-Json -Compress
+    """
     try:
-        schtasks_query_output = _run_cmd(["SCHTASKS", "/query", "/fo", "CSV", "/nh"], s.name, s.user, s.password)
-    except Exception:
-        schtasks_query_output = "" # No scheduled tasks or command failed
+        start_output = _run_ps_remote_cmd(script_block_start, s.name, s.user, s.password)
+        logger.info(f"Triggered start of {bat_path} on {s.name}. Output: {start_output}")
+    except Exception as e:
+        logger.error(f"Failed to trigger {bat_path} on {s.name}: {e}")
+        return None
+    sleep(2)
 
-    # Manual parsing of CSV output
-    scheduled_tasks = {}
-    for line in schtasks_query_output.strip().split("\n"):
-        parts = line.strip().split(",")
-        if len(parts) >= 2:
-            task_name = parts[0].strip('"')
-            status = parts[1].strip('"')
-            scheduled_tasks[task_name] = {"status": status}
-
-    # task_name is the name of the task to create & run in the remote server's Windows Task Scheduler
-    task_name = s.task_name + "0"
-    print(f"Preparing to run windows task: {task_name}")
-    while True:
-        if task_name in scheduled_tasks:
-            print(f"{task_name} was found")
-            # if task already running add n+1 to task name
-            if scheduled_tasks[task_name]["status"] == "Running":
-                try:
-                    tsk_inx = int(task_name[-1]) + 1
-                    task_name = task_name[:-1] + str(tsk_inx)
-                    print(f"Creating new scheduled task: {task_name} in server {node_name}")
-                except ValueError: # Handle cases where task_name doesn't end with a number
-                    task_name += "_1"
-                    print(f"Creating new scheduled task: {task_name} in server {node_name}")
-                continue
-        break
-
-    cmd_schtasks_base = ["SCHTASKS"]
-
-    if task_name not in scheduled_tasks:
-        print(f"Windows task: {task_name} was not found. Attempting to create")
-        cmd_1 = cmd_schtasks_base + [
-            "/Create", "/TN", task_name, "/TR", s.bat, "/SC", "ONEVENT", "/EC", "Application", "/MO", "*[System/EventID=777]", "/f"
-        ]
-        _run_cmd(cmd_1, s.name, s.user, s.password)
-
-    cmd_2 = cmd_schtasks_base + ["/Run", "/TN", task_name]
-    _run_cmd(cmd_2, s.name, s.user, s.password)
-
-    sleep(0.3)
-    pids_new = get_python_pids(s.name, s.user, s.password)
+    # 5. Get PIDs after starting new server
+    pids_new = [p['pid'] for p in get_ps_processes(s.name, s.user, s.password, process_name="python")]
     logger.debug(f"Python processes found after: {pids_new}")
 
     pid = [p for p in pids_new if p not in pids_old]
     print(f"{node_name.upper()} server initiated with pid {pid}")
     logger.info(f"{node_name.upper()} server initiated with pid {pid}")
 
-    if save_pid_txt:
+    if save_pid_txt and pid:
         with open("server_pids.txt", "a") as f:
             f.write(f"{pid}|{node_name}|{time()}\n")
     return pid
-
-
-def kill_remote_pid(pids, node_name):
-
-    if node_name not in ["acquisition", "presentation"]:
-        print("Not a known node name")
-        return None
-
-    s = cfg.neurobooth_config.server_by_name(node_name)
-
-    if isinstance(pids, str):
-        pids = [pids]
-
-    for pid in pids:
-        cmd_args = ["taskkill", "/PID", str(pid), "/F"]
-        # _run_cmd handles adding remote credentials if s.name is not None
-        try:
-            _run_cmd(cmd_args, s.name, s.user, s.password)
-            logger.info(f"Killed PID {pid} on {node_name} server.")
-        except Exception as e:
-            logger.warning(f"Failed to kill PID {pid} on {node_name} server: {e}")
-    return
-
-
-def kill_pid_txt(txt_name="server_pids.txt", node_name=None):
-
-    if not os.path.exists(txt_name):
-        return
-
-    with open(txt_name, "r+") as f:
-        Lines = f.readlines()
-
-        if len(Lines):
-            print(f"Closing {len(Lines)} remote processes")
-
-        new_lines = []
-        for line in Lines:
-            pid, node, tsmp = line.split("|")
-            if node_name is not None and node_name != node:
-                new_lines.append(line)
-                continue
-            kill_remote_pid(ast.literal_eval(pid), node)
-
-        f.seek(0)
-        if len(new_lines):
-            f.writelines(new_lines)
-        else:
-            f.write("")
-        f.truncate()
