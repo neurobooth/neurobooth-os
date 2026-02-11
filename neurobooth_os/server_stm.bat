@@ -1,2 +1,2 @@
 call %NB_CONDA_INSTALL%\Scripts\activate.bat %NB_CONDA_ENV%
-start python %NB_INSTALL%\neurobooth_os\server_stm.py
+python %NB_INSTALL%\neurobooth_os\server_stm.py
