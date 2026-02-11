@@ -210,14 +210,13 @@ def start_server(node_name, save_pid_txt=True):
         running_python_procs = get_ps_processes(s.name, s.user, s.password, process_name="python")
         pids_to_kill_proactive = []
         for proc in running_python_procs:
-            commandline = proc.get('commandline') or ''
+            commandline = proc.get('commandline') or ''  # Handle None case
             if expected_script_part in commandline:
                 logger.warning(
                     f"Found existing '{expected_script_part}' process (PID: {proc['pid']}). Attempting to kill.")
                 pids_to_kill_proactive.append(proc['pid'])
         if pids_to_kill_proactive:
             kill_ps_remote_pid(pids_to_kill_proactive, node_name)
-            sleep(1)
 
     # 2. Kill any processes recorded in server_pids.txt
     kill_pid_txt(node_name=node_name)
@@ -231,54 +230,30 @@ def start_server(node_name, save_pid_txt=True):
         logger.error(f"No .bat file specified for {node_name}. Cannot start server.")
         return None
 
-    bat_path = s.bat
+    # Expand environment variables in the bat path
+    bat_path = os.path.expandvars(s.bat)
+    logger.debug(f"Expanded bat path from '{s.bat}' to '{bat_path}'")
 
-    # Handle environment variables based on whether it's local or remote
-    if _is_local_machine(s.name):
-        # Local execution - expand environment variables locally
-        bat_path = os.path.expandvars(bat_path)
-        logger.info(f"Starting {node_name} server locally using: {bat_path}")
-
-        if not os.path.exists(bat_path):
-            logger.error(f"Batch file does not exist: {bat_path}")
-            return None
-
-        script_block_start = f"""
-        Start-Process -FilePath '{bat_path}' -PassThru | ConvertTo-Json -Compress
-        """
-    else:
-        # Remote execution - expand environment variables on remote server
-        logger.info(f"Starting {node_name} server remotely using: {bat_path}")
-
-        script_block_start = f"""
-        $expandedPath = [System.Environment]::ExpandEnvironmentVariables('{bat_path}')
-        Start-Process -FilePath $expandedPath -PassThru | ConvertTo-Json -Compress
-        """
-
+    script_block_start = f"""
+    Start-Process -FilePath '{bat_path}' -PassThru | ConvertTo-Json -Compress
+    """
     try:
         start_output = _run_ps_remote_cmd(script_block_start, s.name, s.user, s.password)
-        logger.info(f"Triggered start on {s.name}. Output: {start_output}")
+        logger.info(f"Triggered start of {bat_path} on {s.name}. Output: {start_output}")
     except Exception as e:
         logger.error(f"Failed to trigger {bat_path} on {s.name}: {e}")
         return None
-
-    sleep(3)
+    sleep(2)
 
     # 5. Get PIDs after starting new server
     pids_new = [p['pid'] for p in get_ps_processes(s.name, s.user, s.password, process_name="python")]
     logger.debug(f"Python processes found after: {pids_new}")
 
     pid = [p for p in pids_new if p not in pids_old]
-
-    if not pid:
-        logger.warning(f"No new Python process detected for {node_name}. Server may have failed to start.")
-        print(f"WARNING: {node_name.upper()} server may not have started - no new PID detected")
-    else:
-        print(f"{node_name.upper()} server initiated with pid {pid}")
-        logger.info(f"{node_name.upper()} server initiated with pid {pid}")
+    print(f"{node_name.upper()} server initiated with pid {pid}")
+    logger.info(f"{node_name.upper()} server initiated with pid {pid}")
 
     if save_pid_txt and pid:
         with open("server_pids.txt", "a") as f:
             f.write(f"{pid}|{node_name}|{time()}\n")
-
     return pid
