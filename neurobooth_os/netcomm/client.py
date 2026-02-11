@@ -218,6 +218,7 @@ def start_server(node_name, save_pid_txt=True):
                 pids_to_kill_proactive.append(proc['pid'])
         if pids_to_kill_proactive:
             kill_ps_remote_pid(pids_to_kill_proactive, node_name)
+            sleep(1)  # Give time for processes to terminate
 
     # 2. Kill any processes recorded in server_pids.txt
     kill_pid_txt(node_name=node_name)
@@ -250,25 +251,32 @@ def start_server(node_name, save_pid_txt=True):
         logger.info(f"Starting {node_name} server remotely using: {bat_path}")
 
     script_block_start = f"""
-        Start-Process -FilePath '{bat_path}' -NoNewWindow -PassThru | ConvertTo-Json -Compress
-        """
+    Start-Process -FilePath '{bat_path}' -PassThru | ConvertTo-Json -Compress
+    """
     try:
         start_output = _run_ps_remote_cmd(script_block_start, s.name, s.user, s.password)
         logger.info(f"Triggered start of {bat_path} on {s.name}. Output: {start_output}")
     except Exception as e:
         logger.error(f"Failed to trigger {bat_path} on {s.name}: {e}")
         return None
-    sleep(2)
+
+    sleep(3)  # Increased delay to give process time to start
 
     # 5. Get PIDs after starting new server
     pids_new = [p['pid'] for p in get_ps_processes(s.name, s.user, s.password, process_name="python")]
     logger.debug(f"Python processes found after: {pids_new}")
 
     pid = [p for p in pids_new if p not in pids_old]
-    print(f"{node_name.upper()} server initiated with pid {pid}")
-    logger.info(f"{node_name.upper()} server initiated with pid {pid}")
+
+    if not pid:
+        logger.warning(f"No new Python process detected for {node_name}. Server may have failed to start.")
+        print(f"WARNING: {node_name.upper()} server may not have started - no new PID detected")
+    else:
+        print(f"{node_name.upper()} server initiated with pid {pid}")
+        logger.info(f"{node_name.upper()} server initiated with pid {pid}")
 
     if save_pid_txt and pid:
         with open("server_pids.txt", "a") as f:
             f.write(f"{pid}|{node_name}|{time()}\n")
+
     return pid
