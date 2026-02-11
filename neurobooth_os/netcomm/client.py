@@ -211,14 +211,14 @@ def start_server(node_name, save_pid_txt=True):
         running_python_procs = get_ps_processes(s.name, s.user, s.password, process_name="python")
         pids_to_kill_proactive = []
         for proc in running_python_procs:
-            commandline = proc.get('commandline') or ''  # Handle None case
+            commandline = proc.get('commandline') or ''
             if expected_script_part in commandline:
                 logger.warning(
                     f"Found existing '{expected_script_part}' process (PID: {proc['pid']}). Attempting to kill.")
                 pids_to_kill_proactive.append(proc['pid'])
         if pids_to_kill_proactive:
             kill_ps_remote_pid(pids_to_kill_proactive, node_name)
-            sleep(1)  # Give time for processes to terminate
+            sleep(1)
 
     # 2. Kill any processes recorded in server_pids.txt
     kill_pid_txt(node_name=node_name)
@@ -240,27 +240,30 @@ def start_server(node_name, save_pid_txt=True):
         bat_path = os.path.expandvars(bat_path)
         logger.info(f"Starting {node_name} server locally using: {bat_path}")
 
-        # Check if bat file exists
         if not os.path.exists(bat_path):
             logger.error(f"Batch file does not exist: {bat_path}")
             return None
+
+        script_block_start = f"""
+        Start-Process -FilePath '{bat_path}' -PassThru | ConvertTo-Json -Compress
+        """
     else:
-        # Remote execution - convert Windows env vars to PowerShell syntax
-        # %NB_INSTALL% -> $env:NB_INSTALL
-        bat_path = re.sub(r'%(\w+)%', r'$env:\1', bat_path)
+        # Remote execution - expand environment variables on remote server
         logger.info(f"Starting {node_name} server remotely using: {bat_path}")
 
-    script_block_start = f"""
-    Start-Process -FilePath '{bat_path}' -PassThru | ConvertTo-Json -Compress
-    """
+        script_block_start = f"""
+        $expandedPath = [System.Environment]::ExpandEnvironmentVariables('{bat_path}')
+        Start-Process -FilePath $expandedPath -PassThru | ConvertTo-Json -Compress
+        """
+
     try:
         start_output = _run_ps_remote_cmd(script_block_start, s.name, s.user, s.password)
-        logger.info(f"Triggered start of {bat_path} on {s.name}. Output: {start_output}")
+        logger.info(f"Triggered start on {s.name}. Output: {start_output}")
     except Exception as e:
         logger.error(f"Failed to trigger {bat_path} on {s.name}: {e}")
         return None
 
-    sleep(3)  # Increased delay to give process time to start
+    sleep(3)
 
     # 5. Get PIDs after starting new server
     pids_new = [p['pid'] for p in get_ps_processes(s.name, s.user, s.password, process_name="python")]
