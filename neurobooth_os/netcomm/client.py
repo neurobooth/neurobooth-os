@@ -5,6 +5,7 @@ import subprocess
 import ast
 import json
 import socket
+import re
 
 import neurobooth_os.config as cfg
 
@@ -230,13 +231,27 @@ def start_server(node_name, save_pid_txt=True):
         logger.error(f"No .bat file specified for {node_name}. Cannot start server.")
         return None
 
-    # Expand environment variables in the bat path
-    bat_path = os.path.expandvars(s.bat)
-    logger.debug(f"Expanded bat path from '{s.bat}' to '{bat_path}'")
+    bat_path = s.bat
+
+    # Handle environment variables based on whether it's local or remote
+    if _is_local_machine(s.name):
+        # Local execution - expand environment variables locally
+        bat_path = os.path.expandvars(bat_path)
+        logger.info(f"Starting {node_name} server locally using: {bat_path}")
+
+        # Check if bat file exists
+        if not os.path.exists(bat_path):
+            logger.error(f"Batch file does not exist: {bat_path}")
+            return None
+    else:
+        # Remote execution - convert Windows env vars to PowerShell syntax
+        # %NB_INSTALL% -> $env:NB_INSTALL
+        bat_path = re.sub(r'%(\w+)%', r'$env:\1', bat_path)
+        logger.info(f"Starting {node_name} server remotely using: {bat_path}")
 
     script_block_start = f"""
-    Start-Process -FilePath '{bat_path}' -PassThru | ConvertTo-Json -Compress
-    """
+        Start-Process -FilePath '{bat_path}' -NoNewWindow -PassThru | ConvertTo-Json -Compress
+        """
     try:
         start_output = _run_ps_remote_cmd(script_block_start, s.name, s.user, s.password)
         logger.info(f"Triggered start of {bat_path} on {s.name}. Output: {start_output}")
