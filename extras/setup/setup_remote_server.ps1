@@ -10,7 +10,7 @@
     Comma-separated list of client machine names to trust
     Default: "*" (trust all)
 .PARAMETER RemoteUser
-    Domain\Username that needs remote access (e.g., PARTNERS\STM)
+    Domain\Username that needs remote access (e.g., DOMAIN\STM)
     Will be added to Remote Management Users group if not already admin
     Default: "" (skip user configuration)
 .PARAMETER WinRMPort
@@ -69,9 +69,9 @@ Write-Host ""
 Write-Host "[1/7] Enabling PowerShell Remoting..." -ForegroundColor Yellow
 try {
     Enable-PSRemoting -Force -ErrorAction Stop
-    Write-Host "  ✓ PowerShell Remoting enabled successfully" -ForegroundColor Green
+    Write-Host "  [OK] PowerShell Remoting enabled successfully" -ForegroundColor Green
 } catch {
-    Write-Host "  ✗ Failed to enable PowerShell Remoting: $_" -ForegroundColor Red
+    Write-Host "  [ERROR] Failed to enable PowerShell Remoting: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -80,9 +80,9 @@ Write-Host "[2/7] Configuring TrustedHosts ($ClientMachines)..." -ForegroundColo
 try {
     Set-Item WSMan:\localhost\Client\TrustedHosts -Value $ClientMachines -Force -ErrorAction Stop
     $trustedHosts = (Get-Item WSMan:\localhost\Client\TrustedHosts).Value
-    Write-Host "  ✓ TrustedHosts set to: $trustedHosts" -ForegroundColor Green
+    Write-Host "  [OK] TrustedHosts set to: $trustedHosts" -ForegroundColor Green
 } catch {
-    Write-Host "  ✗ Failed to set TrustedHosts: $_" -ForegroundColor Red
+    Write-Host "  [ERROR] Failed to set TrustedHosts: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -93,9 +93,9 @@ try {
     Restart-Service $WinRMServiceName -Force -ErrorAction Stop
     $winrmStatus = (Get-Service $WinRMServiceName).Status
     $winrmStartup = (Get-Service $WinRMServiceName).StartType
-    Write-Host "  ✓ $WinRMServiceName service is $winrmStatus (Startup: $winrmStartup)" -ForegroundColor Green
+    Write-Host "  [OK] $WinRMServiceName service is $winrmStatus (Startup: $winrmStartup)" -ForegroundColor Green
 } catch {
-    Write-Host "  ✗ Failed to configure $WinRMServiceName service: $_" -ForegroundColor Red
+    Write-Host "  [ERROR] Failed to configure $WinRMServiceName service: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -105,7 +105,7 @@ try {
     $firewallRules = Get-NetFirewallRule -Name $FirewallRuleName -ErrorAction SilentlyContinue
     if ($firewallRules) {
         Enable-NetFirewallRule -Name $FirewallRuleName -ErrorAction Stop
-        Write-Host "  ✓ WinRM firewall rules enabled" -ForegroundColor Green
+        Write-Host "  [OK] WinRM firewall rules enabled" -ForegroundColor Green
 
         # Display enabled rules
         foreach ($rule in $firewallRules) {
@@ -114,11 +114,11 @@ try {
             }
         }
     } else {
-        Write-Host "  ⚠ WinRM firewall rules not found (may have been created with different names)" -ForegroundColor Yellow
+        Write-Host "  [WARNING] WinRM firewall rules not found (may have been created with different names)" -ForegroundColor Yellow
         Write-Host "    Expected rule pattern: $FirewallRuleName" -ForegroundColor Gray
     }
 } catch {
-    Write-Host "  ✗ Failed to configure firewall: $_" -ForegroundColor Red
+    Write-Host "  [ERROR] Failed to configure firewall: $_" -ForegroundColor Red
 }
 
 # Step 5: Set network profile to specified category
@@ -128,18 +128,18 @@ try {
     $needsChange = $profiles | Where-Object { $_.NetworkCategory -ne $NetworkCategory }
 
     if ($needsChange) {
-        Write-Host "  ⚠ Found network profiles not set to $NetworkCategory. Attempting to change..." -ForegroundColor Yellow
+        Write-Host "  [WARNING] Found network profiles not set to $NetworkCategory. Attempting to change..." -ForegroundColor Yellow
         foreach ($profile in $needsChange) {
             try {
                 Set-NetConnectionProfile -InterfaceIndex $profile.InterfaceIndex -NetworkCategory $NetworkCategory -ErrorAction Stop
-                Write-Host "    ✓ Changed $($profile.InterfaceAlias) from $($profile.NetworkCategory) to $NetworkCategory" -ForegroundColor Green
+                Write-Host "    [OK] Changed $($profile.InterfaceAlias) from $($profile.NetworkCategory) to $NetworkCategory" -ForegroundColor Green
             } catch {
-                Write-Host "    ✗ Could not change $($profile.InterfaceAlias): $_" -ForegroundColor Yellow
+                Write-Host "    [ERROR] Could not change $($profile.InterfaceAlias): $_" -ForegroundColor Yellow
                 Write-Host "      You may need to change this manually in Network Settings" -ForegroundColor Yellow
             }
         }
     } else {
-        Write-Host "  ✓ All network profiles are already set to $NetworkCategory" -ForegroundColor Green
+        Write-Host "  [OK] All network profiles are already set to $NetworkCategory" -ForegroundColor Green
     }
 
     # Display current profiles
@@ -148,7 +148,7 @@ try {
         Write-Host "    - $($profile.InterfaceAlias): $($profile.NetworkCategory)" -ForegroundColor Gray
     }
 } catch {
-    Write-Host "  ⚠ Could not check network profiles: $_" -ForegroundColor Yellow
+    Write-Host "  [WARNING] Could not check network profiles: $_" -ForegroundColor Yellow
 }
 
 # Step 6: Configure user permissions
@@ -160,23 +160,24 @@ if ($RemoteUser) {
         $isAdmin = $adminMembers -contains $RemoteUser
 
         if ($isAdmin) {
-            Write-Host "  ✓ $RemoteUser is already in $AdminGroupName group" -ForegroundColor Green
+            Write-Host "  [OK] $RemoteUser is already in $AdminGroupName group" -ForegroundColor Green
         } else {
             # Try to add to Remote Management Users group
             try {
                 Add-LocalGroupMember -Group $RemoteManagementGroupName -Member $RemoteUser -ErrorAction Stop
-                Write-Host "  ✓ Added $RemoteUser to $RemoteManagementGroupName group" -ForegroundColor Green
+                Write-Host "  [OK] Added $RemoteUser to $RemoteManagementGroupName group" -ForegroundColor Green
             } catch {
                 if ($_.Exception.Message -like "*already a member*") {
-                    Write-Host "  ✓ $RemoteUser is already in $RemoteManagementGroupName group" -ForegroundColor Green
+                    Write-Host "  [OK] $RemoteUser is already in $RemoteManagementGroupName group" -ForegroundColor Green
                 } else {
-                    Write-Host "  ✗ Failed to add user to $RemoteManagementGroupName: $_" -ForegroundColor Red
+                    Write-Host "  [ERROR] Failed to add user to $RemoteManagementGroupName" -ForegroundColor Red
+                    Write-Host "    Error: $_" -ForegroundColor Red
                     Write-Host "    User may need to be added manually or be made a local administrator" -ForegroundColor Yellow
                 }
             }
         }
     } catch {
-        Write-Host "  ✗ Failed to configure user permissions: $_" -ForegroundColor Red
+        Write-Host "  [ERROR] Failed to configure user permissions: $_" -ForegroundColor Red
     }
 } else {
     Write-Host "[6/7] Skipping user permissions (no RemoteUser specified)" -ForegroundColor Gray
@@ -191,20 +192,20 @@ try {
 
     if ($httpListener) {
         $actualPort = $httpListener.Port
-        Write-Host "  ✓ HTTP listener configured on port $actualPort" -ForegroundColor Green
+        Write-Host "  [OK] HTTP listener configured on port $actualPort" -ForegroundColor Green
         if ($actualPort -ne $WinRMPort) {
-            Write-Host "    ⚠ Note: Listener is on port $actualPort, not $WinRMPort as specified" -ForegroundColor Yellow
+            Write-Host "    [WARNING] Note: Listener is on port $actualPort, not $WinRMPort as specified" -ForegroundColor Yellow
         }
     } else {
-        Write-Host "  ✗ No HTTP listener found" -ForegroundColor Red
+        Write-Host "  [ERROR] No HTTP listener found" -ForegroundColor Red
     }
 
     # Test local loopback
     $testResult = Test-WSMan -ComputerName localhost -ErrorAction Stop
-    Write-Host "  ✓ Local WinRM test successful" -ForegroundColor Green
+    Write-Host "  [OK] Local WinRM test successful" -ForegroundColor Green
 
 } catch {
-    Write-Host "  ✗ Verification failed: $_" -ForegroundColor Red
+    Write-Host "  [ERROR] Verification failed: $_" -ForegroundColor Red
 }
 
 # Summary

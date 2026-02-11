@@ -27,13 +27,13 @@
 param(
     [Parameter(Mandatory=$false)]
     [string]$RemoteServers = "*",
-    
+
     [Parameter(Mandatory=$false)]
     [string]$TestConnection = "",
-    
+
     [Parameter(Mandatory=$false)]
     [string]$TestUser = "",
-    
+
     [Parameter(Mandatory=$false)]
     [string]$TestPassword = ""
 )
@@ -55,9 +55,9 @@ Write-Host "[1/2] Configuring TrustedHosts for remote servers..." -ForegroundCol
 try {
     Set-Item $TrustedHostsPath -Value $RemoteServers -Force -ErrorAction Stop
     $trustedHosts = (Get-Item $TrustedHostsPath).Value
-    Write-Host "  ✓ TrustedHosts set to: $trustedHosts" -ForegroundColor Green
+    Write-Host "  [OK] TrustedHosts set to: $trustedHosts" -ForegroundColor Green
 } catch {
-    Write-Host "  ✗ Failed to set TrustedHosts: $_" -ForegroundColor Red
+    Write-Host "  [ERROR] Failed to set TrustedHosts: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -66,44 +66,44 @@ Write-Host "[2/2] Testing configuration..." -ForegroundColor Yellow
 
 if ($TestConnection) {
     Write-Host "  Testing connection to $TestConnection..." -ForegroundColor Yellow
-    
+
     # Get credentials if not provided
     if (-not $TestUser) {
         $TestUser = Read-Host "  Enter username for $TestConnection (e.g., DOMAIN\user)"
     }
-    
+
     if (-not $TestPassword) {
         $securePassword = Read-Host "  Enter password for $TestUser" -AsSecureString
     } else {
         $securePassword = ConvertTo-SecureString -String $TestPassword -AsPlainText -Force
     }
-    
+
     $credential = New-Object System.Management.Automation.PSCredential ($TestUser, $securePassword)
-    
+
     try {
         # Test WinRM connectivity
         Write-Host "    Testing WinRM connectivity..." -ForegroundColor Gray
         $testWsman = Test-WSMan -ComputerName $TestConnection -ErrorAction Stop
-        Write-Host "    ✓ WinRM connectivity successful" -ForegroundColor Green
-        
+        Write-Host "    [OK] WinRM connectivity successful" -ForegroundColor Green
+
         # Test authenticated command
         Write-Host "    Testing authenticated command..." -ForegroundColor Gray
-        $result = Invoke-Command -ComputerName $TestConnection -Credential $credential -ScriptBlock { 
-            $env:COMPUTERNAME 
+        $result = Invoke-Command -ComputerName $TestConnection -Credential $credential -ScriptBlock {
+            $env:COMPUTERNAME
         } -ErrorAction Stop
-        Write-Host "    ✓ Successfully connected to: $result" -ForegroundColor Green
-        
+        Write-Host "    [OK] Successfully connected to: $result" -ForegroundColor Green
+
         # Test process listing (what the Python script does)
         Write-Host "    Testing process enumeration..." -ForegroundColor Gray
-        $processes = Invoke-Command -ComputerName $TestConnection -Credential $credential -ScriptBlock { 
+        $processes = Invoke-Command -ComputerName $TestConnection -Credential $credential -ScriptBlock {
             Get-Process | Select-Object -First 5 Name, Id
         } -ErrorAction Stop
-        Write-Host "    ✓ Successfully retrieved process list ($($processes.Count) processes)" -ForegroundColor Green
-        
-        Write-Host "  ✓ All connection tests passed!" -ForegroundColor Green
-        
+        Write-Host "    [OK] Successfully retrieved process list ($($processes.Count) processes)" -ForegroundColor Green
+
+        Write-Host "  [OK] All connection tests passed!" -ForegroundColor Green
+
     } catch {
-        Write-Host "  ✗ Connection test failed: $_" -ForegroundColor Red
+        Write-Host "  [ERROR] Connection test failed: $_" -ForegroundColor Red
         Write-Host ""
         Write-Host "  Troubleshooting:" -ForegroundColor Yellow
         Write-Host "  1. Ensure the remote server has PowerShell Remoting enabled" -ForegroundColor White
@@ -112,7 +112,7 @@ if ($TestConnection) {
         Write-Host "  4. Verify firewall rules allow WinRM traffic" -ForegroundColor White
     }
 } else {
-    Write-Host "  ✓ Client configured successfully (connection test skipped)" -ForegroundColor Green
+    Write-Host "  [OK] Client configured successfully (connection test skipped)" -ForegroundColor Green
 }
 
 Write-Host ""
