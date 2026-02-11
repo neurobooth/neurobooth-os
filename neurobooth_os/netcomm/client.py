@@ -5,7 +5,6 @@ import subprocess
 import ast
 import json
 import socket
-import re
 
 import neurobooth_os.config as cfg
 
