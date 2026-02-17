@@ -21,4 +21,4 @@ class VideoBreak(Eyelink_HostPC):
             cfg.neurobooth_config.video_task_dir, self.video_file
         )
         video = load_video(self.win, path_video)
-        self._show_video(video=video, msg="Task")
+        self._show_video(video=video, msg="Task", keyList=self.abort_keys)

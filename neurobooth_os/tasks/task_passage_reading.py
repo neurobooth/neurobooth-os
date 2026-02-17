@@ -22,7 +22,8 @@ class Passage_Reading(Eyelink_HostPC):
     def present_stimulus(self, duration=0, **kwargs):
         self.Mouse.setVisible(1)  # Allow participants to use the mouse to assist their reading
         screen = utils.load_image(self.win, Task.asset_path(self.image_to_render_on_HostPC, 'passage_reading'))
-        self.show_text(screen=screen, msg="Task", audio=None, wait_time=duration)
+        self.show_text(screen=screen, msg="Task", audio=None, wait_time=duration,
+                       waitKeys=[*self.advance_keys, *self.abort_keys])
         self.clear_screen()
 
 
