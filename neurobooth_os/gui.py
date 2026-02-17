@@ -22,7 +22,7 @@ from FreeSimpleGUI import Multiline
 import neurobooth_os.current_release as release
 import neurobooth_os.current_config as current_config
 
-import neurobooth_os.main_control_rec as ctr_rec
+from neurobooth_os.netcomm import start_server, kill_pid_txt
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes, PREVIEW_AREA
@@ -320,7 +320,11 @@ def _start_servers(window, nodes):
     write_output(window, "Starting servers. Please wait....")
 
     event, values = window.read(0.1)
-    ctr_rec.start_servers(nodes=nodes)
+    
+    kill_pid_txt()
+    for node in nodes:
+        start_server(node)
+    
     time.sleep(1)
     return event, values
 
@@ -560,7 +564,6 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
 
     video_marker_stream = marker_stream("videofiles")
 
-    nodes = ctr_rec._get_nodes(nodes)
     for node in nodes:
         if node == 'acquisition':
             dest = "ACQ"
@@ -582,7 +585,6 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
 
 def _get_nodes():
     return ["acquisition", "presentation"]
-
 
 def display_calibration_key_info(win):
     instructions  = """
