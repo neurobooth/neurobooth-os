@@ -164,13 +164,13 @@ class BasicTask:
         """
         pass
 
-    def _show_video(self, video, msg: str, stop=False) -> None:
+    def _show_video(self, video, msg: str, stop=False, keyList=None) -> None:
         """
         Plays video, wrapping it in LSL start and end markers
         """
         self.send_marker(f"{msg}_start", True)
         if video is not None:
-            utils.play_video(self.win, video, stop=stop)
+            utils.play_video(self.win, video, stop=stop, keyList=keyList)
         self.send_marker(f"{msg}_end", True)
 
     def _add_event(self, event_name):
@@ -251,7 +251,10 @@ class BasicTask:
             audio.play()
         self.countdown(wait_time, abort_keys)
         if waitKeys:
-            utils.get_keys()
+            if isinstance(waitKeys, list):
+                utils.get_keys(keyList=waitKeys)
+            else:
+                utils.get_keys()
 
     def countdown(self, period: float, abort_keys: Optional[List] = None) -> None:
         """
