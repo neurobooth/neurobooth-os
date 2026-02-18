@@ -16,7 +16,6 @@
         "name": "acq-staging",
         "user": "TEST_ACQ",
         "password": "5519",
-        "port": 12347,
         "local_data_dir": "E:/neurobooth/test/neurobooth_data/",
         "bat": "%NB_INSTALL%/neurobooth_os/server_acq.bat",
         "task_name": "acq-staging",
@@ -30,7 +29,6 @@
         "name": "stm-staging",
         "user": "TEST_STM",
         "password": "5519",
-	    "port": 12347,
         "local_data_dir": "C:/Users/TEST_STM/nb_os_env/neurobooth_data/",
         "bat": "%NB_INSTALL%/neurobooth_os/server_stm.bat",
         "task_name": "stm-staging",
@@ -41,7 +39,6 @@
         "name": "ctr-staging",
         "user": "TEST_CTR",
         "password": "5519",
-	    "port": 12347,
         "local_data_dir": "C:/Users/TEST_CTR/nb_os_env/neurobooth_data/",
         "devices": []
     },

@@ -65,7 +65,6 @@ class ServerSpec(BaseModel):
     name: str
     user: str
     password: str
-    port: int
     local_data_dir: str
     bat: Optional[str] = None
     task_name: Optional[str] = None

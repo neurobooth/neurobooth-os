@@ -8,7 +8,6 @@ Note: You must be running Windows 10 or greater to run Neurobooth on your machin
 To run on a single machine you must modify the neurobooth config file, typically "neurobooth_os_config.json". 
 The following changes should be applied:
 - The entries for acquisition, control, and presentation must have name, user, and password all set to  "".
-- The entries for acquisition, control, and presentation must use different ports since they will all be on the same host.
 - TODO: Describe how to set the monitor width, etc.
 
 If you're running the db on the same machine as the neurobooth code, the following additional changes are required:
