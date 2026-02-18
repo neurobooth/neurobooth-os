@@ -62,7 +62,7 @@ class Task(BasicTask):
         self.instruction_end_screen = utils.load_slide(self.win, self.inst_end_task_img)
 
         self._load_instruction_video()
-        self._show_video(video=self.instruction_video, msg="Intructions")
+        self._show_video(video=self.instruction_video, msg="Intructions", keyList=self.advance_keys)
 
     def present_stimulus(self, duration=0, **kwargs):
         self.show_text(screen=self.task_screen, msg="Task", audio=None, wait_time=3)

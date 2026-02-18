@@ -259,7 +259,7 @@ def get_keys(keyList=()):
         delay(0.005)
 
 
-def play_video(win, mov, wait_time=1, stop=True):
+def play_video(win, mov, wait_time=1, stop=True, keyList=None):
     clock = core.Clock()
     if mov.status == visual.FINISHED:
         win.flip()
@@ -269,7 +269,7 @@ def play_video(win, mov, wait_time=1, stop=True):
     while mov.status != visual.FINISHED:
         mov.draw()
         win.flip()
-        if event.getKeys():
+        if event.getKeys(keyList=keyList):
             if clock.getTime() < wait_time:
                 continue
             if stop:
