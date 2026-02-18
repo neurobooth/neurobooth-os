@@ -77,3 +77,4 @@ server_pids.txt
 # AI Tools
 .gemini/
 GEMINI.md
+CLAUDE.local.md

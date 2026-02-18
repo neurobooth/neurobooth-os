@@ -1,13 +1,18 @@
 # Claude Code Configuration
 
-Personal configuration for Claude Code sessions.
+Project configuration for Claude Code sessions.
 
 ## Conflict Resolution
 
 If a project-level CLAUDE.md conflicts with this file, the project-level instructions take precedence. Ask me if unclear.
 
-## Environment
+## Default development environment
+<!-- 
+To override this default, create a CLAUDE.local.md file in the project root 
+(it's already in .gitignore). Example:
 
+  Development environment: macOS Sonoma
+-->
 - **OS**: Windows 10+
 - **Shell**: PowerShell / Git Bash
 - **Editor**: VS Code
