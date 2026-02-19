@@ -11,7 +11,7 @@ from psychopy import prefs
 
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.msg.messages import Message, CreateTasksRequest, \
-    TaskInitialization, Request, TaskCompletion, StartRecordingMsg, StartRecording, SessionPrepared, \
+    TaskInitialization, Request, TaskCompletion, StartRecording, SessionPrepared, \
     PrepareRequest, TasksCreated, StopRecording, ServerStarted, ErrorMessage
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
@@ -355,13 +355,15 @@ def _get_task_args(session: StmSession, task_id: str):
 
 
 def stop_acq(session: StmSession, task_args: TaskArgs):
-    """ Stop recording on ACQ in parallel to stopping on STM """
+    """ Stop recording on all ACQ servers in parallel to stopping on STM """
     session.logger.info(f'SENDING record_stop TO ACQ')
     stimulus_id = task_args.stim_args.stimulus_id
 
-    body = StopRecording()
-    sr_msg = Request(source="STM", destination='ACQ', body=body)
-    meta.post_message(sr_msg)
+    acq_ids = config.neurobooth_config.all_acq_service_ids()
+    for acq_id in acq_ids:
+        body = StopRecording()
+        sr_msg = Request(source="STM", destination=acq_id, body=body)
+        meta.post_message(sr_msg)
 
     # Stop eyetracker
     device_ids = [x.device_id for x in task_args.device_args]
@@ -369,30 +371,31 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
         if "calibration_task" not in stimulus_id:
             session.eye_tracker.stop()
 
-    acq_reply = None
+    replies = 0
     attempts = 0
     with meta.get_database_connection() as poll_conn:
-        while acq_reply is None and attempts < 30:
-            acq_reply = meta.read_next_message("STM", poll_conn, msg_type="RecordingStopped")
-            # TODO: Handle higher priority msgs
-            # TODO: Handle error conditions reported by ACQ -> Consider adding an error field to the RecordingStopped msg
-            sleep(1)
-            attempts = attempts + 1
+        while replies < len(acq_ids) and attempts < 30:
+            reply = meta.read_next_message("STM", poll_conn, msg_type="RecordingStopped")
+            if reply is not None:
+                replies += 1
+            else:
+                sleep(1)
+                attempts += 1
 
 
 def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_device_id):
     """
-    Start recording on ACQ in parallel to starting on STM
+    Start recording on all ACQ servers in parallel to starting on STM.
 
     Parameters
     ----------
     session
     task_id
     tsk_start_time
+    frame_preview_device_id
 
     Returns
     -------
-
     """
     t0 = time()
     session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
@@ -401,22 +404,25 @@ def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_
 
     t1 = time()
     file_name = f"{session.session_name}_{tsk_start_time}_{task_id}"
-    body = StartRecording(
-        session_name=session.session_name,
-        fname=file_name,
-        task_id=task_id,
-        frame_preview_device_id=frame_preview_device_id
-    )
-    sr_msg = StartRecordingMsg(body=body)
-    meta.post_message(sr_msg)
+    acq_ids = config.neurobooth_config.all_acq_service_ids()
+    for acq_id in acq_ids:
+        body = StartRecording(
+            session_name=session.session_name,
+            fname=file_name,
+            task_id=task_id,
+            frame_preview_device_id=frame_preview_device_id
+        )
+        sr_msg = Request(source='STM', destination=acq_id, body=body)
+        meta.post_message(sr_msg)
 
-    acq_reply = None
+    replies = 0
     with meta.get_database_connection() as conn:
-        while acq_reply is None:
-            acq_reply = meta.read_next_message("STM", conn, msg_type="RecordingStarted")
-            # TODO: Handle higher priority msgs
-            # TODO: Handle error conditions reported by ACQ > Consider adding an error field to the RecordingStarted msg
-            sleep(1)
+        while replies < len(acq_ids):
+            reply = meta.read_next_message("STM", conn, msg_type="RecordingStarted")
+            if reply is not None:
+                replies += 1
+            else:
+                sleep(1)
     elapsed_time = time() - t1
     session.logger.info(f'Waiting for ACQ to start took: {elapsed_time:.2f}')
 

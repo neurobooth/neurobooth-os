@@ -64,14 +64,11 @@ def start_yeti_stream(_, device_args):
 
 
 config.load_config(validate_paths=False)
-acq_devices: List[str] = config.neurobooth_config.acquisition.devices
-stm_devices: List[str] = config.neurobooth_config.presentation.devices
-ctr_devices: List[str] = config.neurobooth_config.control.devices
-SERVER_ASSIGNMENTS: Dict[str, List[str]] = {
-    'acquisition': acq_devices,
-    'presentation':stm_devices,
-    'control':ctr_devices,
-}
+SERVER_ASSIGNMENTS: Dict[str, List[str]] = {}
+for _i, _acq in enumerate(config.neurobooth_config.acquisition):
+    SERVER_ASSIGNMENTS[f'acquisition_{_i}'] = _acq.devices
+SERVER_ASSIGNMENTS['presentation'] = config.neurobooth_config.presentation.devices
+SERVER_ASSIGNMENTS['control'] = config.neurobooth_config.control.devices
 
 
 N_ASYNC_THREADS: int = 3  # The maximum number of mbients on one machine

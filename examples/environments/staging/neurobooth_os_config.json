@@ -12,19 +12,21 @@
         "max_refresh_rate_hz": 245,
         "screen_resolution": [1920, 1080]
     },
-    "acquisition": {
-        "name": "acq-staging",
-        "user": "TEST_ACQ",
-        "password": "5519",
-        "local_data_dir": "E:/neurobooth/test/neurobooth_data/",
-        "bat": "%NB_INSTALL%/neurobooth_os/server_acq.bat",
-        "task_name": "acq-staging",
-        "devices": ["Intel_D455_1", "Intel_D455_2", "Intel_D455_3",
-                    "FLIR_blackfly_1",
-                    "IPhone_dev_1",
-                    "Mbient_BK_1", "Mbient_LH_2", "Mbient_RH_2",
-                    "Mic_Yeti_dev_1"]
-    },
+    "acquisition": [
+        {
+            "name": "acq-staging",
+            "user": "TEST_ACQ",
+            "password": "5519",
+            "local_data_dir": "E:/neurobooth/test/neurobooth_data/",
+            "bat": "%NB_INSTALL%/neurobooth_os/server_acq.bat",
+            "task_name": "acq-staging",
+            "devices": ["Intel_D455_1", "Intel_D455_2", "Intel_D455_3",
+                        "FLIR_blackfly_1",
+                        "IPhone_dev_1",
+                        "Mbient_BK_1", "Mbient_LH_2", "Mbient_RH_2",
+                        "Mic_Yeti_dev_1"]
+        }
+    ],
     "presentation": {
         "name": "stm-staging",
         "user": "TEST_STM",
