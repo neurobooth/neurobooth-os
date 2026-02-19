@@ -167,7 +167,7 @@ def start_server(node_name, save_pid_txt=True):
     for line in schtasks_query_output.strip().split("\n"):
         parts = line.strip().split(",")
         if len(parts) >= 2:
-            task_name = parts[0].strip('"')
+            task_name = parts[0].strip('"').lstrip('\\')
             status = parts[1].strip('"')
             scheduled_tasks[task_name] = {"status": status}
 
