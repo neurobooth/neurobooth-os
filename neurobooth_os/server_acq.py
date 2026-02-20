@@ -19,9 +19,9 @@ from neurobooth_os.iout.device import CameraPreviewException
 from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
-from neurobooth_os.msg.messages import Message, MsgBody, PrepareRequest, RecordingStoppedMsg, StartRecording, \
-    RecordingStartedMsg, MbientResetResults, Request, SessionPrepared, FramePreviewReply, FramePreviewRequest, \
-    ServerStarted, ErrorMessage
+from neurobooth_os.msg.messages import Message, MsgBody, PrepareRequest, StartRecording, \
+    RecordingStarted, RecordingStopped, MbientResetResults, Request, SessionPrepared, FramePreviewReply, \
+    FramePreviewRequest, ServerStarted, ErrorMessage
 
 
 def countdown(period):
@@ -33,13 +33,14 @@ def countdown(period):
 
 
 def main():
-    config.load_config_by_service_name("ACQ")  # Load Neurobooth-OS configuration
+    acq_index = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    config.load_config_by_service_name("ACQ", acq_index=acq_index)
     logger = make_db_logger()  # Initialize default logger
     exit_code = 0
     try:
-        logger.debug("Starting ACQ")
+        logger.debug(f"Starting ACQ (index={acq_index})")
         os.chdir(neurobooth_os.__path__[0])
-        run_acq(logger)
+        run_acq(logger, acq_index)
         logger.debug("Stopping ACQ")
 
     except Exception as argument:
@@ -51,19 +52,22 @@ def main():
         os._exit(exit_code)
 
 
-def run_acq(logger):
+def run_acq(logger, acq_index: int = 0):
+    service_id = config.neurobooth_config.acq_service_id(acq_index)
+    acq_config = config.neurobooth_config.acquisition[acq_index]
     read_conn = meta.get_database_connection()
     device_manager = None
     recording = False
     system_resource_logger = None
     task_args: Dict[str, TaskArgs] = {}
-    init_servers = Request(source="ACQ", destination="CTR", body=ServerStarted(neurobooth_version=release.version,
-                                                                               config_version=current_config.version))
+    init_servers = Request(source=service_id, destination="CTR",
+                           body=ServerStarted(neurobooth_version=release.version,
+                                              config_version=current_config.version))
     meta.post_message(init_servers)
     task: Optional[str] = None  # id of currently executing task, if any
     try:
         while True:
-            message: Message = meta.read_next_message("ACQ", conn=read_conn)
+            message: Message = meta.read_next_message(service_id, conn=read_conn)
             if message is None:
                 sleep(.25)
                 continue
@@ -78,7 +82,7 @@ def run_acq(logger):
                 collection_id: str = msg_body.collection_id
                 selected_tasks: List[str] = msg_body.selected_tasks
 
-                ses_folder = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name)
+                ses_folder = os.path.join(acq_config.local_data_dir, session_name)
                 if not os.path.exists(ses_folder):
                     os.mkdir(ses_folder)
 
@@ -86,22 +90,22 @@ def run_acq(logger):
                 logger.info('LOGGER CREATED')
 
                 if system_resource_logger is None:
-                    system_resource_logger = SystemResourceLogger(machine_name='ACQ')
+                    system_resource_logger = SystemResourceLogger(machine_name=service_id)
                     system_resource_logger.start()
 
                 task_args = meta.build_tasks_for_collection(collection_id, selected_tasks)
 
-                device_manager = DeviceManager(node_name='acquisition')
+                device_manager = DeviceManager(node_name=f'acquisition_{acq_index}')
                 if device_manager.streams:
                     device_manager.reconnect_streams()
                 else:
                     device_manager.create_streams(task_params=task_args)
-                updator = Request(source="ACQ", destination="CTR", body=SessionPrepared())
+                updator = Request(source=service_id, destination="CTR", body=SessionPrepared())
                 meta.post_message(updator)
 
             elif "FramePreviewRequest" == current_msg_type and not recording:
                 msg_body: FramePreviewRequest = message.body
-                camera_frame_preview(msg_body.device_id, device_manager, logger)
+                camera_frame_preview(msg_body.device_id, device_manager, logger, service_id)
 
             # TODO: reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
             elif "ResetMbients" == current_msg_type:
@@ -110,7 +114,7 @@ def run_acq(logger):
 
                 reply_body = MbientResetResults(results=reset_results)
                 reply = Request(
-                    source="ACQ",
+                    source=service_id,
                     destination="STM",
                     body=reply_body
                 )
@@ -121,23 +125,23 @@ def run_acq(logger):
                 msg_body: StartRecording = message.body
                 dev_id = msg_body.frame_preview_device_id
                 if dev_id is not None:
-                    camera_frame_preview(dev_id, device_manager, logger)
+                    camera_frame_preview(dev_id, device_manager, logger, service_id)
 
                 task = msg_body.task_id
                 fname = msg_body.fname
                 session_name = msg_body.session_name
-                fname = os.path.join(config.neurobooth_config.acquisition.local_data_dir, session_name, fname)
+                fname = os.path.join(acq_config.local_data_dir, session_name, fname)
 
                 elapsed_time = start_recording(device_manager, fname, task_args[task].device_args)
                 logger.info(f'Device start took {elapsed_time:.2f} for {task}')
-                reply = RecordingStartedMsg()
+                reply = Request(source=service_id, destination="STM", body=RecordingStarted())
                 meta.post_message(reply)
                 recording = True
 
             elif "StopRecording" == current_msg_type:
                 elapsed_time = stop_recording(device_manager, task_args[task].device_args)
                 logger.info(f'Device stop took {elapsed_time:.2f} for {task}')
-                reply = RecordingStoppedMsg()
+                reply = Request(source=service_id, destination="STM", body=RecordingStopped())
                 meta.post_message(reply)
                 recording = False
 
@@ -153,7 +157,7 @@ def run_acq(logger):
                 logger.error(f'Unexpected message received: {message.model_dump_json()}')
     except Exception as argument:
         err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
-        req = Request(body=err_msg, source="ACQ", destination="CTR")
+        req = Request(body=err_msg, source=service_id, destination="CTR")
         meta.post_message(req)
         raise argument
     finally:
@@ -163,7 +167,7 @@ def run_acq(logger):
             system_resource_logger.stop()
 
 
-def camera_frame_preview(device_id: str, device_manager, logger):
+def camera_frame_preview(device_id: str, device_manager, logger, service_id: str):
     try:
         frame = device_manager.camera_frame_preview(device_id)
         b64_frame = base64.b64encode(frame).decode('utf-8')
@@ -171,7 +175,7 @@ def camera_frame_preview(device_id: str, device_manager, logger):
     except CameraPreviewException as e:
         body = FramePreviewReply(image=None, image_available=False, unavailable_message=str(e))
 
-    reply = Request(source="ACQ", destination="CTR", body=body)
+    reply = Request(source=service_id, destination="CTR", body=body)
     meta.post_message(reply)
     if body.image_available:
         logger.debug('Frame preview sent')

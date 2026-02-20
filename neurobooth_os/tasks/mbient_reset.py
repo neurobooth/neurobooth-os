@@ -10,39 +10,45 @@ from neurobooth_os.tasks.utils import get_keys, load_slide
 from psychopy import visual
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.mbient import Mbient
+from neurobooth_os import config
 
 
 def _send_reset_msg() -> Dict[str, bool]:
     """
-    Send mbient reset message to ACQ and collect results
+    Send mbient reset message to all ACQ servers and collect results.
 
     Returns
     -------
     Reset results as dictionary of mbient device names to booleans
     """
-    msg = ResetMbients()
-    results = None
-    
+    acq_ids = config.neurobooth_config.all_acq_service_ids()
+    all_results: Dict[str, bool] = {}
+
     minutes_to_wait = 5
     max_attempts = minutes_to_wait * 60
     attempts = 0
 
     with meta.get_database_connection() as conn:
-        req = Request(source='mbient_reset', destination='ACQ', body=msg)
-        meta.post_message(req, conn)
-        while results is None and attempts <= max_attempts:
+        for acq_id in acq_ids:
+            msg = ResetMbients()
+            req = Request(source='mbient_reset', destination=acq_id, body=msg)
+            meta.post_message(req, conn)
+
+        replies = 0
+        while replies < len(acq_ids) and attempts <= max_attempts:
             reply = meta.read_next_message(
                 destination="STM", conn=conn, msg_type="MbientResetResults")
             if reply is not None:
-                results = reply.body.results
-                break
+                all_results.update(reply.body.results)
+                replies += 1
             elif attempts >= max_attempts:
                 txt = f"No results from mbient reset after {attempts} attempts at {datetime.now().time()}."
                 meta.post_message(Request(body=StatusMessage(text=txt), source="mbient_reset", destination="CTR"), conn)
                 break
-            time.sleep(1)
-            attempts = attempts + 1
-    return results
+            else:
+                time.sleep(1)
+                attempts += 1
+    return all_results
 
 
 class TaskState(IntEnum):

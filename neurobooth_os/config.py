@@ -65,7 +65,6 @@ class ServerSpec(BaseModel):
     name: str
     user: str
     password: str
-    port: int
     local_data_dir: str
     bat: Optional[str] = None
     task_name: Optional[str] = None
@@ -78,11 +77,26 @@ class NeuroboothConfig(BaseModel):
     split_xdf_backlog: str
     cam_inx_lowfeed: int
     default_preview_stream: str
-    acquisition: ServerSpec
+    acquisition: List[ServerSpec]
     presentation: ServerSpec
     control: ServerSpec
     database: DatabaseSpec
     screen: ScreenSpec
+
+    def acq_service_id(self, index: int) -> str:
+        """Message routing identifier for acquisition server at index."""
+        return f"ACQ_{index}"
+
+    def all_acq_service_ids(self) -> List[str]:
+        """Return message routing identifiers for all acquisition servers."""
+        return [self.acq_service_id(i) for i in range(len(self.acquisition))]
+
+    def get_acq_for_device(self, device_id: str) -> int:
+        """Return the index of the acquisition server that owns a given device."""
+        for i, acq in enumerate(self.acquisition):
+            if device_id in acq.devices:
+                return i
+        raise ConfigException(f"Device '{device_id}' not found in any acquisition server.")
 
     def current_server(self) -> ServerSpec:
         server_name = get_server_name_from_env()
@@ -91,6 +105,13 @@ class NeuroboothConfig(BaseModel):
         return self.server_by_name(server_name)
 
     def server_by_name(self, server_name: str) -> ServerSpec:
+        if server_name.startswith('acquisition_'):
+            idx = int(server_name.split('_')[1])
+            return self.acquisition[idx]
+        if server_name == 'acquisition':
+            if len(self.acquisition) == 1:
+                return self.acquisition[0]
+            raise ConfigException('Multiple acquisition servers. Use acquisition_N.')
         if hasattr(self, server_name):
             server = getattr(self, server_name)
             if isinstance(server, ServerSpec):
@@ -125,18 +146,21 @@ def load_neurobooth_config(fname: Optional[str] = None):
         neurobooth_config = NeuroboothConfig(**json.load(f))
 
 
-def load_config_by_service_name(service_abbr: str, fname: Optional[str] = None, validate_paths: bool = True) -> None:
+def load_config_by_service_name(service_abbr: str, acq_index: int = 0, fname: Optional[str] = None,
+                                validate_paths: bool = True) -> None:
     """
     Parameters
     ----------
-    :param service_abbr    Short name for service, for example STM for presentation, CTR for control, ACQ for acquisition
+    :param service_abbr: Short name for service, e.g. STM for presentation, CTR for control, ACQ for acquisition.
+    :param acq_index: Index of the acquisition server (only used when service_abbr is ACQ).
     :param fname: Path to the configuration file. If None, load the path from the NB_CONFIG environment variable.
     :param validate_paths: Whether to check the validity of key files and directories. Should be True for active
         Neurobooth sessions. (Toggle is provided for use by secondary scripts.)
-
     """
     load_neurobooth_config(fname)
     server_name = get_server_name(service_abbr)
+    if server_name == 'acquisition':
+        server_name = f'acquisition_{acq_index}'
     if validate_paths:
         validate_system_paths(server_name)
 

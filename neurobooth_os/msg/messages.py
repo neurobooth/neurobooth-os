@@ -333,17 +333,6 @@ class StartRecording(MsgBody):
         super().__init__(**data)
 
 
-class StartRecordingMsg(Request):
-    """
-    Convenience Request subclass. Sets the source and destination to be STM and ACQ to start recording task data
-    """
-
-    def __init__(self, **data):
-        data['source'] = 'STM'
-        data['destination'] = 'ACQ'
-        super().__init__(**data)
-
-
 class StopRecording(MsgBody):
     """
     Message sent from STM to ACQ telling it to stop recording LSL as the task being recorded has completed.
@@ -371,30 +360,6 @@ class RecordingStopped(MsgBody):
 
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
-        super().__init__(**data)
-
-
-class RecordingStoppedMsg(Request):
-    f"""
-    Specialized {Request} subclass wrapping a RecordingStopped {MsgBody}
-    """
-
-    def __init__(self, **data):
-        data['source'] = 'ACQ'
-        data['destination'] = 'STM'
-        data['body'] = RecordingStopped()
-        super().__init__(**data)
-
-
-class RecordingStartedMsg(Request):
-    f"""
-    Specialized {Request} subclass wrapping a RecordingStarted {MsgBody}
-    """
-
-    def __init__(self, **data):
-        data['source'] = 'ACQ'
-        data['destination'] = 'STM'
-        data['body'] = RecordingStarted()
         super().__init__(**data)
 
 
