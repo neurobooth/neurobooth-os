@@ -323,7 +323,11 @@ def _start_servers(window, nodes):
     
     kill_pid_txt()
     for node in nodes:
-        start_server(node)
+        if node.startswith('acquisition_'):
+            idx = int(node.split('_')[1])
+            start_server(node, acq_index=idx)
+        else:
+            start_server(node)
     
     time.sleep(1)
     return event, values
@@ -542,8 +546,10 @@ def resize_frame_preview(img: np.ndarray) -> np.ndarray:
 
 
 def _request_frame_preview(conn, device_id: str) -> None:
+    acq_idx = cfg.neurobooth_config.get_acq_for_device(device_id)
+    acq_id = cfg.neurobooth_config.acq_service_id(acq_idx)
     msg = FramePreviewRequest(device_id=device_id)
-    req = Request(source="CTR", destination="ACQ", body=msg)
+    req = Request(source="CTR", destination=acq_id, body=msg)
     meta.post_message(req, conn)
 
 
@@ -565,8 +571,9 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
     video_marker_stream = marker_stream("videofiles")
 
     for node in nodes:
-        if node == 'acquisition':
-            dest = "ACQ"
+        if node.startswith('acquisition_'):
+            idx = int(node.split('_')[1])
+            dest = cfg.neurobooth_config.acq_service_id(idx)
         else:
             dest = "STM"
         body = PrepareRequest(database_name=database,
@@ -584,7 +591,8 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
 
 
 def _get_nodes():
-    return ["acquisition", "presentation"]
+    acq_nodes = [f'acquisition_{i}' for i in range(len(cfg.neurobooth_config.acquisition))]
+    return acq_nodes + ['presentation']
 
 def display_calibration_key_info(win):
     instructions  = """
@@ -854,8 +862,9 @@ def gui(logger):
                 server = values[event]
                 write_output(window, f"{server} server started")
 
-                if server == "ACQ":
-                    node_name = "acquisition"
+                if server.startswith("ACQ_"):
+                    idx = int(server.split('_')[1])
+                    node_name = f"acquisition_{idx}"
                 elif server == "STM":
                     node_name = "presentation"
                 else:
@@ -904,14 +913,17 @@ def terminate_system(conn, plttr, sess_info, values, window):
         _save_session_notes(sess_info, values, window)
     plttr.stop()
     _session_button_state(window, disabled=True)
-    shutdown_acq_msg: Message = Request(source="CTR",
+    # Send TerminateServerRequest to STM
+    shutdown_stm_msg: Message = Request(source="CTR",
                                         destination="STM",
                                         body=TerminateServerRequest())
-    shutdown_stm_msg: Message = Request(source="CTR",
-                                        destination="ACQ",
-                                        body=TerminateServerRequest())
-    meta.post_message(shutdown_acq_msg, conn)
     meta.post_message(shutdown_stm_msg, conn)
+    # Send TerminateServerRequest to each ACQ
+    for acq_id in cfg.neurobooth_config.all_acq_service_ids():
+        shutdown_acq_msg: Message = Request(source="CTR",
+                                            destination=acq_id,
+                                            body=TerminateServerRequest())
+        meta.post_message(shutdown_acq_msg, conn)
 
 
 def handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window):
