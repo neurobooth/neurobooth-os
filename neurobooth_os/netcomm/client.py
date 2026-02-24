@@ -108,7 +108,7 @@ def get_all_python_processes_with_cmd(server_name: str = None, user: str = None,
     return processes
 
 
-def start_server(node_name, save_pid_txt=True):
+def start_server(node_name, acq_index=None, save_pid_txt=True):
     """Makes a network call to run script serv_{node_name}.bat
 
     First remote processes are logged, then a scheduled task is created to run
@@ -119,7 +119,9 @@ def start_server(node_name, save_pid_txt=True):
     Parameters
     ----------
     node_name : str
-        PC node name defined in config.neurobooth_config`
+        PC node name, e.g. 'acquisition_0', 'acquisition_1', 'presentation'.
+    acq_index : int, optional
+        Index of the acquisition server. Required for acquisition nodes.
     save_pid_txt : bool
         Option to save PID to file for killing PID in the future.
 
@@ -129,14 +131,14 @@ def start_server(node_name, save_pid_txt=True):
         Python process identifiers found in remote computer after server started.
     """
 
-    if node_name not in ["acquisition", "presentation"]:
+    if not (node_name.startswith("acquisition") or node_name == "presentation"):
         print("Not a known node name")
         return None
     s = cfg.neurobooth_config.server_by_name(node_name)
-    
+
     # Identify and kill any existing Python processes for this node
     expected_script = None
-    if node_name == "acquisition":
+    if node_name.startswith("acquisition"):
         expected_script = "server_acq.py"
     elif node_name == "presentation":
         expected_script = "server_stm.py"
@@ -193,8 +195,9 @@ def start_server(node_name, save_pid_txt=True):
 
     if task_name not in scheduled_tasks:
         print(f"Windows task: {task_name} was not found. Attempting to create")
+        tr_cmd = f'{s.bat} {acq_index}' if acq_index is not None else s.bat
         cmd_1 = cmd_schtasks_base + [
-            "/Create", "/TN", task_name, "/TR", s.bat, "/SC", "ONEVENT", "/EC", "Application", "/MO", "*[System/EventID=777]", "/f"
+            "/Create", "/TN", task_name, "/TR", tr_cmd, "/SC", "ONEVENT", "/EC", "Application", "/MO", "*[System/EventID=777]", "/f"
         ]
         _run_cmd(cmd_1, s.name, s.user, s.password)
 
@@ -217,7 +220,7 @@ def start_server(node_name, save_pid_txt=True):
 
 def kill_remote_pid(pids, node_name):
 
-    if node_name not in ["acquisition", "presentation"]:
+    if not (node_name.startswith("acquisition") or node_name == "presentation"):
         print("Not a known node name")
         return None
 
