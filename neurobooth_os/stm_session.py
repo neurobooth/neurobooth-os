@@ -112,11 +112,9 @@ class StmSession(BaseModel):
                       "subj_id": self.session_name,
                       "eye_tracker": self.eye_tracker,
                       "marker_outlet": None,
-                      "mbients": None
                       }
 
         if self.device_manager is not None:
             dictionary["marker_outlet"] = self.device_manager.streams["marker"]
-            dictionary["mbients"] = self.device_manager.get_mbient_streams()
 
         return dictionary

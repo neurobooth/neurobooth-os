@@ -397,11 +397,6 @@ def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_
     Returns
     -------
     """
-    t0 = time()
-    session.device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
-    elapsed_time = time() - t0
-    session.logger.info(f'Waiting for mbient_reconnect took: {elapsed_time:.2f}')
-
     t1 = time()
     file_name = f"{session.session_name}_{tsk_start_time}_{task_id}"
     acq_ids = config.neurobooth_config.all_acq_service_ids()
