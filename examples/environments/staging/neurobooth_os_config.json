@@ -25,6 +25,15 @@
                         "IPhone_dev_1",
                         "Mbient_BK_1", "Mbient_LH_2", "Mbient_RH_2",
                         "Mic_Yeti_dev_1"]
+        },
+        {
+            "name": "stm-staging",
+            "user": "TEST_STM",
+            "password": "5519",
+            "local_data_dir": "C:/Users/TEST_STM/nb_os_env/neurobooth_data/",
+            "bat": "%NB_INSTALL%/neurobooth_os/server_acq.bat",
+            "task_name": "acq-stm-staging",
+            "devices": ["Mouse", "Mbient_LF_2", "Mbient_RF_2"]
         }
     ],
     "presentation": {
@@ -34,8 +43,7 @@
         "local_data_dir": "C:/Users/TEST_STM/nb_os_env/neurobooth_data/",
         "bat": "%NB_INSTALL%/neurobooth_os/server_stm.bat",
         "task_name": "stm-staging",
-        "devices": ["Eyelink_1", "Mouse",
-                    "Mbient_LF_2", "Mbient_RF_2"]
+        "devices": ["Eyelink_1"]
     },
     "control": {
         "name": "ctr-staging",

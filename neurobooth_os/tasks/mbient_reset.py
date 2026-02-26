@@ -2,8 +2,6 @@ from datetime import datetime
 import time
 from typing import Optional, Dict, List
 from enum import IntEnum, auto
-from concurrent.futures import ThreadPoolExecutor, wait
-
 from neurobooth_os.msg.messages import StatusMessage, Request, ResetMbients
 from neurobooth_os.tasks.task import Task
 from neurobooth_os.tasks.utils import get_keys, load_slide
@@ -198,44 +196,28 @@ class MbientResetPause(Task):
 
     def _reset_mbients(self) -> bool:
         """Reset the Mbient devices and report their status to the screen.
-        :returns: Whether all devices successfully reset and reconnected.
+
+        Sends reset messages to all ACQ servers (which now own all Mbient devices)
+        and reports the results.
+
+        Returns
+        -------
+        bool
+            Whether all devices successfully reset and reconnected.
         """
         self._update_message(['Reset in progress...'])
 
-        # Concurrently reset devices
-        with ThreadPoolExecutor(max_workers=len(self.mbients) + 1) as executor:
-            # Signal ACQ to reset its Mbients
-            acq_results = executor.submit(_send_reset_msg)
+        results = _send_reset_msg()
 
-            # Begin reset of local Mbients
-            stm_results = {
-                stream_name: executor.submit(stream.reset_and_reconnect)
-                for stream_name, stream in self.mbients.items()
-            }
-            # Wait for all resets to complete, then resolve the futures
-            wait([acq_results, *stm_results.values()])
-
-            # Check result from ACQ
-            if acq_results is None:
-                self.logger.warn('Received None response from ACQ reset_mbients.')
-                acq_results = {}
-            else:
-                acq_results = acq_results.result()
-
-            stm_results = {stream_name: result.result() for stream_name, result in stm_results.items()}
-
-            # Combine results from all serves
-            results = {**acq_results, **stm_results}
-
-        all_success = all([connected for _, connected in results.items()])
+        all_success = all(connected for connected in results.values())
 
         # Display the results
-        results = {
+        display_results = {
             stream_name: 'CONNECTED' if connected else 'ERROR'
             for stream_name, connected in results.items()
         }
-        self._update_message([f'{stream_name}: {status}' for stream_name, status in results.items()])
-        for stream_name, status in results.items():
+        self._update_message([f'{stream_name}: {status}' for stream_name, status in display_results.items()])
+        for stream_name, status in display_results.items():
             print(f'{stream_name} is {status}')  # Send message to GUI terminal
 
         return all_success
