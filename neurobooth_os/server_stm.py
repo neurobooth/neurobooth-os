@@ -400,12 +400,16 @@ def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_
     t1 = time()
     file_name = f"{session.session_name}_{tsk_start_time}_{task_id}"
     acq_ids = config.neurobooth_config.all_acq_service_ids()
+    preview_acq_id = None
+    if frame_preview_device_id is not None:
+        preview_acq_idx = config.neurobooth_config.get_acq_for_device(frame_preview_device_id)
+        preview_acq_id = config.neurobooth_config.acq_service_id(preview_acq_idx)
     for acq_id in acq_ids:
         body = StartRecording(
             session_name=session.session_name,
             fname=file_name,
             task_id=task_id,
-            frame_preview_device_id=frame_preview_device_id
+            frame_preview_device_id=frame_preview_device_id if acq_id == preview_acq_id else None
         )
         sr_msg = Request(source='STM', destination=acq_id, body=body)
         meta.post_message(sr_msg)
