@@ -101,11 +101,24 @@ def get_device_assignment(device_id: str) -> str:
 def is_device_assigned(device_id: str, server_name: str) -> bool:
     """
     Check whether a device is assigned to a particular server.
+
+    When *server_name* is ``'acquisition'`` (the generic role name returned by
+    :func:`get_server_name_from_env`), all indexed acquisition servers
+    (``acquisition_0``, ``acquisition_1``, ...) are checked.
+
     :param device_id: The ID of the device.
     :param server_name: The name of the server.
-    :return: True if the device is assigned to a server, False otherwise.
+    :return: True if the device is assigned to the server, False otherwise.
     """
-    return device_id in SERVER_ASSIGNMENTS[server_name]
+    if server_name in SERVER_ASSIGNMENTS:
+        return device_id in SERVER_ASSIGNMENTS[server_name]
+    if server_name == 'acquisition':
+        return any(
+            device_id in devices
+            for key, devices in SERVER_ASSIGNMENTS.items()
+            if key.startswith('acquisition_')
+        )
+    return False
 
 
 # --------------------------------------------------------------------------------
