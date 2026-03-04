@@ -20,7 +20,14 @@ logger = setup_log(__name__)
 def _run_cmd(cmd_list: list, server_name: str = None, user: str = None, password: str = None) -> str:
     full_cmd = list(cmd_list)
     if server_name:
-        full_cmd = full_cmd[:1] + ["/S", server_name, "/U", user, "/P", password] + full_cmd[1:]
+        executable = full_cmd[0].upper()
+        if executable == "WMIC":
+            # WMIC uses /NODE:, /USER:, /PASSWORD: instead of /S, /U, /P
+            full_cmd = full_cmd[:1] + [
+                f"/NODE:{server_name}", f"/USER:{user}", f"/PASSWORD:{password}"
+            ] + full_cmd[1:]
+        else:
+            full_cmd = full_cmd[:1] + ["/S", server_name, "/U", user, "/P", password] + full_cmd[1:]
 
     try:
         logger.debug(f"Running command: {' '.join(full_cmd)}")
