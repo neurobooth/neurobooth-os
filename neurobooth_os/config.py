@@ -3,7 +3,6 @@
 Ensures that the base neurobooth-os config file exists and makes config file available as neurobooth_config
 """
 
-import json
 import logging
 from os import environ, path, getenv
 from typing import Optional, List
@@ -171,7 +170,7 @@ def _load_secrets(config_dir: str, env_name: str) -> Optional[dict]:
 
     Args:
         config_dir: Directory containing the loaded config file.
-        env_name: Value of the ``environment`` field from the config JSON,
+        env_name: Value of the ``environment`` field from the config file,
             used to select the correct section in ``secrets.yaml``.
 
     Returns:
@@ -221,7 +220,7 @@ def load_neurobooth_config(fname: Optional[str] = None):
             raise ConfigException(
                 "NB_CONFIG environment variable is not set and no file path was provided."
             )
-        fname = path.join(config_dir, "neurobooth_os_config.json")
+        fname = path.join(config_dir, "neurobooth_os_config.yaml")
     else:
         config_dir = path.dirname(path.abspath(fname))
 
@@ -229,7 +228,7 @@ def load_neurobooth_config(fname: Optional[str] = None):
         raise ConfigException(f'Required config file does not exist: {fname}')
 
     with open(fname, "r") as f:
-        config_data = json.load(f)
+        config_data = yaml.safe_load(f)
 
     env_name = config_data.get("environment")
     if env_name is not None:
