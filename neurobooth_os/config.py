@@ -101,11 +101,33 @@ class NeuroboothConfig(BaseModel):
                 return i
         raise ConfigException(f"Device '{device_id}' not found in any acquisition server.")
 
-    def current_server(self) -> ServerSpec:
+    def current_server_name(self) -> str:
+        """Resolve the fully-qualified server name for the current machine.
+
+        Returns a name usable with :meth:`server_by_name`, e.g.
+        ``'presentation'``, ``'control'``, or ``'acquisition_0'``.
+
+        When the generic role ``'acquisition'`` is detected and multiple
+        acquisition servers exist, the OS username (from ``USERPROFILE``) is
+        matched against each acquisition server's ``user`` field to determine
+        the correct index.
+        """
         server_name = get_server_name_from_env()
         if server_name is None:
-            raise ConfigException('Could not detect current sever from local environment.')
-        return self.server_by_name(server_name)
+            raise ConfigException('Could not detect current server from local environment.')
+        if server_name == 'acquisition' and len(self.acquisition) > 1:
+            user_profile = getenv("USERPROFILE", "").upper()
+            for i, acq in enumerate(self.acquisition):
+                if acq.user.upper() in user_profile:
+                    return f'acquisition_{i}'
+            raise ConfigException(
+                f'Could not match USERPROFILE "{getenv("USERPROFILE")}" '
+                f'to any acquisition server.'
+            )
+        return server_name
+
+    def current_server(self) -> ServerSpec:
+        return self.server_by_name(self.current_server_name())
 
     def server_by_name(self, server_name: str) -> ServerSpec:
         if server_name.startswith('acquisition_'):
@@ -270,7 +292,4 @@ def load_config(fname: Optional[str] = None, validate_paths: bool = True) -> Non
     load_neurobooth_config(fname)
 
     if validate_paths:
-        server_name = get_server_name_from_env()
-        if server_name is None:
-            raise ConfigException('The server name could not be identified!')
-        validate_system_paths(server_name)
+        validate_system_paths(neurobooth_config.current_server_name())
