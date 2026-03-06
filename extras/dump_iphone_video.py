@@ -1,5 +1,4 @@
 import neurobooth_os.iout.iphone as iphone
-from neurobooth_os.iout.lsl_streamer import is_device_assigned
 import neurobooth_os.config as cfg
 import re
 import os
@@ -164,15 +163,18 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def main():
-    cfg.load_config()
+    cfg.load_neurobooth_config()  # Load config without path validation
     logger = make_db_logger()
     iphone.DISABLE_LSL = True
 
-    # Check if we should be running the dump on this machine.
-    server_name = cfg.get_server_name_from_env()
-    if not is_device_assigned('IPhone_dev_1', server_name):
-        logger.debug(f'IPhone not assigned to {server_name}.')
+    # Find the acquisition server that owns the iPhone; exit if none.
+    try:
+        acq_index = cfg.neurobooth_config.get_acq_for_device('IPhone_dev_1')
+    except cfg.ConfigException:
+        logger.debug('No IPhone_dev_1 found in any acquisition server.')
         return
+
+    cfg.validate_system_paths(f'acquisition_{acq_index}')
 
     # Run and time the dump.
     args = parse_arguments()
