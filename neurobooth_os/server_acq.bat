@@ -1,2 +1,2 @@
 call %NB_CONDA_INSTALL%\Scripts\activate.bat %NB_CONDA_ENV%
-start /W ipython %NB_INSTALL%\neurobooth_os\server_acq.py %1
+start /W python %NB_INSTALL%\neurobooth_os\server_acq.py %1
