@@ -162,6 +162,7 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
     -------
 
     """
+    query_params = [destination]
     if msg_type is None:
         msg_type_stmt = \
             " and msg_type NOT IN ('LslRecording', 'RecordingStarted', 'RecordingStopped', 'MbientResetResults') "
@@ -169,32 +170,32 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
         msg_type_stmt = (" and msg_type IN ('ResumeSessionRequest', 'CancelSessionRequest', 'CalibrationRequest', "
                          "'TerminateServerRequest', 'MbientResetResults') ")
     else:
-        msg_type_stmt = f" and msg_type = '{msg_type}' "
+        msg_type_stmt = " and msg_type = %s "
+        query_params.append(msg_type)
 
     time_read = datetime.now()
-    update_str = \
-        f''' 
+    update_str = '''
         with selection as
             (
-            select *  
+            select *
             from message_queue
             where time_read is NULL
-            and destination = '{destination}'
-            {msg_type_stmt}
+            and destination = %s
+            ''' + msg_type_stmt + '''
             order by priority desc, id asc
             limit 1
             )
         UPDATE message_queue
-        SET time_read = now() 
+        SET time_read = now()
         from selection
         where message_queue.id = selection.id
-        returning message_queue.id, message_queue.uuid, message_queue.msg_type, message_queue.full_msg_type, 
-        message_queue.priority, message_queue.source, message_queue.destination, message_queue.time_created, 
-        message_queue.time_read, message_queue.body     
+        returning message_queue.id, message_queue.uuid, message_queue.msg_type, message_queue.full_msg_type,
+        message_queue.priority, message_queue.source, message_queue.destination, message_queue.time_created,
+        message_queue.time_read, message_queue.body
      '''
 
     curs = conn.cursor()
-    curs.execute(update_str)
+    curs.execute(update_str, query_params)
     msg_df: DataFrame = pd.DataFrame(curs.fetchall())
     conn.commit()
     curs.close()
@@ -221,13 +222,8 @@ def get_study_ids() -> List[str]:
 
 
 def get_subject_ids(conn: connection, first_name, last_name):
-    table_subject = Table("subject", conn=conn)
-    f_name = _escape_name_string(first_name)
-    l_name = _escape_name_string(last_name)
-
-    subject_df = table_subject.query(
-        where=f"LOWER(first_name_birth)=LOWER('{f_name}') AND LOWER(last_name_birth)=LOWER('{l_name}')"
-    )
+    query = "SELECT * FROM subject WHERE LOWER(first_name_birth) = LOWER(%s) AND LOWER(last_name_birth) = LOWER(%s)"
+    subject_df = pd.read_sql_query(query, conn, params=(first_name.strip(), last_name.strip()))
     return subject_df
 
 
@@ -242,12 +238,12 @@ def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
     # We do two separate queries in case the rc_contact table doesn't have any matching records due to,
     # for example, an issue with the REDCap update timing.  We always want a result if there's a matching
     # record in the subject table.  Hitting both tables with a single join query would cause zero records to be returned
-    table_subject = Table("subject", conn=conn)
-    subject_df = table_subject.query(where=f"LOWER(subject_id)=LOWER('{subject_id}')")
+    subject_query = "SELECT * FROM subject WHERE LOWER(subject_id) = LOWER(%s)"
+    subject_df = pd.read_sql_query(subject_query, conn, params=(subject_id,))
 
-    contact_query = f"""select first_name_contact, last_name_contact 
-        from rc_contact 
-        where LOWER(subject_id) = Lower('{subject_id}')
+    contact_query = """select first_name_contact, last_name_contact
+        from rc_contact
+        where LOWER(subject_id) = LOWER(%s)
         order by start_time_contact desc
         limit 1
     """
@@ -273,7 +269,7 @@ def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
         if bool(curs.rowcount):
             try:
                 # Get the column names from the cursor description
-                curs.execute(contact_query)
+                curs.execute(contact_query, (subject_id,))
                 results = curs.fetchall()
                 column_names = [desc[0] for desc in curs.description]
 
@@ -364,9 +360,12 @@ def make_session_id(conn: connection, log_session: LogSession) -> int:
 
     table = Table("log_session", conn=conn)
     datetime_str = log_session.date.strftime("%Y-%m-%d")
-    task_df = table.query(
-        where=f"subject_id = '{log_session.subject_id}' AND date = '{datetime_str}'"
-              + f" AND collection_id = '{log_session.collection_id}'"
+    session_query = ("SELECT * FROM log_session"
+                     " WHERE subject_id = %s AND date = %s AND collection_id = %s")
+    task_df = pd.read_sql_query(
+        session_query, conn,
+        params=(log_session.subject_id, datetime_str, log_session.collection_id),
+        index_col="log_session_id",
     )
 
     # Check if session already exists
