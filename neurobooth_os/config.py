@@ -8,7 +8,7 @@ from os import environ, path, getenv
 from typing import Optional, List
 
 import yaml
-from pydantic import BaseModel, conlist
+from pydantic import BaseModel, SecretStr, conlist
 
 
 class ConfigException(Exception):
@@ -55,7 +55,7 @@ class ScreenSpec(BaseModel):
 class DatabaseSpec(BaseModel):
     dbname: str
     user: str
-    password: str
+    password: SecretStr
     host: str
     port: int
     ssh_tunnel: bool
@@ -66,7 +66,7 @@ class DatabaseSpec(BaseModel):
 class ServerSpec(BaseModel):
     name: str
     user: str
-    password: str
+    password: SecretStr
     local_data_dir: str
     bat: Optional[str] = None
     task_name: Optional[str] = None
