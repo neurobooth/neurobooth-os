@@ -154,7 +154,10 @@ class DeviceManager:
             device_id = device_args.device_id
             self.logger.debug(f'Device Manager Starting: {device_id}')
             self.logger.debug(f'Device Manager Starting with args: {device_args}')
-            device_start_function: Callable = meta.str_fileid_to_eval(device_args.device_start_function)
+            device_start_function: Callable = meta.str_fileid_to_eval(
+                device_args.device_start_function,
+                allowed_modules=meta._ALLOWED_DEVICE_MODULES,
+            )
             device = device_start_function(win, device_args)
             if device is None:
                 self.logger.warning(f'Device Manager Failed to Start: {device_id}')
