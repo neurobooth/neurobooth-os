@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import importlib
 import json
+import logging
 import os
 import sys
 from collections import OrderedDict
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Callable, Dict, Any, Optional, List
 from neurobooth_os.util.nb_types import Subject
 
 import pandas as pd
@@ -24,6 +25,24 @@ from neurobooth_os.msg.messages import Message, MsgBody
 from neurobooth_os.util.task_log_entry import TaskLogEntry, convert_to_array_literal
 
 
+logger = logging.getLogger(__name__)
+
+_ALLOWED_MESSAGE_MODULES: frozenset = frozenset({"msg.messages"})
+
+_ALLOWED_PARSER_MODULES: frozenset = frozenset({
+    "iout.stim_param_reader",
+    "tasks.MOT.task",
+})
+
+_ALLOWED_TASK_MODULES: frozenset = frozenset({
+    "tasks",  # prefix-match: covers tasks.*, tasks.MOT.task.*, etc.
+})
+
+_ALLOWED_DEVICE_MODULES: frozenset = frozenset({
+    "iout.lsl_streamer",
+})
+
+
 class LogSession(BaseModel):
     log_session_id: Optional[int] = None
     subject_id: Optional[str] = None
@@ -36,24 +55,50 @@ class LogSession(BaseModel):
     date: datetime = datetime.now()
 
 
-def str_fileid_to_eval(stim_file_str):
-    """ Converts string path.to.module.py::function() to callable
+def str_fileid_to_eval(
+    stim_file_str: str,
+    allowed_modules: Optional[frozenset] = None,
+) -> Callable:
+    """Convert a string path.to.module.py::function() to a callable.
 
-    Parameters
-    ----------
-        stim_file_str: str
-            string with path to py file :: and function()
+    Args:
+        stim_file_str: String with path to py file ``::`` and function(),
+            e.g. ``"tasks.MOT.task.py::MOT()"``.
+        allowed_modules: If provided, only modules whose path equals or
+            starts with one of these prefixes are permitted. ``None``
+            disables validation (backward compatible).
 
-    Returns
-    -------
-        task_func: callable
-            callable of the function pointed by stim_file_str
+    Returns:
+        The callable pointed to by *stim_file_str*.
+
+    Raises:
+        ValueError: If *stim_file_str* is malformed or the resolved module
+            is not in the allowlist.
     """
+    if ".py::" not in stim_file_str:
+        raise ValueError(
+            f"Malformed input: expected '<module>.py::<func>()', got '{stim_file_str}'"
+        )
 
     strpars = stim_file_str.split(".py::")
-    filepath = "neurobooth_os." + strpars[0]
+    module_path = strpars[0]
     func = strpars[1].replace("()", "")
 
+    if allowed_modules is not None:
+        if not any(
+            module_path == allowed or module_path.startswith(allowed + ".")
+            for allowed in allowed_modules
+        ):
+            logger.warning(
+                "Blocked disallowed dynamic import: module='%s', func='%s'",
+                module_path,
+                func,
+            )
+            raise ValueError(
+                f"Module '{module_path}' is not in the allowed import list."
+            )
+
+    filepath = "neurobooth_os." + module_path
     task_module = importlib.import_module(filepath)
     task_func = getattr(task_module, func)
     return task_func
@@ -210,7 +255,7 @@ def read_next_message(destination: str, conn: connection, msg_type: str = None) 
     priority = msg_df['priority'].iloc[0]
     source = msg_df['source'].iloc[0]
     destination = msg_df['destination'].iloc[0]
-    body_constructor = str_fileid_to_eval(msg_type_full)
+    body_constructor = str_fileid_to_eval(msg_type_full, allowed_modules=_ALLOWED_MESSAGE_MODULES)
     msg_body: MsgBody = body_constructor(**body)
     msg = Message(body=msg_body, uuid=uuid, msg_type=msg_type, source=source, destination=destination,
                   priority=priority)
@@ -553,7 +598,7 @@ def _dynamic_parse(file: str, param_type: str, env_dict: Dict[str, Any]) -> Base
     param_dict: Dict[str:Any] = stim_param_reader.get_param_dictionary(file, param_type)
     param_dict.update(env_dict)
     param_parser: str = param_dict['arg_parser']
-    parser_func = str_fileid_to_eval(param_parser)
+    parser_func = str_fileid_to_eval(param_parser, allowed_modules=_ALLOWED_PARSER_MODULES)
     return parser_func(**param_dict)
 
 
@@ -670,7 +715,7 @@ def build_task(param_dictionary, task_id: str) -> TaskArgs:
         dev_args.sensor_array = sensor_args
         device_args.append(dev_args)
 
-    task_constructor_callable = str_fileid_to_eval(task_constructor)
+    task_constructor_callable = str_fileid_to_eval(task_constructor, allowed_modules=_ALLOWED_TASK_MODULES)
     task_args: TaskArgs = TaskArgs(
         task_id=task_id,
         task_constructor_callable=task_constructor_callable,
