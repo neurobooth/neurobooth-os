@@ -83,7 +83,7 @@ def get_database_connection(database: Optional[str] = None) -> connection:
     conn = psycopg2.connect(
         database=db,
         user=database_info.user,
-        password=database_info.password,
+        password=database_info.password.get_secret_value(),
         host=host,
         port=port,
     )

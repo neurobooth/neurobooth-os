@@ -30,14 +30,16 @@ def _run_cmd(cmd_list: list, server_name: str = None, user: str = None, password
             full_cmd = full_cmd[:1] + ["/S", server_name, "/U", user, "/P", password] + full_cmd[1:]
 
     try:
-        logger.debug(f"Running command: {' '.join(full_cmd)}")
+        logger.debug(f"Running command: {' '.join(cmd_list)} (on {server_name or 'localhost'})")
         result = subprocess.run(full_cmd, capture_output=True, text=True, check=True, timeout=30)
         return result.stdout
     except subprocess.CalledProcessError as e:
-        logger.error(f"Command failed: {e.cmd}, stdout: {e.stdout}, stderr: {e.stderr}")
+        logger.error(f"Command failed (on {server_name or 'localhost'}): {' '.join(cmd_list)}, "
+                     f"stdout: {e.stdout}, stderr: {e.stderr}")
         raise
     except subprocess.TimeoutExpired as e:
-        logger.error(f"Command timed out: {e.cmd}, stdout: {e.stdout}, stderr: {e.stderr}")
+        logger.error(f"Command timed out (on {server_name or 'localhost'}): {' '.join(cmd_list)}, "
+                     f"stdout: {e.stdout}, stderr: {e.stderr}")
         raise
 
 
@@ -152,7 +154,7 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
 
     if expected_script:
         logger.info(f"Proactively checking for and killing existing '{expected_script}' processes on {node_name}.")
-        running_python_procs = get_all_python_processes_with_cmd(s.name, s.user, s.password)
+        running_python_procs = get_all_python_processes_with_cmd(s.name, s.user, s.password.get_secret_value())
         for proc in running_python_procs:
             if expected_script in proc.get('commandline', ''):
                 logger.warning(f"Found existing '{expected_script}' process (PID: {proc['pid']}). Attempting to kill.")
@@ -162,12 +164,12 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
     kill_pid_txt(node_name=node_name)
 
     # Get list of python processes before starting new one
-    pids_old = get_python_pids(s.name, s.user, s.password)
+    pids_old = get_python_pids(s.name, s.user, s.password.get_secret_value())
     logger.debug(f"Python processes found before: {pids_old}")
 
     # Get list of scheduled tasks and run TaskOnEvent if not running
     try:
-        schtasks_query_output = _run_cmd(["SCHTASKS", "/query", "/fo", "CSV", "/nh"], s.name, s.user, s.password)
+        schtasks_query_output = _run_cmd(["SCHTASKS", "/query", "/fo", "CSV", "/nh"], s.name, s.user, s.password.get_secret_value())
     except Exception:
         schtasks_query_output = "" # No scheduled tasks or command failed
 
@@ -206,13 +208,13 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
         cmd_1 = cmd_schtasks_base + [
             "/Create", "/TN", task_name, "/TR", tr_cmd, "/SC", "ONEVENT", "/EC", "Application", "/MO", "*[System/EventID=777]", "/f"
         ]
-        _run_cmd(cmd_1, s.name, s.user, s.password)
+        _run_cmd(cmd_1, s.name, s.user, s.password.get_secret_value())
 
     cmd_2 = cmd_schtasks_base + ["/Run", "/TN", task_name]
-    _run_cmd(cmd_2, s.name, s.user, s.password)
+    _run_cmd(cmd_2, s.name, s.user, s.password.get_secret_value())
 
     sleep(0.3)
-    pids_new = get_python_pids(s.name, s.user, s.password)
+    pids_new = get_python_pids(s.name, s.user, s.password.get_secret_value())
     logger.debug(f"Python processes found after: {pids_new}")
 
     pid = [p for p in pids_new if p not in pids_old]
@@ -240,7 +242,7 @@ def kill_remote_pid(pids, node_name):
         cmd_args = ["taskkill", "/PID", str(pid), "/F"]
         # _run_cmd handles adding remote credentials if s.name is not None
         try:
-            _run_cmd(cmd_args, s.name, s.user, s.password)
+            _run_cmd(cmd_args, s.name, s.user, s.password.get_secret_value())
             logger.info(f"Killed PID {pid} on {node_name} server.")
         except Exception as e:
             logger.warning(f"Failed to kill PID {pid} on {node_name} server: {e}")

@@ -71,6 +71,9 @@ venv-*
 # Logs
 *.log
 
+# Secrets
+secrets.yaml
+
 # Misc
 server_pids.txt
 
