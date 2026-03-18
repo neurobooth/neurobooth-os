@@ -1,7 +1,6 @@
 import os.path as op
 import uuid
 import threading
-import subprocess
 import logging
 from typing import Tuple
 
@@ -173,19 +172,6 @@ class EyeTracker:
         prompt_msg.draw()
         self.win.flip()
 
-    def edf_to_ascii(self):
-        fname_asc = self.filename.replace(".edf", ".asc")
-        if not op.exists(fname_asc):
-            pout = subprocess.run(["edf2asc.exe", self.filename], shell=True)
-            if not pout.stderr:
-                body = NewVideoFile(stream_name=self.streamName, filename=op.split(fname_asc)[-1])
-                msg = Request(source="EyeTracker", destination="CTR", body=body)
-                post_message(msg)
-
-        else:
-            print(f"FILE {fname_asc} already exists")
-        return
-
     def start(self, filename="TEST.edf"):
         self.filename = filename
         body = NewVideoFile(stream_name=self.streamName, filename=op.split(filename)[-1])
@@ -270,7 +256,6 @@ class EyeTracker:
         if self.streaming:
             self.stream_thread.join()
             self.tk.receiveDataFile(self.fname_temp, self.filename)
-            self.edf_to_ascii()
             self.streaming = False
 
     def close(self):
