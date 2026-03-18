@@ -28,6 +28,28 @@ APP_LOGGER: Optional[logging.Logger] = None
 APP_LOG_NAME = "app"
 
 
+def make_fallback_logger() -> logging.Logger:
+    """Create a file-based logger for use when the database logger is unavailable.
+
+    Writes to ``neurobooth_startup.log`` in the NB_CONFIG directory (or the
+    user's home directory if NB_CONFIG is not set). This is intended as a
+    last-resort logger for capturing errors that occur before the database
+    connection is established.
+    """
+    import os
+    log_dir = os.environ.get("NB_INSTALL", os.path.expanduser("~"))
+    log_path = os.path.join(log_dir, "neurobooth_startup.log")
+    logger = logging.getLogger("startup_fallback")
+    if not logger.handlers:  # Avoid adding duplicate handlers
+        handler = logging.FileHandler(log_path)
+        handler.setLevel(logging.DEBUG)
+        handler.setFormatter(LOG_FORMAT)
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)
+    logger.info(f"Fallback logger initialized. Writing to {log_path}")
+    return logger
+
+
 def make_session_logger_debug(
         file: Optional[str] = None,
         console: bool = False,
