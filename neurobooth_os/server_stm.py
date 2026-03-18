@@ -27,7 +27,7 @@ from neurobooth_os.iout import metadator as meta
 
 from neurobooth_os.tasks.welcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
-from neurobooth_os.log_manager import make_db_logger, log_message_received
+from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received
 
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
@@ -36,15 +36,18 @@ frame_preview_device_id: Optional[str] = None
 
 
 def main():
-    config.load_config_by_service_name("STM")  # Load Neurobooth-OS configuration
-    logger = make_db_logger()  # Initialize logging to default
+    logger = None
     exit_code = 0
     try:
+        config.load_config_by_service_name("STM")  # Load Neurobooth-OS configuration
+        logger = make_db_logger()  # Initialize logging to default
         logger.debug("Starting STM")
         os.chdir(neurobooth_os.__path__[0])
         run_stm(logger)
         logger.debug("Stopping STM")
     except Exception as argument:
+        if logger is None:
+            logger = make_fallback_logger()
         logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                         exc_info=sys.exc_info())
         exit_code = 1

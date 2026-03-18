@@ -26,7 +26,7 @@ from neurobooth_os.netcomm import start_server, kill_pid_txt
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
 
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes, PREVIEW_AREA
-from neurobooth_os.log_manager import make_db_logger, log_message_received
+from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received
 from neurobooth_os.iout.metadator import LogSession
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
@@ -992,14 +992,17 @@ def get_popup_location(window):
 
 def main():
     """The starting point of Neurobooth"""
-    cfg.load_config_by_service_name("CTR")  # Load Neurobooth-OS configuration
-    logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
+    logger = None
     exit_code = 0
     try:
+        cfg.load_config_by_service_name("CTR")  # Load Neurobooth-OS configuration
+        logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
         logger.debug("Starting GUI")
         gui(logger)
         logger.debug("Stopping GUI")
     except Exception as argument:
+        if logger is None:
+            logger = make_fallback_logger()
         logger.critical(f"An uncaught exception occurred. Exiting. Uncaught exception was: {repr(argument)}",
                         exc_info=sys.exc_info())
         exit_code = 1
