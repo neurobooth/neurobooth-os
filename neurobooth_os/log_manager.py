@@ -37,7 +37,7 @@ def make_fallback_logger() -> logging.Logger:
     connection is established.
     """
     import os
-    log_dir = os.environ.get("NB_CONFIG", os.path.expanduser("~"))
+    log_dir = os.environ.get("NB_INSTALL", os.path.expanduser("~"))
     log_path = os.path.join(log_dir, "neurobooth_startup.log")
     logger = logging.getLogger("startup_fallback")
     if not logger.handlers:  # Avoid adding duplicate handlers
