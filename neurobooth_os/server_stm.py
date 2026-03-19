@@ -123,7 +123,7 @@ def run_stm(logger):
 
             message: Message = meta.read_next_message("STM", conn=read_msg_conn)
             if message is None:
-                sleep(1)
+                sleep(.25)
                 continue
 
             log_message_received(message, logger)
@@ -339,9 +339,9 @@ def _wait_for_lsl_recording_to_start(session):
     ctr_msg_found: bool = False
     attempt = 0
     with meta.get_database_connection() as db_conn:
-        while not ctr_msg_found and attempt < 30:
+        while not ctr_msg_found and attempt < 300:
             ctr_msg_found = meta.read_next_message("STM", db_conn, 'LslRecording') is not None
-            sleep(1)
+            sleep(.1)
             attempt = attempt + 1
     if not ctr_msg_found:
         session.logger.warning("Message LsLRecording not received in STM")
@@ -377,12 +377,12 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
     replies = 0
     attempts = 0
     with meta.get_database_connection() as poll_conn:
-        while replies < len(acq_ids) and attempts < 30:
+        while replies < len(acq_ids) and attempts < 300:
             reply = meta.read_next_message("STM", poll_conn, msg_type="RecordingStopped")
             if reply is not None:
                 replies += 1
             else:
-                sleep(1)
+                sleep(.1)
                 attempts += 1
 
 
@@ -424,7 +424,7 @@ def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_
             if reply is not None:
                 replies += 1
             else:
-                sleep(1)
+                sleep(.1)
     elapsed_time = time() - t1
     session.logger.info(f'Waiting for ACQ to start took: {elapsed_time:.2f}')
 
