@@ -7,7 +7,6 @@ import os
 import os.path as op
 import logging
 import sys
-import time
 from typing import Dict, Optional, List
 
 import cv2
@@ -30,8 +29,8 @@ from neurobooth_os.msg.messages import FramePreviewReply
 from util.nb_types import Subject
 from neurobooth_os.session_controller import (
     SessionState, SessionController, SessionEventListener, VersionMismatchError,
-    get_nodes, make_session_folder, resize_frame_preview,
-    create_session_dict, create_lsl_inlet, request_frame_preview,
+    get_nodes, resize_frame_preview,
+    create_session_dict, request_frame_preview,
 )
 
 
