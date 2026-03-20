@@ -2,14 +2,168 @@
 """
 Session state and controller for Neurobooth.
 
-Phase 1: SessionState dataclass consolidating all mutable state that was
-previously spread across module-level globals and local variables in gui().
+Provides SessionState (consolidated mutable state), SessionEventListener
+(callback interface for frontends), and pure control functions that have
+no GUI dependency.
 """
 
+import os
+import os.path as op
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+import numpy as np
+import cv2
+
+import neurobooth_os.config as cfg
 from neurobooth_os.util.nb_types import Subject
+
+
+# ---------------------------------------------------------------------------
+# Version validation
+# ---------------------------------------------------------------------------
+
+class VersionMismatchError(RuntimeError):
+    """Raised when Neurobooth versions across servers are inconsistent."""
+
+    def __init__(self, gui_version: str, other_version: str, server: str, error_type: str):
+        self.gui_version = gui_version
+        self.other_version = other_version
+        self.server = server
+        self.error_type = error_type
+        super().__init__(
+            f"Neurobooth installed incorrectly. Error Type is {error_type}. \n\n "
+            f"Version mismatch between GUI and {server}: GUI is on {gui_version}, "
+            f"and {server} is on {other_version}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Event listener interface
+# ---------------------------------------------------------------------------
+
+class SessionEventListener(ABC):
+    """Interface that a frontend (GUI, headless, test harness) implements.
+
+    The SessionController calls these methods to communicate events.
+    A GUI implementation would update widgets; a headless implementation
+    would log or queue events for programmatic consumption.
+    """
+
+    @abstractmethod
+    def on_output(self, text: str, text_color: Optional[str] = None) -> None:
+        """Display or log a status message."""
+
+    @abstractmethod
+    def on_server_started(self, server: str) -> None:
+        """A remote server has started and passed version checks."""
+
+    @abstractmethod
+    def on_all_servers_ready(self) -> None:
+        """All expected servers are running. OK to connect devices."""
+
+    @abstractmethod
+    def on_devices_prepared(self) -> None:
+        """All devices are connected and ready. OK to start session."""
+
+    @abstractmethod
+    def on_task_initiated(self, task_id: str) -> None:
+        """A task has started on the STM machine."""
+
+    @abstractmethod
+    def on_task_finished(self, task_id: str) -> None:
+        """A task has completed."""
+
+    @abstractmethod
+    def on_session_complete(self) -> None:
+        """All tasks have finished."""
+
+    @abstractmethod
+    def on_version_error(self, error: 'VersionMismatchError') -> None:
+        """A version mismatch was detected between servers."""
+
+    @abstractmethod
+    def on_error(self, message: str, text_color: Optional[str] = None) -> None:
+        """An error or warning message from a remote server."""
+
+    @abstractmethod
+    def on_frame_preview(self, image_bytes: bytes) -> None:
+        """A camera frame preview image is available for display."""
+
+    @abstractmethod
+    def on_new_preview_device(self, stream_name: str, device_id: str) -> None:
+        """A new camera preview device has registered."""
+
+    @abstractmethod
+    def on_inlet_update(self, inlet_keys: List[str]) -> None:
+        """The set of available LSL inlets has changed."""
+
+    @abstractmethod
+    def on_no_eyetracker(self, warning: str) -> None:
+        """The Eyelink could not be connected."""
+
+    @abstractmethod
+    def on_mbient_disconnected(self, warning: str) -> None:
+        """An Mbient device disconnected during a task."""
+
+    @abstractmethod
+    def prompt_pause_decision(self) -> str:
+        """Ask the user whether to continue or stop after a pause.
+
+        Returns:
+            "continue" to resume, "stop" to end the session.
+        """
+
+    @abstractmethod
+    def prompt_stop_confirmation(self, resume_on_cancel: bool) -> bool:
+        """Ask the user to confirm stopping the session.
+
+        Returns:
+            True to stop, False to cancel (and resume if resume_on_cancel).
+        """
+
+    @abstractmethod
+    def prompt_shutdown_confirmation(self) -> bool:
+        """Ask the user to confirm system shutdown.
+
+        Returns:
+            True to proceed with shutdown, False to cancel.
+        """
+
+
+# ---------------------------------------------------------------------------
+# Pure control functions (no GUI dependency)
+# ---------------------------------------------------------------------------
+
+def get_nodes() -> List[str]:
+    """Return the list of server node names from the current config."""
+    acq_nodes = [f'acquisition_{i}' for i in range(len(cfg.neurobooth_config.acquisition))]
+    return acq_nodes + ['presentation']
+
+
+def make_session_folder(sess_info: Dict) -> None:
+    """Create the session data folder on the CTR machine if it doesn't exist."""
+    session_dir = op.join(cfg.neurobooth_config.control.local_data_dir, sess_info['subject_id_date'])
+    if not op.exists(session_dir):
+        os.mkdir(session_dir)
+
+
+def resize_frame_preview(img: np.ndarray, preview_area: tuple) -> np.ndarray:
+    """Resize an image to fit the preview area, center-cropping if too tall."""
+    from neurobooth_os.layouts import PREVIEW_AREA
+    h, w, _ = img.shape
+    new_w, max_h = preview_area
+
+    aspect_ratio = w / h
+    new_h = int(round(new_w / aspect_ratio))
+    img = cv2.resize(img, (new_w, new_h))
+
+    if new_h > max_h:
+        crop = (new_h - max_h) // 2
+        img = img[crop:-crop, :]
+
+    return img
 
 
 @dataclass

@@ -40,22 +40,10 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
                                         CancelSessionRequest, MEDIUM_HIGH_PRIORITY, ServerStarted)
 from util.nb_types import Subject
-from neurobooth_os.session_controller import SessionState
-
-
-class VersionMismatchError(RuntimeError):
-    """Raised when Neurobooth versions across servers are inconsistent."""
-
-    def __init__(self, gui_version: str, other_version: str, server: str, error_type: str):
-        self.gui_version = gui_version
-        self.other_version = other_version
-        self.server = server
-        self.error_type = error_type
-        super().__init__(
-            f"Neurobooth installed incorrectly. Error Type is {error_type}. \n\n "
-            f"Version mismatch between GUI and {server}: GUI is on {gui_version}, "
-            f"and {server} is on {other_version}"
-        )
+from neurobooth_os.session_controller import (
+    SessionState, SessionEventListener, VersionMismatchError,
+    get_nodes, make_session_folder, resize_frame_preview,
+)
 
 
 def setup_log(sg_handler=None):
@@ -505,31 +493,11 @@ def handle_frame_preview_reply(window, frame_reply: FramePreviewReply) -> None:
     nparr = np.frombuffer(frame, dtype=np.uint8)
     img_np = cv2.imdecode(nparr, flags=1)
 
-    img_rz = resize_frame_preview(img_np)
+    img_rz = resize_frame_preview(img_np, PREVIEW_AREA)
 
     # Re-encode the image and present it
     img_b = cv2.imencode(".png", img_rz)[1].tobytes()
     window["iphone"].update(data=img_b)
-
-
-def resize_frame_preview(img: np.ndarray) -> np.ndarray:
-    """
-    Resize the given image such that its width matches that of the preview area.
-    If the resulting image is taller than the preview area, then it is vertically center-cropped.
-    """
-    h, w, _ = img.shape  # x and y are flipped in OpenCV
-    new_w, max_h = PREVIEW_AREA
-
-    # Resize to the desired width
-    aspect_ratio = w / h
-    new_h = int(round(new_w / aspect_ratio))
-    img = cv2.resize(img, (new_w, new_h))
-
-    if new_h > max_h:  # Vertically crop if needed
-        crop = (new_h - max_h) // 2
-        img = img[crop:-crop, :]
-
-    return img
 
 
 def _request_frame_preview(conn, device_id: str) -> None:
@@ -577,7 +545,7 @@ def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dic
     return video_marker_stream
 
 
-def _get_nodes():
+def get_nodes():
     acq_nodes = [f'acquisition_{i}' for i in range(len(cfg.neurobooth_config.acquisition))]
     return acq_nodes + ['presentation']
 
@@ -615,7 +583,7 @@ def gui(logger):
     logger.info(f"Neurobooth application version = {state.release_version}")
     logger.info(f"Neurobooth config version = {state.config_version}")
 
-    nodes = _get_nodes()
+    nodes = get_nodes()
 
     with meta.get_database_connection() as conn:
         meta.clear_msg_queue(conn)
@@ -826,7 +794,7 @@ def gui(logger):
 
             elif event == 'devices_connected':
                 state.session_prepared_count += 1
-                if state.session_prepared_count == len(_get_nodes()):
+                if state.session_prepared_count == len(get_nodes()):
                     state.session = _start_lsl_session(window, state.inlets, state.sess_info["subject_id_date"])
                     enable_frame_preview(window, state.frame_preview_devices)
                     if not state.start_pressed:
@@ -854,7 +822,7 @@ def gui(logger):
                     raise RuntimeError(f"Unknown server type: {server} as source of ServerStarted message")
 
                 state.running_servers.append(node_name)
-                expected_servers = _get_nodes()
+                expected_servers = get_nodes()
                 check = all(e in state.running_servers for e in expected_servers)
                 if check:
                     write_output(window, "Servers initiated. OK to connect devices.")
@@ -928,7 +896,7 @@ def handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_
 def _save_session_notes(sess_info, values, window):
     if values is None or "_notes_taskname_" not in values:
         return
-    _make_session_folder(sess_info)
+    make_session_folder(sess_info)
     if values["_notes_taskname_"] == "All tasks":
         for task in sess_info["tasks"].split(", "):
             if not any([i in task for i in ["intro", "pause"]]):
@@ -948,7 +916,7 @@ def _save_session_notes(sess_info, values, window):
     window["notes"].Update("")
 
 
-def _make_session_folder(sess_info):
+def make_session_folder(sess_info):
     session_dir = op.join(cfg.neurobooth_config.control.local_data_dir, sess_info['subject_id_date'])
     if not op.exists(session_dir):
         os.mkdir(session_dir)
