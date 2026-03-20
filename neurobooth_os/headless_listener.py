@@ -5,6 +5,48 @@ Headless SessionEventListener for driving Neurobooth sessions without a GUI.
 Logs all events and returns default decisions for prompts. Useful for
 automated testing, scripted sessions, and verifying that the controller
 has no GUI dependency.
+
+Example usage::
+
+    import logging
+    import neurobooth_os.config as cfg
+    import neurobooth_os.iout.metadator as meta
+    from neurobooth_os.session_controller import SessionState, SessionController
+    from neurobooth_os.headless_listener import HeadlessListener
+
+    logging.basicConfig(level=logging.INFO)
+    cfg.load_neurobooth_config()
+
+    state = SessionState(
+        release_version="v0.63.1",
+        config_version="v0.63.0",
+        log_task=meta.new_task_log_dict(),
+    )
+    listener = HeadlessListener()
+    controller = SessionController(state, logging.getLogger(), listener=listener)
+
+    # Look up a subject
+    with meta.get_database_connection() as conn:
+        subject = meta.get_subject_by_id(conn, "100123")
+
+    # Create a session
+    from neurobooth_os.session_controller import create_session_dict
+    state.subject = subject
+    state.sess_info = create_session_dict(
+        state.log_task, "staff_name", subject, "task1, task2"
+    )
+
+    # Start servers and devices
+    controller.start_servers()
+    controller.start_message_reader()
+    # ... wait for on_all_servers_ready ...
+    # controller.prepare_devices(conn, "mvp_030", ["task1", "task2"])
+    # ... wait for on_devices_prepared ...
+    # controller.start_lsl_session(state.sess_info["subject_id_date"])
+    # controller.start_task_presentation(subject.subject_id, session_id)
+    # controller.queue_task_messages(conn)
+    # ... tasks run, events logged by HeadlessListener ...
+    # controller.terminate_servers(conn)
 """
 
 import logging
