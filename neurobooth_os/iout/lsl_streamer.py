@@ -227,6 +227,8 @@ class DeviceManager:
 
     def start_cameras(self, filename: str, task_devices: List[DeviceArgs]) -> None:
         cameras = self.get_camera_streams(task_devices)
+        if not cameras:
+            return
         with ThreadPoolExecutor(max_workers=len(cameras)) as executor:
             futures = {executor.submit(stream.start, filename): stream for stream in cameras}
             for future in futures:
