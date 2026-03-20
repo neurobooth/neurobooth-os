@@ -40,15 +40,7 @@ from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, Perfor
                                         FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
                                         CancelSessionRequest, MEDIUM_HIGH_PRIORITY, ServerStarted)
 from util.nb_types import Subject
-
-#  State variables used to help ensure in-order GUI steps
-running_servers = []
-last_task = None
-start_pressed = False
-session_prepared_count = 0      # How many SessionPrepared messages were received. the number required = node count
-auto_frame_preview_device: Optional[str] = None  # which device to use for automated frame previews for every task
-gui_release_version: str = ''
-gui_config_version: str = ''
+from neurobooth_os.session_controller import SessionState
 
 
 class VersionMismatchError(RuntimeError):
@@ -146,18 +138,18 @@ def _create_session_dict(window, log_task, staff_id, subject: Subject, tasks):
 ########## Task-related functions ############
 
 
-def _start_task_presentation(window, task_list: List[str], subject_id: str, session_id: int, steps):
+def _start_task_presentation(window, task_list: List[str], subject_id: str, session_id: int, steps,
+                             state: SessionState):
     """Present tasks"""
-    global last_task
     window['Start'].update(disabled=True)
     write_output(window, "\nSession started")
-    last_task = task_list[-1]
+    state.last_task = task_list[-1]
     if len(task_list) > 0:
         msg_body = CreateTasksRequest(
             tasks=task_list,
             subj_id=subject_id,
             session_id=session_id,
-            frame_preview_device_id=auto_frame_preview_device)
+            frame_preview_device_id=state.auto_frame_preview_device)
         msg = Request(
             source='CTR',
             destination='STM',
@@ -333,24 +325,19 @@ def _start_servers(window, nodes):
     return event, values
 
 
-def _start_ctr_server(window, logger):
+def _start_ctr_server(window, logger, state: SessionState):
     """Start threaded control server and new window."""
 
     # Start a threaded socket CTR server once main window generated
-    callback_args = window
     server_thread = threading.Thread(
         target=_start_ctr_msg_reader,
-        args=(
-            logger,
-            callback_args,
-        ),
+        args=(logger, window, state),
         daemon=True,
     )
     server_thread.start()
 
 
-def _start_ctr_msg_reader(logger, window):
-    global auto_frame_preview_device
+def _start_ctr_msg_reader(logger, window, state: SessionState):
 
     with meta.get_database_connection() as db_conn:
         while True:
@@ -367,7 +354,7 @@ def _start_ctr_msg_reader(logger, window):
                 outlet_id = msg_body.outlet_id
                 device_id = msg_body.device_id
                 if msg_body.auto_camera_preview:
-                    auto_frame_preview_device = device_id
+                    state.auto_frame_preview_device = device_id
                 outlet_values = f"['{outlet_name}', '{outlet_id}']"
                 window.write_event_value("-OUTLETID-", outlet_values)
                 if msg_body.camera_preview:
@@ -378,10 +365,10 @@ def _start_ctr_msg_reader(logger, window):
                 msg_body: ServerStarted = message.body
                 server_version = msg_body.neurobooth_version
                 server_config_version = msg_body.config_version
-                if server_version != gui_release_version:
+                if server_version != state.release_version:
                     window.write_event_value('-version_error-', [server_version, message.source])
                     return
-                if server_config_version != gui_config_version:
+                if server_config_version != state.config_version:
                     window.write_event_value('-config_version_error-', [server_config_version, message.source])
                     return
                 window.write_event_value("server_started", message.source)
@@ -617,21 +604,18 @@ Calibration instructions:
 def gui(logger):
     """Start the Graphical User Interface.
     """
-    global running_servers, start_pressed, gui_release_version, gui_config_version
+    state = SessionState(
+        release_version=release.version,
+        config_version=current_config.version,
+        log_task=meta.new_task_log_dict(),
+    )
 
     database = cfg.neurobooth_config.database.dbname
 
-    gui_release_version = release.version
-    gui_config_version = current_config.version
-    logger.info(f"Neurobooth application version = {gui_release_version}")
-    logger.info(f"Neurobooth config version = {gui_config_version}")
+    logger.info(f"Neurobooth application version = {state.release_version}")
+    logger.info(f"Neurobooth config version = {state.config_version}")
 
     nodes = _get_nodes()
-
-    # declare and initialize vars
-    subject: Subject
-    task_string: Optional[str] = None       # A comma delimited list of task ids in a string
-    frame_preview_devices: Dict[str, str] = {}  # Maps from stream name to device ID
 
     with meta.get_database_connection() as conn:
         meta.clear_msg_queue(conn)
@@ -639,13 +623,8 @@ def gui(logger):
         window = _win_gen(_init_layout, conn)
 
         plttr = stream_plotter()
-        log_task = meta.new_task_log_dict()
-        log_sess = LogSession(application_version=gui_release_version, config_version=gui_config_version)
-        stream_ids, inlets = {}, {}
-        plot_elem, inlet_keys = [], []
-        steps = list()  # keep track of steps done
+        log_sess = LogSession(application_version=state.release_version, config_version=state.config_version)
         event, values = window.read(0.1)
-        sess_info = None
         while True:
             event, values = window.read(0.5)
             ############################################################
@@ -658,26 +637,26 @@ def gui(logger):
 
             elif event == '-version_error-':
                 server_version, server = values[event]
-                version_error = VersionMismatchError(gui_release_version, server_version, server, "CODE")
-                terminate_system(conn, plttr, sess_info, values, window) # kill other servers
+                version_error = VersionMismatchError(state.release_version, server_version, server, "CODE")
+                terminate_system(conn, plttr, state.sess_info, values, window) # kill other servers
                 report_version_error_and_close(logger, version_error, window)
                 break
 
             elif event == '-config_version_error-':
                 server_config_version, server = values[event]
-                version_error = VersionMismatchError(gui_config_version, server_config_version, server,
+                version_error = VersionMismatchError(state.config_version, server_config_version, server,
                                                      "CONFIG")
-                terminate_system(conn, plttr, sess_info, values, window) # kill other servers
+                terminate_system(conn, plttr, state.sess_info, values, window) # kill other servers
                 report_version_error_and_close(logger, version_error, window)
                 break
 
             elif event == "find_subject":
-                subject: Subject = _get_subject_by_id(window, log_sess, conn, values["subject_id"])
+                state.subject = _get_subject_by_id(window, log_sess, conn, values["subject_id"])
 
             elif event == "collection_id":
-                collection_id: str = values[event]
-                log_sess.collection_id = collection_id
-                task_string = _get_tasks(window, collection_id)
+                state.collection_id = values[event]
+                log_sess.collection_id = state.collection_id
+                state.task_string = _get_tasks(window, state.collection_id)
 
             elif event == "_init_sess_save_":
                 if values["study_id"] == "" or values['collection_id'] == "":
@@ -688,16 +667,16 @@ def gui(logger):
                     sg.PopupError("Please select a Subject", location=get_popup_location(window))
                 else:
                     log_sess.staff_id = values["staff_id"]
-                    sess_info = _create_session_dict(
+                    state.sess_info = _create_session_dict(
                         window,
-                        log_task,
+                        state.log_task,
                         values["staff_id"],
-                        subject,
-                        task_string,
+                        state.subject,
+                        state.task_string,
                     )
                     # Open new layout with main window
-                    window = _win_gen(_main_layout, sess_info)
-                    _start_ctr_server(window, logger)
+                    window = _win_gen(_main_layout, state.sess_info)
+                    _start_ctr_server(window, logger, state)
                     logger.debug(f"ctr msg reader started")
 
             ############################################################
@@ -708,7 +687,7 @@ def gui(logger):
             if event == '-SELECT_ALL-':
                 select_all_state = values['-SELECT_ALL-']
                 # Update all other checkboxes to match the select all/none state
-                all_task_list: List[str] = task_string.split(',')
+                all_task_list: List[str] = state.task_string.split(',')
 
                 for task in all_task_list:
                     task_checkbox: sg.Checkbox = window.find_element(task.strip())
@@ -730,23 +709,24 @@ def gui(logger):
                     )
                     continue
 
-                video_marker_stream = _prepare_devices(window,
-                    nodes, collection_id, log_task, database, task_string, selected_tasks, conn)
+                state.video_marker_stream = _prepare_devices(window,
+                    nodes, state.collection_id, state.log_task, database, state.task_string, selected_tasks, conn)
 
             elif event == "plot":
-                _plot_realtime(window, plttr, inlets)
+                _plot_realtime(window, plttr, state.inlets)
 
             elif event == "Start":
-                if not start_pressed:
+                if not state.start_pressed:
                     window["Start"].Update(disabled=True)
-                    start_pressed = True
-                    session_id = meta.make_session_id(conn, log_sess)
-                    task_list: List[str] = [k for k, v in values.items() if "obs" in k and v is True]
-                    _start_task_presentation(window, task_list, sess_info["subject_id"], session_id, steps)
+                    state.start_pressed = True
+                    state.session_id = meta.make_session_id(conn, log_sess)
+                    state.task_list = [k for k, v in values.items() if "obs" in k and v is True]
+                    _start_task_presentation(window, state.task_list, state.sess_info["subject_id"],
+                                             state.session_id, state.steps, state)
 
             elif event == "tasks_created":
                 _session_button_state(window, disabled=False)
-                for task_id in task_list:
+                for task_id in state.task_list:
                     msg_body = PerformTaskRequest(task_id=task_id)
                     msg = Request(source="CTR", destination="STM", body=msg_body)
                     meta.post_message(msg, conn)
@@ -767,7 +747,7 @@ def gui(logger):
             # Save notes to a txt
             elif event == "_save_notes_":
                 if values["_notes_taskname_"] != "":
-                    _save_session_notes(sess_info, values, window)
+                    _save_session_notes(state.sess_info, values, window)
                 else:
                     sg.PopupError(
                         "Pressed save notes without task, select one in the dropdown list",
@@ -798,7 +778,7 @@ def gui(logger):
                         write_output(window, "System termination scheduled. "
                                              "Servers will shut down after the current task.")
 
-                        terminate_system(conn, plttr, sess_info, values, window)
+                        terminate_system(conn, plttr, state.sess_info, values, window)
                         break
 
             ##################################################################################
@@ -809,17 +789,20 @@ def gui(logger):
             elif event == "task_initiated":
                 # event values -> f"['{task_id}', '{t_obs_id}', '{log_task_id}, '{tsk_strt_time}']
                 window["-frame_preview-"].update(disabled=True)
-                task_id, t_obs_id, obs_log_id, tsk_strt_time = eval(values[event])
+                task_id, t_obs_id, state.obs_log_id, tsk_strt_time = eval(values[event])
+                state.current_task_id = task_id
+                state.current_t_obs_id = t_obs_id
+                state.current_tsk_strt_time = tsk_strt_time
                 write_output(window, f"\nTask initiated: {task_id}")
 
                 logger.debug(f"Starting LSL for task: {t_obs_id}")
-                rec_fname = _record_lsl(
+                state.rec_fname = _record_lsl(
                     window,
-                    session,
-                    sess_info["subject_id_date"],
+                    state.session,
+                    state.sess_info["subject_id_date"],
                     task_id,
                     t_obs_id,
-                    obs_log_id,
+                    state.obs_log_id,
                     tsk_strt_time,
                 )
                 if "calibration" in task_id.lower():
@@ -831,32 +814,32 @@ def gui(logger):
                 boolean_value = has_lsl_stream.lower() == 'true'
                 if boolean_value:
                     logger.debug(f"Stopping LSL for task: {task_id}")
-                    handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, task_id, values, window)
-                if task_id == last_task:
+                    handle_task_finished(conn, state.obs_log_id, state.rec_fname, state.sess_info,
+                                         state.session, task_id, values, window)
+                if task_id == state.last_task:
                     _session_button_state(window, disabled=True)
                     write_output(window, "\nSession complete: OK to terminate", 'blue')
 
             # Send a marker string with the name of the new video file created
             elif event == "-new_filename-":
-                video_marker_stream.push_sample([values[event]])
+                state.video_marker_stream.push_sample([values[event]])
 
             elif event == 'devices_connected':
-                global session_prepared_count
-                session_prepared_count += 1
-                if session_prepared_count == len(_get_nodes()):
-                    session = _start_lsl_session(window, inlets, sess_info["subject_id_date"])
-                    enable_frame_preview(window, frame_preview_devices)
-                    if not start_pressed:
+                state.session_prepared_count += 1
+                if state.session_prepared_count == len(_get_nodes()):
+                    state.session = _start_lsl_session(window, state.inlets, state.sess_info["subject_id_date"])
+                    enable_frame_preview(window, state.frame_preview_devices)
+                    if not state.start_pressed:
                         window['Start'].update(disabled=False)
                         write_output(window, "Device connection complete. OK to start session")
 
             # Create LSL inlet stream
             elif event == "-OUTLETID-":
-                _create_lsl_inlet(stream_ids, values[event], inlets)
+                _create_lsl_inlet(state.stream_ids, values[event], state.inlets)
 
             elif event == "-new_preview_device-":
                 outlet_name, device_id = values[event]
-                frame_preview_devices[outlet_name] = device_id
+                state.frame_preview_devices[outlet_name] = device_id
 
             elif event == "server_started":
                 server = values[event]
@@ -870,9 +853,9 @@ def gui(logger):
                 else:
                     raise RuntimeError(f"Unknown server type: {server} as source of ServerStarted message")
 
-                running_servers.append(node_name)
+                state.running_servers.append(node_name)
                 expected_servers = _get_nodes()
-                check = all(e in running_servers for e in expected_servers)
+                check = all(e in state.running_servers for e in expected_servers)
                 if check:
                     write_output(window, "Servers initiated. OK to connect devices.")
                     window["-Connect-"].Update(disabled=False)
@@ -891,12 +874,12 @@ def gui(logger):
 
             elif event == "-frame_preview-":
                 outlet_name = values["-frame_preview_opts-"]
-                device_id = frame_preview_devices[outlet_name]
+                device_id = state.frame_preview_devices[outlet_name]
                 _request_frame_preview(conn, device_id)
 
             # Print LSL inlet names in GUI
-            if inlet_keys != list(inlets):
-                 inlet_keys = list(inlets)
+            if state.inlet_keys != list(state.inlets):
+                 state.inlet_keys = list(state.inlets)
                  window["inlet_State"].update("\n".join(inlet_keys))
     close(window)
 
