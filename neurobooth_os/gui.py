@@ -28,7 +28,7 @@ from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_
 from neurobooth_os.iout.metadator import LogSession
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
-from neurobooth_os.msg.messages import (Message, MsgBody, MbientDisconnected, NewVideoFile,
+from neurobooth_os.msg.messages import (Message, Request, MsgBody, MbientDisconnected, NewVideoFile,
                                         TaskCompletion, TaskInitialization,
                                         DeviceInitialization,
                                         FramePreviewReply, ServerStarted)
