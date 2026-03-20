@@ -11,12 +11,16 @@ import os
 import os.path as op
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Dict, List, Optional
 
 import numpy as np
 import cv2
 
 import neurobooth_os.config as cfg
+import neurobooth_os.iout.metadator as meta
+from neurobooth_os.msg.messages import FramePreviewRequest, Request
+from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets
 from neurobooth_os.util.nb_types import Subject
 
 
@@ -164,6 +168,49 @@ def resize_frame_preview(img: np.ndarray, preview_area: tuple) -> np.ndarray:
         img = img[crop:-crop, :]
 
     return img
+
+
+def create_session_dict(log_task: Dict, staff_id: str, subject: Subject, tasks: str) -> Dict:
+    """Build the session info dictionary from subject/staff/task data.
+
+    This is pure data construction with no GUI dependency. The caller is
+    responsible for closing the init window afterward.
+    """
+    log_task["subject_id"] = subject.subject_id
+    dt = datetime.now().strftime("%Y-%m-%d")
+    log_task["subject_id-date"] = f'{subject.subject_id}_{dt}'
+    log_task["date"] = dt
+    subject_id_date = log_task["subject_id-date"]
+
+    return {
+        "subject_id": subject.subject_id,
+        "subject_dob": subject.date_of_birth.date().isoformat(),
+        "first_name": subject.first_name_birth,
+        "last_name": subject.last_name_birth,
+        "pref_first_name": subject.preferred_first_name,
+        "pref_last_name": subject.preferred_last_name,
+        "tasks": tasks,
+        "staff_id": staff_id,
+        "subject_id_date": subject_id_date,
+    }
+
+
+def create_lsl_inlet(stream_ids: Dict, outlet_values: str, inlets: Dict) -> None:
+    """Register or update an LSL inlet from a DeviceInitialization message."""
+    outlet_name, outlet_id = eval(outlet_values)
+
+    if stream_ids.get(outlet_name) is None or outlet_id != stream_ids[outlet_name]:
+        stream_ids[outlet_name] = outlet_id
+        inlets.update(create_lsl_inlets({outlet_name: outlet_id}))
+
+
+def request_frame_preview(conn, device_id: str) -> None:
+    """Send a FramePreviewRequest to the ACQ server that owns the device."""
+    acq_idx = cfg.neurobooth_config.get_acq_for_device(device_id)
+    acq_id = cfg.neurobooth_config.acq_service_id(acq_idx)
+    msg = FramePreviewRequest(device_id=device_id)
+    req = Request(source="CTR", destination=acq_id, body=msg)
+    meta.post_message(req, conn)
 
 
 @dataclass

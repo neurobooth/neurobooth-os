@@ -43,6 +43,7 @@ from util.nb_types import Subject
 from neurobooth_os.session_controller import (
     SessionState, SessionEventListener, VersionMismatchError,
     get_nodes, make_session_folder, resize_frame_preview,
+    create_session_dict, create_lsl_inlet, request_frame_preview,
 )
 
 
@@ -98,29 +99,6 @@ def _get_collections(window, study_id: str):
     collection_ids = meta.get_collection_ids(study_id)
     window["collection_id"].update(values=collection_ids)
     return collection_ids
-
-
-def _create_session_dict(window, log_task, staff_id, subject: Subject, tasks):
-    """Create session dictionary."""
-    log_task["subject_id"] = subject.subject_id
-    dt = datetime.now().strftime("%Y-%m-%d")
-    log_task["subject_id-date"] = f'{subject.subject_id}_{dt}'
-    log_task["date"] = dt
-    subject_id_date = log_task["subject_id-date"]
-
-    window.close()
-
-    return {
-        "subject_id": subject.subject_id,
-        "subject_dob": subject.date_of_birth.date().isoformat(),
-        "first_name": subject.first_name_birth,
-        "last_name": subject.last_name_birth,
-        "pref_first_name": subject.preferred_first_name,
-        "pref_last_name": subject.preferred_last_name,
-        "tasks": tasks,
-        "staff_id": staff_id,
-        "subject_id_date": subject_id_date,
-    }
 
 
 ########## Task-related functions ############
@@ -254,15 +232,6 @@ def _record_lsl(
     window["task_title"].update("Running Task:")
     window["task_running"].update(task_id, background_color="red")
     return rec_fname
-
-
-def _create_lsl_inlet(stream_ids, outlet_values, inlets):
-    outlet_name, outlet_id = eval(outlet_values)
-
-    # update the inlet if new or different source_id
-    if stream_ids.get(outlet_name) is None or outlet_id != stream_ids[outlet_name]:
-        stream_ids[outlet_name] = outlet_id
-        inlets.update(create_lsl_inlets({outlet_name: outlet_id}))
 
 
 def _stop_lsl_and_save(
@@ -500,14 +469,6 @@ def handle_frame_preview_reply(window, frame_reply: FramePreviewReply) -> None:
     window["iphone"].update(data=img_b)
 
 
-def _request_frame_preview(conn, device_id: str) -> None:
-    acq_idx = cfg.neurobooth_config.get_acq_for_device(device_id)
-    acq_id = cfg.neurobooth_config.acq_service_id(acq_idx)
-    msg = FramePreviewRequest(device_id=device_id)
-    req = Request(source="CTR", destination=acq_id, body=msg)
-    meta.post_message(req, conn)
-
-
 def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dict, database, tasks: str,
                      selected_tasks: List[str], conn):
     """Prepare devices. Mainly ensuring devices are connected"""
@@ -635,13 +596,13 @@ def gui(logger):
                     sg.PopupError("Please select a Subject", location=get_popup_location(window))
                 else:
                     log_sess.staff_id = values["staff_id"]
-                    state.sess_info = _create_session_dict(
-                        window,
+                    state.sess_info = create_session_dict(
                         state.log_task,
                         values["staff_id"],
                         state.subject,
                         state.task_string,
                     )
+                    window.close()
                     # Open new layout with main window
                     window = _win_gen(_main_layout, state.sess_info)
                     _start_ctr_server(window, logger, state)
@@ -803,7 +764,7 @@ def gui(logger):
 
             # Create LSL inlet stream
             elif event == "-OUTLETID-":
-                _create_lsl_inlet(state.stream_ids, values[event], state.inlets)
+                create_lsl_inlet(state.stream_ids, values[event], state.inlets)
 
             elif event == "-new_preview_device-":
                 outlet_name, device_id = values[event]
@@ -843,7 +804,7 @@ def gui(logger):
             elif event == "-frame_preview-":
                 outlet_name = values["-frame_preview_opts-"]
                 device_id = state.frame_preview_devices[outlet_name]
-                _request_frame_preview(conn, device_id)
+                request_frame_preview(conn, device_id)
 
             # Print LSL inlet names in GUI
             if state.inlet_keys != list(state.inlets):
