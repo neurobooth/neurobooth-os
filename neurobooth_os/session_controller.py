@@ -389,6 +389,37 @@ class SessionController:
         meta.post_message(Request(source="CTR", destination="STM",
                                   body=CancelSessionRequest()))
 
+    def pause_session(self) -> None:
+        """Pause the session and prompt the user for what to do next.
+
+        Sends PauseSessionRequest, then asks the listener whether to
+        continue or stop. Handles the full pause/resume/cancel flow.
+        """
+        self.listener.on_output("Pause scheduled. Session will pause after the current task.")
+        self.send_pause()
+        decision = self.listener.prompt_pause_decision()
+        if decision == "continue":
+            self.send_resume()
+            self.listener.on_output("Continue scheduled")
+        elif decision == "stop":
+            self.stop_session(resume_on_cancel=True)
+        else:
+            raise RuntimeError(f"Unknown pause decision: {decision}")
+
+    def stop_session(self, resume_on_cancel: bool = False) -> None:
+        """Prompt to confirm session stop, then cancel or resume.
+
+        Args:
+            resume_on_cancel: If True and the user cancels the stop,
+                send ResumeSessionRequest (used when entering stop from pause).
+        """
+        confirmed = self.listener.prompt_stop_confirmation(resume_on_cancel)
+        if confirmed:
+            self.listener.on_output("Stop session scheduled. Session will end after the current task.")
+            self.send_cancel()
+        elif resume_on_cancel:
+            self.send_resume()
+
     def send_recalibrate(self) -> None:
         """Queue a calibration task at elevated priority."""
         msg = Request(source="CTR", destination="STM",

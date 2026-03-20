@@ -120,13 +120,38 @@ class GuiEventListener(SessionEventListener):
         self.window.write_event_value(event, f"{stream_name},{filename}")
 
     def prompt_pause_decision(self):
-        return "continue"  # Placeholder; actual popup logic stays in gui.py for now
+        resp = sg.Popup(
+            "The session will pause after the current task.\n", title="Pausing session",
+            custom_text=("Continue tasks", "Stop tasks"),
+            location=get_popup_location(self.window)
+        )
+        if resp == "Continue tasks" or resp is None:
+            return "continue"
+        elif resp == "Stop tasks":
+            return "stop"
+        else:
+            raise RuntimeError("Unknown Response from Pause Session dialog")
 
     def prompt_stop_confirmation(self, resume_on_cancel):
-        return False  # Placeholder
+        response = sg.popup_ok_cancel(
+            "Session will end after the current task completes!  \n\n"
+            "Press OK to end the session; Cancel to continue the session.\n",
+            title="Warning",
+            location=get_popup_location(self.window))
+        confirmed = response == "OK"
+        if confirmed:
+            _session_button_state(self.window, disabled=True)
+        elif resume_on_cancel:
+            _session_button_state(self.window, disabled=False)
+        return confirmed
 
     def prompt_shutdown_confirmation(self):
-        return False  # Placeholder
+        response = sg.popup_ok_cancel(
+            "System will terminate!  \n\n"
+            "Please ensure that any task in progress is completed and that STM "
+            "and ACQ shut down properly.\n", title="Warning",
+            location=get_popup_location(self.window))
+        return response == "OK"
 
 
 ########## Database functions ############
@@ -162,41 +187,6 @@ def _get_collections(window, study_id: str):
     collection_ids = meta.get_collection_ids(study_id)
     window["collection_id"].update(values=collection_ids)
     return collection_ids
-
-
-########## Task-related functions ############
-
-
-def _pause_tasks(window, controller: SessionController):
-    write_output(window, "Pause scheduled. Session will pause after the current task.")
-    controller.send_pause()
-    resp = sg.Popup(
-        "The session will pause after the current task.\n", title="Pausing session",
-        custom_text=("Continue tasks", "Stop tasks"),
-        location=get_popup_location(window)
-    )
-    if resp == "Continue tasks" or resp is None:
-        controller.send_resume()
-        write_output(window, "Continue scheduled")
-    elif resp == "Stop tasks":
-        _stop_task_dialog(window, controller, resume_on_cancel=True)
-    else:
-        raise RuntimeError("Unknown Response from Pause Session dialog")
-
-
-def _stop_task_dialog(window, controller: SessionController, resume_on_cancel: bool):
-    response = sg.popup_ok_cancel("Session will end after the current task completes!  \n\n"
-                                  "Press OK to end the session; Cancel to continue the session.\n",
-                                  title="Warning",
-                                  location=get_popup_location(window))
-    if response == "OK":
-        write_output(window, "Stop session scheduled. Session will end after the current task.")
-        controller.send_cancel()
-        _session_button_state(window, disabled=True)
-    else:
-        if resume_on_cancel:
-            controller.send_resume()
-            _session_button_state(window, disabled=False)
 
 
 ########## LSL functions ############
@@ -439,10 +429,10 @@ def gui(logger):
                 controller.queue_task_messages(conn)
 
             elif event == "Pause tasks":
-                _pause_tasks(window, controller)
+                controller.pause_session()
 
             elif event == "Stop tasks":
-                _stop_task_dialog(window, controller, resume_on_cancel=False)
+                controller.stop_session(resume_on_cancel=False)
 
             elif event == "Calibrate":
                 write_output(window, "Eyetracker recalibration scheduled. "
@@ -478,14 +468,9 @@ def gui(logger):
                     )
                     continue
                 else:
-                    response = sg.popup_ok_cancel("System will terminate!  \n\n"
-                                                  "Please ensure that any task in progress is completed and that STM "
-                                                  "and ACQ shut down properly.\n", title="Warning",
-                                                  location=get_popup_location(window))
-                    if response == "OK":
+                    if gui_listener.prompt_shutdown_confirmation():
                         write_output(window, "System termination scheduled. "
                                              "Servers will shut down after the current task.")
-
                         if state.sess_info and values and "_notes_taskname_" in values:
                             controller.save_notes(state.sess_info, values.get("_notes_taskname_", ""),
                                                   values.get("notes", ""))
