@@ -8,8 +8,6 @@ import os.path as op
 import logging
 import sys
 import time
-import threading
-from datetime import datetime
 from typing import Dict, Optional, List
 
 import cv2
@@ -24,14 +22,11 @@ import neurobooth_os.current_config as current_config
 from neurobooth_os.realtime.lsl_plotter import stream_plotter
 
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes, PREVIEW_AREA
-from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received
+from neurobooth_os.log_manager import make_db_logger, make_fallback_logger
 from neurobooth_os.iout.metadator import LogSession
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
-from neurobooth_os.msg.messages import (Message, Request, MsgBody, MbientDisconnected, NewVideoFile,
-                                        TaskCompletion, TaskInitialization,
-                                        DeviceInitialization,
-                                        FramePreviewReply, ServerStarted)
+from neurobooth_os.msg.messages import FramePreviewReply
 from util.nb_types import Subject
 from neurobooth_os.session_controller import (
     SessionState, SessionController, SessionEventListener, VersionMismatchError,
@@ -57,6 +52,81 @@ class Handler(logging.StreamHandler):
     def emit(self, record):
         buffer = str(record).strip()
         window['log'].update(value=buffer)
+
+
+########## GUI Event Listener ############
+
+
+class GuiEventListener(SessionEventListener):
+    """Bridges SessionController events to the FreeSimpleGUI event loop."""
+
+    def __init__(self, window):
+        self.window = window
+
+    def set_window(self, window):
+        self.window = window
+
+    def on_output(self, text, text_color=None):
+        write_output(self.window, text, text_color)
+
+    def on_server_started(self, server):
+        self.window.write_event_value("server_started", server)
+
+    def on_all_servers_ready(self):
+        write_output(self.window, "Servers initiated. OK to connect devices.")
+
+    def on_devices_prepared(self):
+        self.window.write_event_value("devices_connected", True)
+
+    def on_task_initiated(self, task_id, t_obs_id, log_task_id, tsk_start_time):
+        self.window.write_event_value(
+            "task_initiated",
+            f"['{task_id}', '{t_obs_id}', '{log_task_id}', '{tsk_start_time}']")
+
+    def on_task_finished(self, task_id, has_lsl_stream):
+        self.window.write_event_value("task_finished", f"['{task_id}', '{has_lsl_stream}']")
+
+    def on_tasks_created(self):
+        self.window.write_event_value("tasks_created", "")
+
+    def on_session_complete(self):
+        write_output(self.window, "\nSession complete: OK to terminate", 'blue')
+
+    def on_version_error(self, error):
+        if error.error_type == "CODE":
+            self.window.write_event_value('-version_error-', [error.other_version, error.server])
+        else:
+            self.window.write_event_value('-config_version_error-', [error.other_version, error.server])
+
+    def on_error(self, message, text_color=None):
+        write_output(self.window, message, text_color)
+
+    def on_frame_preview(self, frame_reply):
+        handle_frame_preview_reply(self.window, frame_reply)
+
+    def on_new_preview_device(self, stream_name, device_id):
+        self.window.write_event_value("-new_preview_device-", [stream_name, device_id])
+
+    def on_inlet_update(self, inlet_keys):
+        self.window.write_event_value("-OUTLETID-", inlet_keys)
+
+    def on_no_eyetracker(self, warning):
+        self.window.write_event_value("no_eyetracker", warning)
+
+    def on_mbient_disconnected(self, warning):
+        self.window.write_event_value("mbient_disconnected", warning)
+
+    def on_new_video_file(self, stream_name, filename, event):
+        self.window.write_event_value(event, f"{stream_name},{filename}")
+
+    def prompt_pause_decision(self):
+        return "continue"  # Placeholder; actual popup logic stays in gui.py for now
+
+    def prompt_stop_confirmation(self, resume_on_cancel):
+        return False  # Placeholder
+
+    def prompt_shutdown_confirmation(self):
+        return False  # Placeholder
 
 
 ########## Database functions ############
@@ -141,106 +211,6 @@ def write_output(window, text: str, text_color: Optional[str] =None):
 ######### Server communication ############
 
 
-def _start_ctr_server(window, logger, state: SessionState):
-    """Start threaded control server and new window."""
-
-    # Start a threaded socket CTR server once main window generated
-    server_thread = threading.Thread(
-        target=_start_ctr_msg_reader,
-        args=(logger, window, state),
-        daemon=True,
-    )
-    server_thread.start()
-
-
-def _start_ctr_msg_reader(logger, window, state: SessionState):
-
-    with meta.get_database_connection() as db_conn:
-        while True:
-            message: Message = meta.read_next_message("CTR", conn=db_conn)
-            if message is None:
-                time.sleep(.25)
-                continue
-            msg_body: Optional[MsgBody] = None
-            log_message_received(message, logger)
-
-            if "DeviceInitialization" == message.msg_type:
-                msg_body: DeviceInitialization = message.body
-                outlet_name = msg_body.stream_name
-                outlet_id = msg_body.outlet_id
-                device_id = msg_body.device_id
-                if msg_body.auto_camera_preview:
-                    state.auto_frame_preview_device = device_id
-                outlet_values = f"['{outlet_name}', '{outlet_id}']"
-                window.write_event_value("-OUTLETID-", outlet_values)
-                if msg_body.camera_preview:
-                    window.write_event_value("-new_preview_device-", [outlet_name, device_id])
-            elif "SessionPrepared" == message.msg_type:
-                window.write_event_value("devices_connected", True)
-            elif "ServerStarted" == message.msg_type:
-                msg_body: ServerStarted = message.body
-                server_version = msg_body.neurobooth_version
-                server_config_version = msg_body.config_version
-                if server_version != state.release_version:
-                    window.write_event_value('-version_error-', [server_version, message.source])
-                    return
-                if server_config_version != state.config_version:
-                    window.write_event_value('-config_version_error-', [server_config_version, message.source])
-                    return
-                window.write_event_value("server_started", message.source)
-            elif "TasksCreated" == message.msg_type:
-                window.write_event_value("tasks_created", "")
-            elif "TaskInitialization" == message.msg_type:
-                msg_body: TaskInitialization = message.body
-                task_id = msg_body.task_id
-                log_task_id = msg_body.log_task_id
-                tsk_strt_time = msg_body.tsk_start_time
-
-                window.write_event_value(
-                    "task_initiated",
-                    f"['{task_id}', '{task_id}', '{log_task_id}', '{tsk_strt_time}']",
-                )
-
-            elif "TaskCompletion" == message.msg_type:
-                msg_body: TaskCompletion = message.body
-                task_id = msg_body.task_id
-                has_lsl_stream = msg_body.has_lsl_stream
-                event_value = f"['{task_id}', '{has_lsl_stream}']"
-                logger.debug(f"TaskCompletion msg for {task_id}")
-                window.write_event_value("task_finished", event_value)
-
-            elif "NewVideoFile" == message.msg_type:
-                msg_body: NewVideoFile = message.body
-                event = msg_body.event
-                stream_name = msg_body.stream_name
-                filename = msg_body.filename
-                window.write_event_value(event, f"{stream_name},{filename}")
-
-            elif "NoEyetracker" == message.msg_type:
-                window.write_event_value(
-                    "no_eyetracker",
-                    "Eyetracker not found! \nServers will be "
-                    + "terminated, wait until servers are closed.\nThen, connect the eyetracker and start again",
-                )
-
-            elif "MbientDisconnected" == message.msg_type:
-                msg_body: MbientDisconnected = message.body
-                window.write_event_value(
-                    "mbient_disconnected", f"{msg_body.warning}, \nconsider repeating the task"
-                )
-            elif "StatusMessage" == message.msg_type:
-                write_message_to_output(logger, message, window)
-
-            elif "ErrorMessage" == message.msg_type:
-                write_message_to_output(logger, message, window)
-
-            elif "FramePreviewReply" == message.msg_type:
-                frame_reply: FramePreviewReply = message.body
-                handle_frame_preview_reply(window, frame_reply)
-            else:
-                logger.debug(f"Unhandled message: {message.msg_type}")
-
-
 def report_version_error_and_close(logger, version_error: VersionMismatchError, window):
 
     heading = "Critical Error: "
@@ -252,32 +222,6 @@ def report_version_error_and_close(logger, version_error: VersionMismatchError, 
     if result == "OK":
         # User clicked OK
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(version_error)}")
-
-
-def write_message_to_output(logger, message: Request, window):
-    msg_body = message.body
-    text_color: Optional[str]
-    heading = "Status: "
-    msg = msg_body.text
-    if msg_body.status is None:
-        text_color = "black"
-    elif msg_body.status.upper() == "CRITICAL":
-        heading = "Critical Error: "
-        msg = (f"A critical error has occurred on server '{message.source}'. "
-               f"The system must shutdown. Please terminate the system and make sure ACQ and STM "
-               f"have shut-down correctly "
-               f"before restarting the session.\n"
-               f"The error was: '{msg_body.text}'")
-        text_color = "red"
-
-    elif msg_body.status.upper() == "ERROR":
-        text_color = "red"
-    elif msg_body.status == "WARNING":
-        text_color = "orange red"
-    else:
-        text_color = None
-    write_output(window=window, text=f"{heading}: {msg}", text_color=text_color)
-    logger.debug(msg_body.text)
 
 
 ######### Visualization ############
@@ -356,7 +300,8 @@ def gui(logger):
         config_version=current_config.version,
         log_task=meta.new_task_log_dict(),
     )
-    controller = SessionController(state, logger)
+    gui_listener = GuiEventListener(None)  # window set after creation
+    controller = SessionController(state, logger, listener=gui_listener)
 
     database = cfg.neurobooth_config.database.dbname
 
@@ -369,6 +314,7 @@ def gui(logger):
         meta.clear_msg_queue(conn)
 
         window = _win_gen(_init_layout, conn)
+        gui_listener.set_window(window)
 
         plttr = stream_plotter()
         log_sess = LogSession(application_version=state.release_version, config_version=state.config_version)
@@ -428,7 +374,8 @@ def gui(logger):
                     window.close()
                     # Open new layout with main window
                     window = _win_gen(_main_layout, state.sess_info)
-                    _start_ctr_server(window, logger, state)
+                    gui_listener.set_window(window)
+                    controller.start_message_reader()
                     logger.debug(f"ctr msg reader started")
 
             ############################################################
@@ -594,17 +541,16 @@ def gui(logger):
                 state.video_marker_stream.push_sample([values[event]])
 
             elif event == 'devices_connected':
-                state.session_prepared_count += 1
-                if state.session_prepared_count == len(get_nodes()):
-                    controller.start_lsl_session(state.sess_info["subject_id_date"])
-                    enable_frame_preview(window, state.frame_preview_devices)
-                    if not state.start_pressed:
-                        window['Start'].update(disabled=False)
-                        write_output(window, "Device connection complete. OK to start session")
+                controller.start_lsl_session(state.sess_info["subject_id_date"])
+                enable_frame_preview(window, state.frame_preview_devices)
+                if not state.start_pressed:
+                    window['Start'].update(disabled=False)
+                    write_output(window, "Device connection complete. OK to start session")
 
-            # Create LSL inlet stream
+            # Update inlet display
             elif event == "-OUTLETID-":
-                create_lsl_inlet(state.stream_ids, values[event], state.inlets)
+                state.inlet_keys = values[event]
+                window["inlet_State"].update("\n".join(state.inlet_keys))
 
             elif event == "-new_preview_device-":
                 outlet_name, device_id = values[event]
@@ -647,9 +593,6 @@ def gui(logger):
                 request_frame_preview(conn, device_id)
 
             # Print LSL inlet names in GUI
-            if state.inlet_keys != list(state.inlets):
-                 state.inlet_keys = list(state.inlets)
-                 window["inlet_State"].update("\n".join(state.inlet_keys))
     close(window)
 
 

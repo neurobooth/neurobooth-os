@@ -24,7 +24,7 @@ import neurobooth_os.config as cfg
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
 from neurobooth_os.msg.messages import (
-    FramePreviewRequest, Request, CreateTasksRequest, PerformTaskRequest,
+    Message, FramePreviewRequest, Request, CreateTasksRequest, PerformTaskRequest,
     TerminateServerRequest, PrepareRequest, PauseSessionRequest,
     ResumeSessionRequest, CancelSessionRequest, LslRecording,
     TasksFinished, MEDIUM_HIGH_PRIORITY,
@@ -83,12 +83,21 @@ class SessionEventListener(ABC):
         """All devices are connected and ready. OK to start session."""
 
     @abstractmethod
-    def on_task_initiated(self, task_id: str) -> None:
+    def on_task_initiated(self, task_id: str, t_obs_id: str,
+                          log_task_id: str, tsk_start_time: str) -> None:
         """A task has started on the STM machine."""
 
     @abstractmethod
-    def on_task_finished(self, task_id: str) -> None:
+    def on_task_finished(self, task_id: str, has_lsl_stream: str) -> None:
         """A task has completed."""
+
+    @abstractmethod
+    def on_tasks_created(self) -> None:
+        """STM has acknowledged task creation."""
+
+    @abstractmethod
+    def on_new_video_file(self, stream_name: str, filename: str, event: str) -> None:
+        """A new video file was created by a device."""
 
     @abstractmethod
     def on_session_complete(self) -> None:
@@ -103,8 +112,8 @@ class SessionEventListener(ABC):
         """An error or warning message from a remote server."""
 
     @abstractmethod
-    def on_frame_preview(self, image_bytes: bytes) -> None:
-        """A camera frame preview image is available for display."""
+    def on_frame_preview(self, frame_reply) -> None:
+        """A camera frame preview reply is available for display."""
 
     @abstractmethod
     def on_new_preview_device(self, stream_name: str, device_id: str) -> None:
@@ -286,9 +295,11 @@ class SessionController:
     controller methods.
     """
 
-    def __init__(self, state: SessionState, logger: logging.Logger):
+    def __init__(self, state: SessionState, logger: logging.Logger,
+                 listener: Optional[SessionEventListener] = None):
         self.state = state
         self.logger = logger
+        self.listener = listener
 
     # --- Server lifecycle ---
 
@@ -449,3 +460,116 @@ class SessionController:
         else:
             write_task_notes(sess_info["subject_id_date"],
                              sess_info["staff_id"], task_name, notes_text)
+
+    # --- Message reader ---
+
+    def start_message_reader(self) -> None:
+        """Start the background thread that polls the DB for CTR messages."""
+        import threading
+        thread = threading.Thread(target=self._message_reader, daemon=True)
+        thread.start()
+
+    def _message_reader(self) -> None:
+        """Poll the database for messages and dispatch to the listener."""
+        from neurobooth_os.log_manager import log_message_received
+
+        with meta.get_database_connection() as db_conn:
+            while True:
+                message: Message = meta.read_next_message("CTR", conn=db_conn)
+                if message is None:
+                    time_mod.sleep(.25)
+                    continue
+
+                log_message_received(message, self.logger)
+
+                if "DeviceInitialization" == message.msg_type:
+                    body = message.body
+                    if body.auto_camera_preview:
+                        self.state.auto_frame_preview_device = body.device_id
+                    outlet_values = f"['{body.stream_name}', '{body.outlet_id}']"
+                    create_lsl_inlet(self.state.stream_ids, outlet_values, self.state.inlets)
+                    self.listener.on_inlet_update(list(self.state.inlets.keys()))
+                    if body.camera_preview:
+                        self.listener.on_new_preview_device(body.stream_name, body.device_id)
+
+                elif "SessionPrepared" == message.msg_type:
+                    self.state.session_prepared_count += 1
+                    if self.state.session_prepared_count == len(get_nodes()):
+                        self.listener.on_devices_prepared()
+
+                elif "ServerStarted" == message.msg_type:
+                    body = message.body
+                    if body.neurobooth_version != self.state.release_version:
+                        self.listener.on_version_error(
+                            VersionMismatchError(self.state.release_version,
+                                                 body.neurobooth_version, message.source, "CODE"))
+                        return
+                    if body.config_version != self.state.config_version:
+                        self.listener.on_version_error(
+                            VersionMismatchError(self.state.config_version,
+                                                 body.config_version, message.source, "CONFIG"))
+                        return
+                    self.listener.on_server_started(message.source)
+
+                elif "TasksCreated" == message.msg_type:
+                    self.listener.on_tasks_created()
+
+                elif "TaskInitialization" == message.msg_type:
+                    body = message.body
+                    self.listener.on_task_initiated(body.task_id, body.task_id,
+                                                    body.log_task_id, body.tsk_start_time)
+
+                elif "TaskCompletion" == message.msg_type:
+                    body = message.body
+                    self.logger.debug(f"TaskCompletion msg for {body.task_id}")
+                    self.listener.on_task_finished(body.task_id, str(body.has_lsl_stream))
+
+                elif "NewVideoFile" == message.msg_type:
+                    body = message.body
+                    self.listener.on_new_video_file(body.stream_name, body.filename, body.event)
+
+                elif "NoEyetracker" == message.msg_type:
+                    self.listener.on_no_eyetracker(
+                        "Eyetracker not found! \nServers will be terminated, "
+                        "wait until servers are closed.\nThen, connect the eyetracker and start again")
+
+                elif "MbientDisconnected" == message.msg_type:
+                    body = message.body
+                    self.listener.on_mbient_disconnected(
+                        f"{body.warning}, \nconsider repeating the task")
+
+                elif "StatusMessage" == message.msg_type:
+                    self._handle_status_message(message)
+
+                elif "ErrorMessage" == message.msg_type:
+                    self._handle_status_message(message)
+
+                elif "FramePreviewReply" == message.msg_type:
+                    self.listener.on_frame_preview(message.body)
+
+                else:
+                    self.logger.debug(f"Unhandled message: {message.msg_type}")
+
+    def _handle_status_message(self, message) -> None:
+        """Parse status/error messages and forward to listener."""
+        body = message.body
+        heading = "Status: "
+        msg = body.text
+        text_color = None
+
+        if body.status is None:
+            text_color = "black"
+        elif body.status.upper() == "CRITICAL":
+            heading = "Critical Error: "
+            msg = (f"A critical error has occurred on server '{message.source}'. "
+                   f"The system must shutdown. Please terminate the system and make sure ACQ and STM "
+                   f"have shut-down correctly before restarting the session.\n"
+                   f"The error was: '{body.text}'")
+            text_color = "red"
+        elif body.status.upper() == "ERROR":
+            text_color = "red"
+        elif body.status == "WARNING":
+            text_color = "orange red"
+
+        self.listener.on_error(f"{heading}: {msg}", text_color=text_color)
+        self.logger.debug(body.text)
