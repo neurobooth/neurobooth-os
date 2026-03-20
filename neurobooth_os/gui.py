@@ -649,7 +649,7 @@ def gui(logger):
             # Print LSL inlet names in GUI
             if state.inlet_keys != list(state.inlets):
                  state.inlet_keys = list(state.inlets)
-                 window["inlet_State"].update("\n".join(inlet_keys))
+                 window["inlet_State"].update("\n".join(state.inlet_keys))
     close(window)
 
 
