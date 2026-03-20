@@ -4,6 +4,7 @@ import re
 import os
 import subprocess
 import ast
+from typing import List, Tuple
 
 import neurobooth_os.config as cfg
 
@@ -222,9 +223,36 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
     logger.info(f"{node_name.upper()} server initiated with pid {pid}")
 
     if save_pid_txt:
-        with open("server_pids.txt", "a") as f:
-            f.write(f"{pid}|{node_name}|{time()}\n")
+        entries = _read_pid_file()
+        entries.append((str(pid), node_name, str(time())))
+        _write_pid_file([f"{p}|{n}|{t}\n" for p, n, t in entries])
     return pid
+
+
+def _read_pid_file(txt_name: str = "server_pids.txt") -> List[Tuple[str, str, str]]:
+    """Read and validate server_pids.txt, skipping malformed lines."""
+    if not os.path.exists(txt_name):
+        return []
+    entries = []
+    with open(txt_name, "r") as f:
+        for line in f:
+            parts = line.strip().split("|")
+            if len(parts) != 3:
+                if line.strip():  # Only warn on non-blank lines
+                    logger.warning(f"Skipping malformed line in {txt_name}: {line.strip()!r}")
+                continue
+            entries.append((parts[0], parts[1], parts[2]))
+    return entries
+
+
+def _write_pid_file(lines: List[str], txt_name: str = "server_pids.txt") -> None:
+    """Write server_pids.txt atomically via temp file + rename."""
+    tmp_name = txt_name + ".tmp"
+    with open(tmp_name, "w") as f:
+        f.writelines(lines)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_name, txt_name)
 
 
 def kill_remote_pid(pids, node_name):
@@ -250,27 +278,20 @@ def kill_remote_pid(pids, node_name):
 
 
 def kill_pid_txt(txt_name="server_pids.txt", node_name=None):
-
-    if not os.path.exists(txt_name):
+    entries = _read_pid_file(txt_name)
+    if not entries:
         return
 
-    with open(txt_name, "r+") as f:
-        Lines = f.readlines()
+    print(f"Closing {len(entries)} remote processes")
 
-        if len(Lines):
-            print(f"Closing {len(Lines)} remote processes")
+    remaining = []
+    for pid, node, tsmp in entries:
+        if node_name is not None and node_name != node:
+            remaining.append((pid, node, tsmp))
+            continue
+        kill_remote_pid(ast.literal_eval(pid), node)
 
-        new_lines = []
-        for line in Lines:
-            pid, node, tsmp = line.split("|")
-            if node_name is not None and node_name != node:
-                new_lines.append(line)
-                continue
-            kill_remote_pid(ast.literal_eval(pid), node)
-
-        f.seek(0)
-        if len(new_lines):
-            f.writelines(new_lines)
-        else:
-            f.write("")
-        f.truncate()
+    if remaining:
+        _write_pid_file([f"{p}|{n}|{t}\n" for p, n, t in remaining], txt_name)
+    elif os.path.exists(txt_name):
+        os.remove(txt_name)
