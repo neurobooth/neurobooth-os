@@ -226,11 +226,14 @@ class DeviceManager:
         return None
 
     def start_cameras(self, filename: str, task_devices: List[DeviceArgs]) -> None:
-        for stream in self.get_camera_streams(task_devices):
-            try:
-                stream.start(filename)
-            except Exception as e:
-                self.logger.exception(e)
+        cameras = self.get_camera_streams(task_devices)
+        with ThreadPoolExecutor(max_workers=len(cameras)) as executor:
+            futures = {executor.submit(stream.start, filename): stream for stream in cameras}
+            for future in futures:
+                try:
+                    future.result()
+                except Exception as e:
+                    self.logger.exception(e)
 
     def stop_cameras(self, task_devices: List[DeviceArgs]):
         cameras = self.get_camera_streams(task_devices)
