@@ -17,11 +17,22 @@ from typing import Dict, List, Optional
 import numpy as np
 import cv2
 
+import logging
+import time as time_mod
+
 import neurobooth_os.config as cfg
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.msg.messages import FramePreviewRequest, Request
+from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
+from neurobooth_os.msg.messages import (
+    FramePreviewRequest, Request, CreateTasksRequest, PerformTaskRequest,
+    TerminateServerRequest, PrepareRequest, PauseSessionRequest,
+    ResumeSessionRequest, CancelSessionRequest, LslRecording,
+    TasksFinished, MEDIUM_HIGH_PRIORITY,
+)
+from neurobooth_os.netcomm import start_server, kill_pid_txt
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets
 from neurobooth_os.util.nb_types import Subject
+from neurobooth_os.iout import marker_stream
 
 
 # ---------------------------------------------------------------------------
@@ -260,3 +271,181 @@ class SessionState:
     current_task_id: Optional[str] = None
     current_t_obs_id: Optional[str] = None
     current_tsk_strt_time: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Session Controller
+# ---------------------------------------------------------------------------
+
+class SessionController:
+    """Orchestrates a Neurobooth session without any GUI dependency.
+
+    The controller owns the SessionState and provides methods for each
+    phase of a session. GUI updates are communicated via a logger; the
+    caller (gui.py) handles widget manipulation before/after calling
+    controller methods.
+    """
+
+    def __init__(self, state: SessionState, logger: logging.Logger):
+        self.state = state
+        self.logger = logger
+
+    # --- Server lifecycle ---
+
+    def start_servers(self) -> None:
+        """Kill stale server processes and start fresh ones."""
+        kill_pid_txt()
+        for node in get_nodes():
+            if node.startswith('acquisition_'):
+                idx = int(node.split('_')[1])
+                start_server(node, acq_index=idx)
+            else:
+                start_server(node)
+        time_mod.sleep(1)
+
+    def terminate_servers(self, conn) -> None:
+        """Send TerminateServerRequest to STM and all ACQ servers."""
+        shutdown_stm = Request(source="CTR", destination="STM",
+                               body=TerminateServerRequest())
+        meta.post_message(shutdown_stm, conn)
+        for acq_id in cfg.neurobooth_config.all_acq_service_ids():
+            shutdown_acq = Request(source="CTR", destination=acq_id,
+                                   body=TerminateServerRequest())
+            meta.post_message(shutdown_acq, conn)
+
+    # --- Device preparation ---
+
+    def prepare_devices(self, conn, collection_id: str, selected_tasks: List[str]) -> None:
+        """Send PrepareRequest to all server nodes and create the video marker stream."""
+        database = cfg.neurobooth_config.database.dbname
+        self.state.video_marker_stream = marker_stream("videofiles")
+
+        for node in get_nodes():
+            if node.startswith('acquisition_'):
+                idx = int(node.split('_')[1])
+                dest = cfg.neurobooth_config.acq_service_id(idx)
+            else:
+                dest = "STM"
+            body = PrepareRequest(
+                database_name=database,
+                subject_id=self.state.log_task['subject_id'],
+                collection_id=collection_id,
+                selected_tasks=selected_tasks,
+                date=self.state.log_task['date'],
+            )
+            msg = Request(source='CTR', destination=dest, body=body)
+            meta.post_message(msg, conn)
+
+    # --- Session execution ---
+
+    def start_task_presentation(self, subject_id: str, session_id: int) -> bool:
+        """Send CreateTasksRequest to STM. Returns False if no tasks selected."""
+        if not self.state.task_list:
+            return False
+        self.state.last_task = self.state.task_list[-1]
+        msg_body = CreateTasksRequest(
+            tasks=self.state.task_list,
+            subj_id=subject_id,
+            session_id=session_id,
+            frame_preview_device_id=self.state.auto_frame_preview_device,
+        )
+        msg = Request(source='CTR', destination='STM', body=msg_body)
+        meta.post_message(msg)
+        self.state.steps.append("task_started")
+        return True
+
+    def queue_task_messages(self, conn) -> None:
+        """Post PerformTaskRequest for each task, followed by TasksFinished."""
+        for task_id in self.state.task_list:
+            msg = Request(source="CTR", destination="STM",
+                          body=PerformTaskRequest(task_id=task_id))
+            meta.post_message(msg, conn)
+        msg = Request(source="CTR", destination="STM", body=TasksFinished())
+        meta.post_message(msg, conn)
+
+    def send_pause(self) -> None:
+        """Send PauseSessionRequest to STM."""
+        meta.post_message(Request(source="CTR", destination="STM",
+                                  body=PauseSessionRequest()))
+
+    def send_resume(self) -> None:
+        """Send ResumeSessionRequest to STM."""
+        meta.post_message(Request(source="CTR", destination="STM",
+                                  body=ResumeSessionRequest()))
+
+    def send_cancel(self) -> None:
+        """Send CancelSessionRequest to STM."""
+        meta.post_message(Request(source="CTR", destination="STM",
+                                  body=CancelSessionRequest()))
+
+    def send_recalibrate(self) -> None:
+        """Queue a calibration task at elevated priority."""
+        msg = Request(source="CTR", destination="STM",
+                      body=PerformTaskRequest(task_id="calibration_obs_1",
+                                              priority=MEDIUM_HIGH_PRIORITY))
+        meta.post_message(msg)
+
+    # --- LSL recording ---
+
+    def start_lsl_session(self, folder: str) -> None:
+        """Create an LSL recording session."""
+        import liesl
+        streamargs = [{"name": n} for n in list(self.state.inlets)]
+        self.state.session = liesl.Session(
+            prefix=folder,
+            streamargs=streamargs,
+            mainfolder=cfg.neurobooth_config.control.local_data_dir,
+        )
+
+    def start_lsl_recording(self, subject_id: str, task_id: str,
+                            t_obs_id: str, obs_log_id: str,
+                            tsk_strt_time: str) -> str:
+        """Start recording LSL data for a task and notify STM."""
+        rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
+        self.state.session.start_recording(rec_fname)
+
+        msg = Request(source="CTR", destination='STM', body=LslRecording())
+        meta.post_message(msg)
+
+        self.state.rec_fname = rec_fname
+        self.state.obs_log_id = obs_log_id
+        return rec_fname
+
+    def stop_lsl_recording(self, task_id: str, t_obs_id: str,
+                           obs_log_id: str, folder: str) -> float:
+        """Stop LSL recording and trigger XDF split."""
+        import threading as threading_mod
+        self.state.session.stop_recording()
+
+        xdf_fname = get_xdf_name(self.state.session, self.state.rec_fname)
+        xdf_path = op.join(folder, xdf_fname)
+        t0 = time_mod.time()
+
+        if any(tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]):
+            postpone_xdf_split(xdf_path, t_obs_id, obs_log_id,
+                               cfg.neurobooth_config.split_xdf_backlog)
+        else:
+            with meta.get_database_connection() as db_conn:
+                xdf_split = threading_mod.Thread(
+                    target=split_sens_files,
+                    args=(xdf_path, obs_log_id, t_obs_id, db_conn),
+                    daemon=True,
+                )
+                xdf_split.start()
+
+        return time_mod.time() - t0
+
+    # --- Notes ---
+
+    def save_notes(self, sess_info: Dict, task_name: str, notes_text: str) -> None:
+        """Save session notes for a task or all tasks."""
+        from neurobooth_os.layouts import write_task_notes
+        make_session_folder(sess_info)
+        if task_name == "All tasks":
+            for task in sess_info["tasks"].split(", "):
+                if not any(i in task for i in ["intro", "pause"]):
+                    write_task_notes(sess_info["subject_id_date"],
+                                     sess_info["staff_id"], task, notes_text)
+        else:
+            write_task_notes(sess_info["subject_id_date"],
+                             sess_info["staff_id"], task_name, notes_text)

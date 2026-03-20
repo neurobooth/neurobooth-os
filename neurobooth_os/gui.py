@@ -16,32 +16,25 @@ import cv2
 import numpy as np
 
 import FreeSimpleGUI as sg
-import liesl
 from FreeSimpleGUI import Multiline
 
 import neurobooth_os.current_release as release
 import neurobooth_os.current_config as current_config
 
-from neurobooth_os.netcomm import start_server, kill_pid_txt
-from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets, stream_plotter
+from neurobooth_os.realtime.lsl_plotter import stream_plotter
 
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes, PREVIEW_AREA
 from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received
 from neurobooth_os.iout.metadator import LogSession
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
-from neurobooth_os.iout import marker_stream
 import neurobooth_os.config as cfg
-from neurobooth_os.msg.messages import (Message, PrepareRequest, Request, PerformTaskRequest, CreateTasksRequest,
-                                        TerminateServerRequest, MsgBody, MbientDisconnected, NewVideoFile,
+from neurobooth_os.msg.messages import (Message, MsgBody, MbientDisconnected, NewVideoFile,
                                         TaskCompletion, TaskInitialization,
-                                        DeviceInitialization, LslRecording,
-                                        TasksFinished, FramePreviewRequest,
-                                        FramePreviewReply, PauseSessionRequest, ResumeSessionRequest,
-                                        CancelSessionRequest, MEDIUM_HIGH_PRIORITY, ServerStarted)
+                                        DeviceInitialization,
+                                        FramePreviewReply, ServerStarted)
 from util.nb_types import Subject
 from neurobooth_os.session_controller import (
-    SessionState, SessionEventListener, VersionMismatchError,
+    SessionState, SessionController, SessionEventListener, VersionMismatchError,
     get_nodes, make_session_folder, resize_frame_preview,
     create_session_dict, create_lsl_inlet, request_frame_preview,
 )
@@ -104,106 +97,39 @@ def _get_collections(window, study_id: str):
 ########## Task-related functions ############
 
 
-def _start_task_presentation(window, task_list: List[str], subject_id: str, session_id: int, steps,
-                             state: SessionState):
-    """Present tasks"""
-    window['Start'].update(disabled=True)
-    write_output(window, "\nSession started")
-    state.last_task = task_list[-1]
-    if len(task_list) > 0:
-        msg_body = CreateTasksRequest(
-            tasks=task_list,
-            subj_id=subject_id,
-            session_id=session_id,
-            frame_preview_device_id=state.auto_frame_preview_device)
-        msg = Request(
-            source='CTR',
-            destination='STM',
-            body=msg_body
-        )
-        meta.post_message(msg)
-        steps.append("task_started")
-    else:
-        sg.PopupError("No task selected", location=get_popup_location(window))
-
-
-def _pause_tasks(window):
+def _pause_tasks(window, controller: SessionController):
     write_output(window, "Pause scheduled. Session will pause after the current task.")
-    continue_msg = "Continue tasks"
-    stop_msg = "Stop tasks"
-
-    msg_body = PauseSessionRequest()
-    req = Request(source="CTR", destination="STM", body=msg_body)
-    meta.post_message(req)
+    controller.send_pause()
     resp = sg.Popup(
         "The session will pause after the current task.\n", title="Pausing session",
-        custom_text=(continue_msg, stop_msg),
+        custom_text=("Continue tasks", "Stop tasks"),
         location=get_popup_location(window)
     )
-    # handle user closing either popup using 'x' instead of making a choice
-    if resp == continue_msg or resp is None:
-        body = ResumeSessionRequest()
-        request = Request(source="CTR", destination="STM", body=body)
-        meta.post_message(request)
+    if resp == "Continue tasks" or resp is None:
+        controller.send_resume()
         write_output(window, "Continue scheduled")
-    elif resp == stop_msg:
-        _stop_task_dialog(window, resume_on_cancel=True)
+    elif resp == "Stop tasks":
+        _stop_task_dialog(window, controller, resume_on_cancel=True)
     else:
         raise RuntimeError("Unknown Response from Pause Session dialog")
 
 
-def _stop_task_dialog(window, resume_on_cancel: bool):
-    """
-
-    Parameters
-    ----------
-    window  The main pysimplegui window
-    conn    a database connection
-    resume_on_cancel    if false, cancel only closes the dialog. If true, a ResumeSession message is sent to the backend
-                        This is for situations where the stop dialog is entered from a Pause dialog
-
-    Returns
-    -------
-
-    """
+def _stop_task_dialog(window, controller: SessionController, resume_on_cancel: bool):
     response = sg.popup_ok_cancel("Session will end after the current task completes!  \n\n"
                                   "Press OK to end the session; Cancel to continue the session.\n",
                                   title="Warning",
                                   location=get_popup_location(window))
     if response == "OK":
         write_output(window, "Stop session scheduled. Session will end after the current task.")
-        body = CancelSessionRequest()
-        request = Request(source="CTR", destination="STM", body=body)
-        meta.post_message(request)
+        controller.send_cancel()
         _session_button_state(window, disabled=True)
     else:
         if resume_on_cancel:
-            body = ResumeSessionRequest()
-            request = Request(source="CTR", destination="STM", body=body)
-            meta.post_message(request)
+            controller.send_resume()
             _session_button_state(window, disabled=False)
 
 
-def _calibrate(window):
-    write_output(window, "Eyetracker recalibration scheduled. Calibration will start after the current task.")
-    msg_body = PerformTaskRequest(task_id="calibration_obs_1", priority=MEDIUM_HIGH_PRIORITY)
-    msg = Request(source="CTR", destination="STM", body=msg_body)
-    meta.post_message(msg)
-    sg.Popup("Eyetracker Recalibration will start after the current task.", location=get_popup_location(window))
-
-
 ########## LSL functions ############
-
-def _start_lsl_session(window, inlets, folder=""):
-    window.write_event_value("start_lsl_session", "none")
-
-    # Create LSL session
-    streamargs = [{"name": n} for n in list(inlets)]
-    session = liesl.Session(
-        prefix=folder, streamargs=streamargs, mainfolder=cfg.neurobooth_config.control.local_data_dir
-    )
-    return session
-
 
 def write_output(window, text: str, text_color: Optional[str] =None):
     key = "-OUTPUT-"
@@ -212,74 +138,7 @@ def write_output(window, text: str, text_color: Optional[str] =None):
         elem.print(text, text_color=text_color)
 
 
-def _record_lsl(
-        window,
-        session,
-        subject_id,
-        task_id,
-        t_obs_id,
-        obs_log_id,
-        tsk_strt_time
-):
-    # Start LSL recording
-    rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
-    session.start_recording(rec_fname)
-
-    msg_body = LslRecording()
-    msg_req = Request(source="CTR", destination='STM', body=msg_body)
-    meta.post_message(msg_req)
-
-    window["task_title"].update("Running Task:")
-    window["task_running"].update(task_id, background_color="red")
-    return rec_fname
-
-
-def _stop_lsl_and_save(
-        window, session, rec_fname, task_id, obs_log_id, t_obs_id, folder
-):
-    """Stop LSL stream and save"""
-    # Stop LSL recording
-    session.stop_recording()
-    window["task_running"].update(task_id, background_color="green")
-
-    xdf_fname = get_xdf_name(session, rec_fname)
-    xdf_path = op.join(folder, xdf_fname)
-    t0 = time.time()
-    if any([tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]]):
-        # Don't split large files now, just add to a backlog to handle post-session
-        postpone_xdf_split(xdf_path, t_obs_id, obs_log_id, cfg.neurobooth_config.split_xdf_backlog)
-        write_output(window, f"SPLIT XDF {t_obs_id} took: {time.time() - t0}")
-    else:
-        # Split XDF in a thread
-        with meta.get_database_connection() as db_conn:
-            xdf_split = threading.Thread(
-                target=split_sens_files,
-                args=(xdf_path, obs_log_id, t_obs_id, db_conn),
-                daemon=True,
-            )
-            xdf_split.start()
-        write_output(window, f"SPLIT XDF {task_id} took: {time.time() - t0}")
-
-
 ######### Server communication ############
-
-
-def _start_servers(window, nodes):
-    window["-init_servs-"].Update(disabled=True)
-    write_output(window, "Starting servers. Please wait....")
-
-    event, values = window.read(0.1)
-    
-    kill_pid_txt()
-    for node in nodes:
-        if node.startswith('acquisition_'):
-            idx = int(node.split('_')[1])
-            start_server(node, acq_index=idx)
-        else:
-            start_server(node)
-    
-    time.sleep(1)
-    return event, values
 
 
 def _start_ctr_server(window, logger, state: SessionState):
@@ -469,47 +328,6 @@ def handle_frame_preview_reply(window, frame_reply: FramePreviewReply) -> None:
     window["iphone"].update(data=img_b)
 
 
-def _prepare_devices(window, nodes: List[str], collection_id: str, log_task: Dict, database, tasks: str,
-                     selected_tasks: List[str], conn):
-    """Prepare devices. Mainly ensuring devices are connected"""
-
-    # disable button so it can't be pushed twice, and disable changes to task selection
-    window["-Connect-"].Update(disabled=True)
-    window['-SELECT_ALL-'].Update(disabled=True)
-
-    task_list: List[str] = tasks.split(',')
-    for task in task_list:
-        task_checkbox: sg.Checkbox = window.find_element(task.strip())
-        task_checkbox.update(disabled=True)
-
-    write_output(window, "\nConnecting devices. Please wait....")
-
-    video_marker_stream = marker_stream("videofiles")
-
-    for node in nodes:
-        if node.startswith('acquisition_'):
-            idx = int(node.split('_')[1])
-            dest = cfg.neurobooth_config.acq_service_id(idx)
-        else:
-            dest = "STM"
-        body = PrepareRequest(database_name=database,
-                              subject_id=log_task['subject_id'],
-                              collection_id=collection_id,
-                              selected_tasks=selected_tasks,
-                              date=log_task['date']
-                              )
-        msg = Request(source='CTR',
-                      destination=dest,
-                      body=body)
-
-        meta.post_message(msg, conn)
-    return video_marker_stream
-
-
-def get_nodes():
-    acq_nodes = [f'acquisition_{i}' for i in range(len(cfg.neurobooth_config.acquisition))]
-    return acq_nodes + ['presentation']
-
 def display_calibration_key_info(win):
     instructions  = """
 Calibration instructions: 
@@ -538,6 +356,7 @@ def gui(logger):
         config_version=current_config.version,
         log_task=meta.new_task_log_dict(),
     )
+    controller = SessionController(state, logger)
 
     database = cfg.neurobooth_config.database.dbname
 
@@ -567,7 +386,9 @@ def gui(logger):
             elif event == '-version_error-':
                 server_version, server = values[event]
                 version_error = VersionMismatchError(state.release_version, server_version, server, "CODE")
-                terminate_system(conn, plttr, state.sess_info, values, window) # kill other servers
+                plttr.stop()
+                _session_button_state(window, disabled=True)
+                controller.terminate_servers(conn)
                 report_version_error_and_close(logger, version_error, window)
                 break
 
@@ -575,7 +396,9 @@ def gui(logger):
                 server_config_version, server = values[event]
                 version_error = VersionMismatchError(state.config_version, server_config_version, server,
                                                      "CONFIG")
-                terminate_system(conn, plttr, state.sess_info, values, window) # kill other servers
+                plttr.stop()
+                _session_button_state(window, disabled=True)
+                controller.terminate_servers(conn)
                 report_version_error_and_close(logger, version_error, window)
                 break
 
@@ -624,7 +447,10 @@ def gui(logger):
 
             # Start servers on STM, ACQ
             elif event == "-init_servs-":
-                _start_servers(window, nodes)
+                window["-init_servs-"].Update(disabled=True)
+                write_output(window, "Starting servers. Please wait....")
+                event, values = window.read(0.1)
+                controller.start_servers()
 
             # Turn on devices
             elif event == "-Connect-":
@@ -638,8 +464,14 @@ def gui(logger):
                     )
                     continue
 
-                state.video_marker_stream = _prepare_devices(window,
-                    nodes, state.collection_id, state.log_task, database, state.task_string, selected_tasks, conn)
+                window["-Connect-"].Update(disabled=True)
+                window['-SELECT_ALL-'].Update(disabled=True)
+                task_list_all: List[str] = state.task_string.split(',')
+                for task in task_list_all:
+                    task_checkbox: sg.Checkbox = window.find_element(task.strip())
+                    task_checkbox.update(disabled=True)
+                write_output(window, "\nConnecting devices. Please wait....")
+                controller.prepare_devices(conn, state.collection_id, selected_tasks)
 
             elif event == "plot":
                 _plot_realtime(window, plttr, state.inlets)
@@ -650,33 +482,33 @@ def gui(logger):
                     state.start_pressed = True
                     state.session_id = meta.make_session_id(conn, log_sess)
                     state.task_list = [k for k, v in values.items() if "obs" in k and v is True]
-                    _start_task_presentation(window, state.task_list, state.sess_info["subject_id"],
-                                             state.session_id, state.steps, state)
+                    write_output(window, "\nSession started")
+                    if not controller.start_task_presentation(
+                            state.sess_info["subject_id"], state.session_id):
+                        sg.PopupError("No task selected", location=get_popup_location(window))
 
             elif event == "tasks_created":
                 _session_button_state(window, disabled=False)
-                for task_id in state.task_list:
-                    msg_body = PerformTaskRequest(task_id=task_id)
-                    msg = Request(source="CTR", destination="STM", body=msg_body)
-                    meta.post_message(msg, conn)
-                # PerformTask Messages queued for all tasks, now queue a TasksFinished message
-                msg_body = TasksFinished()
-                msg = Request(source="CTR", destination="STM", body=msg_body)
-                meta.post_message(msg, conn)
+                controller.queue_task_messages(conn)
 
             elif event == "Pause tasks":
-                _pause_tasks(window)
+                _pause_tasks(window, controller)
 
             elif event == "Stop tasks":
-                _stop_task_dialog(window, resume_on_cancel=False)
+                _stop_task_dialog(window, controller, resume_on_cancel=False)
 
             elif event == "Calibrate":
-                _calibrate(window)
+                write_output(window, "Eyetracker recalibration scheduled. "
+                             "Calibration will start after the current task.")
+                controller.send_recalibrate()
+                sg.Popup("Eyetracker Recalibration will start after the current task.",
+                         location=get_popup_location(window))
 
             # Save notes to a txt
             elif event == "_save_notes_":
                 if values["_notes_taskname_"] != "":
-                    _save_session_notes(state.sess_info, values, window)
+                    controller.save_notes(state.sess_info, values["_notes_taskname_"], values["notes"])
+                    window["notes"].Update("")
                 else:
                     sg.PopupError(
                         "Pressed save notes without task, select one in the dropdown list",
@@ -707,7 +539,12 @@ def gui(logger):
                         write_output(window, "System termination scheduled. "
                                              "Servers will shut down after the current task.")
 
-                        terminate_system(conn, plttr, state.sess_info, values, window)
+                        if state.sess_info and values and "_notes_taskname_" in values:
+                            controller.save_notes(state.sess_info, values.get("_notes_taskname_", ""),
+                                                  values.get("notes", ""))
+                        plttr.stop()
+                        _session_button_state(window, disabled=True)
+                        controller.terminate_servers(conn)
                         break
 
             ##################################################################################
@@ -725,15 +562,12 @@ def gui(logger):
                 write_output(window, f"\nTask initiated: {task_id}")
 
                 logger.debug(f"Starting LSL for task: {t_obs_id}")
-                state.rec_fname = _record_lsl(
-                    window,
-                    state.session,
+                controller.start_lsl_recording(
                     state.sess_info["subject_id_date"],
-                    task_id,
-                    t_obs_id,
-                    state.obs_log_id,
-                    tsk_strt_time,
+                    task_id, t_obs_id, state.obs_log_id, tsk_strt_time,
                 )
+                window["task_title"].update("Running Task:")
+                window["task_running"].update(task_id, background_color="red")
                 if "calibration" in task_id.lower():
                     display_calibration_key_info(window)
 
@@ -743,8 +577,14 @@ def gui(logger):
                 boolean_value = has_lsl_stream.lower() == 'true'
                 if boolean_value:
                     logger.debug(f"Stopping LSL for task: {task_id}")
-                    handle_task_finished(conn, state.obs_log_id, state.rec_fname, state.sess_info,
-                                         state.session, task_id, values, window)
+                    elapsed = controller.stop_lsl_recording(
+                        task_id, task_id, state.obs_log_id,
+                        state.sess_info["subject_id_date"])
+                    write_output(window, f"SPLIT XDF {task_id} took: {elapsed:.1f}")
+                    window["task_running"].update(task_id, background_color="green")
+                    write_task_notes(state.sess_info["subject_id_date"],
+                                     state.sess_info["staff_id"], task_id, "")
+                    window["-frame_preview-"].update(disabled=False)
                 if task_id == state.last_task:
                     _session_button_state(window, disabled=True)
                     write_output(window, "\nSession complete: OK to terminate", 'blue')
@@ -756,7 +596,7 @@ def gui(logger):
             elif event == 'devices_connected':
                 state.session_prepared_count += 1
                 if state.session_prepared_count == len(get_nodes()):
-                    state.session = _start_lsl_session(window, state.inlets, state.sess_info["subject_id_date"])
+                    controller.start_lsl_session(state.sess_info["subject_id_date"])
                     enable_frame_preview(window, state.frame_preview_devices)
                     if not state.start_pressed:
                         window['Start'].update(disabled=False)
@@ -818,69 +658,6 @@ def close(window):
     if "-OUTPUT-" in window.AllKeysDict:
         window["-OUTPUT-"].__del__()
     print("Session terminated")
-
-
-def terminate_system(conn, plttr, sess_info, values, window):
-    if sess_info and values:
-        _save_session_notes(sess_info, values, window)
-    plttr.stop()
-    _session_button_state(window, disabled=True)
-    # Send TerminateServerRequest to STM
-    shutdown_stm_msg: Message = Request(source="CTR",
-                                        destination="STM",
-                                        body=TerminateServerRequest())
-    meta.post_message(shutdown_stm_msg, conn)
-    # Send TerminateServerRequest to each ACQ
-    for acq_id in cfg.neurobooth_config.all_acq_service_ids():
-        shutdown_acq_msg: Message = Request(source="CTR",
-                                            destination=acq_id,
-                                            body=TerminateServerRequest())
-        meta.post_message(shutdown_acq_msg, conn)
-
-
-def handle_task_finished(conn, obs_log_id, rec_fname, sess_info, session, t_obs_id, values, window):
-    _stop_lsl_and_save(
-        window,
-        session,
-        rec_fname,
-        t_obs_id,
-        obs_log_id,
-        t_obs_id,
-        sess_info["subject_id_date"],
-    )
-    write_task_notes(
-        sess_info["subject_id_date"], sess_info["staff_id"], t_obs_id, ""
-    )
-    window["-frame_preview-"].update(disabled=False)
-
-
-def _save_session_notes(sess_info, values, window):
-    if values is None or "_notes_taskname_" not in values:
-        return
-    make_session_folder(sess_info)
-    if values["_notes_taskname_"] == "All tasks":
-        for task in sess_info["tasks"].split(", "):
-            if not any([i in task for i in ["intro", "pause"]]):
-                write_task_notes(
-                    sess_info["subject_id_date"],
-                    sess_info["staff_id"],
-                    task,
-                    values["notes"],
-                )
-    else:
-        write_task_notes(
-            sess_info["subject_id_date"],
-            sess_info["staff_id"],
-            values["_notes_taskname_"],
-            values["notes"],
-        )
-    window["notes"].Update("")
-
-
-def make_session_folder(sess_info):
-    session_dir = op.join(cfg.neurobooth_config.control.local_data_dir, sess_info['subject_id_date'])
-    if not op.exists(session_dir):
-        os.mkdir(session_dir)
 
 
 def _session_button_state(window: object, disabled: bool) -> None:
