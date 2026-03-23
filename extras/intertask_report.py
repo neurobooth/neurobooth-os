@@ -461,10 +461,10 @@ def plot_by_session(gaps: pd.DataFrame, save_dir: Optional[Path] = None) -> None
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10))
 
     # Top: by session (chronological order)
-    ax1.bar(range(len(sess_stats)), sess_stats["median"],
-            color="steelblue", alpha=0.7, label="Median")
+    ax1.plot(range(len(sess_stats)), sess_stats["median"],
+             'bo-', markersize=5, label="Median")
     ax1.plot(range(len(sess_stats)), sess_stats["mean"],
-             'ro-', markersize=4, alpha=0.7, label="Mean")
+             'rs-', markersize=4, alpha=0.7, label="Mean")
     ax1.set_xlabel("Session (chronological)")
     ax1.set_ylabel("Inter-task time (seconds)")
     ax1.set_title("Inter-task time by session")
