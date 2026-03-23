@@ -111,6 +111,12 @@ MAX_GAP_SECONDS = 180
 # for adjustment calculations.
 MIC_DEVICE = "Mic_Yeti_dev_1"
 
+# Devices to exclude from the long-pole calculation. Mouse is excluded
+# because it only records during ~7 tasks, making its adjusted gaps
+# unreliable (the sparse recording creates large artificial overhead
+# values that don't reflect real device startup time).
+EXCLUDED_DEVICES = {"Mouse"}
+
 # ---------------------------------------------------------------------------
 # Database connection
 # ---------------------------------------------------------------------------
@@ -301,6 +307,8 @@ def compute_transition_gaps(df: pd.DataFrame) -> pd.DataFrame:
             device_gaps = {}
 
             for device, timeline in device_timelines.items():
+                if device in EXCLUDED_DEVICES:
+                    continue
                 for i in range(len(timeline) - 1):
                     t_from = timeline[i]
                     t_to = timeline[i + 1]
