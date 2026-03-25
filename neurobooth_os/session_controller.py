@@ -444,7 +444,9 @@ class SessionController:
                             tsk_strt_time: str) -> str:
         """Start recording LSL data for a task and notify STM."""
         rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
+        t0 = time_mod.time()
         self.state.session.start_recording(rec_fname)
+        self.logger.info(f"liesl start_recording took: {time_mod.time() - t0:.2f}")
 
         msg = Request(source="CTR", destination='STM', body=LslRecording())
         meta.post_message(msg)
@@ -457,7 +459,9 @@ class SessionController:
                            obs_log_id: str, folder: str) -> float:
         """Stop LSL recording and trigger XDF split."""
         import threading as threading_mod
+        t_stop = time_mod.time()
         self.state.session.stop_recording()
+        self.logger.info(f"liesl stop_recording took: {time_mod.time() - t_stop:.2f}")
 
         xdf_fname = get_xdf_name(self.state.session, self.state.rec_fname)
         xdf_path = op.join(folder, xdf_fname)

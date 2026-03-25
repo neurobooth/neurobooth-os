@@ -7,6 +7,7 @@ import os
 import os.path as op
 import logging
 import sys
+import time as time_mod
 from typing import Dict, Optional, List
 
 import cv2
@@ -484,6 +485,7 @@ def gui(logger):
 
             # Signal a task started: record LSL data and update gui
             elif event == "task_initiated":
+                t_evt = time_mod.time()
                 # event values -> f"['{task_id}', '{t_obs_id}', '{log_task_id}, '{tsk_strt_time}']
                 window["-frame_preview-"].update(disabled=True)
                 task_id, t_obs_id, state.obs_log_id, tsk_strt_time = eval(values[event])
@@ -497,6 +499,7 @@ def gui(logger):
                     state.sess_info["subject_id_date"],
                     task_id, t_obs_id, state.obs_log_id, tsk_strt_time,
                 )
+                logger.info(f"CTR task_initiated handler took: {time_mod.time() - t_evt:.2f}")
                 window["task_title"].update("Running Task:")
                 window["task_running"].update(task_id, background_color="red")
                 if "calibration" in task_id.lower():
@@ -504,6 +507,7 @@ def gui(logger):
 
             # Signal a task ended: stop LSL recording and update gui
             elif event == "task_finished":
+                t_evt = time_mod.time()
                 task_id, has_lsl_stream = eval(values['task_finished'])
                 boolean_value = has_lsl_stream.lower() == 'true'
                 if boolean_value:
@@ -511,6 +515,7 @@ def gui(logger):
                     elapsed = controller.stop_lsl_recording(
                         task_id, task_id, state.obs_log_id,
                         state.sess_info["subject_id_date"])
+                    logger.info(f"CTR task_finished handler took: {time_mod.time() - t_evt:.2f}")
                     write_output(window, f"SPLIT XDF {task_id} took: {elapsed:.1f}")
                     window["task_running"].update(task_id, background_color="green")
                     write_task_notes(state.sess_info["subject_id_date"],

@@ -70,6 +70,7 @@ def run_stm(logger):
     session_canceled: bool = False  # True if message received that RC requests that the session be canceled
     finished: bool = False  # True if the "Thank you" screen has been displayed
     shutdown: bool = False  # True if message received that this server should be terminated
+    last_task_finished_time: Optional[float] = None  # For inter-task timing
     init_servers = Request(source="STM", destination="CTR", body=ServerStarted(neurobooth_version=release.version,
                                                                                config_version=current_config.version))
     meta.post_message(init_servers)
@@ -147,7 +148,10 @@ def run_stm(logger):
                     frame_preview_device_id = msg_body.frame_preview_device_id
 
                 elif "PerformTaskRequest" == current_msg_type:
+                    if last_task_finished_time is not None:
+                        logger.info(f"Inter-task gap (STM idle): {time() - last_task_finished_time:.2f}")
                     _perform_task(device_log_entry_dict, message, session, subj_id, task_log_entry)
+                    last_task_finished_time = time()
 
                 elif "PauseSessionRequest" == current_msg_type:
                     paused = _pause(session)
@@ -240,12 +244,16 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
             events = task_args.task_instance.run(**this_task_kwargs)
             elapsed_time = time() - t01
             session.logger.info(f"Total task RUN took: {elapsed_time:.2f}")
+            t_stop = time()
             stop_acq(session, task_args)
+            session.logger.info(f"stop_acq took: {time() - t_stop:.2f}")
 
             # Signal CTR to stop LSL rec
             meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)))
             session.logger.info(f'FINISHED TASK: {task_id}')
+            t_log = time()
             log_task(events, session, task_id, task_id, task_log_entry, task_args.task_instance)
+            session.logger.info(f"log_task took: {time() - t_log:.2f}")
 
             elapsed_time = time() - t00
             session.logger.info(f"Total TASK took: {elapsed_time:.2f}")
@@ -359,6 +367,7 @@ def _get_task_args(session: StmSession, task_id: str):
 
 def stop_acq(session: StmSession, task_args: TaskArgs):
     """ Stop recording on all ACQ servers in parallel to stopping on STM """
+    t0 = time()
     session.logger.info(f'SENDING record_stop TO ACQ')
     stimulus_id = task_args.stim_args.stimulus_id
 
@@ -367,13 +376,17 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
         body = StopRecording()
         sr_msg = Request(source="STM", destination=acq_id, body=body)
         meta.post_message(sr_msg)
+    session.logger.info(f"stop_acq: posted StopRecording to {len(acq_ids)} ACQs in {time() - t0:.2f}")
 
     # Stop eyetracker
+    t_eye = time()
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         if "calibration_task" not in stimulus_id:
             session.eye_tracker.stop()
+            session.logger.info(f"stop_acq: eyetracker stop took: {time() - t_eye:.2f}")
 
+    t_poll = time()
     replies = 0
     attempts = 0
     with meta.get_database_connection() as poll_conn:
@@ -384,6 +397,8 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
             else:
                 sleep(.1)
                 attempts += 1
+    session.logger.info(f"stop_acq: poll for {len(acq_ids)} RecordingStopped took: {time() - t_poll:.2f} "
+                        f"({replies}/{len(acq_ids)} replies, {attempts} poll attempts)")
 
 
 def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_device_id):
