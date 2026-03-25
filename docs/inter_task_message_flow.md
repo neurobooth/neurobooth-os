@@ -40,7 +40,7 @@ sequenceDiagram
     Note over CTR,GUI: PHASE 2b: CTR handles TaskCompletion<br/>(parallel, no one waits on this)
     CTR-->>DB: (polls 250ms) reads TaskCompletion
     CTR->>GUI: write_event_value("task_finished")
-    GUI-->>GUI: (polls 500ms) window.read() picks up event
+    Note over GUI: window.read() wakes immediately
     Note over GUI: liesl session.stop_recording() — UNKNOWN DURATION
     Note over GUI: starts XDF split thread (non-blocking)
     end
@@ -56,7 +56,7 @@ sequenceDiagram
     par Wait for CTR LSL start
         CTR-->>DB: (polls 250ms) reads TaskInitialization
         CTR->>GUI: write_event_value("task_initiated")
-        GUI-->>GUI: (polls 500ms) window.read() picks up event
+        Note over GUI: window.read() wakes immediately
         Note over GUI: liesl session.start_recording() — UNKNOWN DURATION
         GUI->>DB: LslRecording (to STM)
         STM-->>DB: (polls 100ms) reads LslRecording
@@ -97,7 +97,7 @@ so average pickup latency = interval / 2.
 | STM task-critical waits | any -> STM | 100ms | ~50ms |
 | ACQ main loop | any -> ACQ | 250ms | ~125ms |
 | CTR message reader | any -> CTR | 250ms | ~125ms |
-| GUI event loop | CTR thread -> GUI | 500ms | ~250ms |
+| GUI event loop | CTR thread -> GUI | wakes immediately | ~0ms |
 
 ## Critical Path (Minimum Latency)
 
@@ -122,12 +122,12 @@ STM post-task:
 start next task (parallel, take the max):
   Path A — CTR LSL start:
     CTR reader polls                avg  125ms
-    GUI event loop polls            avg  250ms
+    GUI event loop wakes             ~0ms  (write_event_value wakes window.read)
     liesl start_recording                ???
     CTR posts LslRecording           ~0ms
     STM polls and picks up          avg   50ms
                                     ───────────
-                                    min  425ms + liesl start time
+                                    min  175ms + liesl start time
 
   Path B — ACQ recording start:
     ACQ polls and picks up          avg  125ms
@@ -139,8 +139,8 @@ start next task (parallel, take the max):
 
   task instance creation                 ???
 
-TOTAL MINIMUM (polls only):         ~725ms
-TOTAL WITH UNKNOWNS:                ~725ms + device stop + device start
+TOTAL MINIMUM (polls only):         ~475ms
+TOTAL WITH UNKNOWNS:                ~475ms + device stop + device start
                                           + liesl stop/start + log_task
                                           + task instance creation
 ```
