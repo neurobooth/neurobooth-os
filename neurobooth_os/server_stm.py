@@ -260,36 +260,31 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
 
 
 def _get_task_instance(session: StmSession, task_args: TaskArgs, edf_fname):
-    """
-    Instantiates a task instance and inserts it into task_args for subsequent use.
+    """Ensure a task instance exists and start the eyetracker if needed.
 
-    Parameters
-    ----------
-    session
-    task_args
-    edf_fname
-
-    Returns
-    -------
-
+    If the instance was pre-constructed during ``_create_tasks``, this
+    skips construction entirely and only performs eyetracker setup.
     """
     global calib_instructions
-    # Create task instance and load media
-    t1 = time()
-    tsk_fun_obj: Callable = copy.copy(
-        task_args.task_constructor_callable)  # callable for Task constructor
-    this_task_kwargs = create_task_kwargs(session, task_args)
-    task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
-    elapsed_time = time() - t1
-    session.logger.info(f'Waiting for task instance creation took: {elapsed_time:.2f}')
+
+    if task_args.task_instance is None:
+        t1 = time()
+        tsk_fun_obj: Callable = copy.copy(
+            task_args.task_constructor_callable)
+        this_task_kwargs = create_task_kwargs(session, task_args)
+        task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
+        elapsed_time = time() - t1
+        session.logger.info(f'Waiting for task instance creation took: {elapsed_time:.2f}')
+    else:
+        session.logger.info('Using pre-constructed task instance')
 
     # Start eyetracker if device in task
     # Eyetracker has to start after instance creation so we can render an image to the eyetracker output device
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         stimulus_id = task_args.stim_args.stimulus_id
-        if "calibration_task" not in stimulus_id:  # if not calibration record with start method
-            task_args.task_instance.render_image()  # Render image on HostPC/Tablet screen
+        if "calibration_task" not in stimulus_id:
+            task_args.task_instance.render_image()
             session.eye_tracker.start(edf_fname)
 
 def _create_tasks(message, session, task_log_entry):
@@ -312,6 +307,23 @@ def _create_tasks(message, session, task_log_entry):
     reply = Request(source="STM", destination=message.source, body=reply_body)
     meta.post_message(reply)
     session.logger.debug(task_list)
+
+    # Pre-construct task instances while the operator reviews the welcome screen.
+    # This moves the 2-3.5s per-task construction cost out of the inter-task gap.
+    t_pre = time()
+    for task_id in tasks:
+        if task_id in session.tasks():
+            task_args = _get_task_args(session, task_id)
+            if task_args.task_instance is None:
+                try:
+                    tsk_fun_obj: Callable = copy.copy(task_args.task_constructor_callable)
+                    kwargs = create_task_kwargs(session, task_args)
+                    task_args.task_instance = tsk_fun_obj(**kwargs)
+                    session.logger.debug(f"Pre-constructed task: {task_id}")
+                except Exception as e:
+                    session.logger.warning(f"Failed to pre-construct {task_id}: {e}")
+    session.logger.info(f"Pre-construction of {len(tasks)} tasks took: {time() - t_pre:.2f}")
+
     return device_log_entry_dict, subj_id
 
 
@@ -321,9 +333,12 @@ def setup_task(session, task_id, task_list):
 
 
 def load_task_media(session: StmSession, task_args: TaskArgs):
+    if task_args.task_instance is not None:
+        session.logger.info('Using pre-constructed task instance')
+        return
     t1 = time()
     tsk_fun_obj: Callable = copy.copy(
-        task_args.task_constructor_callable)  # callable for Task constructor
+        task_args.task_constructor_callable)
     this_task_kwargs = create_task_kwargs(session, task_args)
     task_args.task_instance = tsk_fun_obj(**this_task_kwargs)
     elapsed_time = time() - t1
