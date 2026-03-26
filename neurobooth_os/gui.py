@@ -522,6 +522,7 @@ def gui(logger):
                     window["-frame_preview-"].update(disabled=False)
                 if task_id == state.last_task:
                     _session_button_state(window, disabled=True)
+                    controller._join_lsl_stop()
                     write_output(window, "\nSession complete: OK to terminate", 'blue')
 
             # Send a marker string with the name of the new video file created
