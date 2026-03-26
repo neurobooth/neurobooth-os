@@ -150,8 +150,10 @@ def run_stm(logger):
                 elif "PerformTaskRequest" == current_msg_type:
                     if last_task_finished_time is not None:
                         logger.info(f"Inter-task gap (STM idle): {time() - last_task_finished_time:.2f}")
-                    _perform_task(device_log_entry_dict, message, session, subj_id, task_log_entry)
-                    last_task_finished_time = time()
+                    completion_time = _perform_task(
+                        device_log_entry_dict, message, session, subj_id, task_log_entry,
+                        prev_task_completion_time=last_task_finished_time)
+                    last_task_finished_time = completion_time or time()
 
                 elif "PauseSessionRequest" == current_msg_type:
                     paused = _pause(session)
@@ -179,7 +181,8 @@ def run_stm(logger):
     exit()
 
 
-def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_log_entry):
+def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_log_entry,
+                   prev_task_completion_time: Optional[float] = None):
     global calib_instructions
     msg_body = message.body
     task_id: str = msg_body.task_id
@@ -202,6 +205,7 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
             # Signal CTR to stop LSL rec
             meta.post_message(Request(source='STM', destination='CTR',
                                       body=TaskCompletion(task_id=task_id, has_lsl_stream=False)))
+            return time()
         else:
             with meta.get_database_connection() as log_conn:
 
@@ -235,6 +239,9 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
 
             elapsed_time = time() - t00
             session.logger.info(f"Total task WAIT took: {elapsed_time:.2f}")
+            if prev_task_completion_time is not None:
+                session.logger.info(
+                    f"End-to-end transition: {time() - prev_task_completion_time:.2f}")
             t01 = time()
             stimulus_id = task_args.stim_args.stimulus_id
             if "calibration_task" in stimulus_id:  # if not calibration record with start method
@@ -250,6 +257,7 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
 
             # Signal CTR to stop LSL rec
             meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)))
+            task_completion_time = time()
             session.logger.info(f'FINISHED TASK: {task_id}')
             t_log = time()
             log_task(events, session, task_id, task_id, task_log_entry, task_args.task_instance)
@@ -257,6 +265,8 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
 
             elapsed_time = time() - t00
             session.logger.info(f"Total TASK took: {elapsed_time:.2f}")
+            return task_completion_time
+    return None
 
 
 def _get_task_instance(session: StmSession, task_args: TaskArgs, edf_fname):

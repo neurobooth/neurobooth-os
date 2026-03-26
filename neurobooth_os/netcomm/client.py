@@ -289,7 +289,10 @@ def kill_pid_txt(txt_name="server_pids.txt", node_name=None):
         if node_name is not None and node_name != node:
             remaining.append((pid, node, tsmp))
             continue
-        kill_remote_pid(ast.literal_eval(pid), node)
+        try:
+            kill_remote_pid(ast.literal_eval(pid), node)
+        except (IndexError, cfg.ConfigException) as e:
+            logger.warning(f"Skipping stale pid entry {pid} for {node}: {e}")
 
     if remaining:
         _write_pid_file([f"{p}|{n}|{t}\n" for p, n, t in remaining], txt_name)
