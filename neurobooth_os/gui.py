@@ -512,11 +512,10 @@ def gui(logger):
                 boolean_value = has_lsl_stream.lower() == 'true'
                 if boolean_value:
                     logger.debug(f"Stopping LSL for task: {task_id}")
-                    elapsed = controller.stop_lsl_recording(
+                    controller.stop_lsl_recording(
                         task_id, task_id, state.obs_log_id,
                         state.sess_info["subject_id_date"])
                     logger.info(f"CTR task_finished handler took: {time_mod.time() - t_evt:.2f}")
-                    write_output(window, f"SPLIT XDF {task_id} took: {elapsed:.1f}")
                     window["task_running"].update(task_id, background_color="green")
                     write_task_notes(state.sess_info["subject_id_date"],
                                      state.sess_info["staff_id"], task_id, "")

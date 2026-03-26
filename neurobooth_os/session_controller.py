@@ -300,6 +300,7 @@ class SessionController:
         self.state = state
         self.logger = logger
         self.listener = listener
+        self._lsl_stop_thread: Optional[object] = None  # Background thread for LSL stop
 
     # --- Server lifecycle ---
 
@@ -316,6 +317,7 @@ class SessionController:
 
     def terminate_servers(self, conn) -> None:
         """Send TerminateServerRequest to STM and all ACQ servers."""
+        self._join_lsl_stop()
         shutdown_stm = Request(source="CTR", destination="STM",
                                body=TerminateServerRequest())
         meta.post_message(shutdown_stm, conn)
@@ -323,6 +325,14 @@ class SessionController:
             shutdown_acq = Request(source="CTR", destination=acq_id,
                                    body=TerminateServerRequest())
             meta.post_message(shutdown_acq, conn)
+
+    def _join_lsl_stop(self, timeout: float = 10.0) -> None:
+        """Wait for any in-flight LSL stop to complete."""
+        if self._lsl_stop_thread is not None and self._lsl_stop_thread.is_alive():
+            self.logger.info("Waiting for background LSL stop to complete...")
+            self._lsl_stop_thread.join(timeout=timeout)
+            if self._lsl_stop_thread.is_alive():
+                self.logger.warning("Background LSL stop did not complete within timeout")
 
     # --- Device preparation ---
 
@@ -456,30 +466,61 @@ class SessionController:
         return rec_fname
 
     def stop_lsl_recording(self, task_id: str, t_obs_id: str,
-                           obs_log_id: str, folder: str) -> float:
-        """Stop LSL recording and trigger XDF split."""
+                           obs_log_id: str, folder: str) -> None:
+        """Stop LSL recording in the background and trigger XDF split.
+
+        The underlying LabRecorderCLI subprocess takes 3-5s to finalize
+        the XDF file.  Rather than blocking the GUI event loop (which
+        would delay the next task's ``start_lsl_recording``), we capture
+        the old subprocess handle and finalize it in a background thread.
+        ``start_lsl_recording`` spawns a *new* LabRecorderCLI process, so
+        the two can safely run concurrently.
+        """
         import threading as threading_mod
-        t_stop = time_mod.time()
-        self.state.session.stop_recording()
-        self.logger.info(f"liesl stop_recording took: {time_mod.time() - t_stop:.2f}")
 
-        xdf_fname = get_xdf_name(self.state.session, self.state.rec_fname)
+        session = self.state.session
+        recorder = session.recorder
+
+        # Capture the old LabRecorderCLI subprocess and timing info
+        old_process = recorder.process
+        old_t0 = recorder.t0
+
+        # Reset session state immediately so start_recording can proceed
+        del recorder.process
+        session._is_recording = False
+
+        # Resolve the XDF path now, while state is still current
+        xdf_fname = get_xdf_name(session, self.state.rec_fname)
         xdf_path = op.join(folder, xdf_fname)
-        t0 = time_mod.time()
 
-        if any(tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]):
-            postpone_xdf_split(xdf_path, t_obs_id, obs_log_id,
-                               cfg.neurobooth_config.split_xdf_backlog)
-        else:
-            with meta.get_database_connection() as db_conn:
-                xdf_split = threading_mod.Thread(
-                    target=split_sens_files,
-                    args=(xdf_path, obs_log_id, t_obs_id, db_conn),
-                    daemon=True,
-                )
-                xdf_split.start()
+        def _finalize():
+            """Finalize the old LabRecorderCLI process and split the XDF."""
+            t_stop = time_mod.time()
+            try:
+                o, e = old_process.communicate(b"\n")
+                if old_process.poll() != 0:
+                    self.logger.error(
+                        f"LabRecorderCLI exited with code {old_process.poll()}: {o} {e}")
+                recorder.dur = time_mod.time() - old_t0
+            except Exception as exc:
+                self.logger.error(f"Error finalizing LabRecorderCLI: {exc}")
+            self.logger.info(f"liesl stop_recording took: {time_mod.time() - t_stop:.2f}")
 
-        return time_mod.time() - t0
+            if any(tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]):
+                postpone_xdf_split(xdf_path, t_obs_id, obs_log_id,
+                                   cfg.neurobooth_config.split_xdf_backlog)
+            else:
+                with meta.get_database_connection() as db_conn:
+                    split_thread = threading_mod.Thread(
+                        target=split_sens_files,
+                        args=(xdf_path, obs_log_id, t_obs_id, db_conn),
+                        daemon=True,
+                    )
+                    split_thread.start()
+
+        self._lsl_stop_thread = threading_mod.Thread(
+            target=_finalize, daemon=True, name="lsl-stop")
+        self._lsl_stop_thread.start()
 
     # --- Notes ---
 
