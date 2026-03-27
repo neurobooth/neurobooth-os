@@ -391,7 +391,13 @@ def _get_task_args(session: StmSession, task_id: str):
 
 
 def stop_acq(session: StmSession, task_args: TaskArgs):
-    """ Stop recording on all ACQ servers in parallel to stopping on STM """
+    """Stop recording on all ACQ servers and the Eyelink.
+
+    StopRecording is posted to ACQs as fire-and-forget. ACQ message
+    processing is sequential, so a subsequent StartRecording will
+    queue behind the stop — ordering is preserved without waiting
+    for RecordingStopped confirmations.
+    """
     t0 = time()
     session.logger.info(f'SENDING record_stop TO ACQ')
     stimulus_id = task_args.stim_args.stimulus_id
@@ -403,27 +409,13 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
         meta.post_message(sr_msg)
     session.logger.info(f"stop_acq: posted StopRecording to {len(acq_ids)} ACQs in {time() - t0:.2f}")
 
-    # Stop eyetracker
+    # Stop eyetracker (runs in parallel with ACQ stop since messages are already posted)
     t_eye = time()
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
         if "calibration_task" not in stimulus_id:
             session.eye_tracker.stop()
             session.logger.info(f"stop_acq: eyetracker stop took: {time() - t_eye:.2f}")
-
-    t_poll = time()
-    replies = 0
-    attempts = 0
-    with meta.get_database_connection() as poll_conn:
-        while replies < len(acq_ids) and attempts < 300:
-            reply = meta.read_next_message("STM", poll_conn, msg_type="RecordingStopped")
-            if reply is not None:
-                replies += 1
-            else:
-                sleep(.1)
-                attempts += 1
-    session.logger.info(f"stop_acq: poll for {len(acq_ids)} RecordingStopped took: {time() - t_poll:.2f} "
-                        f"({replies}/{len(acq_ids)} replies, {attempts} poll attempts)")
 
 
 def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_device_id):
