@@ -19,7 +19,7 @@ from neurobooth_os.iout.device import CameraPreviewException
 from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.log_manager import SystemResourceLogger
-from neurobooth_os.msg.messages import Message, MsgBody, PrepareRequest, StartRecording, \
+from neurobooth_os.msg.messages import Message, MsgBody, PrepareRequest, StartRecording, TransitionRecording, \
     RecordingStarted, RecordingStopped, MbientResetResults, Request, SessionPrepared, FramePreviewReply, \
     FramePreviewRequest, ServerStarted, ErrorMessage
 
@@ -140,12 +140,37 @@ def run_acq(logger, acq_index: int = 0):
                 meta.post_message(reply)
                 recording = True
 
-            elif "StopRecording" == current_msg_type:
-                elapsed_time = stop_recording(device_manager, task_args[task].device_args)
-                logger.info(f'Device stop took {elapsed_time:.2f} for {task}')
-                reply = Request(source=service_id, destination="STM", body=RecordingStopped())
+            elif "TransitionRecording" == current_msg_type:
+                msg_body: TransitionRecording = message.body
+                if recording:
+                    elapsed_stop = stop_recording(device_manager, task_args[task].device_args)
+                    logger.info(f'Transition: device stop took {elapsed_stop:.2f} for {task}')
+                    recording = False
+
+                dev_id = msg_body.frame_preview_device_id
+                if dev_id is not None:
+                    camera_frame_preview(dev_id, device_manager, logger, service_id)
+
+                task = msg_body.task_id
+                fname = msg_body.fname
+                session_name = msg_body.session_name
+                fname = os.path.join(acq_config.local_data_dir, session_name, fname)
+
+                elapsed_start = start_recording(device_manager, fname, task_args[task].device_args)
+                logger.info(f'Transition: device start took {elapsed_start:.2f} for {task}')
+                reply = Request(source=service_id, destination="STM", body=RecordingStarted())
                 meta.post_message(reply)
-                recording = False
+                recording = True
+
+            elif "StopRecording" == current_msg_type:
+                if recording:
+                    elapsed_time = stop_recording(device_manager, task_args[task].device_args)
+                    logger.info(f'Device stop took {elapsed_time:.2f} for {task}')
+                    reply = Request(source=service_id, destination="STM", body=RecordingStopped())
+                    meta.post_message(reply)
+                    recording = False
+                else:
+                    logger.info('StopRecording received but not recording; ignored')
 
             elif "TerminateServerRequest" == current_msg_type:
                 if recording:

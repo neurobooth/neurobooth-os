@@ -11,8 +11,9 @@ from psychopy import prefs
 
 from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.msg.messages import Message, CreateTasksRequest, \
-    TaskInitialization, Request, TaskCompletion, StartRecording, SessionPrepared, \
-    PrepareRequest, TasksCreated, StopRecording, ServerStarted, ErrorMessage
+    TaskInitialization, Request, TaskCompletion, StartRecording, TransitionRecording, \
+    SessionPrepared, PrepareRequest, TasksCreated, StopRecording, ServerStarted, \
+    ErrorMessage, RecordingStarted
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
@@ -156,12 +157,16 @@ def run_stm(logger):
                     last_task_finished_time = completion_time or time()
 
                 elif "PauseSessionRequest" == current_msg_type:
+                    if session is not None:
+                        _cancel_transition(session)
                     paused = _pause(session)
 
                 elif "TasksFinished" == current_msg_type:
                     session_canceled = True
 
                 elif "CancelSessionRequest" == current_msg_type:
+                    if session is not None:
+                        _cancel_transition(session)
                     session_canceled = True
 
                 else:
@@ -186,7 +191,21 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
     global calib_instructions
     msg_body = message.body
     task_id: str = msg_body.task_id
-    tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
+
+    # If a TransitionRecording was sent for a different task (e.g. recalibration
+    # was injected), cancel it and fall back to normal StartRecording.
+    if session.transition_sent and task_id != session.next_transition_task_id:
+        session.logger.warning(
+            f"TransitionRecording was for {session.next_transition_task_id} "
+            f"but executing {task_id}; cancelling transition")
+        _cancel_transition(session)
+
+    # Use pre-generated tsk_start_time if TransitionRecording was sent for this task
+    if session.transition_sent and session.next_task_start_time is not None:
+        tsk_start_time = session.next_task_start_time
+        session.next_task_start_time = None
+    else:
+        tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
     edf_fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
 
     if task_id not in session.tasks():
@@ -252,7 +271,10 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
             elapsed_time = time() - t01
             session.logger.info(f"Total task RUN took: {elapsed_time:.2f}")
             t_stop = time()
-            stop_acq(session, task_args)
+            next_rec_task = _immediately_next_task_records(session, task_id)
+            if next_rec_task is not None:
+                session.next_task_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
+            stop_acq(session, task_args, next_task_id=next_rec_task)
             session.logger.info(f"stop_acq took: {time() - t_stop:.2f}")
 
             # Signal CTR to stop LSL rec
@@ -312,6 +334,7 @@ def _create_tasks(message, session, task_log_entry):
 
     device_log_entry_dict = meta.log_devices(None, task_list)
 
+    session.task_presentation_order = list(tasks)
     session.win = welcome_screen(win=session.win, slide=session.session_start_slide)
     reply_body = TasksCreated()
     reply = Request(source="STM", destination=message.source, body=reply_body)
@@ -390,26 +413,86 @@ def _get_task_args(session: StmSession, task_id: str):
     return session.task_func_dict[task_id]
 
 
-def stop_acq(session: StmSession, task_args: TaskArgs):
-    """Stop recording on all ACQ servers and the Eyelink.
+def _immediately_next_task_records(session: StmSession, current_task_id: str) -> Optional[str]:
+    """If the immediately next task in execution order records data, return its task_id."""
+    order = session.task_presentation_order
+    try:
+        idx = order.index(current_task_id)
+    except ValueError:
+        return None
+    if idx + 1 >= len(order):
+        return None
+    next_id = order[idx + 1]
+    if next_id not in session.tasks():
+        return None
+    if session.task_func_dict[next_id].record_data:
+        return next_id
+    return None
 
-    StopRecording is posted to ACQs as fire-and-forget. ACQ message
-    processing is sequential, so a subsequent StartRecording will
-    queue behind the stop — ordering is preserved without waiting
-    for RecordingStopped confirmations.
-    """
+
+def _drain_recording_started(expected_count: int, timeout_s: float = 10.0):
+    """Consume stale RecordingStarted messages to prevent interference with future reads."""
+    drained = 0
     t0 = time()
-    session.logger.info(f'SENDING record_stop TO ACQ')
-    stimulus_id = task_args.stim_args.stimulus_id
+    with meta.get_database_connection() as conn:
+        while drained < expected_count and (time() - t0) < timeout_s:
+            reply = meta.read_next_message("STM", conn, msg_type="RecordingStarted")
+            if reply is not None:
+                drained += 1
+            else:
+                sleep(.1)
 
+
+def _cancel_transition(session: StmSession):
+    """Cancel a pending TransitionRecording by stopping ACQs and draining replies."""
+    if not session.transition_sent:
+        return
     acq_ids = config.neurobooth_config.all_acq_service_ids()
     for acq_id in acq_ids:
-        body = StopRecording()
-        sr_msg = Request(source="STM", destination=acq_id, body=body)
-        meta.post_message(sr_msg)
-    session.logger.info(f"stop_acq: posted StopRecording to {len(acq_ids)} ACQs in {time() - t0:.2f}")
+        meta.post_message(Request(source="STM", destination=acq_id, body=StopRecording()))
+    _drain_recording_started(len(acq_ids))
+    session.transition_sent = False
+    session.next_task_start_time = None
+    session.next_transition_task_id = None
 
-    # Stop eyetracker (runs in parallel with ACQ stop since messages are already posted)
+
+def stop_acq(session: StmSession, task_args: TaskArgs,
+             next_task_id: Optional[str] = None):
+    """Stop recording on all ACQ servers and the Eyelink.
+
+    If *next_task_id* is provided, sends ``TransitionRecording`` so that
+    ACQ can stop the current recording and immediately start the next one
+    without waiting for a second message.  Otherwise sends ``StopRecording``.
+    """
+    t0 = time()
+    stimulus_id = task_args.stim_args.stimulus_id
+    acq_ids = config.neurobooth_config.all_acq_service_ids()
+
+    if next_task_id is not None:
+        session.logger.info(f'SENDING TransitionRecording TO ACQ (next={next_task_id})')
+        file_name = f"{session.session_name}_{session.next_task_start_time}_{next_task_id}"
+        preview_acq_id = None
+        if frame_preview_device_id is not None:
+            preview_acq_idx = config.neurobooth_config.get_acq_for_device(frame_preview_device_id)
+            preview_acq_id = config.neurobooth_config.acq_service_id(preview_acq_idx)
+        for acq_id in acq_ids:
+            body = TransitionRecording(
+                session_name=session.session_name,
+                fname=file_name,
+                task_id=next_task_id,
+                frame_preview_device_id=frame_preview_device_id if acq_id == preview_acq_id else None,
+            )
+            meta.post_message(Request(source="STM", destination=acq_id, body=body))
+        session.transition_sent = True
+        session.next_transition_task_id = next_task_id
+    else:
+        session.logger.info(f'SENDING StopRecording TO ACQ')
+        for acq_id in acq_ids:
+            meta.post_message(Request(source="STM", destination=acq_id, body=StopRecording()))
+        session.transition_sent = False
+    session.logger.info(f"stop_acq: posted to {len(acq_ids)} ACQs in {time() - t0:.2f}")
+
+    # Stop eyetracker (runs in parallel with ACQ processing since messages are already posted)
     t_eye = time()
     device_ids = [x.device_id for x in task_args.device_args]
     if session.eye_tracker is not None and any("Eyelink" in d for d in device_ids):
@@ -419,35 +502,26 @@ def stop_acq(session: StmSession, task_args: TaskArgs):
 
 
 def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_device_id):
-    """
-    Start recording on all ACQ servers in parallel to starting on STM.
-
-    Parameters
-    ----------
-    session
-    task_id
-    tsk_start_time
-    frame_preview_device_id
-
-    Returns
-    -------
-    """
+    """Start recording on all ACQ servers, or wait for an in-flight TransitionRecording."""
     t1 = time()
-    file_name = f"{session.session_name}_{tsk_start_time}_{task_id}"
     acq_ids = config.neurobooth_config.all_acq_service_ids()
-    preview_acq_id = None
-    if frame_preview_device_id is not None:
-        preview_acq_idx = config.neurobooth_config.get_acq_for_device(frame_preview_device_id)
-        preview_acq_id = config.neurobooth_config.acq_service_id(preview_acq_idx)
-    for acq_id in acq_ids:
-        body = StartRecording(
-            session_name=session.session_name,
-            fname=file_name,
-            task_id=task_id,
-            frame_preview_device_id=frame_preview_device_id if acq_id == preview_acq_id else None
-        )
-        sr_msg = Request(source='STM', destination=acq_id, body=body)
-        meta.post_message(sr_msg)
+
+    if not session.transition_sent:
+        file_name = f"{session.session_name}_{tsk_start_time}_{task_id}"
+        preview_acq_id = None
+        if frame_preview_device_id is not None:
+            preview_acq_idx = config.neurobooth_config.get_acq_for_device(frame_preview_device_id)
+            preview_acq_id = config.neurobooth_config.acq_service_id(preview_acq_idx)
+        for acq_id in acq_ids:
+            body = StartRecording(
+                session_name=session.session_name,
+                fname=file_name,
+                task_id=task_id,
+                frame_preview_device_id=frame_preview_device_id if acq_id == preview_acq_id else None
+            )
+            meta.post_message(Request(source='STM', destination=acq_id, body=body))
+    else:
+        session.logger.info("TransitionRecording already sent; waiting for RecordingStarted")
 
     replies = 0
     with meta.get_database_connection() as conn:
@@ -457,6 +531,8 @@ def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_
                 replies += 1
             else:
                 sleep(.1)
+
+    session.transition_sent = False
     elapsed_time = time() - t1
     session.logger.info(f'Waiting for ACQ to start took: {elapsed_time:.2f}')
 
