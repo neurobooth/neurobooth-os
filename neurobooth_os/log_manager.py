@@ -1,8 +1,10 @@
+import faulthandler
 import json
 import logging
+import os
 import sys
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, IO
 import psutil
 from threading import Thread, Event
 import platform
@@ -28,16 +30,50 @@ APP_LOGGER: Optional[logging.Logger] = None
 APP_LOG_NAME = "app"
 
 
+def _get_log_dir() -> str:
+    """Return the log directory from NB_INSTALL, falling back to the user's home directory."""
+    return os.environ.get("NB_INSTALL", os.path.expanduser("~"))
+
+
+# Keep a module-level reference so the file stays open for the lifetime of the process.
+_crash_log_file: Optional[IO] = None
+
+
+def enable_crash_handler(server_name: str) -> None:
+    """Enable faulthandler to capture fatal C-level crashes (e.g. segfaults).
+
+    Writes to ``neurobooth_crash.log`` in the NB_INSTALL directory (or the
+    user's home directory if NB_INSTALL is not set). The file is opened in
+    append mode so traces from successive runs accumulate. A timestamped
+    header is written on each call so crashes can be correlated with a
+    specific process launch.
+
+    This should be called as early as possible in each server's ``main()``
+    — before config loading, database connections, or any imports that
+    pull in C extensions.
+
+    Args:
+        server_name: Identifier for the process (e.g. ``"CTR"``, ``"STM"``, ``"ACQ_0"``).
+    """
+    global _crash_log_file
+    log_path = os.path.join(_get_log_dir(), "neurobooth_crash.log")
+    _crash_log_file = open(log_path, "a")
+    _crash_log_file.write(
+        f"\n--- {server_name} started at {datetime.now().isoformat()} (PID {os.getpid()}) ---\n"
+    )
+    _crash_log_file.flush()
+    faulthandler.enable(file=_crash_log_file)
+
+
 def make_fallback_logger() -> logging.Logger:
     """Create a file-based logger for use when the database logger is unavailable.
 
-    Writes to ``neurobooth_startup.log`` in the NB_CONFIG directory (or the
-    user's home directory if NB_CONFIG is not set). This is intended as a
+    Writes to ``neurobooth_startup.log`` in the NB_INSTALL directory (or the
+    user's home directory if NB_INSTALL is not set). This is intended as a
     last-resort logger for capturing errors that occur before the database
     connection is established.
     """
-    import os
-    log_dir = os.environ.get("NB_INSTALL", os.path.expanduser("~"))
+    log_dir = _get_log_dir()
     log_path = os.path.join(log_dir, "neurobooth_startup.log")
     logger = logging.getLogger("startup_fallback")
     if not logger.handlers:  # Avoid adding duplicate handlers
