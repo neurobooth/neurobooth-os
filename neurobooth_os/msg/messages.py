@@ -333,6 +333,23 @@ class StartRecording(MsgBody):
         super().__init__(**data)
 
 
+class TransitionRecording(MsgBody):
+    """Message sent from STM to ACQ telling it to stop the current recording and
+    immediately start a new one.  Combines StopRecording + StartRecording into an
+    atomic operation, eliminating idle time between stop and start on ACQ.
+
+    ACQ replies with RecordingStarted (not RecordingStopped).
+    """
+    fname: str
+    task_id: str
+    frame_preview_device_id: Optional[str] = None
+    session_name: str
+
+    def __init__(self, **data):
+        data['priority'] = MEDIUM_PRIORITY
+        super().__init__(**data)
+
+
 class StopRecording(MsgBody):
     """
     Message sent from STM to ACQ telling it to stop recording LSL as the task being recorded has completed.
