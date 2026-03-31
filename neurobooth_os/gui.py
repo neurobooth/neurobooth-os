@@ -22,7 +22,7 @@ import neurobooth_os.current_config as current_config
 from neurobooth_os.realtime.lsl_plotter import stream_plotter
 
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes, PREVIEW_AREA
-from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, enable_crash_handler
+from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, enable_crash_handler, SystemResourceLogger
 from neurobooth_os.iout.metadator import LogSession
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
@@ -299,6 +299,9 @@ def gui(logger):
     logger.info(f"Neurobooth config version = {state.config_version}")
 
     nodes = get_nodes()
+
+    system_resource_logger = SystemResourceLogger(machine_name='CTR')
+    system_resource_logger.start()
 
     with meta.get_database_connection() as conn:
         meta.clear_msg_queue(conn)
@@ -582,6 +585,7 @@ def gui(logger):
                 request_frame_preview(conn, device_id)
 
             # Print LSL inlet names in GUI
+    system_resource_logger.stop()
     close(window)
 
 
