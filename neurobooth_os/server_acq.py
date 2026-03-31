@@ -14,7 +14,7 @@ import neurobooth_os.current_config as current_config
 
 from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs, DeviceArgs
-from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received
+from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received, enable_crash_handler
 from neurobooth_os.iout.device import CameraPreviewException
 from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
@@ -33,10 +33,11 @@ def countdown(period):
 
 
 def main():
+    acq_index = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    enable_crash_handler(f"ACQ_{acq_index}")
     logger = None
     exit_code = 0
     try:
-        acq_index = int(sys.argv[1]) if len(sys.argv) > 1 else 0
         config.load_config_by_service_name("ACQ", acq_index=acq_index)
         logger = make_db_logger()  # Initialize default logger
         logger.debug(f"Starting ACQ (index={acq_index})")

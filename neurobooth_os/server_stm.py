@@ -28,7 +28,7 @@ from neurobooth_os.iout import metadator as meta
 
 from neurobooth_os.tasks.welcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
-from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received
+from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received, enable_crash_handler
 
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
@@ -37,6 +37,7 @@ frame_preview_device_id: Optional[str] = None
 
 
 def main():
+    enable_crash_handler("STM")
     logger = None
     exit_code = 0
     try:
