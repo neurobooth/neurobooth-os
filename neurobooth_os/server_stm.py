@@ -214,6 +214,11 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
         t00 = time()
         # get task and params
         task_args: TaskArgs = _get_task_args(session, task_id)
+        # Force fresh instance for recalibration (injected tasks that may have
+        # already run once with a pre-constructed instance that holds stale state)
+        if "calibration" in task_id and task_args.task_instance is not None:
+            session.logger.info(f"Clearing pre-constructed instance for recalibration: {task_id}")
+            task_args.task_instance = None
         this_task_kwargs = create_task_kwargs(session, task_args)
 
         # Do not record if non-behavior/pause/break tasks
