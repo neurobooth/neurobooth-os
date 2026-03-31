@@ -34,6 +34,12 @@ class StmSession(BaseModel):
     session_start_slide: Optional[str] = None
     session_end_slide: Optional[str] = None
 
+    # TransitionRecording optimization state
+    task_presentation_order: List[str] = []
+    transition_sent: bool = False
+    next_task_start_time: Optional[str] = None
+    next_transition_task_id: Optional[str] = None
+
     class Config:
         arbitrary_types_allowed = True
 
