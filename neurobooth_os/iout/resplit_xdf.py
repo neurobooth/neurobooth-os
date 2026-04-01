@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 import neurobooth_os.config as cfg
 import neurobooth_os.iout.split_xdf as xdf
+from neurobooth_os.iout.db_connection import ManagedConnection
 
 
 class SplitException(Exception):
@@ -128,20 +129,21 @@ class DatabaseConnection:
         self.connection = DatabaseConnection.connect(config_path, tunnel)
 
     @staticmethod
-    def connect(config_path: str, tunnel: bool) -> pg.extensions.connection:
+    def connect(config_path: str, use_tunnel: bool) -> ManagedConnection:
         """
         Load and parse a Neurobooth-OS configuration, then create a psycopg2 connection.
         Note: This function copies some code from metadator.py, but importing that file introduces extra dependencies.
 
         :param config_path: The path to the Neurobooth-OS configuration, including a 'database' entry.
-        :param tunnel: Whether to SSH tunnel prior to connecting. Should be False if running on neurodoor.
+        :param use_tunnel: Whether to SSH tunnel prior to connecting. Should be False if running on neurodoor.
         """
         cfg.load_config(config_path, validate_paths=False)
         database_info = cfg.neurobooth_config.database
 
-        if tunnel:
+        ssh_tunnel = None
+        if use_tunnel:
             from sshtunnel import SSHTunnelForwarder
-            tunnel = SSHTunnelForwarder(
+            ssh_tunnel = SSHTunnelForwarder(
                 database_info.remote_host,
                 ssh_username=database_info.remote_user,
                 ssh_config_file="~/.ssh/config",
@@ -149,20 +151,21 @@ class DatabaseConnection:
                 remote_bind_address=(database_info.host, database_info.port),
                 local_bind_address=("localhost", 6543),
             )
-            tunnel.start()
-            host = tunnel.local_bind_host
-            port = tunnel.local_bind_port
+            ssh_tunnel.start()
+            host = ssh_tunnel.local_bind_host
+            port = ssh_tunnel.local_bind_port
         else:
             host = database_info.host
             port = database_info.port
 
-        return pg.connect(
+        conn = pg.connect(
             database=database_info.dbname,
             user=database_info.user,
             password=database_info.password.get_secret_value(),
             host=host,
             port=port,
         )
+        return ManagedConnection(conn, ssh_tunnel)
 
     DEVICE_ID_QUERY = """
     WITH device AS (
