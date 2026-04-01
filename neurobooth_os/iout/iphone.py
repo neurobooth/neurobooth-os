@@ -16,7 +16,7 @@ from enum import IntEnum
 from hashlib import md5
 from base64 import b64decode
 
-from neurobooth_os.iout.device import CameraPreviewer
+from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState, CameraPreviewer
 from neurobooth_os.iout.metadator import post_message, read_sensors
 from neurobooth_os.iout.stim_param_reader import IPhoneDeviceArgs
 from neurobooth_os.iout.usbmux import USBMux
@@ -94,16 +94,18 @@ def _handle_panic(func):
     return wrapper_panic
 
 
-class IPhone(CameraPreviewer):
+class IPhone(Device, CameraPreviewer):
     """
     Handles interactions with an iPhone device running the Neurobooth app.
     Intended Lifecycle:
      1. Create object.
-     2. prepare() to connect to iPhone and initialize LSL stream.
+     2. connect() (or prepare()) to connect to iPhone and initialize LSL stream.
      3. Record data: start() -> stop() -> ensure_stopped(). Repeat cycle as needed.
      4. close() to disconnect the iPhone.
     At any point during the lifecycle a panic may occur if an error is encountered. This will disconnect the iPhone.
     """
+
+    capabilities = DeviceCapability.RECORD | DeviceCapability.CAMERA_PREVIEW
 
     # Constants for interfacing with the app
     TYPE_MESSAGE = 101
@@ -189,20 +191,15 @@ class IPhone(CameraPreviewer):
     MESSAGE_KEYS = {"MessageType", "SessionID", "TimeStamp", "Message"}
 
     def __init__(self, name, sess_id="", mock=False, device_args: IPhoneDeviceArgs = None, enable_timeout_exceptions=False):
+        Device.__init__(self, device_args)
         self.connected = False
         self.tag = 0
         self.iphone_sessionID = sess_id
         self.name = name
         self.mock = mock
         self.device_args = device_args
-        if not DISABLE_LSL:  # Device and sensor IDs are only needed if streaming data to LSL.
-            self.device_id = device_args.device_id
-            self.sensor_ids = device_args.sensor_ids
         self.enable_timeout_exceptions = enable_timeout_exceptions
-        self.streaming = False
         self.streamName = "IPhoneFrameIndex"
-        self.outlet_id = str(uuid.uuid4())
-        self.logger = logging.getLogger(APP_LOG_NAME)
 
         # --------------------------------------------------------------------------------
         # Lock-based threading objects and their associated protected data
@@ -516,6 +513,15 @@ class IPhone(CameraPreviewer):
         if DEBUG_LOGGING:
             self.logger.debug(f'LSL Push: {lsl_sample}')
 
+    def connect(self) -> bool:
+        """
+        Implements the Device lifecycle connect stage.
+        Connects to the iPhone and opens an LSL outlet.
+
+        :returns: Whether the connection was successful.
+        """
+        return self.prepare()
+
     def prepare(self, mock: bool = False, config: Optional[CONFIG] = None) -> bool:
         """
         Called during a PREPARE message to the server (i.e., "Connect Devices").
@@ -526,7 +532,10 @@ class IPhone(CameraPreviewer):
         :returns: Whether the connection was successful
         """
         if mock:
-            return self._mock_handshake() and self.connected
+            success = self._mock_handshake() and self.connected
+            if success:
+                self.state = DeviceState.CONNECTED
+            return success
 
         if config is None:
             config = {
@@ -542,6 +551,10 @@ class IPhone(CameraPreviewer):
         if success and not DISABLE_LSL:
             self.outlet = self._create_outlet()
             self.streaming = True
+        if success and self.connected:
+            self.state = DeviceState.CONNECTED
+        else:
+            self.state = DeviceState.ERROR
         return success and self.connected
 
     def _handshake(self, config: CONFIG) -> bool:
@@ -758,13 +771,16 @@ class IPhone(CameraPreviewer):
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMPSUCCESS Message')
         self._send_packet("@DUMPSUCCESS", msg_contents={"Message": filename})
 
-    def start(self, filename: str) -> None:
+    def start(self, filename: Optional[str] = None) -> None:
         """
         Called during a START message to the server. Start data capture.
 
         :param filename: The task file name supplied by the server.
         """
+        if filename is None:
+            raise ValueError("IPhone requires a filename to start recording.")
         self.streaming = True
+        self.state = DeviceState.STARTED
         filename += "_IPhone"
         filename = op.split(filename)[-1]
         if not DISABLE_LSL:
@@ -786,9 +802,10 @@ class IPhone(CameraPreviewer):
         post_message(msg)
 
     def stop(self) -> None:
-        """Called during a START message to the server. Stop data capture."""
+        """Called during a STOP message to the server. Stop data capture."""
         self._stop_recording()
         self.streaming = False
+        self.state = DeviceState.STOPPED
 
     @_handle_panic
     def ensure_stopped(self, timeout_seconds: float) -> None:
@@ -805,8 +822,9 @@ class IPhone(CameraPreviewer):
         self.logger.debug(f'iPhone [state={self._state}]: Transition to #READY Detected')
 
     def close(self) -> None:
-        """Called during a CLOSE or SHUTDOWN message to the server. Disconnect the iPhone"""
+        """Called during a CLOSE or SHUTDOWN message to the server. Disconnect the iPhone."""
         self.disconnect()
+        self.state = DeviceState.DISCONNECTED
 
     def disconnect(self, join_listener: bool = True) -> bool:
         """

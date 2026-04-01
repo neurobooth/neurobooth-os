@@ -13,6 +13,7 @@ from enum import IntEnum
 from mbientlab.warble import BleScanner
 from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings, Module, Model
 
+from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 from neurobooth_os.iout.metadator import post_message, get_database_connection
 from neurobooth_os.iout.stim_param_reader import MbientDeviceArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -443,18 +444,21 @@ class MetaWearWrapperBMI160(MetaWearWrapper):
 # --------------------------------------------------------------------------------
 # Object-Oriented Interface for Neurobooth-OS
 # --------------------------------------------------------------------------------
-class Mbient:
+class Mbient(Device):
     """
     Handles interactions with an Mbient wearable sensor.
     Intended Lifecycle:
         1. Create object.
-        2. prepare() to connect to and configure the sensor.
+        2. connect() to connect to and configure the sensor.
         3. start() to begin data collection.
         4. stop() to cease data collection. Note: Recalling start() after this may not work. Needs testing.
         5. close() to disconnect the sensor.
     If the sensor disconnects at any point, a reconnect will be attempted.
     """
-    # Class variables to ensure that the BLE scan only happens during one prepare() call.
+
+    capabilities = DeviceCapability.STREAM | DeviceCapability.WEARABLE
+
+    # Class variables to ensure that the BLE scan only happens during one connect() call.
     # Will need to switch to a multiprocess.Manager if intending to use multiprocessing.
     SCAN_LOCK = mp.Lock()
     SCAN_PERFORMED = False
@@ -467,12 +471,10 @@ class Mbient:
         device_args: MbientDeviceArgs,
         buzz_time_sec: float = 0,
         try_nmax: int = 5,
-    ):
+    ) -> None:
+        super().__init__(device_args)
         self.mac = device_args.mac
         self.dev_name = device_args.device_name
-        self.device_id = device_args.device_id
-        self.sensor_ids = device_args.sensor_ids
-        self.outlet_id = str(uuid.uuid4())
         self.buzz_time = buzz_time_sec
         self.max_connect_attempts = try_nmax
         self.retry_delay_sec = 1
@@ -491,15 +493,12 @@ class Mbient:
         # Uninitialized Variables
         self.device_wrapper: Optional[MetaWearWrapper] = None
         self.subscribed_signals: List[Any] = []
-        self.outlet: Optional[StreamOutlet] = None
         self.data_handlers: List['Mbient.DATA_HANDLER'] = []
 
         # Streaming-related variables
         self.callback = cbindings.FnVoid_VoidP_DataP(self._callback)
-        self.streaming: bool = False
         self.n_samples_streamed = 0
 
-        self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(self.format_message(f'acc={self.accel_params}; gyro={self.gyro_params}'))
 
     def format_message(self, msg: str) -> str:
@@ -522,9 +521,9 @@ class Mbient:
             self.logger.debug(f'BLE scan found {len(ble_devices)} devices: {[mac for _, mac in ble_devices.items()]}')
             Mbient.SCAN_PERFORMED = True
 
-    def connect(self, n_attempts: Optional[int] = None, retry_delay_sec: Optional[float] = None) -> None:
+    def _ble_connect(self, n_attempts: Optional[int] = None, retry_delay_sec: Optional[float] = None) -> None:
         """
-        Attempt to connect to the device and set a disconnect handler.
+        Attempt to connect to the device via BLE and set a disconnect handler.
 
         :param n_attempts: How many times to attempt a connection before giving up.
         :param retry_delay_sec: How long to wait in-between attempts.
@@ -564,7 +563,7 @@ class Mbient:
 
         try:
             was_streaming = self.streaming
-            self.connect(n_attempts=n_attempts, retry_delay_sec=0.5)
+            self._ble_connect(n_attempts=n_attempts, retry_delay_sec=0.5)
             self.setup()
             if was_streaming:
                 self.start(buzz=False)
@@ -643,14 +642,14 @@ class Mbient:
 
         try:
             if not self.device_wrapper.is_connected:  # Attempt to reconnect if previously disconnected
-                self.connect()
+                self._ble_connect()
 
             was_streaming = self.streaming
             if was_streaming:
                 self.stop()
 
             self.reset(timeout_sec=timeout_sec)
-            self.connect()
+            self._ble_connect()
             self.setup()
 
             if was_streaming:
@@ -662,21 +661,22 @@ class Mbient:
             self.logger.error(self.format_message(f'Error during reset and reconnect: {e}'))
             return False
 
-    def prepare(self) -> bool:
+    def connect(self) -> bool:
         """
-        Connect to and configure the device.
+        Connect to and configure the device. Implements the Device lifecycle connect stage.
+
         :returns: Whether the connection and setup was successful.
         """
         try:
             self.prepare_scan()  # Wake up devices
-            self.connect()
+            self._ble_connect()
             self.logger.debug(self.format_message(f'Device Model: {self.device_wrapper.model_name}'))
             self.logger.debug(self.format_message(f'Wrapper Class: {self.device_wrapper.__class__.__name__}'))
 
             # Perform a sensor reset and reconnect
             self.reset()
             sleep(self.retry_delay_sec)  # Wait a moment before trying to re-connect after the reset
-            self.connect()
+            self._ble_connect()
 
             # Set up the device to stream acceleration and angular velocity
             if not DISABLE_LSL:
@@ -691,15 +691,22 @@ class Mbient:
                 msg = Request(source="Mbient", destination="CTR", body=body)
                 post_message(msg)
 
+            self.state = DeviceState.CONNECTED
             return True
         except (MbientFailedConnection, MbientResetTimeout) as e:
             txt = f"Failed to connect mbient {self.dev_name}"
             self.send_status_msg(txt, "ERROR")
             self.logger.error(self.format_message(str(e)))
+            self.state = DeviceState.ERROR
             return False
         except Exception as e:
-            self.logger.error(self.format_message(f'Error during prepare: {e}'), exc_info=sys.exc_info())
+            self.logger.error(self.format_message(f'Error during connect: {e}'), exc_info=sys.exc_info())
+            self.state = DeviceState.ERROR
             return False
+
+    def prepare(self) -> bool:
+        """Backward-compatible alias for :meth:`connect`."""
+        return self.connect()
 
     def _create_outlet(self) -> StreamOutlet:
         """Create an LSL outlet; helper for prepare."""
@@ -768,9 +775,11 @@ class Mbient:
             f'Voltage = {battery_state.voltage / 1e3:.1f} V; Charge = {battery_state.charge}%'
         ))
 
-    def start(self, buzz: bool = False) -> None:
+    def start(self, filename: Optional[str] = None, buzz: bool = False) -> None:
         """Begin streaming data.
-        :param buzz: Whether to enable the sensor buzz when stating data capture.
+
+        :param filename: Unused; accepted for Device interface compatibility.
+        :param buzz: Whether to enable the sensor buzz when starting data capture.
         """
         self.device_wrapper.enable_inertial_sampling()
 
@@ -780,6 +789,7 @@ class Mbient:
 
         self.logger.debug(self.format_message('Starting Streaming'))
         self.streaming = True
+        self.state = DeviceState.STARTED
         self.device_wrapper.start_inertial_sampling()
 
     def stop(self) -> None:
@@ -788,6 +798,7 @@ class Mbient:
         self.device_wrapper.stop_inertial_sampling()
         self.device_wrapper.disable_inertial_sampling()
         self.streaming = False
+        self.state = DeviceState.STOPPED
 
     def disconnect(self) -> None:
         """Disconnect the device."""
@@ -799,6 +810,7 @@ class Mbient:
             self.logger.debug(self.format_message('Disconnected'))
         else:
             self.logger.error(self.format_message('Timed Out on Disconnect'))
+        self.state = DeviceState.DISCONNECTED
 
     def close(self) -> None:
         """Stop streaming data, unsubscribe from data signals, and disconnect the device."""

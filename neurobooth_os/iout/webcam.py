@@ -1,6 +1,5 @@
 import os.path as op
 import threading
-import uuid
 import queue
 import logging
 from typing import Optional, ByteString
@@ -11,7 +10,7 @@ from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.iout.device import CameraPreviewer
+from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState, CameraPreviewer
 from neurobooth_os.iout.stim_param_reader import WebcamDeviceArgs
 
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -23,14 +22,17 @@ class WebcamException(Exception):
         super().__init__(*args, **kwargs)
 
 
-class VidRec_Webcam(CameraPreviewer):
+class VidRec_Webcam(Device, CameraPreviewer):
+
+    capabilities = DeviceCapability.RECORD | DeviceCapability.CAMERA_PREVIEW
+
     def __init__(
         self,
         device_args: WebcamDeviceArgs,
-    ):
+    ) -> None:
+        Device.__init__(self, device_args)
         self.device_args: WebcamDeviceArgs = device_args
         self.open: bool = False
-        self.streaming: bool = False
         self.recording: bool = False
 
         self.camera: Optional[cv2.VideoCapture] = None
@@ -43,15 +45,9 @@ class VidRec_Webcam(CameraPreviewer):
         self.image_queue = queue.Queue(0)
         self.timestamps: list[float] = []
 
-        self.logger = logging.getLogger(APP_LOG_NAME)
-        self.outlet = self.createOutlet()
-
-        self.logger.debug(f'Webcam: fps={str(self.device_args.sample_rate())}; '
-                          f'frame_size={str((self.device_args.width_px(), self.device_args.height_px()))}')
-
-    def createOutlet(self) -> StreamOutlet:
+    def connect(self) -> None:
+        """Create the LSL outlet and notify the control server."""
         self.stream_name = "WebcamFrameIndex"
-        self.outlet_id = str(uuid.uuid4())
         info = set_stream_description(
             stream_info=StreamInfo(
                 name=self.stream_name,
@@ -79,6 +75,34 @@ class VidRec_Webcam(CameraPreviewer):
             camera_preview=True,
         )
         meta.post_message(Request(source='Webcam', destination='CTR', body=msg_body))
+        self.outlet = StreamOutlet(info)
+
+        self.state = DeviceState.CONNECTED
+        self.logger.debug(f'Webcam: fps={str(self.device_args.sample_rate())}; '
+                          f'frame_size={str((self.device_args.width_px(), self.device_args.height_px()))}')
+
+    def _recreate_outlet(self) -> StreamOutlet:
+        """Re-create the LSL outlet (e.g. after stream closure)."""
+        info = set_stream_description(
+            stream_info=StreamInfo(
+                name=self.stream_name,
+                type="videostream",
+                channel_format="double64",
+                channel_count=2,
+                source_id=self.outlet_id,
+            ),
+            device_id=self.device_args.device_id,
+            sensor_ids=self.device_args.sensor_ids,
+            data_version=DataVersion(1, 0),
+            columns=['FrameNum', 'Time_ACQ'],
+            column_desc={
+                'FrameNum': 'Frame number',
+                'Time_ACQ': 'System timestamp (s)',
+            },
+            camera_idx=str(self.device_args.camera_idx),
+            fps_rgb=str(self.device_args.sample_rate()),
+            size_rgb=str((self.device_args.width_px(), self.device_args.height_px())),
+        )
         return StreamOutlet(info)
 
     def open_stream(self) -> None:
@@ -109,13 +133,20 @@ class VidRec_Webcam(CameraPreviewer):
                 continue
         self.logger.debug('Webcam: Exiting Save Thread')
 
-    def start(self, name="temp_video") -> None:
-        self.prepare(name)
+    def start(self, filename: Optional[str] = None) -> None:
+        """Begin recording video.
+
+        Args:
+            filename: Base name for the output video file. Defaults to ``"temp_video"``.
+        """
+        name = filename if filename is not None else "temp_video"
+        self._prepare_recording(name)
         self.video_thread = threading.Thread(target=self.record)
         self.logger.debug('Webcam: Beginning Recording')
+        self.state = DeviceState.STARTED
         self.video_thread.start()
 
-    def prepare(self, name="temp_video") -> None:
+    def _prepare_recording(self, name: str = "temp_video") -> None:
         self.open_stream()
         self.video_filename = f"{name}_webcam.avi"
         fourcc = cv2.VideoWriter_fourcc(*self.device_args.fourcc)
@@ -151,7 +182,7 @@ class VidRec_Webcam(CameraPreviewer):
                 self.outlet.push_sample([self.frame_counter, tsmp])
             except BaseException:
                 self.logger.debug(f"Reopening Webcam {self.device_args.device_index} stream already closed")
-                self.outlet = self.createOutlet()
+                self.outlet = self._recreate_outlet()
                 self.outlet.push_sample([self.frame_counter, tsmp])
 
             self.frame_counter += 1
@@ -171,11 +202,13 @@ class VidRec_Webcam(CameraPreviewer):
             self.logger.debug('Webcam: Setting Record Stop Flag')
             self.recording = False
         self.streaming = False
+        self.state = DeviceState.STOPPED
 
     def close(self) -> None:
         self.stop()
+        self.state = DeviceState.DISCONNECTED
 
-    def ensure_stopped(self, timeout_seconds: float) -> None:
+    def ensure_stopped(self, timeout_seconds: float = 10.0) -> None:
         """Check to make sure the recording is actually stopped."""
         self.video_thread.join()
         if self.video_thread.is_alive():
@@ -226,6 +259,7 @@ def test_script() -> None:
 
     print('Beginning Capture')
     webcam = VidRec_Webcam(device_args=args)
+    webcam.connect()
     webcam.start('test_video')
     sleep(5)
     print('Ending Capture')

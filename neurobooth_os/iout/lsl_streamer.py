@@ -7,7 +7,9 @@ from typing import Any, Dict, List, Callable, ByteString
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.iout.device import CameraPreviewer, CameraPreviewException
+from neurobooth_os.iout.device import (
+    Device, DeviceCapability, CameraPreviewer, CameraPreviewException,
+)
 from neurobooth_os.iout.mbient import Mbient
 from neurobooth_os.msg.messages import DeviceInitialization, Request
 
@@ -23,13 +25,14 @@ def start_eyelink_stream(win, device_args):
 def start_mouse_stream(_, device_args):
     from neurobooth_os.iout.mouse_tracker import MouseStream
     device = MouseStream(device_args)
+    device.connect()
     device.start()
     return device
 
 
 def start_mbient_stream(_, device_args):
     device = Mbient(device_args)
-    if not device.prepare():
+    if not device.connect():
         return None
     device.start()
     return device
@@ -37,28 +40,35 @@ def start_mbient_stream(_, device_args):
 
 def start_intel_stream(_, device_args):
     from neurobooth_os.iout.camera_intel import VidRec_Intel
-    return VidRec_Intel(device_args)
+    device = VidRec_Intel(device_args)
+    device.connect()
+    return device
 
 
 def start_flir_stream(_, device_args):
     from neurobooth_os.iout.flir_cam import VidRec_Flir
-    return VidRec_Flir(device_args)
+    device = VidRec_Flir(device_args)
+    device.connect()
+    return device
 
 
 def start_webcam_stream(_, device_args):
     from neurobooth_os.iout.webcam import VidRec_Webcam
-    return VidRec_Webcam(device_args)
+    device = VidRec_Webcam(device_args)
+    device.connect()
+    return device
 
 
 def start_iphone_stream(_, device_args):
     from neurobooth_os.iout.iphone import IPhone
     device = IPhone(name="IPhoneFrameIndex", device_args=device_args)
-    return device if device.prepare() else None
+    return device if device.connect() else None
 
 
 def start_yeti_stream(_, device_args):
     from neurobooth_os.iout.microphone import MicStream
     device = MicStream(device_args)
+    device.connect()
     device.start()
     return device
 
@@ -197,55 +207,85 @@ class DeviceManager:
                 devices[device.device_id] = device
         return devices
 
-    # TODO: The below device-specific calls should all be refactored so that devices can be generically handled
-    # TODO: E.g., devices should be able to register handlers for lifecycle phases
+    # ---- Generic capability-based device queries ----
 
-    # TODO: the is_camera check should be based on an attribute of the DeviceArgs, not a check against
-    #  a list of words, which requires updating code for every new camera
-    @staticmethod
-    def is_camera(stream_name: str) -> bool:
-        """Test to see if a stream is a camera stream based on its name."""
-        return stream_name.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone", "Webcam"]
+    def _is_device(self, stream: Any) -> bool:
+        """Check if a stream object is a Device subclass."""
+        return isinstance(stream, Device)
 
-    def get_camera_streams(self, task_devices: List[DeviceArgs]) -> List[Any]:
-        device_ids = [dev.device_id for dev in task_devices]
-        return [
-            stream for stream_name, stream in self.streams.items()
-            if DeviceManager.is_camera(stream_name) and stream_name in device_ids
-        ]
+    def get_devices_with_capability(
+        self,
+        cap: DeviceCapability,
+        task_devices: List[DeviceArgs] = None,
+    ) -> Dict[str, Device]:
+        """Return devices that have a given capability.
 
-    def get_mbient_streams(self) -> Dict[str, Any]:
+        Args:
+            cap: The capability to filter by.
+            task_devices: If provided, only return devices whose IDs appear in this list.
+        """
+        device_ids = {dev.device_id for dev in task_devices} if task_devices else None
         return {
-            stream_name: stream for stream_name, stream in self.streams.items() if 'Mbient' in stream_name
+            name: stream
+            for name, stream in self.streams.items()
+            if self._is_device(stream)
+            and stream.has_capability(cap)
+            and (device_ids is None or name in device_ids)
         }
 
-    def get_eyelink_stream(self):
-        for stream_name, stream in self.streams.items():
-            if 'Eyelink' in stream_name:
-                return stream
-        return None
+    # ---- Recording device lifecycle (replaces start_cameras / stop_cameras) ----
 
-    def start_cameras(self, filename: str, task_devices: List[DeviceArgs]) -> None:
-        cameras = self.get_camera_streams(task_devices)
-        if not cameras:
+    def start_recording_devices(self, filename: str, task_devices: List[DeviceArgs]) -> None:
+        """Start all recording devices (cameras, eyelink) for the given task."""
+        recorders = list(self.get_devices_with_capability(DeviceCapability.RECORD, task_devices).values())
+        if not recorders:
             return
-        with ThreadPoolExecutor(max_workers=len(cameras)) as executor:
-            futures = {executor.submit(stream.start, filename): stream for stream in cameras}
+        with ThreadPoolExecutor(max_workers=len(recorders)) as executor:
+            futures = {executor.submit(device.start, filename): device for device in recorders}
             for future in futures:
                 try:
                     future.result()
                 except Exception as e:
                     self.logger.exception(e)
 
+    def stop_recording_devices(self, task_devices: List[DeviceArgs]) -> None:
+        """Stop all recording devices and wait for them to finish."""
+        recorders = list(self.get_devices_with_capability(DeviceCapability.RECORD, task_devices).values())
+        for device in recorders:  # Signal devices to stop
+            device.stop()
+        for device in recorders:  # Wait for devices to actually stop
+            device.ensure_stopped(10)
+
+    # ---- Backward-compatible aliases (delegate to capability-based methods) ----
+
+    @staticmethod
+    def is_camera(stream_name: str) -> bool:
+        """Test to see if a stream is a camera stream based on its name.
+
+        .. deprecated::
+            Use ``device.has_capability(DeviceCapability.RECORD)`` instead.
+        """
+        return stream_name.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone", "Webcam"]
+
+    def get_camera_streams(self, task_devices: List[DeviceArgs]) -> List[Any]:
+        return list(self.get_devices_with_capability(DeviceCapability.RECORD, task_devices).values())
+
+    def get_mbient_streams(self) -> Dict[str, Any]:
+        return self.get_devices_with_capability(DeviceCapability.WEARABLE)
+
+    def get_eyelink_stream(self):
+        calibratables = self.get_devices_with_capability(DeviceCapability.CALIBRATABLE)
+        if calibratables:
+            return next(iter(calibratables.values()))
+        return None
+
+    def start_cameras(self, filename: str, task_devices: List[DeviceArgs]) -> None:
+        self.start_recording_devices(filename, task_devices)
+
     def stop_cameras(self, task_devices: List[DeviceArgs]):
-        cameras = self.get_camera_streams(task_devices)
-        for stream in cameras:  # Signal cameras to stop
-            stream.stop()
-        for stream in cameras:  # Wait for cameras to actually stop
-            stream.ensure_stopped(10)
+        self.stop_recording_devices(task_devices)
 
     def mbient_reconnect(self) -> None:
-        from neurobooth_os.iout.mbient import Mbient
         Mbient.task_start_reconnect(list(self.get_mbient_streams().values()))
 
     def mbient_reset(self) -> Dict[str, bool]:
@@ -278,17 +318,22 @@ class DeviceManager:
         return camera.frame_preview()
 
     def close_streams(self) -> None:
+        """Close all device streams. Uses the standard Device.close() lifecycle method."""
         for stream_name, stream in self.streams.items():
             self.logger.debug(f'Device Manager Closing: {stream_name}')
-            if DeviceManager.is_camera(stream_name):
+            if self._is_device(stream):
+                stream.close()
+            elif DeviceManager.is_camera(stream_name):
+                # Fallback for non-Device streams (e.g. marker stream, legacy devices)
                 stream.close()
             else:
                 stream.stop()
 
     def reconnect_streams(self):
+        """Reconnect streams that have stopped streaming."""
         for stream_name, stream in self.streams.items():
-            if DeviceManager.is_camera(stream_name):
-                continue
+            if self._is_device(stream) and stream.has_capability(DeviceCapability.RECORD):
+                continue  # Recording devices are started per-task, not reconnected
 
             if not stream.streaming:
                 self.logger.debug(f'Device Manager Reconnecting: {stream_name}')

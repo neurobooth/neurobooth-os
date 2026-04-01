@@ -56,18 +56,18 @@ class ScreenMirror:
             xy = xy * 3
         xy += 1
 
-        self.oulet_id = str(uuid.uuid4())
+        self.outlet_id = str(uuid.uuid4())
         info_stream = StreamInfo(
             name="Screen",
             type="Experimental",
             # nominal_srate=self.fps,
             channel_count=xy,
             channel_format="float32",
-            source_id=self.oulet_id,
+            source_id=self.outlet_id,
         )
         self.info_stream = info_stream
         self.outlet_screen = StreamOutlet(info_stream)
-        msg_body = DeviceInitialization(stream_name="Screen", outlet_id=self.oulet_id)
+        msg_body = DeviceInitialization(stream_name="Screen", outlet_id=self.outlet_id)
         meta.post_message(Request(source='ScreenMirror', destination='CTR', body=msg_body))
 
 
