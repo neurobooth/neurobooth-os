@@ -1,26 +1,29 @@
 # Neurobooth-OS Code Audit & Quality Assessment
 
 **Date:** March 3, 2026
+**Last reviewed:** April 1, 2026
 **Scope:** Full codebase audit of [neurobooth-os](https://github.com/neurobooth/neurobooth-os)
 
 ---
 
 ## Executive Summary
 
-The neurobooth-os project is a Python-based data acquisition and stimulus presentation system for behavioral/physiological research, running across multiple networked Windows machines. This audit covers every top-level folder and configuration file. The codebase has solid domain logic and a reasonable architecture, but has **critical security vulnerabilities** (SQL injection, hardcoded credentials), **near-zero test coverage**, **no CI/CD automation**, and widespread issues with error handling, resource management, and code duplication.
+The neurobooth-os project is a Python-based data acquisition and stimulus presentation system for behavioral/physiological research, running across multiple networked Windows machines. This audit covers every top-level folder and configuration file. The codebase has solid domain logic and a reasonable architecture.
+
+Since the initial audit, **all critical security vulnerabilities have been resolved**: SQL injection has been fixed with parameterized queries, credentials are protected with `SecretStr`, and dynamic imports are gated by a module allowlist. GUI state has been refactored into a `SessionState` dataclass, file operations are now atomic, logging has been significantly improved (faulthandler crash logging, system resource logging, startup error fallback logging), and example configs with hardcoded credentials have been removed. Remaining work focuses on resource lifecycle management (SSH tunnel leak, database connection cleanup), bare exception handlers, test coverage, and CI/CD automation.
 
 ### Overall Scores by Area
 
 | Area | Score | Rating |
 |------|-------|--------|
-| `neurobooth_os/` (core package) | 4/10 | Needs Major Work |
+| `neurobooth_os/` (core package) | 6/10 | Improved (was 4/10) |
 | `extras/` | 3.5/10 | Needs Major Work |
-| `examples/` | 4/10 | Needs Improvement |
-| `tests/` | 2/10 | Critical |
+| `examples/` | 5/10 | Improved (was 4/10) |
+| `tests/` | 2.5/10 | Critical |
 | `sql/` | 6/10 | Adequate |
 | `eyelink_setup/` | 6/10 | Adequate |
-| `docs/` | 6/10 | Fair |
-| CI/CD & Config | 3/10 | Needs Major Work |
+| `docs/` | 6.5/10 | Fair |
+| CI/CD & Config | 3.5/10 | Needs Work (was 3/10) |
 
 ---
 
@@ -43,39 +46,23 @@ The neurobooth-os project is a Python-based data acquisition and stimulus presen
 
 **Files analyzed:** 72 Python files across core modules, tasks, iout, gui, netcomm, and mock subpackages.
 
-### 1.1 Critical: SQL Injection Vulnerabilities
+### 1.1 ~~Critical: SQL Injection Vulnerabilities~~ RESOLVED
 
-**Location:** `neurobooth_os/iout/metadator.py`
-**Lines:** 172, 182-183, 229, 246, 368-369
+**Resolved in:** PR #582 (`3a9edba`)
 
-SQL queries are constructed with f-string interpolation instead of parameterized queries:
+All f-string SQL queries in `metadator.py` have been replaced with parameterized queries using `%s` placeholders. Parameter values are passed separately to `.execute()` calls.
 
-```python
-# Line 172
-msg_type_stmt = f" and msg_type = '{msg_type}' "
+### 1.2 ~~Critical: Database Credentials in Code~~ RESOLVED
 
-# Line 246
-subject_df = table_subject.query(where=f"LOWER(subject_id)=LOWER('{subject_id}')")
-```
+**Resolved in:** PR #584 (`e78fc15`)
 
-**Impact:** Data theft, unauthorized modification, potential system compromise.
-**Fix:** Use parameterized queries exclusively.
+Passwords in `DatabaseSpec` and `ServerSpec` now use Pydantic's `SecretStr` type, preventing accidental exposure in logs, error messages, or repr output. A `secrets.yaml` file pattern has been added to `.gitignore`.
 
-### 1.2 Critical: Database Credentials in Code
+### 1.3 ~~Critical: Dangerous Dynamic Import~~ RESOLVED
 
-**Location:** `neurobooth_os/config.py` (lines 57-63)
+**Resolved in:** PR #585 (`735fece`)
 
-Passwords are stored in the `DatabaseSpec` Pydantic model loaded directly from config files. Credentials could be exposed in logs, error messages, or memory dumps.
-
-**Fix:** Use environment variables or a secrets manager (e.g., Python `keyring`).
-
-### 1.3 Critical: Dangerous Dynamic Import
-
-**Location:** `neurobooth_os/iout/metadator.py` (lines 52-59)
-
-`str_fileid_to_eval()` uses `importlib.import_module()` and `getattr()` to dynamically load task classes from strings. If task file strings are tampered with, arbitrary code could execute.
-
-**Fix:** Implement a whitelist of allowed imports.
+`str_fileid_to_eval()` now validates modules against explicit allowlists (`_ALLOWED_MESSAGE_MODULES`, `_ALLOWED_PARSER_MODULES`, `_ALLOWED_TASK_MODULES`, `_ALLOWED_DEVICE_MODULES`) before importing. Blocked attempts are logged.
 
 ### 1.4 High: SSH Tunnel Resource Leak
 
@@ -109,18 +96,17 @@ raise (e)  # Parentheses create a tuple -- should be: raise e
 
 `get_database_connection()` returns a raw `psycopg2` connection without a context manager. Many callers don't close connections explicitly, leading to potential connection pool exhaustion.
 
-### 1.8 Medium: Excessive Global State
+### 1.8 Medium: Excessive Global State -- PARTIALLY RESOLVED
 
-Global mutable variables are used throughout:
+GUI-specific globals have been consolidated into a `SessionState` dataclass (PR #595, `db52c74`). The `gui.py` globals (`running_servers`, `last_task`, `start_pressed`, `session_prepared_count`) are now managed through a `SessionController` that owns a `SessionState` instance.
+
+Remaining globals in other modules:
 
 | File | Globals |
 |------|---------|
 | `config.py` | `neurobooth_config` |
 | `log_manager.py` | `SESSION_ID`, `SUBJECT_ID`, `APP_LOGGER` |
 | `server_stm.py` | `calib_instructions`, `frame_preview_device_id` |
-| `gui.py` | `running_servers`, `last_task`, `start_pressed`, `session_prepared_count` |
-
-**Impact:** Hard to test, potential race conditions in multi-threaded contexts, state persists unexpectedly between calls.
 
 ### 1.9 Medium: Race Conditions
 
@@ -128,11 +114,11 @@ Global mutable variables are used throughout:
 
 `frame_preview_device_id` is accessed from multiple threads without synchronization. Also, `ThreadPoolExecutor` calls use `concurrent.futures.wait()` without a timeout, risking indefinite hangs.
 
-### 1.10 Medium: God Class
+### 1.10 Medium: God Class -- PARTIALLY RESOLVED
 
-**Location:** `gui.py` (1000+ lines)
+**Location:** `gui.py`
 
-Single file handles GUI rendering, messaging, device management, and logging. Violates Single Responsibility Principle and makes testing very difficult.
+State management has been extracted into `SessionController` with a `SessionState` dataclass (PR #595). The liesl stop_recording work has been moved off the GUI event loop thread (PR #604). However, `gui.py` still handles GUI rendering, messaging, and device management in a single file.
 
 ### 1.11 Medium: Inconsistent Error Handling Strategy
 
@@ -163,20 +149,20 @@ Unfinished work is documented across the codebase. Notable ones:
 
 ### Module-by-Module Summary
 
-| Module | Severity | Key Issues |
-|--------|----------|------------|
-| `iout/metadator.py` | CRITICAL | SQL injection, SSH tunnel leak, swallowed exceptions |
-| `config.py` | HIGH | Credentials in code, permissive globals |
-| `gui.py` | HIGH | God class, threading issues, sync DB calls blocking GUI |
-| `log_manager.py` | MEDIUM | Global state abuse, exception handling |
-| `server_stm.py` | MEDIUM | Race conditions, incomplete TODOs |
-| `iout/lsl_streamer.py` | MEDIUM | Module-level side effects, design inconsistencies |
-| `iout/mbient.py` | MEDIUM | Thread/process mixing |
-| `iout/split_xdf.py` | MEDIUM | Bare except, unsafe parsing |
-| `netcomm/client.py` | MEDIUM | Non-atomic file operations |
-| `tasks/task_basic.py` | MEDIUM | Many TODOs, no cleanup guarantees on exception |
-| `iout/eyelink_tracker.py` | LOW | Missing type hints |
-| `tasks/utils.py` | LOW | Missing type hints, doc gaps |
+| Module | Severity | Key Issues | Status |
+|--------|----------|------------|--------|
+| `iout/metadator.py` | ~~CRITICAL~~ MEDIUM | ~~SQL injection~~, SSH tunnel leak, ~~swallowed exceptions~~ | SQL injection + import whitelist fixed |
+| `config.py` | ~~HIGH~~ LOW | ~~Credentials in code~~, permissive globals | SecretStr applied |
+| `gui.py` | ~~HIGH~~ MEDIUM | ~~God class~~ partially refactored, threading improved | SessionState + threading fixes |
+| `log_manager.py` | MEDIUM | Global state abuse, exception handling | Faulthandler + fallback logging added |
+| `server_stm.py` | MEDIUM | Race conditions, incomplete TODOs | -- |
+| `iout/lsl_streamer.py` | MEDIUM | Module-level side effects, design inconsistencies | -- |
+| `iout/mbient.py` | MEDIUM | Thread/process mixing | -- |
+| `iout/split_xdf.py` | MEDIUM | Bare except, unsafe parsing | -- |
+| `netcomm/client.py` | ~~MEDIUM~~ LOW | ~~Non-atomic file operations~~ | Atomic writes implemented |
+| `tasks/task_basic.py` | MEDIUM | Many TODOs, no cleanup guarantees on exception | -- |
+| `iout/eyelink_tracker.py` | LOW | Missing type hints | Updated (#587) |
+| `tasks/utils.py` | LOW | Missing type hints, doc gaps | -- |
 
 ---
 
@@ -288,21 +274,13 @@ The vast majority of scripts have zero documentation. Only `reset_mbients.py`, `
 
 ## 3. examples/
 
-**Files analyzed:** 1 Python file, 1 Jupyter notebook, 1 batch file, 2 YAML configs, ~200 configuration/asset files in `configs/` subdirectories.
+**Files analyzed:** 1 Python file, 1 Jupyter notebook, 1 batch file, 2 YAML configs, ~200 configuration/asset files in `configs/` subdirectories. *(Note: `environments/` directory with hardcoded credentials was removed in PR #590.)*
 
-### 3.1 High: Hardcoded Credentials in Config
+### 3.1 ~~High: Hardcoded Credentials in Config~~ RESOLVED
 
-**Location:** `environments/staging/neurobooth_os_config.json`
+**Resolved in:** PR #590 (`5e2062b`)
 
-```json
-"database": {
-    "password": "PASSWD",
-    "user": "USER",
-    "remote_user": "mgb_username"
-}
-```
-
-Also contains default test credentials: `"user": "TEST_STM", "password": "5519"`.
+The `environments/` directory containing `neurobooth_os_config.json` with hardcoded credentials has been removed from the repository.
 
 ### 3.2 High: Jupyter Notebook Runtime Errors
 
@@ -361,9 +339,9 @@ The entire test suite consists of:
 
 For a 72-file package, this is critically insufficient.
 
-### 4.2 High: Tests Are Not Portable
+### 4.2 High: Tests Are Not Portable -- PARTIALLY RESOLVED
 
-Batch test scripts hardcode paths like `C:\Users\CTR\anaconda3\Scripts\activate.bat` and use `ipython --pdb -i` (interactive debugging mode), making them unusable in CI/CD or on other machines.
+Batch test scripts hardcode paths like `C:\Users\CTR\anaconda3\Scripts\activate.bat`. The `ipython` usage in server batch files has been replaced with `python` (PR #578), but test-specific batch scripts still use hardcoded paths.
 
 ### 4.3 High: No Test Framework Integration
 
@@ -508,16 +486,16 @@ Uses `from distutils.command.sdist import sdist` which is deprecated and removed
 
 ### 9.1 Security Summary
 
-| Issue | Severity | Location |
-|-------|----------|----------|
-| SQL injection via f-strings | CRITICAL | `iout/metadator.py` |
-| `eval()` on HDF5 data | CRITICAL | 5 files in `extras/` |
-| Dynamic import without whitelist | HIGH | `iout/metadator.py` |
-| Credentials in config/code | HIGH | `config.py`, `examples/` |
-| SSH tunnel never closed | HIGH | `iout/metadator.py` |
-| Default WiFi password "eyelink3" | MEDIUM | `eyelink_setup/` |
-| Hardcoded MAC addresses | MEDIUM | `extras/` |
-| Plaintext secrets in config files | MEDIUM | Multiple |
+| Issue | Severity | Location | Status |
+|-------|----------|----------|--------|
+| SQL injection via f-strings | ~~CRITICAL~~ | `iout/metadator.py` | RESOLVED (PR #582) |
+| `eval()` on HDF5 data | CRITICAL | 5 files in `extras/` | OPEN |
+| Dynamic import without whitelist | ~~HIGH~~ | `iout/metadator.py` | RESOLVED (PR #585) |
+| Credentials in config/code | ~~HIGH~~ | `config.py`, `examples/` | RESOLVED (PRs #584, #590) |
+| SSH tunnel never closed | HIGH | `iout/metadator.py` | OPEN |
+| Default WiFi password "eyelink3" | MEDIUM | `eyelink_setup/` | OPEN |
+| Hardcoded MAC addresses | MEDIUM | `extras/` | OPEN |
+| Plaintext secrets in config files | ~~MEDIUM~~ | Multiple | RESOLVED (SecretStr + secrets.yaml) |
 
 ### 9.2 Dependency Management
 
@@ -546,10 +524,10 @@ Dependencies are fractured across three sources with no consistency:
 
 ### Phase 1: Critical Security & Stability (Immediate)
 
-1. **Fix SQL injection** in `metadator.py` -- replace all f-string queries with parameterized queries
+1. ~~**Fix SQL injection** in `metadator.py`~~ -- DONE (PR #582)
 2. **Replace `eval()`** with `ast.literal_eval()` in 5 extras files
 3. **Add `tunnel.stop()` calls** for SSH tunnel cleanup
-4. **Remove hardcoded credentials** -- use environment variables or secrets management
+4. ~~**Remove hardcoded credentials**~~ -- DONE (PRs #584 SecretStr, #590 removed example configs)
 5. **Create `requirements_dev.txt`** so developers can onboard
 6. **Fix `github_checkout.bat`** Python file generation syntax
 
@@ -565,8 +543,8 @@ Dependencies are fractured across three sources with no consistency:
 ### Phase 3: Code Quality (Weeks 3-4)
 
 13. Consolidate duplicated extras files (5 pairs identified)
-14. Refactor `gui.py` into separate concerns (presentation, logic, services)
-15. Replace global mutable state with dependency injection or singletons
+14. ~~Refactor `gui.py` into separate concerns~~ -- PARTIALLY DONE (PR #595 SessionState dataclass, PR #604 moved liesl off GUI thread)
+15. ~~Replace global mutable state with dependency injection or singletons~~ -- PARTIALLY DONE (PR #595 consolidated GUI state)
 16. Add type hints to all public APIs
 17. Fix the `raise (e)` syntax in `log_manager.py`
 18. Add context managers for database connections
@@ -585,9 +563,27 @@ Dependencies are fractured across three sources with no consistency:
 
 ### Phase 5: Long-Term Improvements
 
-28. Implement async database operations for GUI responsiveness
+28. ~~Implement async database operations for GUI responsiveness~~ -- PARTIALLY DONE (PR #604 moved liesl stop_recording off GUI thread)
 29. Add comprehensive API documentation with usage examples
 30. Create SQL migration rollback scripts
 31. Add code coverage thresholds to CI pipeline
 32. Consider WPA2-Enterprise for EyeLink WiFi
 33. Add automated security scanning to CI/CD
+
+### Additional Improvements (completed since initial audit)
+
+34. ~~Add faulthandler crash logging~~ -- DONE (PR #613)
+35. ~~Add system resource logging to GUI process~~ -- DONE (PR #614)
+36. ~~Add startup error fallback logging~~ -- DONE (PR #588)
+37. ~~Use atomic writes for server_pids.txt~~ -- DONE (PR #592)
+38. ~~Add module allowlist to dynamic imports~~ -- DONE (PR #585)
+39. ~~Replace ipython with python in server bat files~~ -- DONE (PR #578)
+40. ~~Switch config loader from JSON to YAML~~ -- DONE (PR #574)
+41. ~~Add pytest to environment_staging.yml~~ -- DONE (PR #586)
+42. ~~Fix dump_iphone_video crash with multiple acquisition servers~~ -- DONE (PR #580)
+43. ~~Handle stale entries in server_pids.txt gracefully~~ -- DONE (PR #607)
+44. ~~Parallelize camera start in DeviceManager~~ -- DONE (PR #594)
+45. ~~Pre-construct task instances during welcome screen~~ -- DONE (PR #605)
+46. ~~Combine StopRecording + StartRecording into TransitionRecording~~ -- DONE (PR #611)
+47. ~~Add timing instrumentation to inter-task critical path~~ -- DONE (PR #598)
+48. ~~Reduce STM message polling intervals~~ -- DONE (PR #589)
