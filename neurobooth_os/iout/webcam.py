@@ -30,7 +30,7 @@ class VidRec_Webcam(Device, CameraPreviewer):
         self,
         device_args: WebcamDeviceArgs,
     ) -> None:
-        Device.__init__(self, device_args)
+        super().__init__(device_args)
         self.device_args: WebcamDeviceArgs = device_args
         self.open: bool = False
         self.recording: bool = False

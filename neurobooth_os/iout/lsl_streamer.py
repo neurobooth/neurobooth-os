@@ -268,7 +268,11 @@ class DeviceManager:
         return stream_name.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone", "Webcam"]
 
     def get_camera_streams(self, task_devices: List[DeviceArgs]) -> List[Any]:
-        return list(self.get_devices_with_capability(DeviceCapability.RECORD, task_devices).values())
+        return [
+            device for device in
+            self.get_devices_with_capability(DeviceCapability.RECORD, task_devices).values()
+            if not device.has_capability(DeviceCapability.CALIBRATABLE)
+        ]
 
     def get_mbient_streams(self) -> Dict[str, Any]:
         return self.get_devices_with_capability(DeviceCapability.WEARABLE)
@@ -280,10 +284,23 @@ class DeviceManager:
         return None
 
     def start_cameras(self, filename: str, task_devices: List[DeviceArgs]) -> None:
-        self.start_recording_devices(filename, task_devices)
+        cameras = self.get_camera_streams(task_devices)
+        if not cameras:
+            return
+        with ThreadPoolExecutor(max_workers=len(cameras)) as executor:
+            futures = {executor.submit(device.start, filename): device for device in cameras}
+            for future in futures:
+                try:
+                    future.result()
+                except Exception as e:
+                    self.logger.exception(e)
 
     def stop_cameras(self, task_devices: List[DeviceArgs]):
-        self.stop_recording_devices(task_devices)
+        cameras = self.get_camera_streams(task_devices)
+        for device in cameras:  # Signal cameras to stop
+            device.stop()
+        for device in cameras:  # Wait for cameras to actually stop
+            device.ensure_stopped(10)
 
     def mbient_reconnect(self) -> None:
         Mbient.task_start_reconnect(list(self.get_mbient_streams().values()))
@@ -332,8 +349,12 @@ class DeviceManager:
     def reconnect_streams(self):
         """Reconnect streams that have stopped streaming."""
         for stream_name, stream in self.streams.items():
-            if self._is_device(stream) and stream.has_capability(DeviceCapability.RECORD):
-                continue  # Recording devices are started per-task, not reconnected
+            # Skip camera-type recording devices (they are started per-task, not reconnected).
+            # EyeTracker has RECORD but is NOT skipped here (matches old is_camera() behavior).
+            if (self._is_device(stream)
+                    and stream.has_capability(DeviceCapability.RECORD)
+                    and not stream.has_capability(DeviceCapability.CALIBRATABLE)):
+                continue
 
             if not stream.streaming:
                 self.logger.debug(f'Device Manager Reconnecting: {stream_name}')

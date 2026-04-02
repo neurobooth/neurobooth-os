@@ -35,7 +35,7 @@ class VidRec_Flir(Device, CameraPreviewer):
         self,
         device_args: FlirDeviceArgs,
     ) -> None:
-        Device.__init__(self, device_args)
+        super().__init__(device_args)
         self.device_args: FlirDeviceArgs = device_args
         self.open = False
         self.serial_num = device_args.device_sn

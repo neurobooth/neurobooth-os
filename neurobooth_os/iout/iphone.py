@@ -191,7 +191,7 @@ class IPhone(Device, CameraPreviewer):
     MESSAGE_KEYS = {"MessageType", "SessionID", "TimeStamp", "Message"}
 
     def __init__(self, name, sess_id="", mock=False, device_args: IPhoneDeviceArgs = None, enable_timeout_exceptions=False):
-        Device.__init__(self, device_args)
+        super().__init__(device_args)
         self.connected = False
         self.tag = 0
         self.iphone_sessionID = sess_id
