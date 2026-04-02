@@ -97,10 +97,16 @@ class DeviceNotFoundException(Exception):
 
 
 def get_device_assignment(device_id: str) -> str:
-    """
-    Return the server a device is assigned to. Raises a DeviceNotFoundException if the device is not found.
-    :param device_id: The ID of the device.
-    :return: The full name of the assigned server.
+    """Return the server a device is assigned to.
+
+    Args:
+        device_id: The ID of the device.
+
+    Returns:
+        The full name of the assigned server.
+
+    Raises:
+        DeviceNotFoundException: If the device is not in any server's assignment list.
     """
     for server_name, device_list in SERVER_ASSIGNMENTS.items():
         if device_id in device_list:
@@ -109,16 +115,18 @@ def get_device_assignment(device_id: str) -> str:
 
 
 def is_device_assigned(device_id: str, server_name: str) -> bool:
-    """
-    Check whether a device is assigned to a particular server.
+    """Check whether a device is assigned to a particular server.
 
-    When *server_name* is ``'acquisition'`` (the generic role name returned by
-    :func:`get_server_name_from_env`), all indexed acquisition servers
+    When ``server_name`` is ``'acquisition'``, all indexed acquisition servers
     (``acquisition_0``, ``acquisition_1``, ...) are checked.
 
-    :param device_id: The ID of the device.
-    :param server_name: The name of the server.
-    :return: True if the device is assigned to the server, False otherwise.
+    Args:
+        device_id: The ID of the device.
+        server_name: The name of the server (e.g., ``'acquisition_0'``,
+            ``'presentation'``, or the generic ``'acquisition'``).
+
+    Returns:
+        True if the device is assigned to the server.
     """
     if server_name in SERVER_ASSIGNMENTS:
         return device_id in SERVER_ASSIGNMENTS[server_name]
@@ -147,11 +155,12 @@ class DeviceManager:
         self.marker_stream = node_name in ['presentation']
 
     def create_streams(self, win=None, task_params=None) -> None:
-        """
-        Initialize devices and LSL streams.
+        """Initialize devices and LSL streams for this node's assigned devices.
 
-        :param win: PsychoPy window
-        :param task_params: task configuration parameters
+        Args:
+            win: PsychoPy window (required for EyeTracker on the presentation node).
+            task_params: Mapping of task IDs to TaskArgs. Used to determine which
+                devices are needed across all tasks in the collection.
         """
         if self.marker_stream:  # TODO: Handle the marker stream better
             from neurobooth_os.iout import marker_stream
@@ -192,15 +201,16 @@ class DeviceManager:
         self.logger.info(f'LOADED DEVICES: {list(self.streams.keys())}')
 
     @staticmethod
-    def _get_unique_devices(task_params: Dict) -> Dict[str, DeviceArgs]:
-        """
-        Fetch the DeviceArgs for each device used in the collection, eliminating any duplicates
+    def _get_unique_devices(task_params: Dict[str, TaskArgs]) -> Dict[str, DeviceArgs]:
+        """Collect the unique set of DeviceArgs across all tasks.
 
-        :param collection_id: Name of study collection.
+        Args:
+            task_params: Mapping of task IDs to TaskArgs for the collection.
+
+        Returns:
+            Mapping of device IDs to DeviceArgs, deduplicated across tasks.
         """
-        # Get all tasks in collection
-        kwarg_devs: Dict[str, TaskArgs] = task_params
-        # Aggregate the devices used by the tasks
+        kwarg_devs = task_params
         devices = {}
         for task in kwarg_devs.values():
             for device in task.device_args:
@@ -248,7 +258,12 @@ class DeviceManager:
         ]
 
     def start_recording_devices(self, filename: str, task_devices: List[DeviceArgs]) -> None:
-        """Start camera recording devices for the given task."""
+        """Start camera recording devices in parallel for the given task.
+
+        Args:
+            filename: Base path for output files, passed to each device's ``start()``.
+            task_devices: Devices required by the current task.
+        """
         cameras = self._get_camera_devices(task_devices)
         if not cameras:
             return
@@ -261,7 +276,11 @@ class DeviceManager:
                     self.logger.exception(e)
 
     def stop_recording_devices(self, task_devices: List[DeviceArgs]) -> None:
-        """Stop camera recording devices and wait for them to finish."""
+        """Stop camera recording devices and wait for them to finish.
+
+        Args:
+            task_devices: Devices required by the current task.
+        """
         cameras = self._get_camera_devices(task_devices)
         for device in cameras:  # Signal cameras to stop
             device.stop()
@@ -282,10 +301,15 @@ class DeviceManager:
         return self.get_devices_with_capability(DeviceCapability.WEARABLE)
 
     def mbient_reconnect(self) -> None:
+        """Attempt to reconnect any Mbient devices that have disconnected."""
         Mbient.task_start_reconnect(list(self.get_mbient_streams().values()))
 
     def mbient_reset(self) -> Dict[str, bool]:
-        """Reset mbient devices in parallel."""
+        """Reset all Mbient devices in parallel and attempt to reconnect.
+
+        Returns:
+            Mapping of device name to whether the reset succeeded.
+        """
         mbient_streams = self.get_mbient_streams()
 
         if len(mbient_streams) == 0:
@@ -304,6 +328,17 @@ class DeviceManager:
             return {stream_name: result.result() for stream_name, result in reset_results.items()}
 
     def camera_frame_preview(self, device_id: str) -> ByteString:
+        """Capture a single preview frame from a camera device.
+
+        Args:
+            device_id: The ID of the camera device to capture from.
+
+        Returns:
+            PNG-encoded image bytes.
+
+        Raises:
+            CameraPreviewException: If the device is not found or does not support previews.
+        """
         if device_id not in self.streams:
             raise CameraPreviewException(f'Device {device_id} unavailable.')
 
@@ -322,8 +357,13 @@ class DeviceManager:
             else:
                 stream.stop()
 
-    def reconnect_streams(self):
-        """Reconnect streams that have stopped streaming."""
+    def reconnect_streams(self) -> None:
+        """Restart any non-camera streams that have stopped, and re-post DeviceInitialization messages.
+
+        Camera-type recording devices are skipped because they are started
+        per-task via ``start_recording_devices()``. The EyeTracker (RECORD but
+        also CALIBRATABLE) is *not* skipped, matching pre-refactor behavior.
+        """
         for stream_name, stream in self.streams.items():
             # Skip camera-type recording devices (they are started per-task, not reconnected).
             # EyeTracker has RECORD but is NOT skipped here (matches old is_camera() behavior).
