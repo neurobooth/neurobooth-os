@@ -15,7 +15,6 @@ from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 # --------------------------------------------------------------------------------
 # Wrappers for device setup procedures.
-# TODO: Handle device setup calls and imports in a more standardized/extensible fashion!!!
 # --------------------------------------------------------------------------------
 def start_eyelink_stream(win, device_args):
     from neurobooth_os.iout.eyelink_tracker import EyeTracker
@@ -296,9 +295,17 @@ class DeviceManager:
 
     # ---- Mbient-specific methods ----
 
-    def get_mbient_streams(self) -> Dict[str, Device]:
-        """Return all Mbient (wearable) devices."""
-        return self.get_devices_with_capability(DeviceCapability.WEARABLE)
+    def get_mbient_streams(self) -> Dict[str, Mbient]:
+        """Return all Mbient devices.
+
+        Filters by isinstance rather than WEARABLE capability, because callers
+        depend on Mbient-specific methods (``task_start_reconnect``,
+        ``reset_and_reconnect``).
+        """
+        return {
+            name: stream for name, stream in self.streams.items()
+            if isinstance(stream, Mbient)
+        }
 
     def mbient_reconnect(self) -> None:
         """Attempt to reconnect any Mbient devices that have disconnected."""
