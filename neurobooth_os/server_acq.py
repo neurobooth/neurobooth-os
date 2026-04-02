@@ -213,7 +213,7 @@ def camera_frame_preview(device_id: str, device_manager, logger, service_id: str
 
 def start_recording(device_manager: DeviceManager, fname: str, task_devices: List[DeviceArgs]) -> float:
     t0 = time()
-    device_manager.start_cameras(fname, task_devices)
+    device_manager.start_recording_devices(fname, task_devices)
     device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
     elapsed_time = time() - t0
     return elapsed_time
@@ -221,7 +221,7 @@ def start_recording(device_manager: DeviceManager, fname: str, task_devices: Lis
 
 def stop_recording(device_manager: DeviceManager, task_devices: List[DeviceArgs]) -> float:
     t0 = time()
-    device_manager.stop_cameras(task_devices)
+    device_manager.stop_recording_devices(task_devices)
     elapsed_time = time() - t0
     return elapsed_time
 

@@ -66,9 +66,9 @@ class Device(ABC):
 
     capabilities: ClassVar[DeviceCapability] = DeviceCapability(0)
 
-    def __init__(self, device_args: DeviceArgs) -> None:
-        self.device_id: str = device_args.device_id
-        self.sensor_ids: Optional[List[str]] = device_args.sensor_ids
+    def __init__(self, device_args: Optional[DeviceArgs] = None) -> None:
+        self.device_id: Optional[str] = device_args.device_id if device_args else None
+        self.sensor_ids: Optional[List[str]] = device_args.sensor_ids if device_args else None
         self.outlet_id: str = str(uuid.uuid4())
         self.outlet = None  # Created in connect(); type varies by device
         self.streaming: bool = False
@@ -79,9 +79,10 @@ class Device(ABC):
         """Set device parameters from config. No-op by default."""
         self.state = DeviceState.CONFIGURED
 
+    @abstractmethod
     def connect(self) -> None:
-        """Establish connection to hardware and create LSL outlet. No-op by default."""
-        self.state = DeviceState.CONNECTED
+        """Establish connection to hardware and create LSL outlet."""
+        ...
 
     @abstractmethod
     def start(self, filename: Optional[str] = None) -> None:
