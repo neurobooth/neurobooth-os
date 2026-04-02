@@ -79,110 +79,114 @@ def run_stm(logger):
     paused_msg_conn = meta.get_database_connection()
     read_msg_conn = meta.get_database_connection()
 
-    while not shutdown:
-        try:
-            while paused:
-                message: Message = (
-                    meta.read_next_message("STM", msg_type='paused_msg_types', conn=read_msg_conn))
+    try:
+        while not shutdown:
+            try:
+                while paused:
+                    message: Message = (
+                        meta.read_next_message("STM", msg_type='paused_msg_types', conn=read_msg_conn))
+                    if message is None:
+                        sleep(.25)
+                        continue
+                    log_message_received(message, logger)
+                    current_msg_type: str = message.msg_type
+
+                    # Next message tells what to do now that we paused
+                    if "TerminateServerRequest" == current_msg_type:
+                        paused = False
+                        shutdown = True
+                        break
+                    if "ResumeSessionRequest" == current_msg_type:
+                        paused = False
+
+                        # display 'preparing next task'
+                        end_screen = utl.load_inter_task_slide(session.win)
+
+                        utl.present(
+                            session.win,
+                            end_screen,
+                            audio=None,
+                            wait_time=0,
+                            win_color=(0, 0, 0),
+                            waitKeys=False,
+                        )
+                        break
+
+                    elif "CancelSessionRequest" == current_msg_type:
+                        session_canceled = True
+                        paused = False
+                        break
+                    else:
+                        text = (f'"Received an unexpected message while paused: '
+                                f'{message.model_dump_json()}')
+                        body = ErrorMessage(text=text, status="CRITICAL")
+                        err_msg = Request(source='STM', destination='CTR', body=body)
+                        meta.post_message(err_msg)
+                        logger.error(f"Received an unexpected message while paused {current_msg_type}")
+                        raise RuntimeError(text)
+
+                message: Message = meta.read_next_message("STM", conn=read_msg_conn)
                 if message is None:
                     sleep(.25)
                     continue
+
                 log_message_received(message, logger)
                 current_msg_type: str = message.msg_type
 
-                # Next message tells what to do now that we paused
                 if "TerminateServerRequest" == current_msg_type:
-                    paused = False
+                    if session is not None:
+                        session.shutdown()
                     shutdown = True
-                    break
-                if "ResumeSessionRequest" == current_msg_type:
-                    paused = False
+                    continue
 
-                    # display 'preparing next task'
-                    end_screen = utl.load_inter_task_slide(session.win)
+                if not session_canceled:
 
-                    utl.present(
-                        session.win,
-                        end_screen,
-                        audio=None,
-                        wait_time=0,
-                        win_color=(0, 0, 0),
-                        waitKeys=False,
-                    )
-                    break
+                    if "PrepareRequest" == current_msg_type:
+                        request: PrepareRequest = message.body
+                        session, task_log_entry = prepare_session(request, logger)
 
-                elif "CancelSessionRequest" == current_msg_type:
-                    session_canceled = True
-                    paused = False
-                    break
-                else:
-                    text = (f'"Received an unexpected message while paused: '
-                            f'{message.model_dump_json()}')
-                    body = ErrorMessage(text=text, status="CRITICAL")
-                    err_msg = Request(source='STM', destination='CTR', body=body)
-                    meta.post_message(err_msg)
-                    logger.error(f"Received an unexpected message while paused {current_msg_type}")
-                    raise RuntimeError(text)
+                    elif 'CreateTasksRequest' == current_msg_type:
+                        device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
+                        msg_body: CreateTasksRequest = message.body
+                        frame_preview_device_id = msg_body.frame_preview_device_id
 
-            message: Message = meta.read_next_message("STM", conn=read_msg_conn)
-            if message is None:
-                sleep(.25)
-                continue
+                    elif "PerformTaskRequest" == current_msg_type:
+                        if last_task_finished_time is not None:
+                            logger.info(f"Inter-task gap (STM idle): {time() - last_task_finished_time:.2f}")
+                        completion_time = _perform_task(
+                            device_log_entry_dict, message, session, subj_id, task_log_entry,
+                            prev_task_completion_time=last_task_finished_time)
+                        last_task_finished_time = completion_time or time()
 
-            log_message_received(message, logger)
-            current_msg_type: str = message.msg_type
+                    elif "PauseSessionRequest" == current_msg_type:
+                        if session is not None:
+                            _cancel_transition(session)
+                        paused = _pause(session)
 
-            if "TerminateServerRequest" == current_msg_type:
-                if session is not None:
-                    session.shutdown()
-                shutdown = True
-                continue
+                    elif "TasksFinished" == current_msg_type:
+                        session_canceled = True
 
-            if not session_canceled:
+                    elif "CancelSessionRequest" == current_msg_type:
+                        if session is not None:
+                            _cancel_transition(session)
+                        session_canceled = True
 
-                if "PrepareRequest" == current_msg_type:
-                    request: PrepareRequest = message.body
-                    session, task_log_entry = prepare_session(request, logger)
+                    else:
+                        unex_msg = f'Unexpected message received: {message.model_dump_json()}'
+                        logger.error(unex_msg)
+                        raise RuntimeError(unex_msg)
 
-                elif 'CreateTasksRequest' == current_msg_type:
-                    device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
-                    msg_body: CreateTasksRequest = message.body
-                    frame_preview_device_id = msg_body.frame_preview_device_id
-
-                elif "PerformTaskRequest" == current_msg_type:
-                    if last_task_finished_time is not None:
-                        logger.info(f"Inter-task gap (STM idle): {time() - last_task_finished_time:.2f}")
-                    completion_time = _perform_task(
-                        device_log_entry_dict, message, session, subj_id, task_log_entry,
-                        prev_task_completion_time=last_task_finished_time)
-                    last_task_finished_time = completion_time or time()
-
-                elif "PauseSessionRequest" == current_msg_type:
-                    if session is not None:
-                        _cancel_transition(session)
-                    paused = _pause(session)
-
-                elif "TasksFinished" == current_msg_type:
-                    session_canceled = True
-
-                elif "CancelSessionRequest" == current_msg_type:
-                    if session is not None:
-                        _cancel_transition(session)
-                    session_canceled = True
-
-                else:
-                    unex_msg = f'Unexpected message received: {message.model_dump_json()}'
-                    logger.error(unex_msg)
-                    raise RuntimeError(unex_msg)
-
-            if session_canceled and not finished:
-                finished = _finish_tasks(session)
-        except Exception as argument:
-            with meta.get_database_connection() as db_conn:
-                err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
-                req = Request(body=err_msg, source="STM", destination="CTR")
-                meta.post_message(req, db_conn)
-            raise argument
+                if session_canceled and not finished:
+                    finished = _finish_tasks(session)
+            except Exception as argument:
+                with meta.get_database_connection() as db_conn:
+                    err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
+                    req = Request(body=err_msg, source="STM", destination="CTR")
+                    meta.post_message(req, db_conn)
+                raise argument
+    finally:
+        read_msg_conn.close()
+        paused_msg_conn.close()
 
     exit()
 
@@ -602,7 +606,6 @@ def prepare_session(prepare_req: PrepareRequest, logger):
         session_name=task_log_entry.subject_id_date,
         collection_id=collection_id,
         selected_tasks=prepare_req.selected_tasks,
-        db_conn=meta.get_database_connection(database=database_name),
     )
     #  TODO(larry): See about refactoring so we don't need to create a new logger here.
     #   (continued) We already have a db_logger, it just needs session attributes
