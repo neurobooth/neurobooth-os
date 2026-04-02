@@ -132,6 +132,10 @@ class SessionEventListener(ABC):
         """An Mbient device disconnected during a task."""
 
     @abstractmethod
+    def on_message_reader_died(self, error_msg: str) -> None:
+        """The background message reader thread has crashed."""
+
+    @abstractmethod
     def prompt_pause_decision(self) -> str:
         """Ask the user whether to continue or stop after a pause.
 
@@ -549,6 +553,17 @@ class SessionController:
         """Poll the database for messages and dispatch to the listener."""
         from neurobooth_os.log_manager import log_message_received
 
+        try:
+            self._message_reader_loop(log_message_received)
+        except Exception as e:
+            self.logger.critical(f"Message reader thread died: {e}", exc_info=True)
+            try:
+                self.listener.on_message_reader_died(str(e))
+            except Exception:
+                pass  # If even notification fails, at least we logged it
+
+    def _message_reader_loop(self, log_message_received) -> None:
+        """Inner loop for _message_reader, separated to allow top-level exception handling."""
         with meta.get_database_connection() as db_conn:
             while True:
                 message: Message = meta.read_next_message("CTR", conn=db_conn)

@@ -99,10 +99,13 @@ class GuiEventListener(SessionEventListener):
             self.window.write_event_value('-config_version_error-', [error.other_version, error.server])
 
     def on_error(self, message, text_color=None):
-        write_output(self.window, message, text_color)
+        self.window.write_event_value('-status_message-', (message, text_color))
 
     def on_frame_preview(self, frame_reply):
-        handle_frame_preview_reply(self.window, frame_reply)
+        self.window.write_event_value('-frame_preview_reply-', frame_reply)
+
+    def on_message_reader_died(self, error_msg):
+        self.window.write_event_value('-message_reader_died-', error_msg)
 
     def on_new_preview_device(self, stream_name, device_id):
         self.window.write_event_value("-new_preview_device-", [stream_name, device_id])
@@ -566,6 +569,30 @@ def gui(logger):
                 if check:
                     write_output(window, "Servers initiated. OK to connect devices.")
                     window["-Connect-"].Update(disabled=False)
+
+            elif event == '-status_message-':
+                message, text_color = values[event]
+                write_output(window, message, text_color)
+
+            elif event == '-frame_preview_reply-':
+                handle_frame_preview_reply(window, values[event])
+
+            elif event == '-message_reader_died-':
+                error_msg = values[event]
+                write_output(
+                    window,
+                    f"\nCRITICAL: Message reader thread has crashed. "
+                    f"The system can no longer receive messages from servers.\n"
+                    f"Please terminate and restart.\nError: {error_msg}",
+                    text_color="red",
+                )
+                sg.PopupError(
+                    "The message reader thread has crashed.\n\n"
+                    "The system can no longer communicate with ACQ/STM servers.\n"
+                    "Please terminate the system and restart.",
+                    title="Critical System Error",
+                    location=get_popup_location(window),
+                )
 
             elif event == "no_eyetracker":
                 result = sg.PopupError(values[event], location=get_popup_location(window))
