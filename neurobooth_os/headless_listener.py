@@ -106,6 +106,9 @@ class HeadlessListener(SessionEventListener):
     def on_mbient_disconnected(self, warning: str) -> None:
         logger.warning(f"Mbient disconnected: {warning}")
 
+    def on_message_reader_died(self, error_msg: str) -> None:
+        logger.critical(f"Message reader thread died: {error_msg}")
+
     def on_new_video_file(self, stream_name: str, filename: str, event: str) -> None:
         logger.debug(f"New video file: {stream_name}/{filename}")
 
