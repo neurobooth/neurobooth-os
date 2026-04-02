@@ -514,17 +514,25 @@ class SessionController:
                 postpone_xdf_split(xdf_path, t_obs_id, obs_log_id,
                                    cfg.neurobooth_config.split_xdf_backlog)
             else:
-                with meta.get_database_connection() as db_conn:
-                    split_thread = threading_mod.Thread(
-                        target=split_sens_files,
-                        args=(xdf_path, obs_log_id, t_obs_id, db_conn),
-                        daemon=True,
-                    )
-                    split_thread.start()
+                db_conn = meta.get_database_connection()
+                split_thread = threading_mod.Thread(
+                    target=self._split_and_close,
+                    args=(xdf_path, obs_log_id, t_obs_id, db_conn),
+                    daemon=True,
+                )
+                split_thread.start()
 
         self._lsl_stop_thread = threading_mod.Thread(
             target=_finalize, daemon=True, name="lsl-stop")
         self._lsl_stop_thread.start()
+
+    @staticmethod
+    def _split_and_close(xdf_path, obs_log_id, t_obs_id, db_conn):
+        """Run split_sens_files and close the connection when done."""
+        try:
+            split_sens_files(xdf_path, obs_log_id, t_obs_id, db_conn)
+        finally:
+            db_conn.close()
 
     # --- Notes ---
 

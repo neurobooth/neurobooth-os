@@ -18,6 +18,7 @@ from psycopg2.extensions import connection
 from neurobooth_terra import Table
 
 import neurobooth_os.config as cfg
+from neurobooth_os.iout.db_connection import ManagedConnection
 from neurobooth_os.iout import stim_param_reader
 from neurobooth_os.iout.stim_param_reader import InstructionArgs, SensorArgs, get_cfg_path, DeviceArgs, StimulusArgs, \
     RawTaskParams, TaskArgs, StudyArgs, CollectionArgs
@@ -104,8 +105,15 @@ def str_fileid_to_eval(
     return task_func
 
 
-def get_database_connection(database: Optional[str] = None) -> connection:
+def get_database_connection(database: Optional[str] = None) -> ManagedConnection:
+    """Open a database connection, optionally through an SSH tunnel.
+
+    Returns a :class:`ManagedConnection` that behaves like a plain
+    ``psycopg2.extensions.connection`` but also stops the SSH tunnel
+    (if any) when :meth:`close` is called or the context manager exits.
+    """
     database_info = cfg.neurobooth_config.database
+    tunnel = None
     if database_info.ssh_tunnel and database_info.host not in ["127.0.0.1", "localhost"]:
         # If the DB is not on this host, use SSH tunneling for access
         tunnel = SSHTunnelForwarder(
@@ -132,7 +140,7 @@ def get_database_connection(database: Optional[str] = None) -> connection:
         host=host,
         port=port,
     )
-    return conn
+    return ManagedConnection(conn, tunnel)
 
 
 def clear_msg_queue(conn):
@@ -515,12 +523,17 @@ def log_devices(conn: connection = None, task_args_list: Optional[List[TaskArgs]
     for task in task_args_list:
         for device in task.device_args:
             device_id_dict[device.device_id] = device
-    if conn is None:
+    own_conn = conn is None
+    if own_conn:
         conn = get_database_connection()
-    for device in list(device_id_dict.values()):
-        primary_key = _fill_device_param_row(conn, device)
-        device_pkey_dict[device.device_id] = primary_key
-    return device_pkey_dict
+    try:
+        for device in list(device_id_dict.values()):
+            primary_key = _fill_device_param_row(conn, device)
+            device_pkey_dict[device.device_id] = primary_key
+        return device_pkey_dict
+    finally:
+        if own_conn:
+            conn.close()
 
 
 def log_task_params(conn: connection, log_task_id: str, device_log_entry_dict: Dict[str, int], task_args: TaskArgs):
