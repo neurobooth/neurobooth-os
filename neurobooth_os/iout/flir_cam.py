@@ -5,10 +5,8 @@ import queue
 import time
 import os
 import threading
-import uuid
-import neurobooth_os.iout.metadator as meta
 import logging
-from typing import Callable, Any, ByteString
+from typing import Callable, Any, Optional, ByteString
 
 import cv2
 import PySpin
@@ -18,7 +16,8 @@ from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFile
-from neurobooth_os.iout.device import CameraPreviewer
+from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState, CameraPreviewer
+import neurobooth_os.iout.metadator as meta
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -28,35 +27,35 @@ class FlirException(Exception):
         super().__init__(*args, **kwargs)
 
 
-class VidRec_Flir(CameraPreviewer):
+class VidRec_Flir(Device, CameraPreviewer):
+
+    capabilities = DeviceCapability.RECORD | DeviceCapability.CAMERA_PREVIEW
+
     def __init__(
         self,
         device_args: FlirDeviceArgs,
-    ):
+    ) -> None:
+        super().__init__(device_args)
         self.device_args: FlirDeviceArgs = device_args
-        # not currently using sizex, sizey --> need to update to use these parameters
-        # need to read these parameters from database
-        # need new column in database that allows parameters in json file
         self.open = False
         self.serial_num = device_args.device_sn
         if self.serial_num is None:
             raise FlirException('FLIR serial number must be provided!')
 
-        self.logger = logging.getLogger(APP_LOG_NAME)
-
         self.exposure = device_args.exposure()
         self.gain = device_args.gain()
         self.gamma = device_args.gamma()
-        self.device_id = device_args.device_id
-        self.sensor_ids = device_args.sensor_ids
         self.fd = device_args.fd()
         self.recording = False
 
+        self.image_queue = queue.Queue(0)
+
+    def connect(self) -> None:
+        """Connect to the FLIR camera, configure it, and create the LSL outlet."""
         self.get_cam()
         self.setup_cam()
-
-        self.image_queue = queue.Queue(0)
-        self.outlet = self.createOutlet()
+        self._create_outlet()
+        self.state = DeviceState.CONNECTED
 
         self.logger.debug(f'FLIR: fps={str(self.device_args.sample_rate())}; '
                           f'frame_size={str((self.device_args.width_px(), self.device_args.height_px()))}')
@@ -104,18 +103,16 @@ class VidRec_Flir(CameraPreviewer):
         )
         handling_mode_entry = handling_mode.GetEntryByName("NewestOnly")
         handling_mode.SetIntValue(handling_mode_entry.GetValue())
-        # cam.BalanceWhiteAuto.SetValue(0)
 
-    def createOutlet(self):
+    def _create_outlet(self) -> None:
         self.streamName = "FlirFrameIndex"
-        self.oulet_id = str(uuid.uuid4())
         info = set_stream_description(
             stream_info=StreamInfo(
                 name=self.streamName,
                 type="videostream",
                 channel_format="double64",
                 channel_count=2,
-                source_id=self.oulet_id,
+                source_id=self.outlet_id,
             ),
             device_id=self.device_id,
             sensor_ids=self.sensor_ids,
@@ -130,16 +127,15 @@ class VidRec_Flir(CameraPreviewer):
             exposure=str(self.exposure),
             gain=str(self.gain),
             gamma=str(self.gamma),
-            # device_model_id=self.cam.get_device_name().decode(),
         )
         msg_body = DeviceInitialization(
             stream_name=self.streamName,
-            outlet_id=self.oulet_id,
+            outlet_id=self.outlet_id,
             device_id=self.device_id,
             camera_preview=True,
         )
         meta.post_message(Request(source='Flir', destination='CTR', body=msg_body))
-        return StreamOutlet(info)
+        self.outlet = StreamOutlet(info)
 
     # function to capture images, convert to numpy, send to queue, and release
     # from buffer in separate process
@@ -153,10 +149,17 @@ class VidRec_Flir(CameraPreviewer):
                 continue
         self.logger.debug('FLIR: Exiting Save Thread')
 
-    def start(self, name="temp_video"):
-        self.prepare(name)
+    def start(self, filename: Optional[str] = None) -> None:
+        """Begin recording video.
+
+        Args:
+            filename: Base name for the output video file. Defaults to ``"temp_video"``.
+        """
+        name = filename if filename is not None else "temp_video"
+        self._prepare_recording(name)
         self.video_thread = threading.Thread(target=self.record)
         self.logger.debug('FLIR: Beginning Recording')
+        self.state = DeviceState.STARTED
         self.video_thread.start()
 
     def imgage_proc(self):
@@ -167,7 +170,7 @@ class VidRec_Flir(CameraPreviewer):
         im.Release()
         return cv2.resize(im_conv, None, fx=self.fd, fy=self.fd), tsmp
 
-    def prepare(self, name="temp_video"):
+    def _prepare_recording(self, name: str = "temp_video") -> None:
         self.cam.BeginAcquisition()
         im, _ = self.imgage_proc()
         self.frameSize = (im.shape[1], im.shape[0])
@@ -204,11 +207,10 @@ class VidRec_Flir(CameraPreviewer):
             try:
                 self.outlet.push_sample([self.frame_counter, tsmp])
             except BaseException:
-                self.logger.debug(f"Reopening FLIR {self.device_index} stream already closed")
-                self.outlet = self.createOutlet(self.video_filename)
+                self.logger.debug(f"Reopening FLIR stream already closed")
+                self._create_outlet()
                 self.outlet.push_sample([self.frame_counter, tsmp])
 
-            # self.video_out.write(im_conv_d)
             self.frame_counter += 1
 
             if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
@@ -232,39 +234,25 @@ class VidRec_Flir(CameraPreviewer):
         img, _ = self.imgage_proc()
         self.cam.EndAcquisition()
 
-        # Open question: why is the image not flipped during active recording?
-        # img = cv2.rotate(img, cv2.ROTATE_180)
-
         rc, img = cv2.imencode('.png', img)
         return img.tobytes() if rc else b""
 
-    def stop(self):
+    def stop(self) -> None:
         if self.open and self.recording:
             self.logger.debug('FLIR: Setting Record Stop Flag')
             self.recording = False
         self.streaming = False
+        self.state = DeviceState.STOPPED
 
-    def close(self):
+    def close(self) -> None:
         self.stop()
         self.cam.DeInit()
         self.open = False
+        self.state = DeviceState.DISCONNECTED
 
-    def ensure_stopped(self, timeout_seconds: float) -> None:
+    def ensure_stopped(self, timeout_seconds: float = 10.0) -> None:
         """Check to make sure the recording is actually stopped."""
         self.video_thread.join()
         if self.video_thread.is_alive():
             self.logger.error('FLIR: Potential Zombie Thread Detected!')
             raise FlirException('Potential Zombie Thread Detected!')
-
-
-if __name__ == "__main__":
-    flir = VidRec_Flir()
-    print('Recording...')
-    flir.start()
-    time.sleep(10)
-    flir.stop()
-    print('Stopping...')
-    flir.ensure_stopped(timeout_seconds=5)
-    flir.close()
-    tdiff = np.diff(flir.stamp) / 1e6
-    print(f"diff range {np.ptp(tdiff):.2e}")

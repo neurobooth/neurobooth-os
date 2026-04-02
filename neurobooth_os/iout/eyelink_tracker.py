@@ -1,8 +1,7 @@
 import os.path as op
-import uuid
 import threading
 import logging
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -10,6 +9,7 @@ import pylink
 from psychopy import visual, monitors
 from pylsl import StreamInfo, StreamOutlet, local_clock
 
+from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 from neurobooth_os.iout.metadator import post_message
 from neurobooth_os.iout.stim_param_reader import EyelinkDeviceArgs
 from neurobooth_os.msg.messages import NoEyetracker, Request, DeviceInitialization, NewVideoFile
@@ -20,23 +20,25 @@ from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 
 
-class EyeTracker:
+class EyeTracker(Device):
+
+    capabilities = DeviceCapability.RECORD | DeviceCapability.CALIBRATABLE
+
     def __init__(
         self,
         device_args: EyelinkDeviceArgs,
         win=None,
-        with_lsl=True,
-    ):
+        with_lsl: bool = True,
+    ) -> None:
         if win is None:
             raise Exception("Window should never be None.")
 
+        super().__init__(device_args)
         self.IP = device_args.ip
         self.sample_rate = device_args.sample_rate()
         self.msec_delay = device_args.msec_delay()
         self.calibration_area_proportion: Tuple[float, float] = device_args.calibration_area_proportion()
         self.validation_area_proportion: Tuple[float, float] = device_args.validation_area_proportion()
-        self.device_id = device_args.device_id
-        self.sensor_ids = device_args.sensor_ids
         self.streamName = "EyeLink"
         self.with_lsl = with_lsl
         mon = monitors.getAllMonitors()[0]
@@ -45,10 +47,9 @@ class EyeTracker:
         self.win = win
 
         # Setup outlet stream info
-        self.oulet_id = str(uuid.uuid4())
         self.stream_info = set_stream_description(
             stream_info=StreamInfo(
-                "EyeLink", "Gaze", 13, self.sample_rate, "double64", self.oulet_id
+                "EyeLink", "Gaze", 13, self.sample_rate, "double64", self.outlet_id
             ),
             device_id=self.device_id,
             sensor_ids=self.sensor_ids,
@@ -79,16 +80,19 @@ class EyeTracker:
         )
         self.outlet = StreamOutlet(self.stream_info)
 
-        self.logger = logging.getLogger(APP_LOG_NAME)
         self.logger.debug(f'EyeLink: sample_rate={str(self.sample_rate)}')
 
-        self.streaming = False
         self.calibrated = True
         self.recording = False
         self.paused = True
-        self.connect_tracker()
+        self._connect_tracker()
+        self.state = DeviceState.CONNECTED
 
-    def connect_tracker(self):
+    def connect(self) -> None:
+        """No-op: EyeTracker connects during ``__init__`` because it needs the PsychoPy window."""
+        pass
+
+    def _connect_tracker(self):
         try:
             self.tk = pylink.EyeLink(self.IP)
         except RuntimeError:
@@ -145,7 +149,7 @@ class EyeTracker:
 
         body = DeviceInitialization(
             stream_name=self.streamName,
-            outlet_id=self.oulet_id,
+            outlet_id=self.outlet_id,
             device_id=self.device_id,
         )
         msg = Request(source="EyeTracker", destination="CTR", body=body)
@@ -172,7 +176,14 @@ class EyeTracker:
         prompt_msg.draw()
         self.win.flip()
 
-    def start(self, filename="TEST.edf"):
+    def start(self, filename: Optional[str] = None) -> None:
+        """Begin recording eye tracking data.
+
+        Args:
+            filename: Output EDF file path. Defaults to ``"TEST.edf"``.
+        """
+        if filename is None:
+            filename = "TEST.edf"
         self.filename = filename
         body = NewVideoFile(stream_name=self.streamName, filename=op.split(filename)[-1])
         msg = Request(source="EyeTracker", destination="CTR", body=body)
@@ -181,6 +192,7 @@ class EyeTracker:
         self.fname_temp = "name8chr.edf"
         self.tk.openDataFile(self.fname_temp)
         self.streaming = True
+        self.state = DeviceState.STARTED
 
         pylink.beginRealTimeMode(100)
         self.tk.startRecording(1, 1, 1, 1)
@@ -250,18 +262,20 @@ class EyeTracker:
         self.tk.closeDataFile()
         self.logger.debug('EyeLink: Exiting Record Thread')
 
-    def stop(self):
+    def stop(self) -> None:
         self.logger.debug('EyeLink: Setting Stop Signal')
         self.recording = False
         if self.streaming:
             self.stream_thread.join()
             self.tk.receiveDataFile(self.fname_temp, self.filename)
             self.streaming = False
+        self.state = DeviceState.STOPPED
 
-    def close(self):
+    def close(self) -> None:
         if self.recording:
             self.stop()
         self.tk.close()
+        self.state = DeviceState.DISCONNECTED
 
 
 if __name__ == "__main__":
