@@ -238,6 +238,24 @@ and restarts any that have `streaming == False`.
 **Shutdown** -- `close_streams()` calls `device.close()` on every `Device`
 instance. The default `close()` calls `stop()` then `disconnect()`.
 
+## Known gaps
+
+### Wearable reconnect is not on the Device interface
+
+The `WEARABLE` capability implies the device may disconnect unexpectedly and
+supports reconnection. However, there is no `reconnect()` method on `Device`.
+Reconnect logic currently lives entirely in `Mbient.attempt_reconnect()` and
+`Mbient.task_start_reconnect()`, and `DeviceManager.mbient_reconnect()` calls
+those Mbient-specific methods directly.
+
+This works because Mbient is currently the only wearable. If a second wearable
+device type is added, `reconnect()` should be promoted to the `Device`
+interface (likely as an optional method, similar to `ensure_stopped()`), and
+`DeviceManager.mbient_reconnect()` should be generalized to iterate all
+`WEARABLE` devices. The same applies to `mbient_reset()` -- board-level reset
+may not apply to other wearables, but a generic `reset()` method could be
+defined with device-specific implementations.
+
 ## Adding a new device
 
 1. Create a class that inherits from `Device` (and `CameraPreviewer` if it
