@@ -258,6 +258,15 @@ class DeviceManager:
 
     # ---- Backward-compatible aliases (delegate to capability-based methods) ----
 
+    @staticmethod
+    def is_camera(stream_name: str) -> bool:
+        """Test to see if a stream is a camera stream based on its name.
+
+        .. deprecated::
+            Use ``device.has_capability(DeviceCapability.RECORD)`` instead.
+        """
+        return stream_name.split("_")[0] in ["hiFeed", "FLIR", "Intel", "IPhone", "Webcam"]
+
     def get_camera_streams(self, task_devices: List[DeviceArgs]) -> List[Any]:
         return [
             device for device in
@@ -330,6 +339,9 @@ class DeviceManager:
         for stream_name, stream in self.streams.items():
             self.logger.debug(f'Device Manager Closing: {stream_name}')
             if self._is_device(stream):
+                stream.close()
+            elif DeviceManager.is_camera(stream_name):
+                # Fallback for non-Device streams (e.g. marker stream, legacy devices)
                 stream.close()
             else:
                 stream.stop()

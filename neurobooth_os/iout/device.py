@@ -79,10 +79,9 @@ class Device(ABC):
         """Set device parameters from config. No-op by default."""
         self.state = DeviceState.CONFIGURED
 
-    @abstractmethod
     def connect(self) -> None:
-        """Establish connection to hardware and create LSL outlet."""
-        ...
+        """Establish connection to hardware and create LSL outlet. No-op by default."""
+        self.state = DeviceState.CONNECTED
 
     @abstractmethod
     def start(self, filename: Optional[str] = None) -> None:
