@@ -3,11 +3,11 @@ import pyaudio
 import numpy as np
 import threading
 import time
-import uuid
 import wave
 import logging
 from typing import NamedTuple, List, Optional
 
+from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 from neurobooth_os.iout.metadator import post_message
 from neurobooth_os.iout.stim_param_reader import MicYetiDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
@@ -39,30 +39,45 @@ SAMPLE_FORMATS = {
 }
 
 
-class MicStream:
+class MicStream(Device):
+
+    capabilities = DeviceCapability.STREAM
+
     def __init__(
             self,
             device_args: MicYetiDeviceArgs,
-            save_on_disk=False,
-    ):
-        # There should always be one and only one sensor for the mic
+            save_on_disk: bool = False,
+    ) -> None:
+        super().__init__(device_args)
+        self._device_args = device_args
+
+        # Parse sensor config
         sensor = device_args.sensor_array[0]
         self.CHUNK = sensor.sample_chunk_size
         self.fps = sensor.sample_rate
-        self.sensor_ids = device_args.sensor_ids
         self.save_on_disk = save_on_disk
         self.channels = sensor.channels
         self.format = SAMPLE_FORMATS[sensor.format]
+        self._sensor = sensor
 
-        self.logger = logging.getLogger(APP_LOG_NAME)
+        # Will be initialized in connect()
+        self.p: Optional[pyaudio.PyAudio] = None
+        self.stream_in = None
+        self.outlet_audio: Optional[StreamOutlet] = None
 
+        self.stream_on = False
+        self.tic = 0
+        self.last_time = 0
+
+    def connect(self) -> None:
+        """Create the audio stream, LSL outlet, and notify the control server."""
         # Create audio object
         audio = pyaudio.PyAudio()
         self.p = audio
         self.last_time = local_clock()
 
         # Identify the correct device
-        device = MicStream.find_matching_audio_device(device_args, MicStream.get_audio_devices(audio))
+        device = MicStream.find_matching_audio_device(self._device_args, MicStream.get_audio_devices(audio))
         self.logger.debug(f'Using audio device "{device.name}" at index {device.index}.')
         self.device_name = device.name
 
@@ -70,34 +85,33 @@ class MicStream:
         self.stream_in = audio.open(
             format=self.format,
             channels=self.channels,
-            rate=sensor.sample_rate,
-            input=sensor.input,
-            output=sensor.output,
-            frames_per_buffer=sensor.sample_chunk_size,
+            rate=self._sensor.sample_rate,
+            input=self._sensor.input,
+            output=self._sensor.output,
+            frames_per_buffer=self._sensor.sample_chunk_size,
             input_device_index=device.index,
         )
 
         # Setup outlet stream infos
-        self.oulet_id = str(uuid.uuid4())
-        self.stream_info_audio = set_stream_description(
-            stream_info=StreamInfo("Audio", "Experimental", sensor.sample_chunk_size + 1,
-                                   sensor.sample_rate / sensor.sample_chunk_size, "int16", self.oulet_id),
-            device_id=device_args.device_id,
-            sensor_ids=device_args.sensor_ids,
+        self._stream_info_audio = set_stream_description(
+            stream_info=StreamInfo("Audio", "Experimental", self._sensor.sample_chunk_size + 1,
+                                   self._sensor.sample_rate / self._sensor.sample_chunk_size, "int16", self.outlet_id),
+            device_id=self.device_id,
+            sensor_ids=self.sensor_ids,
             data_version=DataVersion(1, 0),
-            columns=['ElapsedTime', f'Amplitude ({sensor.sample_chunk_size} samples)'],
+            columns=['ElapsedTime', f'Amplitude ({self._sensor.sample_chunk_size} samples)'],
             column_desc={
                 'ElapsedTime': 'Elapsed time on the local LSL clock since the last chunk of samples (ms)',
-                f'Amplitude ({sensor.sample_chunk_size} samples)': 'Remaining columns represent a chunk of audio samples.',
+                f'Amplitude ({self._sensor.sample_chunk_size} samples)': 'Remaining columns represent a chunk of audio samples.',
             },
             contains_chunks=True,
             fps=str(self.fps),
-            device_name=device_args.device_name,
+            device_name=self._device_args.device_name,
         )
         body = DeviceInitialization(
             stream_name='Audio',
-            outlet_id=self.oulet_id,
-            device_id=device_args.device_id,
+            outlet_id=self.outlet_id,
+            device_id=self.device_id,
         )
         msg = Request(source="Audio", destination="CTR", body=body)
         post_message(msg)
@@ -106,15 +120,14 @@ class MicStream:
             f'Microphone: sample_rate={str(self.fps)}; save_on_disk={self.save_on_disk}; channels={self.channels}'
         )
 
-        self.streaming = False
-        self.stream_on = False
-        self.tic = 0
-        self.outlet_audio = StreamOutlet(self.stream_info_audio)
+        self.outlet_audio = StreamOutlet(self._stream_info_audio)
+        self.state = DeviceState.CONNECTED
 
     @staticmethod
     def get_audio_devices(audio: pyaudio.PyAudio, host_api_idx: int = 0) -> List[AudioDeviceInfo]:
         """
         Extract information about audio devices from PyAudio.
+
         :param audio: A PyAudio object.
         :param host_api_idx: The host_api_index to be passed to PyAudio.
         :return: A list of identified audio devices.
@@ -135,6 +148,7 @@ class MicStream:
     ) -> AudioDeviceInfo:
         """
         Identify audio devices matching the device arguments.
+
         :param device_args: The device arguments to check against.
         :param device_info: A list of audio devices found by get_audio_devices.
         :return: The matching audio device. An error is raised if no or multiple devices are found.
@@ -150,11 +164,11 @@ class MicStream:
             raise AudioDeviceException(f'Ambiguous audio device specification. Matches: {dev_names}')
         return device_info[0]
 
-    def start(self):
-        # Create outlets
-
+    def start(self, filename: Optional[str] = None) -> None:
+        """Begin streaming audio data."""
         self.streaming = True
         self.stream_on = True
+        self.state = DeviceState.STARTED
         if self.save_on_disk:
             self.frames = []
             self.frames_raw = []
@@ -183,15 +197,17 @@ class MicStream:
                 self.outlet_audio.push_sample(decoded)
             except BaseException:  # "OSError" from C++
                 self.logger.debug("Reopening mic stream already closed")
-                self.outlet_audio = StreamOutlet(self.stream_info_audio)
+                self.outlet_audio = StreamOutlet(self._stream_info_audio)
                 self.outlet_audio.push_sample(decoded)
             self.tic = time.time()
         self.stream_on = False
         self.logger.debug('Microphone: Exiting LSL Thread')
 
-    def stop(self):
+    def stop(self) -> None:
+        """Stop streaming audio data."""
         self.logger.debug('Microphone: Setting Stop Signal')
         self.streaming = False
+        self.state = DeviceState.STOPPED
         if self.save_on_disk:
             self.logger.debug('Microphone: Saving Data to Disk...')
 
