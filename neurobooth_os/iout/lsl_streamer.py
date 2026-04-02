@@ -3,7 +3,7 @@ import threading
 from neurobooth_os.iout.stim_param_reader import DeviceArgs, TaskArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 from neurobooth_os import config
-from typing import Any, Dict, List, Callable, ByteString
+from typing import Any, Dict, List, Callable, ByteString, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
 import neurobooth_os.iout.metadator as meta
@@ -233,49 +233,23 @@ class DeviceManager:
             and (device_ids is None or name in device_ids)
         }
 
-    # ---- Recording device lifecycle (replaces start_cameras / stop_cameras) ----
+    # ---- Recording device lifecycle ----
 
-    def start_recording_devices(self, filename: str, task_devices: List[DeviceArgs]) -> None:
-        """Start all recording devices (cameras, eyelink) for the given task."""
-        recorders = list(self.get_devices_with_capability(DeviceCapability.RECORD, task_devices).values())
-        if not recorders:
-            return
-        with ThreadPoolExecutor(max_workers=len(recorders)) as executor:
-            futures = {executor.submit(device.start, filename): device for device in recorders}
-            for future in futures:
-                try:
-                    future.result()
-                except Exception as e:
-                    self.logger.exception(e)
+    def _get_camera_devices(self, task_devices: List[DeviceArgs]) -> List[Device]:
+        """Return camera-type recording devices for the given task.
 
-    def stop_recording_devices(self, task_devices: List[DeviceArgs]) -> None:
-        """Stop all recording devices and wait for them to finish."""
-        recorders = list(self.get_devices_with_capability(DeviceCapability.RECORD, task_devices).values())
-        for device in recorders:  # Signal devices to stop
-            device.stop()
-        for device in recorders:  # Wait for devices to actually stop
-            device.ensure_stopped(10)
-
-    # ---- Backward-compatible aliases (delegate to capability-based methods) ----
-
-    def get_camera_streams(self, task_devices: List[DeviceArgs]) -> List[Any]:
+        Excludes devices like EyeTracker that have RECORD capability but are
+        managed separately by the presentation server.
+        """
         return [
             device for device in
             self.get_devices_with_capability(DeviceCapability.RECORD, task_devices).values()
             if not device.has_capability(DeviceCapability.CALIBRATABLE)
         ]
 
-    def get_mbient_streams(self) -> Dict[str, Any]:
-        return self.get_devices_with_capability(DeviceCapability.WEARABLE)
-
-    def get_eyelink_stream(self):
-        calibratables = self.get_devices_with_capability(DeviceCapability.CALIBRATABLE)
-        if calibratables:
-            return next(iter(calibratables.values()))
-        return None
-
-    def start_cameras(self, filename: str, task_devices: List[DeviceArgs]) -> None:
-        cameras = self.get_camera_streams(task_devices)
+    def start_recording_devices(self, filename: str, task_devices: List[DeviceArgs]) -> None:
+        """Start camera recording devices for the given task."""
+        cameras = self._get_camera_devices(task_devices)
         if not cameras:
             return
         with ThreadPoolExecutor(max_workers=len(cameras)) as executor:
@@ -286,12 +260,26 @@ class DeviceManager:
                 except Exception as e:
                     self.logger.exception(e)
 
-    def stop_cameras(self, task_devices: List[DeviceArgs]):
-        cameras = self.get_camera_streams(task_devices)
+    def stop_recording_devices(self, task_devices: List[DeviceArgs]) -> None:
+        """Stop camera recording devices and wait for them to finish."""
+        cameras = self._get_camera_devices(task_devices)
         for device in cameras:  # Signal cameras to stop
             device.stop()
         for device in cameras:  # Wait for cameras to actually stop
             device.ensure_stopped(10)
+
+    def get_eyelink_stream(self) -> Optional[Device]:
+        """Return the EyeTracker device, or None if not present."""
+        calibratables = self.get_devices_with_capability(DeviceCapability.CALIBRATABLE)
+        if calibratables:
+            return next(iter(calibratables.values()))
+        return None
+
+    # ---- Mbient-specific methods ----
+
+    def get_mbient_streams(self) -> Dict[str, Device]:
+        """Return all Mbient (wearable) devices."""
+        return self.get_devices_with_capability(DeviceCapability.WEARABLE)
 
     def mbient_reconnect(self) -> None:
         Mbient.task_start_reconnect(list(self.get_mbient_streams().values()))
