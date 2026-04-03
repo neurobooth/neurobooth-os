@@ -1,226 +1,186 @@
-"""Report USB host controller topology for all neurobooth devices.
+"""Report full USB host controller topology.
 
-Run on the ACQ machine to determine which USB host controller each
-device is connected to. Devices sharing a controller share bandwidth
-(~5 Gbps for USB 3.0), which can cause serialized startup and
-reduced throughput.
-
-Detects: Intel RealSense D455, FLIR Blackfly, Yeti Microphone,
-Mbient sensors, iPhones, and any other connected USB devices.
+Enumerates all USB host controllers and shows every device attached
+to each, organized by hub. Useful for identifying bandwidth sharing
+(devices on the same controller share ~5 Gbps for USB 3.0) and
+diagnosing startup contention.
 
 Usage:
     python extras/check_usb_topology.py
 """
 
 import subprocess
-import re
 import sys
+from collections import defaultdict
 
 
-def run_pnputil():
-    """Get all connected USB devices via pnputil."""
-    result = subprocess.run(
-        ["pnputil", "/enum-devices", "/connected", "/class", "USB"],
-        capture_output=True, text=True
-    )
-    return result.stdout
+def get_all_usb_devices():
+    """Get all connected USB devices with their parent relationships in one call.
 
+    Returns a list of dicts with keys: instance_id, name, class_name, parent_id.
+    """
+    # Single PowerShell call: get every connected PnP device under USB
+    # controllers, along with its parent instance ID.
+    ps_cmd = r"""
+    $devices = Get-PnpDevice -Status OK -ErrorAction SilentlyContinue |
+        Where-Object { $_.InstanceId -match '^USB|^BTHENUM|^HID\\VID' }
 
-def run_wmic_usb():
-    """Get USB device tree via PowerShell (fallback)."""
-    ps_cmd = (
-        "Get-PnpDevice -Class USB -Status OK | "
-        "Select-Object FriendlyName, InstanceId, Status | "
-        "Format-List"
-    )
-    result = subprocess.run(
-        ["powershell", "-Command", ps_cmd],
-        capture_output=True, text=True
-    )
-    return result.stdout
+    # Also grab host controllers and root hubs (Class = USB)
+    $usbClass = Get-PnpDevice -Class USB -Status OK -ErrorAction SilentlyContinue
+    $all = @($devices) + @($usbClass) | Sort-Object InstanceId -Unique
 
+    foreach ($dev in $all) {
+        $parent = (Get-PnpDeviceProperty -InstanceId $dev.InstanceId `
+                   -KeyName 'DEVPKEY_Device_Parent' `
+                   -ErrorAction SilentlyContinue).Data
+        $busInfo = (Get-PnpDeviceProperty -InstanceId $dev.InstanceId `
+                    -KeyName 'DEVPKEY_Device_BusReportedDeviceDesc' `
+                    -ErrorAction SilentlyContinue).Data
+        Write-Output "$($dev.InstanceId)|$($dev.FriendlyName)|$($dev.Class)|$parent|$busInfo"
+    }
+    """
+    try:
+        result = subprocess.run(
+            ["powershell", "-Command", ps_cmd],
+            capture_output=True, text=True, timeout=60
+        )
+    except subprocess.TimeoutExpired:
+        print("Error: PowerShell timed out enumerating devices.", file=sys.stderr)
+        sys.exit(1)
 
-def parse_pnputil(output):
-    """Parse pnputil output into device records."""
+    if result.returncode != 0 and result.stderr.strip():
+        print(f"PowerShell warning: {result.stderr.strip()}", file=sys.stderr)
+
     devices = []
-    current = {}
-    for line in output.splitlines():
+    for line in result.stdout.splitlines():
         line = line.strip()
         if not line:
-            if current:
-                devices.append(current)
-                current = {}
             continue
-        if ":" in line:
-            key, _, value = line.partition(":")
-            current[key.strip()] = value.strip()
-    if current:
-        devices.append(current)
+        parts = line.split("|")
+        if len(parts) < 4:
+            continue
+        devices.append({
+            "instance_id": parts[0].strip(),
+            "name": parts[1].strip() or parts[0].strip(),
+            "class_name": parts[2].strip(),
+            "parent_id": parts[3].strip(),
+            "bus_desc": parts[4].strip() if len(parts) > 4 else "",
+        })
     return devices
 
 
-def get_parent_controller(instance_id):
-    """Trace a device's instance ID up to its root USB controller."""
-    # Use PowerShell to walk the device tree
-    ps_cmd = f"""
-    $dev = Get-PnpDevice -InstanceId '{instance_id}' -ErrorAction SilentlyContinue
-    if ($dev) {{
-        $current = $dev.InstanceId
-        $path = @($current)
-        for ($i = 0; $i -lt 10; $i++) {{
-            $parent = (Get-PnpDeviceProperty -InstanceId $current -KeyName 'DEVPKEY_Device_Parent' -ErrorAction SilentlyContinue).Data
-            if (-not $parent -or $parent -eq $current) {{ break }}
-            $path += $parent
-            $current = $parent
-        }}
-        $path | ForEach-Object {{
-            $name = (Get-PnpDevice -InstanceId $_ -ErrorAction SilentlyContinue).FriendlyName
-            Write-Output "$_ | $name"
-        }}
-    }}
-    """
-    result = subprocess.run(
-        ["powershell", "-Command", ps_cmd],
-        capture_output=True, text=True, timeout=15
-    )
-    return result.stdout.strip()
+def build_tree(devices):
+    """Build a parent -> children tree and identify host controllers."""
+    by_id = {d["instance_id"]: d for d in devices}
+    children = defaultdict(list)
+    controllers = []
+
+    for d in devices:
+        pid = d["parent_id"]
+        children[pid].append(d["instance_id"])
+        name_lower = d["name"].lower()
+        if "host controller" in name_lower or "xhci" in name_lower:
+            controllers.append(d["instance_id"])
+
+    return by_id, children, controllers
+
+
+def print_tree(node_id, by_id, children, prefix="", is_last=True):
+    """Recursively print a device tree."""
+    dev = by_id.get(node_id)
+    if not dev:
+        return
+
+    connector = "└─ " if is_last else "├─ "
+    name = dev["name"]
+    bus = f"  ({dev['bus_desc']})" if dev["bus_desc"] and dev["bus_desc"] != dev["name"] else ""
+    cls = dev["class_name"]
+    cls_str = f"  [{cls}]" if cls and cls != "USB" else ""
+
+    print(f"{prefix}{connector}{name}{bus}{cls_str}")
+
+    child_prefix = prefix + ("   " if is_last else "│  ")
+    child_ids = children.get(node_id, [])
+    # Sort children: hubs first, then by name
+    child_ids = sorted(child_ids, key=lambda c: (
+        0 if "hub" in by_id.get(c, {}).get("name", "").lower() else 1,
+        by_id.get(c, {}).get("name", ""),
+    ))
+
+    for i, child_id in enumerate(child_ids):
+        print_tree(child_id, by_id, children, child_prefix, i == len(child_ids) - 1)
 
 
 def main():
     print("=" * 70)
-    print("USB Host Controller Topology Report")
+    print("USB Topology Report")
     print("=" * 70)
 
-    # Step 1: Find host controllers
-    print("\n--- USB Host Controllers ---\n")
-    ps_controllers = (
-        "Get-PnpDevice -Class USB -Status OK | "
-        "Where-Object { $_.FriendlyName -match 'Host Controller|xHCI' } | "
-        "Format-Table FriendlyName, InstanceId -AutoSize"
-    )
-    result = subprocess.run(
-        ["powershell", "-Command", ps_controllers],
-        capture_output=True, text=True
-    )
-    print(result.stdout if result.stdout.strip() else "(none found)")
+    print("\nEnumerating devices...", end="", flush=True)
+    devices = get_all_usb_devices()
+    print(f" found {len(devices)} USB-related devices.\n")
 
-    # Step 2: Find all neurobooth-relevant devices
-    print("\n--- Neurobooth Devices ---\n")
-    # Search patterns for all device types
-    device_patterns = [
-        "RealSense", "Intel.R..*D4",   # Intel D455 cameras
-        "Blackfly", "FLIR",             # FLIR camera
-        "Yeti",                          # Mic
-        "Mbient", "MetaWear",           # Mbient sensors (BLE, may appear as USB dongle)
-        "iPhone", "Apple",              # iPhone
-        "EyeLink", "SR Research",       # Eyelink (if USB-connected)
-    ]
-    pattern = "|".join(device_patterns)
-    ps_devices = (
-        f"Get-PnpDevice -Status OK | "
-        f"Where-Object {{ $_.FriendlyName -match '{pattern}' }} | "
-        f"Format-Table FriendlyName, InstanceId, Class -AutoSize"
-    )
-    result = subprocess.run(
-        ["powershell", "-Command", ps_devices],
-        capture_output=True, text=True
-    )
-    if result.stdout.strip():
-        print(result.stdout)
-    else:
-        # Broader fallback: show all cameras and audio devices
-        ps_broad = (
-            "Get-PnpDevice -Status OK | "
-            "Where-Object { $_.Class -match 'Camera|AudioEndpoint|Imaging|Media' } | "
-            "Format-Table FriendlyName, InstanceId, Class -AutoSize"
-        )
-        result = subprocess.run(
-            ["powershell", "-Command", ps_broad],
-            capture_output=True, text=True
-        )
-        print(result.stdout if result.stdout.strip() else "(no relevant devices found)")
-
-    # Step 3: Trace each device to its host controller
-    print("\n--- Device → Host Controller Mapping ---\n")
-    ps_find = (
-        f"Get-PnpDevice -Status OK | "
-        f"Where-Object {{ $_.FriendlyName -match '{pattern}' }} | "
-        f"Select-Object -ExpandProperty InstanceId"
-    )
-    result = subprocess.run(
-        ["powershell", "-Command", ps_find],
-        capture_output=True, text=True
-    )
-    device_ids = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-
-    if not device_ids:
-        # Fallback: cameras and audio
-        ps_find = (
-            "Get-PnpDevice -Status OK | "
-            "Where-Object { $_.Class -match 'Camera|AudioEndpoint|Imaging' } | "
-            "Select-Object -ExpandProperty InstanceId"
-        )
-        result = subprocess.run(
-            ["powershell", "-Command", ps_find],
-            capture_output=True, text=True
-        )
-        device_ids = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-
-    if not device_ids:
-        print("No neurobooth devices found. Run this script on the ACQ or STM machine.")
+    if not devices:
+        print("No USB devices found. Ensure you have permission to query PnP devices.")
         return
 
-    controller_map = {}  # controller_id -> [(device_name, device_id)]
-    for dev_id in device_ids:
-        tree = get_parent_controller(dev_id)
-        if tree:
-            lines = tree.splitlines()
-            dev_name = lines[0].split(" | ")[1].strip() if " | " in lines[0] else dev_id
-            print(f"Device: {dev_name}")
-            print(f"  Device tree (device → root):")
-            controller_id = None
-            controller_name = None
-            for line in lines:
-                parts = line.split(" | ")
-                iid = parts[0].strip()
-                name = parts[1].strip() if len(parts) > 1 else ""
-                print(f"    {name:50s}  {iid}")
-                if "host controller" in name.lower() or "xhci" in name.lower():
-                    controller_id = iid
-                    controller_name = name
-            if controller_id:
-                controller_map.setdefault(
-                    (controller_id, controller_name or controller_id), []
-                ).append(dev_name)
-        else:
-            print(f"Device: {dev_id}")
-            print("  (unable to trace device tree)")
+    by_id, children, controllers = build_tree(devices)
+
+    if not controllers:
+        # Fallback: look for root hubs if controller names don't match
+        for d in devices:
+            name_lower = d["name"].lower()
+            if "root hub" in name_lower:
+                controllers.append(d["instance_id"])
+
+    if not controllers:
+        print("No USB host controllers found.\n")
+        print("All detected USB devices:")
+        for d in devices:
+            print(f"  {d['name']:50s}  [{d['class_name']}]  {d['instance_id']}")
+        return
+
+    # Print tree from each controller
+    for i, ctrl_id in enumerate(sorted(controllers)):
+        ctrl = by_id.get(ctrl_id, {})
+        print(f"Controller {i + 1}: {ctrl.get('name', ctrl_id)}")
+        print(f"  {ctrl_id}")
+
+        child_ids = children.get(ctrl_id, [])
+        child_ids = sorted(child_ids, key=lambda c: (
+            0 if "hub" in by_id.get(c, {}).get("name", "").lower() else 1,
+            by_id.get(c, {}).get("name", ""),
+        ))
+        for j, child_id in enumerate(child_ids):
+            print_tree(child_id, by_id, children, "  ", j == len(child_ids) - 1)
         print()
 
-    # Step 4: Summary
-    print("\n--- Summary ---\n")
-    if controller_map:
-        for (ctrl_id, ctrl_name), devices in sorted(controller_map.items()):
-            print(f"Controller: {ctrl_name}")
-            print(f"  ({ctrl_id})")
-            for dev in devices:
-                print(f"  └─ {dev}")
-            print()
+    # Summary: count per controller
+    print("--- Summary ---\n")
 
-        n_controllers = len(controller_map)
-        n_devices = sum(len(d) for d in controller_map.values())
-        print(f"{n_devices} devices across {n_controllers} controller(s)")
+    def count_leaves(node_id):
+        kids = children.get(node_id, [])
+        if not kids:
+            return [node_id]
+        leaves = []
+        for kid in kids:
+            leaves.extend(count_leaves(kid))
+        return leaves
 
-        # Check for RealSense cameras sharing a controller
-        for (ctrl_id, ctrl_name), devices in controller_map.items():
-            realsense_count = sum(1 for d in devices if "realsense" in d.lower() or "d455" in d.lower() or "intel" in d.lower())
-            if realsense_count > 1:
-                print(f"\n⚠ {realsense_count} RealSense cameras share controller: {ctrl_name}")
-                print("  They share ~5 Gbps USB 3.0 bandwidth. pipeline.start()")
-                print("  negotiations may serialize. Consider distributing across")
-                print("  separate controllers via a PCIe USB card.")
-    else:
-        print("Could not determine controller mapping.")
+    total_devices = 0
+    for ctrl_id in sorted(controllers):
+        ctrl = by_id.get(ctrl_id, {})
+        leaves = [by_id[lid] for lid in count_leaves(ctrl_id) if lid in by_id and lid != ctrl_id]
+        # Filter out hubs from leaf count
+        endpoints = [l for l in leaves if "hub" not in l["name"].lower()]
+        total_devices += len(endpoints)
+        print(f"{ctrl.get('name', ctrl_id)}:")
+        print(f"  {len(endpoints)} endpoint device(s)")
+        for ep in sorted(endpoints, key=lambda e: e["name"]):
+            print(f"    {ep['name']:50s}  [{ep['class_name']}]")
+        print()
+
+    print(f"Total: {total_devices} endpoint device(s) across {len(controllers)} controller(s)")
 
 
 if __name__ == "__main__":
