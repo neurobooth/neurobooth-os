@@ -15,6 +15,7 @@ import neurobooth_os.current_config as current_config
 from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs, DeviceArgs
 from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received, enable_crash_handler
+from neurobooth_os.perf_monitor import ProcessMonitor
 from neurobooth_os.iout.device import CameraPreviewException
 from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
@@ -62,6 +63,7 @@ def run_acq(logger, acq_index: int = 0):
     device_manager = None
     recording = False
     system_resource_logger = None
+    process_monitor: Optional[ProcessMonitor] = None
     task_args: Dict[str, TaskArgs] = {}
     init_servers = Request(source=service_id, destination="CTR",
                            body=ServerStarted(neurobooth_version=release.version,
@@ -95,6 +97,10 @@ def run_acq(logger, acq_index: int = 0):
                 if system_resource_logger is None:
                     system_resource_logger = SystemResourceLogger(machine_name=service_id)
                     system_resource_logger.start()
+
+                perf_path = os.path.join(ses_folder, f"process_log_{service_id}.csv")
+                process_monitor = ProcessMonitor(perf_path)
+                process_monitor.start()
 
                 task_args = meta.build_tasks_for_collection(collection_id, selected_tasks)
 
@@ -174,6 +180,8 @@ def run_acq(logger, acq_index: int = 0):
                     logger.info('StopRecording received but not recording; ignored')
 
             elif "TerminateServerRequest" == current_msg_type:
+                if process_monitor is not None:
+                    process_monitor.stop()
                 if recording:
                     elapsed_time = stop_recording(device_manager, task_args[task].device_args)
                     logger.info(f'Device stop took {elapsed_time:.2f}')

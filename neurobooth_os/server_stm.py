@@ -29,6 +29,7 @@ from neurobooth_os.iout import metadator as meta
 from neurobooth_os.tasks.welcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received, enable_crash_handler
+from neurobooth_os.perf_monitor import ProcessMonitor
 
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
@@ -73,6 +74,7 @@ def run_stm(logger):
     finished: bool = False  # True if the "Thank you" screen has been displayed
     shutdown: bool = False  # True if message received that this server should be terminated
     last_task_finished_time: Optional[float] = None  # For inter-task timing
+    process_monitor: Optional[ProcessMonitor] = None
     init_servers = Request(source="STM", destination="CTR", body=ServerStarted(neurobooth_version=release.version,
                                                                                config_version=current_config.version))
     meta.post_message(init_servers)
@@ -134,6 +136,8 @@ def run_stm(logger):
                 current_msg_type: str = message.msg_type
 
                 if "TerminateServerRequest" == current_msg_type:
+                    if process_monitor is not None:
+                        process_monitor.stop()
                     if session is not None:
                         session.shutdown()
                     shutdown = True
@@ -144,6 +148,10 @@ def run_stm(logger):
                     if "PrepareRequest" == current_msg_type:
                         request: PrepareRequest = message.body
                         session, task_log_entry = prepare_session(request, logger)
+                        stm_data_dir = config.neurobooth_config.presentation.local_data_dir
+                        perf_path = os.path.join(stm_data_dir, session.session_name, "process_log_stm.csv")
+                        process_monitor = ProcessMonitor(perf_path)
+                        process_monitor.start()
 
                     elif 'CreateTasksRequest' == current_msg_type:
                         device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
