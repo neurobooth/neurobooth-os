@@ -127,7 +127,7 @@ _DIRECT_SSH = {
     "ssh_pkey": str(Path.home() / ".ssh" / "id_rsa - sp1022"),
     "remote_db_host": "192.168.100.1",
     "remote_db_port": 5432,
-    "local_bind_port": 6543,
+    "local_bind_port": 0,  # OS assigns a unique port
     "db_name": "neurobooth",
     "db_user": "neuroboother",
     "db_password": "neuroboothrocks",

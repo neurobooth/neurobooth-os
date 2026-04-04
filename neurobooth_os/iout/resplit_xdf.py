@@ -149,7 +149,7 @@ class DatabaseConnection:
                 ssh_config_file="~/.ssh/config",
                 ssh_pkey="~/.ssh/id_rsa",
                 remote_bind_address=(database_info.host, database_info.port),
-                local_bind_address=("localhost", 6543),
+                local_bind_address=("localhost", 0),  # OS assigns a unique port
             )
             ssh_tunnel.start()
             host = ssh_tunnel.local_bind_host
