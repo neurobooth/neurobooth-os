@@ -183,6 +183,19 @@ supports `hci_mac` for adapter selection, but the acquisition machines run Windo
 
 - Add `RECONNECT_LOCK` to serialize `attempt_reconnect` callbacks across devices.
 
+### Applied (close() hardening)
+
+- **Reordered `close()` to unsubscribe before stop().** `stop()` disables the underlying
+  sensors, which invalidates the fusion processor's input signals. Calling
+  `mbl_mw_datasignal_unsubscribe` after disable can trigger SIGILL / access violations
+  in the native library. The new order: unsubscribe → stop → disconnect.
+- **Isolated per-signal cleanup.** Each `mbl_mw_datasignal_unsubscribe` call is
+  individually guarded so one corrupted handle does not prevent cleanup of others.
+  C-level crashes still cannot be caught by Python, but Python-level failures are
+  contained.
+- **Cleared `subscribed_signals` after unsubscribe** to prevent double-unsubscribe if
+  `close()` is reached again.
+
 ### Potential further improvements
 
 - **USB instead of BLE** for one or more sensors. The code already supports USB
@@ -192,8 +205,6 @@ supports `hci_mac` for adapter selection, but the acquisition machines run Windo
   would reduce radio pressure on ACQ_0's dongle.
 - **Increase BLE connection intervals** to give the radio more scheduling headroom, at
   the cost of reduced sample rate.
-- **Guard `close()` against corrupted state.** The cleanup path should be resilient to
-  prior native failures rather than producing secondary crashes.
 
 ## Background Threads (not crash-related)
 

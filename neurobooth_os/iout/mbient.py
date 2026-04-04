@@ -808,16 +808,34 @@ class Mbient(Device):
         self.state = DeviceState.DISCONNECTED
 
     def close(self) -> None:
-        """Stop streaming data, unsubscribe from data signals, and disconnect the device."""
+        """Stop streaming data, unsubscribe from data signals, and disconnect the device.
+
+        Unsubscribe runs before stop() because stop() disables the underlying
+        sensors, which invalidates the fusion processor's input signals.
+        Calling mbl_mw_datasignal_unsubscribe after disable can crash the
+        native MetaWear library (SIGILL / access violation).
+
+        Each signal is unsubscribed individually so that one corrupted handle
+        does not prevent cleanup of the others.  Note that C-level crashes
+        (e.g. from prior native state corruption) cannot be caught by
+        try/except; this guard only helps with Python-level failures.
+        """
+        for signal in self.subscribed_signals:
+            try:
+                libmetawear.mbl_mw_datasignal_unsubscribe(signal)
+            except Exception as e:
+                self.logger.error(
+                    self.format_message(f'Error unsubscribing from signal: {e}'),
+                    exc_info=sys.exc_info()
+                )
+        self.subscribed_signals.clear()
+
         try:
             if self.streaming:
                 self.stop()
-
-            for signal in self.subscribed_signals:
-                libmetawear.mbl_mw_datasignal_unsubscribe(signal)
         except Exception as e:
             self.logger.error(
-                self.format_message(f'Unable to stop or unsubscribe from all signals: {e}'),
+                self.format_message(f'Error stopping device: {e}'),
                 exc_info=sys.exc_info()
             )
         finally:
