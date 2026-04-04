@@ -174,6 +174,15 @@ def run_acq(logger, acq_index: int = 0):
                     logger.info('StopRecording received but not recording; ignored')
 
             elif "TerminateServerRequest" == current_msg_type:
+                # Shut down background threads and their DB connections before
+                # device teardown, which can crash in native code and orphan
+                # any resources still held at that point.
+                if system_resource_logger is not None:
+                    system_resource_logger.stop()
+                    system_resource_logger = None
+                if not read_conn.closed:
+                    read_conn.close()
+
                 if recording:
                     elapsed_time = stop_recording(device_manager, task_args[task].device_args)
                     logger.info(f'Device stop took {elapsed_time:.2f}')
