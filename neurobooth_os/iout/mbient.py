@@ -4,7 +4,6 @@ import uuid
 from ctypes import c_void_p
 from time import sleep, time
 import multiprocessing as mp
-from concurrent.futures import ThreadPoolExecutor, wait
 import logging
 from typing import Any, Dict, List, Callable, NamedTuple, Optional
 from abc import ABC, abstractmethod
@@ -583,7 +582,7 @@ class Mbient(Device):
     @staticmethod
     def task_start_reconnect(devices: List['Mbient']) -> None:
         """
-        Given a list of Mbient devices, attempt reconnection in parallel if any are disconnected.
+        Given a list of Mbient devices, attempt reconnection sequentially if any are disconnected.
         :param devices: The devices to check and attempt reconnection on if necessary.
         """
         disconnected_devices = [dev for dev in devices if not dev.device_wrapper.is_connected]
@@ -595,12 +594,8 @@ class Mbient(Device):
         txt = f'The following Mbients are disconnected: {device_names}. Attempting to reconnect...'
         Mbient.send_status_msg(txt, "WARNING")
 
-        # Attempt reconnection in parallel
-        with ThreadPoolExecutor(max_workers=len(disconnected_devices)) as executor:
-            results = [
-                executor.submit(dev.attempt_reconnect, notify=False, n_attempts=1) for dev in disconnected_devices
-            ]
-            wait(results)  # Wait for reconnects to complete
+        for dev in disconnected_devices:
+            dev.attempt_reconnect(notify=False, n_attempts=1)
 
         txt = 'Pre-task reconnect attempts complete.'
         Mbient.send_status_msg(txt, "INFO")
