@@ -16,7 +16,7 @@ def get_conn():
         ssh_username="sp1022",
         ssh_pkey=str(Path.home() / ".ssh" / "id_rsa - sp1022"),
         remote_bind_address=("192.168.100.1", 5432),
-        local_bind_address=("localhost", 6543),
+        local_bind_address=("localhost", 0),  # OS assigns a unique port
     )
     tunnel.start()
     conn = psycopg2.connect(

@@ -134,6 +134,13 @@ def run_stm(logger):
                 current_msg_type: str = message.msg_type
 
                 if "TerminateServerRequest" == current_msg_type:
+                    # Close message-polling connections before device
+                    # teardown, which can crash in native code and orphan
+                    # any resources still held at that point.
+                    if not read_msg_conn.closed:
+                        read_msg_conn.close()
+                    if not paused_msg_conn.closed:
+                        paused_msg_conn.close()
                     if session is not None:
                         session.shutdown()
                     shutdown = True
@@ -185,8 +192,10 @@ def run_stm(logger):
                     meta.post_message(req, db_conn)
                 raise argument
     finally:
-        read_msg_conn.close()
-        paused_msg_conn.close()
+        if not read_msg_conn.closed:
+            read_msg_conn.close()
+        if not paused_msg_conn.closed:
+            paused_msg_conn.close()
 
     exit()
 
