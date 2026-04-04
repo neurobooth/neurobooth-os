@@ -4,7 +4,7 @@ from neurobooth_os.iout.stim_param_reader import DeviceArgs, TaskArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 from neurobooth_os import config
 from typing import Any, Dict, List, Callable, ByteString, Optional
-from concurrent.futures import ThreadPoolExecutor, as_completed, wait
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.device import (
@@ -82,11 +82,8 @@ SERVER_ASSIGNMENTS['control'] = config.neurobooth_config.control.devices
 
 N_ASYNC_THREADS: int = 3  # The maximum number of mbients on one machine
 ASYNC_STARTUP: List[str] = [
-    'Mbient_BK_1',
-    'Mbient_LF_2',
-    'Mbient_LH_2',
-    'Mbient_RF_2',
-    'Mbient_RH_2',
+    # Mbient BLE connections are serialized to avoid crashes from concurrent BLE operations.
+    # See docs/perf/Mbient Connection Times [2026-04-03].md for timing analysis.
 ]
 
 
@@ -312,7 +309,7 @@ class DeviceManager:
         Mbient.task_start_reconnect(list(self.get_mbient_streams().values()))
 
     def mbient_reset(self) -> Dict[str, bool]:
-        """Reset all Mbient devices in parallel and attempt to reconnect.
+        """Reset all Mbient devices sequentially and attempt to reconnect.
 
         Returns:
             Mapping of device name to whether the reset succeeded.
@@ -323,16 +320,10 @@ class DeviceManager:
             self.logger.debug('No mbients to reset.')
             return {}
 
-        with ThreadPoolExecutor(max_workers=len(mbient_streams)) as executor:
-            # Begin concurrent reset of devices
-            reset_results = {
-                stream_name: executor.submit(stream.reset_and_reconnect)
-                for stream_name, stream in mbient_streams.items()
-            }
-
-            # Wait for resets to complete, then resolve the futures
-            wait(reset_results.values())
-            return {stream_name: result.result() for stream_name, result in reset_results.items()}
+        return {
+            stream_name: stream.reset_and_reconnect()
+            for stream_name, stream in mbient_streams.items()
+        }
 
     def camera_frame_preview(self, device_id: str) -> ByteString:
         """Capture a single preview frame from a camera device.

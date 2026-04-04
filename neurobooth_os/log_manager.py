@@ -283,8 +283,8 @@ class SystemResourceLogger(Thread):
     def stop(self) -> None:
         """Stop logging and wait for the thread to complete."""
         self.sleep_event.set()
-        self.connection.close()
         self.join(timeout=self.log_interval_sec + 1)
+        self.connection.close()
 
 
 class PostgreSQLHandler(logging.Handler):
