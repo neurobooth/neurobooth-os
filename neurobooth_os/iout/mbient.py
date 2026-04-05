@@ -820,25 +820,31 @@ class Mbient(Device):
         self.state = DeviceState.DISCONNECTED
 
     def close(self) -> None:
-        """Stop streaming data, unsubscribe from data signals, and disconnect the device.
+        """Unsubscribe from data signals and disconnect the device.
 
-        Unsubscribe runs before stop() because stop() disables the underlying
-        sensors, which invalidates the fusion processor's input signals.
-        Calling mbl_mw_datasignal_unsubscribe after disable can crash the
-        native MetaWear library (SIGILL / access violation).
+        We deliberately do NOT call stop() on the shutdown path.  stop()
+        issues 4 BLE writes (stop acc, stop gyro, disable acc, disable
+        gyro), and every additional BLE write during teardown risks
+        triggering the ``warble/_private_write_async`` abort documented
+        in issue #650.  On shutdown we are about to disconnect the device
+        anyway; the MetaWear sensor firmware enters its own low-power
+        state when the BLE link drops.
 
-        Each signal is unsubscribed individually so that one corrupted handle
-        does not prevent cleanup of the others.  Note that C-level crashes
-        (e.g. from prior native state corruption) cannot be caught by
-        try/except; this guard only helps with Python-level failures.
+        Each signal is unsubscribed individually so that one corrupted
+        handle does not prevent cleanup of the others.  Note that
+        C-level crashes (e.g. from prior native state corruption) cannot
+        be caught by try/except; this guard only helps with Python-level
+        failures.
         """
-        # Swap the disconnect handler to a no-op before issuing any BLE
-        # writes.  The stop/disable/disconnect sequence below can cause the
-        # sensor to drop, which would otherwise fire attempt_reconnect on a
-        # native thread and race with close() on the main thread.
+        # Swap the disconnect handler to a no-op before doing anything
+        # else.  Our disconnect() call below would otherwise fire
+        # attempt_reconnect on a native thread and race with close() on
+        # the main thread.
         if self.device_wrapper is not None:
             self.device_wrapper.on_disconnect = lambda status: None
 
+        # Unsubscribe detaches Python callbacks from the fusion processor
+        # and does not issue BLE writes, so it is safe to do before disconnect.
         for signal in self.subscribed_signals:
             try:
                 libmetawear.mbl_mw_datasignal_unsubscribe(signal)
@@ -849,16 +855,12 @@ class Mbient(Device):
                 )
         self.subscribed_signals.clear()
 
-        try:
-            if self.streaming:
-                self.stop()
-        except Exception as e:
-            self.logger.error(
-                self.format_message(f'Error stopping device: {e}'),
-                exc_info=sys.exc_info()
-            )
-        finally:
-            self.disconnect()
+        # Skip stop() on purpose — see docstring.  Update state to reflect
+        # that the device is no longer actively streaming from our perspective.
+        self.streaming = False
+        self.state = DeviceState.STOPPED
+
+        self.disconnect()
 
     @staticmethod
     def send_status_msg(txt: str, status: Optional[str] = None):
