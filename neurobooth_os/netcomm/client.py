@@ -205,7 +205,13 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
 
     if task_name not in scheduled_tasks:
         print(f"Windows task: {task_name} was not found. Attempting to create")
-        tr_cmd = f'{s.bat} {acq_index}' if acq_index is not None else s.bat
+        # Inner quotes around the bat path ensure subprocess quoting
+        # produces \"path\" arg on the command line, so SCHTASKS stores
+        # the bat as the executable and the index as a separate argument.
+        # Without inner quotes, the space-containing value gets wrapped
+        # as "path arg" — SCHTASKS treats the whole thing as the program
+        # path and the argument is lost.
+        tr_cmd = f'"{s.bat}" {acq_index}' if acq_index is not None else s.bat
         cmd_1 = cmd_schtasks_base + [
             "/Create", "/TN", task_name, "/TR", tr_cmd, "/SC", "ONEVENT", "/EC", "Application", "/MO", "*[System/EventID=777]", "/f"
         ]
