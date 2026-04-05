@@ -1,5 +1,6 @@
 import sys
 import argparse
+import threading
 import uuid
 from ctypes import c_void_p
 from time import sleep, time
@@ -462,6 +463,11 @@ class Mbient(Device):
     SCAN_LOCK = mp.Lock()
     SCAN_PERFORMED = False
 
+    # Serializes attempt_reconnect across all Mbient instances to prevent
+    # concurrent calls into the non-thread-safe MetaWear C library from
+    # disconnect callbacks that fire on native threads.  See issue #644.
+    RECONNECT_LOCK = threading.Lock()
+
     # Type definitions
     DATA_HANDLER = Callable[[float, Any, Any], None]
 
@@ -547,37 +553,43 @@ class Mbient(Device):
         :param status: The status code passed by the callback handler.
         :param notify: Whether to prompt a warning about premature disconnection.
         :param n_attempts: How many reconnection attempts to make.
+
+        Serialized across all Mbient instances via ``RECONNECT_LOCK``: two
+        devices disconnecting near-simultaneously fire their ``on_disconnect``
+        callbacks on separate native threads, which would otherwise race
+        inside the non-thread-safe MetaWear C library.
         """
-        t0 = time()
-        if notify:
-            txt = f"-WARNING mbient- {self.dev_name} disconnected prematurely"
-            body = MbientDisconnected(warning=txt)
-            msg = Request(source="Mbient", destination="CTR", body=body)
-            post_message(msg)
-            self.logger.warning(self.format_message(f'Disconnected Prematurely (status={status})'))
+        with Mbient.RECONNECT_LOCK:
+            t0 = time()
+            if notify:
+                txt = f"-WARNING mbient- {self.dev_name} disconnected prematurely"
+                body = MbientDisconnected(warning=txt)
+                msg = Request(source="Mbient", destination="CTR", body=body)
+                post_message(msg)
+                self.logger.warning(self.format_message(f'Disconnected Prematurely (status={status})'))
 
-        self.device_wrapper.on_disconnect = lambda status_: self.logger.info(self.format_message(
-            f'Disconnect during attempt_reconnect with status={status_}'
-        ))
+            self.device_wrapper.on_disconnect = lambda status_: self.logger.info(self.format_message(
+                f'Disconnect during attempt_reconnect with status={status_}'
+            ))
 
-        try:
-            was_streaming = self.streaming
-            self._ble_connect(n_attempts=n_attempts, retry_delay_sec=0.5)
-            self.setup()
-            if was_streaming:
-                self.start(buzz=False)
-            self.logger.info(self.format_message('Reconnect Completed'))
-        except MbientFailedConnection as e:
-            txt = f"Failed to reconnect {self.dev_name}"
-            status = "Error"
-            self.send_status_msg(txt, status)
-            self.logger.error(self.format_message(f'Failed to Reconnect: {e}'))
-        except Exception as e:
-            txt = f"Couldn't setup for {self.dev_name}"
-            self.send_status_msg(txt, status)
-            self.logger.error(self.format_message(f'Error during reconnect: {e}'), exc_info=sys.exc_info())
-        finally:
-            self.logger.debug(self.format_message(f'attempt_reconnect took {time() - t0} seconds.'))
+            try:
+                was_streaming = self.streaming
+                self._ble_connect(n_attempts=n_attempts, retry_delay_sec=0.5)
+                self.setup()
+                if was_streaming:
+                    self.start(buzz=False)
+                self.logger.info(self.format_message('Reconnect Completed'))
+            except MbientFailedConnection as e:
+                txt = f"Failed to reconnect {self.dev_name}"
+                status = "Error"
+                self.send_status_msg(txt, status)
+                self.logger.error(self.format_message(f'Failed to Reconnect: {e}'))
+            except Exception as e:
+                txt = f"Couldn't setup for {self.dev_name}"
+                self.send_status_msg(txt, status)
+                self.logger.error(self.format_message(f'Error during reconnect: {e}'), exc_info=sys.exc_info())
+            finally:
+                self.logger.debug(self.format_message(f'attempt_reconnect took {time() - t0} seconds.'))
 
     @staticmethod
     def task_start_reconnect(devices: List['Mbient']) -> None:
@@ -820,6 +832,13 @@ class Mbient(Device):
         (e.g. from prior native state corruption) cannot be caught by
         try/except; this guard only helps with Python-level failures.
         """
+        # Swap the disconnect handler to a no-op before issuing any BLE
+        # writes.  The stop/disable/disconnect sequence below can cause the
+        # sensor to drop, which would otherwise fire attempt_reconnect on a
+        # native thread and race with close() on the main thread.
+        if self.device_wrapper is not None:
+            self.device_wrapper.on_disconnect = lambda status: None
+
         for signal in self.subscribed_signals:
             try:
                 libmetawear.mbl_mw_datasignal_unsubscribe(signal)
