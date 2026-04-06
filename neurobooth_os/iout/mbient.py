@@ -468,6 +468,11 @@ class Mbient(Device):
     # disconnect callbacks that fire on native threads.  See issue #644.
     RECONNECT_LOCK = threading.Lock()
 
+    # Maximum number of automatic reconnect attempts per device between
+    # tasks before giving up.  The operator can still reconnect manually
+    # via "Reset Mbients".  See issue #654.
+    MAX_AUTO_RECONNECT_ATTEMPTS = 2
+
     # Type definitions
     DATA_HANDLER = Callable[[float, Any, Any], None]
 
@@ -499,6 +504,7 @@ class Mbient(Device):
         self.device_wrapper: Optional[MetaWearWrapper] = None
         self.subscribed_signals: List[Any] = []
         self.data_handlers: List['Mbient.DATA_HANDLER'] = []
+        self._auto_reconnect_failures: int = 0
 
         # Streaming-related variables
         self.callback = cbindings.FnVoid_VoidP_DataP(self._callback)
@@ -593,24 +599,68 @@ class Mbient(Device):
 
     @staticmethod
     def task_start_reconnect(devices: List['Mbient']) -> None:
+        """Check connectivity and attempt reconnection for disconnected devices.
+
+        Each device gets at most :attr:`MAX_AUTO_RECONNECT_ATTEMPTS` automatic
+        reconnect attempts across successive tasks.  After that the device is
+        skipped until the operator manually resets it (via "Reset Mbients"),
+        which resets the counter.
         """
-        Given a list of Mbient devices, attempt reconnection sequentially if any are disconnected.
-        :param devices: The devices to check and attempt reconnection on if necessary.
-        """
-        disconnected_devices = [dev for dev in devices if not dev.device_wrapper.is_connected]
-        if len(disconnected_devices) == 0:
-            return  # Everything is connected; do nothing
+        disconnected = [
+            dev for dev in devices
+            if dev.device_wrapper is None or not dev.device_wrapper.is_connected
+        ]
+        if not disconnected:
+            return
 
-        # Print message to GUI terminal
-        device_names = [dev.dev_name for dev in disconnected_devices]
-        txt = f'The following Mbients are disconnected: {device_names}. Attempting to reconnect...'
-        Mbient.send_status_msg(txt, "WARNING")
+        retryable = []
+        exhausted = []
+        for dev in disconnected:
+            if dev._auto_reconnect_failures >= Mbient.MAX_AUTO_RECONNECT_ATTEMPTS:
+                exhausted.append(dev)
+            else:
+                retryable.append(dev)
 
-        for dev in disconnected_devices:
-            dev.attempt_reconnect(notify=False, n_attempts=1)
+        if exhausted:
+            names = [d.dev_name for d in exhausted]
+            txt = f'Mbients skipped (max auto-reconnect attempts reached): {names}'
+            Mbient.send_status_msg(txt, "WARNING")
+            for dev in exhausted:
+                dev.logger.warning(dev.format_message(
+                    'Skipping reconnect — max auto attempts reached. Use Reset Mbients to retry.'
+                ))
 
-        txt = 'Pre-task reconnect attempts complete.'
-        Mbient.send_status_msg(txt, "INFO")
+        if retryable:
+            # BLE scan to find which devices are actually advertising.
+            # Attempting to connect to an unreachable device crashes the
+            # native warble library's error handler (issue #654).
+            target_macs = {d.mac for d in retryable}
+            ble_results = scan_BLE(timeout_sec=5, n_devices=len(target_macs))
+            advertising_macs = {mac for _, mac in ble_results.items()}
+
+            for dev in retryable:
+                if dev.mac not in advertising_macs:
+                    dev._auto_reconnect_failures += 1
+                    dev.logger.warning(dev.format_message(
+                        f'Not found in BLE scan, skipping reconnect '
+                        f'({dev._auto_reconnect_failures}'
+                        f'/{Mbient.MAX_AUTO_RECONNECT_ATTEMPTS})'
+                    ))
+                    Mbient.send_status_msg(
+                        f'{dev.dev_name} not reachable, skipping', "WARNING")
+                    continue
+
+                Mbient.send_status_msg(
+                    f'Attempting to reconnect {dev.dev_name}', "WARNING")
+                dev.attempt_reconnect(notify=False, n_attempts=1)
+                if dev.device_wrapper is not None and dev.device_wrapper.is_connected:
+                    dev._auto_reconnect_failures = 0
+                else:
+                    dev._auto_reconnect_failures += 1
+                    dev.logger.warning(dev.format_message(
+                        f'Auto-reconnect failed ({dev._auto_reconnect_failures}'
+                        f'/{Mbient.MAX_AUTO_RECONNECT_ATTEMPTS})'
+                    ))
 
     def reset(self, timeout_sec: float = 10) -> None:
         """
@@ -642,6 +692,7 @@ class Mbient(Device):
         :param timeout_sec: How long to wait for the reset to occur before timing out.
         :return: Whether the device is connected after the function call is complete.
         """
+        self._auto_reconnect_failures = 0  # Operator action resets the retry limit
         txt = f'Resetting {self.dev_name}.'
         Mbient.send_status_msg(txt, "INFO")
 
