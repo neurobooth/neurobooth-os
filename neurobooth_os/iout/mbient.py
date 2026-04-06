@@ -820,21 +820,17 @@ class Mbient(Device):
         self.state = DeviceState.DISCONNECTED
 
     def close(self) -> None:
-        """Unsubscribe from data signals and disconnect the device.
+        """Disconnect the device with no native MetaWear calls beforehand.
 
-        We deliberately do NOT call stop() on the shutdown path.  stop()
-        issues 4 BLE writes (stop acc, stop gyro, disable acc, disable
-        gyro), and every additional BLE write during teardown risks
-        triggering the ``warble/_private_write_async`` abort documented
-        in issue #650.  On shutdown we are about to disconnect the device
-        anyway; the MetaWear sensor firmware enters its own low-power
-        state when the BLE link drops.
-
-        Each signal is unsubscribed individually so that one corrupted
-        handle does not prevent cleanup of the others.  Note that
-        C-level crashes (e.g. from prior native state corruption) cannot
-        be caught by try/except; this guard only helps with Python-level
-        failures.
+        We skip both ``stop()`` and ``mbl_mw_datasignal_unsubscribe()``
+        on the shutdown path.  Every call into the native MetaWear/warble
+        C library during teardown is a crash risk: ``stop()`` triggers
+        BLE write-chain aborts (#650), and ``unsubscribe()`` dereferences
+        stale signal handles if native state was corrupted by an earlier
+        BLE failure.  Since we are about to disconnect the device, both
+        operations are unnecessary — the sensor enters low-power mode
+        when the BLE link drops, and the Python callback becomes
+        unreachable once the process exits.
         """
         # Swap the disconnect handler to a no-op before doing anything
         # else.  Our disconnect() call below would otherwise fire
@@ -843,20 +839,7 @@ class Mbient(Device):
         if self.device_wrapper is not None:
             self.device_wrapper.on_disconnect = lambda status: None
 
-        # Unsubscribe detaches Python callbacks from the fusion processor
-        # and does not issue BLE writes, so it is safe to do before disconnect.
-        for signal in self.subscribed_signals:
-            try:
-                libmetawear.mbl_mw_datasignal_unsubscribe(signal)
-            except Exception as e:
-                self.logger.error(
-                    self.format_message(f'Error unsubscribing from signal: {e}'),
-                    exc_info=sys.exc_info()
-                )
         self.subscribed_signals.clear()
-
-        # Skip stop() on purpose — see docstring.  Update state to reflect
-        # that the device is no longer actively streaming from our perspective.
         self.streaming = False
         self.state = DeviceState.STOPPED
 
