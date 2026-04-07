@@ -85,12 +85,16 @@ class Device(ABC):
         ...
 
     @abstractmethod
-    def start(self, filename: Optional[str] = None) -> None:
+    def start(self, filename: Optional[str] = None) -> List[str]:
         """Begin data acquisition / streaming.
 
         Args:
             filename: Output file path. Required for devices with the RECORD
                 capability; ignored by streaming-only devices.
+
+        Returns:
+            List of created file basenames (e.g. ``["task_flir.avi"]``).
+            Streaming-only devices return an empty list.
         """
         ...
 

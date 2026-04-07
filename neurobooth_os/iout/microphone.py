@@ -164,7 +164,7 @@ class MicStream(Device):
             raise AudioDeviceException(f'Ambiguous audio device specification. Matches: {dev_names}')
         return device_info[0]
 
-    def start(self, filename: Optional[str] = None) -> None:
+    def start(self, filename: Optional[str] = None) -> List[str]:
         """Begin streaming audio data."""
         self.streaming = True
         self.stream_on = True
@@ -175,6 +175,7 @@ class MicStream(Device):
         self.stream_thread = threading.Thread(target=self.stream)
         self.logger.debug('Microphone: Starting LSL Thread')
         self.stream_thread.start()
+        return []
 
     def stream(self):
         self.last_time = int(local_clock() * 10e3)

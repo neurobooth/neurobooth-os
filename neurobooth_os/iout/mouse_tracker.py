@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from pynput import mouse
 from pylsl import StreamInfo, StreamOutlet
@@ -51,7 +51,7 @@ class MouseStream(Device):
         self.state = DeviceState.CONNECTED
         self.logger.debug('Mouse: Created Object')
 
-    def start(self, filename: Optional[str] = None) -> None:
+    def start(self, filename: Optional[str] = None) -> List[str]:
         """Begin listening to mouse events."""
         self.streaming = True
         self.state = DeviceState.STARTED
@@ -64,6 +64,7 @@ class MouseStream(Device):
         except BaseException:  # "OSError" from C++
             self.logger.debug("Mouse stream already closed, reopening")
             self.outlet = StreamOutlet(self._info_stream)
+        return []
 
     def _create_listener(self) -> None:
         """Set up the pynput mouse listener with callbacks."""

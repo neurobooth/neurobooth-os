@@ -6,7 +6,7 @@ import time
 import os
 import threading
 import logging
-from typing import Callable, Any, Optional, ByteString
+from typing import Callable, Any, List, Optional, ByteString
 
 import cv2
 import PySpin
@@ -15,7 +15,7 @@ from pylsl import StreamInfo, StreamOutlet
 from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
-from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFile
+from neurobooth_os.msg.messages import DeviceInitialization, Request
 from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState, CameraPreviewer
 import neurobooth_os.iout.metadator as meta
 
@@ -149,11 +149,14 @@ class VidRec_Flir(Device, CameraPreviewer):
                 continue
         self.logger.debug('FLIR: Exiting Save Thread')
 
-    def start(self, filename: Optional[str] = None) -> None:
+    def start(self, filename: Optional[str] = None) -> List[str]:
         """Begin recording video.
 
         Args:
             filename: Base name for the output video file. Defaults to ``"temp_video"``.
+
+        Returns:
+            List containing the created video file basename.
         """
         name = filename if filename is not None else "temp_video"
         self._prepare_recording(name)
@@ -161,6 +164,7 @@ class VidRec_Flir(Device, CameraPreviewer):
         self.logger.debug('FLIR: Beginning Recording')
         self.state = DeviceState.STARTED
         self.video_thread.start()
+        return [op.split(self.video_filename)[-1]]
 
     def imgage_proc(self):
         im = self.cam.GetNextImage(2000)
@@ -181,9 +185,6 @@ class VidRec_Flir(Device, CameraPreviewer):
         self.video_out = cv2.VideoWriter(
             self.video_filename, fourcc, self.FRAME_RATE_OUT, self.frameSize
         )
-        msg_body = NewVideoFile(stream_name=self.streamName,
-                                filename=op.split(self.video_filename)[-1])
-        meta.post_message(Request(source='Flir', destination='CTR', body=msg_body))
         self.streaming = True
 
     def record(self):

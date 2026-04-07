@@ -44,6 +44,12 @@ class TestStreamDeviceLifecycle:
         device.start(filename="should_be_ignored.txt")
         assert device.streaming
 
+    def test_start_returns_empty_list(self):
+        device = MockStreamDevice()
+        device.connect()
+        result = device.start()
+        assert result == []
+
     def test_stop_is_idempotent(self):
         device = MockStreamDevice()
         device.connect()
@@ -63,9 +69,10 @@ class TestRecordingDeviceLifecycle:
     def test_start_with_filename(self):
         device = MockRecordingDevice()
         device.connect()
-        device.start(filename="test_video.avi")
+        result = device.start(filename="test_video.avi")
         assert device.streaming
         assert device.last_filename == "test_video.avi"
+        assert result == ["test_video.avi_mock.avi"]
 
     def test_ensure_stopped(self):
         device = MockRecordingDevice()

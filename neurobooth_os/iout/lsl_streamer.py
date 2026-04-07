@@ -11,7 +11,7 @@ from neurobooth_os.iout.device import (
     Device, DeviceCapability, CameraPreviewer, CameraPreviewException,
 )
 from neurobooth_os.iout.mbient import Mbient
-from neurobooth_os.msg.messages import DeviceInitialization, Request
+from neurobooth_os.msg.messages import DeviceInitialization, RecordingFiles, Request
 
 # --------------------------------------------------------------------------------
 # Wrappers for device setup procedures.
@@ -253,23 +253,39 @@ class DeviceManager:
             if not device.has_capability(DeviceCapability.CALIBRATABLE)
         ]
 
-    def start_recording_devices(self, filename: str, task_devices: List[DeviceArgs]) -> None:
+    def start_recording_devices(self, filename: str, task_devices: List[DeviceArgs]) -> Dict[str, List[str]]:
         """Start camera recording devices in parallel for the given task.
+
+        Collects the filenames created by each device and sends a single
+        :class:`RecordingFiles` message to CTR so that filenames are tracked
+        reliably without depending on the LSL marker stream.
 
         Args:
             filename: Base path for output files, passed to each device's ``start()``.
             task_devices: Devices required by the current task.
+
+        Returns:
+            Mapping of stream name to list of created file basenames.
         """
         cameras = self._get_camera_devices(task_devices)
+        all_files: Dict[str, List[str]] = {}
         if not cameras:
-            return
+            return all_files
         with ThreadPoolExecutor(max_workers=len(cameras)) as executor:
             futures = {executor.submit(device.start, filename): device for device in cameras}
-            for future in futures:
+            for future, device in futures.items():
                 try:
-                    future.result()
+                    created = future.result()
+                    if created:
+                        stream_name = getattr(device, 'streamName', None) or getattr(device, 'stream_name', None)
+                        if stream_name:
+                            all_files[stream_name] = created
                 except Exception as e:
                     self.logger.exception(e)
+        if all_files:
+            msg = Request(source="ACQ", destination="CTR", body=RecordingFiles(files=all_files))
+            meta.post_message(msg)
+        return all_files
 
     def stop_recording_devices(self, task_devices: List[DeviceArgs]) -> None:
         """Stop camera recording devices and wait for them to finish.

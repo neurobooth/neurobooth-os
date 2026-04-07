@@ -71,11 +71,12 @@ class ScreenMirror:
         meta.post_message(Request(source='ScreenMirror', destination='CTR', body=msg_body))
 
 
-    def start(self):
+    def start(self, filename=None):
         self.streaming = True
 
         self.stream_thread = threading.Thread(target=self.stream)
         self.stream_thread.start()
+        return []
 
     def stream(self):
         # open video stream with defined parameters

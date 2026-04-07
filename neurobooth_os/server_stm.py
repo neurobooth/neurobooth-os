@@ -13,7 +13,7 @@ from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.msg.messages import Message, CreateTasksRequest, \
     TaskInitialization, Request, TaskCompletion, StartRecording, TransitionRecording, \
     SessionPrepared, PrepareRequest, TasksCreated, StopRecording, ServerStarted, \
-    ErrorMessage, RecordingStarted
+    ErrorMessage, RecordingFiles, RecordingStarted
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
@@ -336,7 +336,10 @@ def _get_task_instance(session: StmSession, task_args: TaskArgs, edf_fname):
         stimulus_id = task_args.stim_args.stimulus_id
         if "calibration_task" not in stimulus_id:
             task_args.task_instance.render_image()
-            session.eye_tracker.start(edf_fname)
+            created_files = session.eye_tracker.start(edf_fname)
+            if created_files:
+                files_msg = RecordingFiles(files={session.eye_tracker.streamName: created_files})
+                meta.post_message(Request(source="STM", destination="CTR", body=files_msg))
 
 def _create_tasks(message, session, task_log_entry):
     msg_body: CreateTasksRequest = message.body

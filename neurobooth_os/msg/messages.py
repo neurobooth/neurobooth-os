@@ -451,13 +451,18 @@ class NoEyetracker(MsgBody):
         super().__init__(**data)
 
 
-class NewVideoFile(MsgBody):
+class RecordingFiles(MsgBody):
+    """Batch notification of all files created when recording devices start.
+
+    Sent by DeviceManager (on ACQ) or task code (on STM for EyeTracker) to CTR.
+    CTR accumulates these per-task and writes them to ``log_sensor_file`` during
+    XDF post-processing, replacing the fragile ``videofiles`` LSL marker stream.
+
+    Attributes:
+        files: Mapping of LSL stream name to list of file basenames created by
+            that device (e.g. ``{"FLIR": ["task_flir.avi"], "IPhone": ["task_IPhone.mov", "task_IPhone.json"]}``).
     """
-    Message sent by devices, or by the controller (for Marker streams) to indicate that a new VideoFile was created
-    """
-    event: str = "-new_filename-"
-    stream_name: str
-    filename: str
+    files: Dict[str, List[str]]
 
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
