@@ -210,58 +210,63 @@ class EyeTracker(Device):
         self.timestamps_local = []
 
         self.logger.debug('EyeLink: Entering LSL Loop')
-        while self.recording:
-            if self.paused:
+        try:
+            while self.recording:
+                if self.paused:
+                    t1 = local_clock()
+                    t2 = t1
+                    while t2 - t1 < 1 / (self.sample_rate * 4):
+                        t2 = local_clock()
+                    continue
+
                 t1 = local_clock()
                 t2 = t1
+
+                smp = self.tk.getNewestSample()  # check smp object, see et.tk.getNextData()
+                if smp is not None:
+                    if old_sample is None or old_sample.getTime() != smp.getTime():
+                        ppd = smp.getPPD()
+                        timestamp = smp.getTime()
+                        timestamp_local = local_clock()
+                        self.timestamps_et.append(timestamp)
+                        self.timestamps_local.append(timestamp_local)
+
+                        values = [
+                            0, 0, 0,  # Right eye position and pupil size
+                            0, 0, 0,  # Left eye position and pupil size
+                            smp.getTargetX(), smp.getTargetY(), smp.getTargetDistance(),  # Forehead target location
+                            ppd[0], ppd[1],  # Resolution
+                            timestamp, timestamp_local,  # Timing
+                        ]
+
+                        # Grab gaze & pupil size data
+                        if smp.isRightSample():
+                            gaze = smp.getRightEye().getGaze()
+                            pupil = smp.getRightEye().getPupilSize()  # pupil size
+                            values[:3] = [gaze[0], gaze[1], pupil]
+                        if smp.isLeftSample():
+                            gaze = smp.getLeftEye().getGaze()
+                            pupil = smp.getLeftEye().getPupilSize()
+                            values[3:6] = [gaze[0], gaze[1], pupil]
+
+                        self.outlet.push_sample(values)
+                        old_sample = smp
+
                 while t2 - t1 < 1 / (self.sample_rate * 4):
                     t2 = local_clock()
-                continue
 
-            t1 = local_clock()
-            t2 = t1
-
-            smp = self.tk.getNewestSample()  # check smp object, see et.tk.getNextData()
-            if smp is not None:
-                if old_sample is None or old_sample.getTime() != smp.getTime():
-                    ppd = smp.getPPD()
-                    timestamp = smp.getTime()
-                    timestamp_local = local_clock()
-                    self.timestamps_et.append(timestamp)
-                    self.timestamps_local.append(timestamp_local)
-
-                    values = [
-                        0, 0, 0,  # Right eye position and pupil size
-                        0, 0, 0,  # Left eye position and pupil size
-                        smp.getTargetX(), smp.getTargetY(), smp.getTargetDistance(),  # Forehead target location
-                        ppd[0], ppd[1],  # Resolution
-                        timestamp, timestamp_local,  # Timing
-                    ]
-
-                    # Grab gaze & pupil size data
-                    if smp.isRightSample():
-                        gaze = smp.getRightEye().getGaze()
-                        pupil = smp.getRightEye().getPupilSize()  # pupil size
-                        values[:3] = [gaze[0], gaze[1], pupil]
-                    if smp.isLeftSample():
-                        gaze = smp.getLeftEye().getGaze()
-                        pupil = smp.getLeftEye().getPupilSize()
-                        values[3:6] = [gaze[0], gaze[1], pupil]
-
-                    self.outlet.push_sample(values)
-                    old_sample = smp
-
-            while t2 - t1 < 1 / (self.sample_rate * 4):
-                t2 = local_clock()
-
-        fps_et = np.mean(1 / np.diff(self.timestamps_et))
-        fps_lcl = np.mean(1 / np.diff(self.timestamps_local))
-        self.logger.debug(
-            f"ET number of samples {len(self.timestamps_et)}, fps et: {fps_et}, fps local: {fps_lcl}"
-        )
-        self.tk.stopRecording()
-        self.tk.closeDataFile()
-        self.logger.debug('EyeLink: Exiting Record Thread')
+            if self.timestamps_et:
+                fps_et = np.mean(1 / np.diff(self.timestamps_et))
+                fps_lcl = np.mean(1 / np.diff(self.timestamps_local))
+                self.logger.debug(
+                    f"ET number of samples {len(self.timestamps_et)}, fps et: {fps_et}, fps local: {fps_lcl}"
+                )
+        except Exception as e:
+            self.logger.error(f'EyeLink: Unhandled exception in record loop: {e}')
+        finally:
+            self.tk.stopRecording()
+            self.tk.closeDataFile()
+            self.logger.debug('EyeLink: Exiting Record Thread')
 
     def stop(self) -> None:
         self.logger.debug('EyeLink: Setting Stop Signal')

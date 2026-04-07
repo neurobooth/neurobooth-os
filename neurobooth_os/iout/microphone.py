@@ -208,22 +208,39 @@ class MicStream(Device):
         """Stop streaming audio data."""
         self.logger.debug('Microphone: Setting Stop Signal')
         self.streaming = False
+        if hasattr(self, 'stream_thread') and self.stream_thread.is_alive():
+            self.stream_thread.join(timeout=5.0)
         self.state = DeviceState.STOPPED
         if self.save_on_disk:
             self.logger.debug('Microphone: Saving Data to Disk...')
 
-            wf = wave.open("decoded_mic_data.wav", "wb")
-            wf.setnchannels(self.channels)
-            wf.setsampwidth(self.p.get_sample_size(self.format))
-            wf.setframerate(self.fps)
-            wf.writeframes(b"".join(self.frames))
-            wf.close()
+            with wave.open("decoded_mic_data.wav", "wb") as wf:
+                wf.setnchannels(self.channels)
+                wf.setsampwidth(self.p.get_sample_size(self.format))
+                wf.setframerate(self.fps)
+                wf.writeframes(b"".join(self.frames))
             self.logger.debug('Microphone: Saved Decoded Data to Disk')
 
-            wf = wave.open("raw_mic_data.wav", "wb")
-            wf.setnchannels(self.channels)
-            wf.setsampwidth(self.p.get_sample_size(self.format))
-            wf.setframerate(self.fps)
-            wf.writeframes(b"".join(self.frames_raw))
-            wf.close()
+            with wave.open("raw_mic_data.wav", "wb") as wf:
+                wf.setnchannels(self.channels)
+                wf.setsampwidth(self.p.get_sample_size(self.format))
+                wf.setframerate(self.fps)
+                wf.writeframes(b"".join(self.frames_raw))
             self.logger.debug('Microphone: Saved Raw Data to Disk')
+
+    def disconnect(self) -> None:
+        """Release PyAudio resources."""
+        if self.stream_in is not None:
+            try:
+                self.stream_in.stop_stream()
+                self.stream_in.close()
+            except Exception as e:
+                self.logger.warning(f'Microphone: Error closing audio stream: {e}')
+            self.stream_in = None
+        if self.p is not None:
+            try:
+                self.p.terminate()
+            except Exception as e:
+                self.logger.warning(f'Microphone: Error terminating PyAudio: {e}')
+            self.p = None
+        super().disconnect()

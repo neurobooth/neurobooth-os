@@ -133,13 +133,18 @@ def get_database_connection(database: Optional[str] = None) -> ManagedConnection
 
     db = database_info.dbname if database is None else database
 
-    conn = psycopg2.connect(
-        database=db,
-        user=database_info.user,
-        password=database_info.password.get_secret_value(),
-        host=host,
-        port=port,
-    )
+    try:
+        conn = psycopg2.connect(
+            database=db,
+            user=database_info.user,
+            password=database_info.password.get_secret_value(),
+            host=host,
+            port=port,
+        )
+    except Exception:
+        if tunnel is not None:
+            tunnel.stop()
+        raise
     return ManagedConnection(conn, tunnel)
 
 

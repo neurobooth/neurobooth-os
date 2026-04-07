@@ -195,35 +195,37 @@ class VidRec_Flir(Device, CameraPreviewer):
         self.save_thread.start()
 
         self.stamp = []
-        while self.recording:
-            # Exception for failed waiting self.cam.GetNextImage(1000)
-            try:
-                im, tsmp = self.imgage_proc()
-            except:
-                continue
+        try:
+            while self.recording:
+                try:
+                    im, tsmp = self.imgage_proc()
+                except Exception:
+                    continue
 
-            self.image_queue.put(im)
-            self.stamp.append(tsmp)
+                self.image_queue.put(im)
+                self.stamp.append(tsmp)
 
-            try:
-                self.outlet.push_sample([self.frame_counter, tsmp])
-            except BaseException:
-                self.logger.debug(f"Reopening FLIR stream already closed")
-                self._create_outlet()
-                self.outlet.push_sample([self.frame_counter, tsmp])
+                try:
+                    self.outlet.push_sample([self.frame_counter, tsmp])
+                except BaseException:
+                    self.logger.debug(f"Reopening FLIR stream already closed")
+                    self._create_outlet()
+                    self.outlet.push_sample([self.frame_counter, tsmp])
 
-            self.frame_counter += 1
+                self.frame_counter += 1
 
-            if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
-                self.logger.debug(
-                    f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
-                )
-
-        self.cam.EndAcquisition()
-        self.recording = False
-        self.save_thread.join()
-        self.video_out.release()
-        self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
+                if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
+                    self.logger.debug(
+                        f"Queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
+                    )
+        except Exception as e:
+            self.logger.error(f'FLIR: Unhandled exception in record loop: {e}')
+        finally:
+            self.cam.EndAcquisition()
+            self.recording = False
+            self.save_thread.join()
+            self.video_out.release()
+            self.logger.debug('FLIR: Video File Released; Exiting LSL Thread')
 
     def frame_preview(self) -> ByteString:
         """
