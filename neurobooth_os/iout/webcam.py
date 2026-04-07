@@ -170,33 +170,36 @@ class VidRec_Webcam(Device, CameraPreviewer):
         self.save_thread.start()
 
         self.timestamps = []
-        while self.recording:
-            rc, img = self.camera.read()
-            tsmp = timer()
-            if not rc:
-                continue
+        try:
+            while self.recording:
+                rc, img = self.camera.read()
+                tsmp = timer()
+                if not rc:
+                    continue
 
-            self.image_queue.put(img)
-            self.timestamps.append(tsmp)
+                self.image_queue.put(img)
+                self.timestamps.append(tsmp)
 
-            try:
-                self.outlet.push_sample([self.frame_counter, tsmp])
-            except BaseException:
-                self.logger.debug(f"Reopening Webcam {self.device_args.device_index} stream already closed")
-                self.outlet = self._recreate_outlet()
-                self.outlet.push_sample([self.frame_counter, tsmp])
+                try:
+                    self.outlet.push_sample([self.frame_counter, tsmp])
+                except BaseException:
+                    self.logger.debug(f"Reopening Webcam {self.device_args.device_index} stream already closed")
+                    self.outlet = self._recreate_outlet()
+                    self.outlet.push_sample([self.frame_counter, tsmp])
 
-            self.frame_counter += 1
-            if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
-                self.logger.debug(
-                    f"Webcam queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
-                )
-
-        self.close_stream()
-        self.recording = False
-        self.save_thread.join()
-        self.video_out.release()
-        self.logger.debug('Webcam: Video File Released; Exiting LSL Thread')
+                self.frame_counter += 1
+                if not self.frame_counter % 1000 and self.image_queue.qsize() > 2:
+                    self.logger.debug(
+                        f"Webcam queue length is {self.image_queue.qsize()} frame count: {self.frame_counter}"
+                    )
+        except Exception as e:
+            self.logger.error(f'Webcam: Unhandled exception in record loop: {e}')
+        finally:
+            self.close_stream()
+            self.recording = False
+            self.save_thread.join()
+            self.video_out.release()
+            self.logger.debug('Webcam: Video File Released; Exiting LSL Thread')
 
     def stop(self) -> None:
         if self.open and self.recording:

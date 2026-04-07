@@ -187,27 +187,30 @@ class VidRec_Intel(Device):
         self.toffset = time() - local_clock()
 
         self.logger.debug(f'RealSense [{self.device_index}]: Entering LSL Loop')
-        while self.recording.is_set():
-            success, frame = self.pipeline.try_wait_for_frames(timeout_ms=1000)
-            if not success:
-                self.logger.warning(f'RealSense [{self.device_index}]: Timeout when waiting for frame!')
-                continue
+        try:
+            while self.recording.is_set():
+                success, frame = self.pipeline.try_wait_for_frames(timeout_ms=1000)
+                if not success:
+                    self.logger.warning(f'RealSense [{self.device_index}]: Timeout when waiting for frame!')
+                    continue
 
-            self.n = frame.get_frame_number()
-            self.tsmp = frame.get_timestamp()
-            try:
-                self.outlet.push_sample([self.frame_counter, self.n, self.tsmp, time()])
-            except Exception as e:
-                self.logger.warning(f'RealSense [{self.device_index}]: Reopening closed stream: {e}')
-                self.outlet = self._recreate_outlet()
-                self.outlet.push_sample([self.frame_counter, self.n, self.tsmp, time()])
+                self.n = frame.get_frame_number()
+                self.tsmp = frame.get_timestamp()
+                try:
+                    self.outlet.push_sample([self.frame_counter, self.n, self.tsmp, time()])
+                except Exception as e:
+                    self.logger.warning(f'RealSense [{self.device_index}]: Reopening closed stream: {e}')
+                    self.outlet = self._recreate_outlet()
+                    self.outlet.push_sample([self.frame_counter, self.n, self.tsmp, time()])
 
-            self.frame_counter += 1
-
-        self.logger.debug(f'RealSense [{self.device_index}]: Exited Record Loop')
-        self.pipeline.stop()
-        self.record_stopped_flag.set()
-        self.logger.debug(f'RealSense [{self.device_index}]: Stopped Pipeline')
+                self.frame_counter += 1
+        except Exception as e:
+            self.logger.error(f'RealSense [{self.device_index}]: Unhandled exception in record loop: {e}')
+        finally:
+            self.logger.debug(f'RealSense [{self.device_index}]: Exited Record Loop')
+            self.pipeline.stop()
+            self.record_stopped_flag.set()
+            self.logger.debug(f'RealSense [{self.device_index}]: Stopped Pipeline')
 
     def stop(self) -> None:
         self.logger.debug(f'RealSense [{self.device_index}]: Setting Record Stop Flag')
