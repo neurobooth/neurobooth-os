@@ -617,9 +617,15 @@ class IPhone(Device, CameraPreviewer):
             self._update_state('@READY')
             return True
         except IPhonePanic as e:
+            if self.sock is not None:
+                self.sock.close()
+                self.sock = None
             self.panic(e)
             return False
         except Exception as e:
+            if self.sock is not None:
+                self.sock.close()
+                self.sock = None
             self.logger.error(f'iPhone [state={self._state}]: Unable to connect; error={e}')
             return False
 

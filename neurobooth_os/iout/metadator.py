@@ -322,30 +322,26 @@ def get_subject_by_id(conn: connection, subject_id: str) -> Optional[Subject]:
         # Get additional data from rc_contact, if it's available and the table is healthy
         # verify that the contact table (rc_contact) exists, if not just return what we got from the subject table
         curs = conn.cursor()
-        curs.execute("select * from information_schema.tables where table_name=%s", ('rc_contact',))
-        # if rc_contact *does* exist, try to query it for the additional info. Swallow any exceptions that occur
-        if bool(curs.rowcount):
-            try:
-                # Get the column names from the cursor description
+        try:
+            curs.execute("select * from information_schema.tables where table_name=%s", ('rc_contact',))
+            # if rc_contact *does* exist, try to query it for the additional info. Swallow any exceptions that occur
+            if bool(curs.rowcount):
                 curs.execute(contact_query, (subject_id,))
                 results = curs.fetchall()
                 column_names = [desc[0] for desc in curs.description]
 
-                # Create the DataFrame
                 contact_df = pd.DataFrame(results, columns=column_names)
                 conn.commit()
-                curs.close()
 
                 if not contact_df.empty:
                     subj.preferred_first_name = str(contact_df['first_name_contact'].iloc[0])
                     subj.preferred_last_name = str(contact_df['last_name_contact'].iloc[0])
-            except psycopg2.Error as db_error:  # Catch any psycopg2 database exception
-                import neurobooth_os.log_manager as log_man
-                log_man.APP_LOGGER.error(f"A database exception occurred. Exception was: {repr(db_error)}",
-                                         exc_info=sys.exc_info())
-            finally:
-                if curs is not None:
-                    curs.close()
+        except psycopg2.Error as db_error:
+            import neurobooth_os.log_manager as log_man
+            log_man.APP_LOGGER.error(f"A database exception occurred. Exception was: {repr(db_error)}",
+                                     exc_info=sys.exc_info())
+        finally:
+            curs.close()
         return subj
 
 
