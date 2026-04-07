@@ -7,7 +7,7 @@ from time import time
 import threading
 import warnings
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from pylsl import local_clock
 import pyrealsense2 as rs
@@ -18,7 +18,7 @@ from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 from neurobooth_os.iout.stim_param_reader import IntelDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
-from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFile
+from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 warnings.filterwarnings("ignore")
 
@@ -107,11 +107,14 @@ class VidRec_Intel(Device):
             f'fps={str(self.device_args.sample_rate())}; frame_size={str(self.device_args.framesize())}'
         )
 
-    def start(self, filename: Optional[str] = None) -> None:
+    def start(self, filename: Optional[str] = None) -> List[str]:
         """Begin recording video.
 
         Args:
             filename: Base name for the output video file. Defaults to ``"temp_video"``.
+
+        Returns:
+            List containing the created video file basename.
         """
         name = filename if filename is not None else "temp_video"
         if self.video_thread is not None and self.video_thread.is_alive():
@@ -128,14 +131,12 @@ class VidRec_Intel(Device):
         self.state = DeviceState.STARTED
         self.streaming = True
         self.video_thread.start()
+        return [op.split(self.video_filename)[-1]]
 
     def _prepare_recording(self, name: str) -> None:
         self.name = name
         self.video_filename = "{}_intel{}.bag".format(name, self.device_index)
         self.config.enable_record_to_file(self.video_filename)
-        msg_body = NewVideoFile(stream_name=self.streamName,
-                                filename=op.split(self.video_filename)[-1])
-        meta.post_message(Request(source='Intel', destination='CTR', body=msg_body))
 
     def _recreate_outlet(self) -> StreamOutlet:
         """Re-create the LSL outlet (e.g. after stream closure)."""

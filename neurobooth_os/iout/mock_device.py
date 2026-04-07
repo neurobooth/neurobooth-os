@@ -1,6 +1,6 @@
 """Mock device implementations for testing the Device lifecycle interface."""
 
-from typing import Optional
+from typing import List, Optional
 
 from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 
@@ -20,10 +20,11 @@ class MockStreamDevice(Device):
     def connect(self) -> None:
         self.state = DeviceState.CONNECTED
 
-    def start(self, filename: Optional[str] = None) -> None:
+    def start(self, filename: Optional[str] = None) -> List[str]:
         self.streaming = True
         self.state = DeviceState.STARTED
         self.start_count += 1
+        return []
 
     def stop(self) -> None:
         if self.streaming:
@@ -46,12 +47,13 @@ class MockRecordingDevice(Device):
     def connect(self) -> None:
         self.state = DeviceState.CONNECTED
 
-    def start(self, filename: Optional[str] = None) -> None:
+    def start(self, filename: Optional[str] = None) -> List[str]:
         if filename is None:
             raise ValueError("Recording devices require a filename.")
         self.last_filename = filename
         self.streaming = True
         self.state = DeviceState.STARTED
+        return [f"{filename}_mock.avi"]
 
     def stop(self) -> None:
         if self.streaming:

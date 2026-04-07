@@ -833,11 +833,12 @@ class Mbient(Device):
             f'Voltage = {battery_state.voltage / 1e3:.1f} V; Charge = {battery_state.charge}%'
         ))
 
-    def start(self, filename: Optional[str] = None, buzz: bool = False) -> None:
+    def start(self, filename: Optional[str] = None, buzz: bool = False) -> List[str]:
         """Begin streaming data.
 
         :param filename: Unused; accepted for Device interface compatibility.
         :param buzz: Whether to enable the sensor buzz when starting data capture.
+        :returns: Empty list (streaming-only device).
         """
         self.device_wrapper.enable_inertial_sampling()
 
@@ -849,6 +850,7 @@ class Mbient(Device):
         self.streaming = True
         self.state = DeviceState.STARTED
         self.device_wrapper.start_inertial_sampling()
+        return []
 
     def stop(self) -> None:
         """Stop streaming data."""
