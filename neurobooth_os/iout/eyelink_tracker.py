@@ -1,7 +1,7 @@
 import os.path as op
 import threading
 import logging
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -12,7 +12,7 @@ from pylsl import StreamInfo, StreamOutlet, local_clock
 from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 from neurobooth_os.iout.metadator import post_message
 from neurobooth_os.iout.stim_param_reader import EyelinkDeviceArgs
-from neurobooth_os.msg.messages import NoEyetracker, Request, DeviceInitialization, NewVideoFile
+from neurobooth_os.msg.messages import NoEyetracker, Request, DeviceInitialization
 from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
     EyeLinkCoreGraphicsPsychoPy,
 )
@@ -176,18 +176,18 @@ class EyeTracker(Device):
         prompt_msg.draw()
         self.win.flip()
 
-    def start(self, filename: Optional[str] = None) -> None:
+    def start(self, filename: Optional[str] = None) -> List[str]:
         """Begin recording eye tracking data.
 
         Args:
             filename: Output EDF file path. Defaults to ``"TEST.edf"``.
+
+        Returns:
+            List containing the created EDF file basename.
         """
         if filename is None:
             filename = "TEST.edf"
         self.filename = filename
-        body = NewVideoFile(stream_name=self.streamName, filename=op.split(filename)[-1])
-        msg = Request(source="EyeTracker", destination="CTR", body=body)
-        post_message(msg)
 
         self.fname_temp = "name8chr.edf"
         self.tk.openDataFile(self.fname_temp)
@@ -200,6 +200,7 @@ class EyeTracker(Device):
         self.stream_thread = threading.Thread(target=self.record)
         self.logger.debug('EyeLink: Starting Record Thread')
         self.stream_thread.start()
+        return [op.split(filename)[-1]]
 
     def record(self):
         self.paused = False

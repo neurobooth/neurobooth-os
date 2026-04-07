@@ -32,7 +32,6 @@ from neurobooth_os.msg.messages import (
 from neurobooth_os.netcomm import start_server, kill_pid_txt
 from neurobooth_os.realtime.lsl_plotter import create_lsl_inlets
 from neurobooth_os.util.nb_types import Subject
-from neurobooth_os.iout import marker_stream
 
 
 # ---------------------------------------------------------------------------
@@ -94,10 +93,6 @@ class SessionEventListener(ABC):
     @abstractmethod
     def on_tasks_created(self) -> None:
         """STM has acknowledged task creation."""
-
-    @abstractmethod
-    def on_new_video_file(self, stream_name: str, filename: str, event: str) -> None:
-        """A new video file was created by a device."""
 
     @abstractmethod
     def on_session_complete(self) -> None:
@@ -272,7 +267,7 @@ class SessionState:
     session: object = None  # liesl.Session, typed as object to avoid import dependency
     rec_fname: Optional[str] = None
     obs_log_id: Optional[str] = None
-    video_marker_stream: object = None
+    task_video_files: Dict[str, List[str]] = field(default_factory=dict)
 
     # Device tracking
     frame_preview_devices: Dict[str, str] = field(default_factory=dict)
@@ -341,9 +336,8 @@ class SessionController:
     # --- Device preparation ---
 
     def prepare_devices(self, conn, collection_id: str, selected_tasks: List[str]) -> None:
-        """Send PrepareRequest to all server nodes and create the video marker stream."""
+        """Send PrepareRequest to all server nodes."""
         database = cfg.neurobooth_config.database.dbname
-        self.state.video_marker_stream = marker_stream("videofiles")
 
         for node in get_nodes():
             if node.startswith('acquisition_'):
@@ -497,6 +491,10 @@ class SessionController:
         xdf_fname = get_xdf_name(session, self.state.rec_fname)
         xdf_path = op.join(folder, xdf_fname)
 
+        # Snapshot and clear the buffered video files for this task
+        video_files = dict(self.state.task_video_files)
+        self.state.task_video_files.clear()
+
         def _finalize():
             """Finalize the old LabRecorderCLI process and split the XDF."""
             t_stop = time_mod.time()
@@ -512,12 +510,13 @@ class SessionController:
 
             if any(tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]):
                 postpone_xdf_split(xdf_path, t_obs_id, obs_log_id,
-                                   cfg.neurobooth_config.split_xdf_backlog)
+                                   cfg.neurobooth_config.split_xdf_backlog,
+                                   video_files=video_files)
             else:
                 db_conn = meta.get_database_connection()
                 split_thread = threading_mod.Thread(
                     target=self._split_and_close,
-                    args=(xdf_path, obs_log_id, t_obs_id, db_conn),
+                    args=(xdf_path, obs_log_id, t_obs_id, db_conn, video_files),
                     daemon=True,
                 )
                 split_thread.start()
@@ -527,10 +526,11 @@ class SessionController:
         self._lsl_stop_thread.start()
 
     @staticmethod
-    def _split_and_close(xdf_path, obs_log_id, t_obs_id, db_conn):
+    def _split_and_close(xdf_path, obs_log_id, t_obs_id, db_conn, video_files=None):
         """Run split_sens_files and close the connection when done."""
         try:
-            split_sens_files(xdf_path, obs_log_id, t_obs_id, db_conn)
+            split_sens_files(xdf_path, obs_log_id, t_obs_id, db_conn,
+                             video_files=video_files)
         finally:
             db_conn.close()
 
@@ -623,9 +623,12 @@ class SessionController:
                     self.logger.debug(f"TaskCompletion msg for {body.task_id}")
                     self.listener.on_task_finished(body.task_id, str(body.has_lsl_stream))
 
-                elif "NewVideoFile" == message.msg_type:
+                elif "RecordingFiles" == message.msg_type:
                     body = message.body
-                    self.listener.on_new_video_file(body.stream_name, body.filename, body.event)
+                    for stream_name, filenames in body.files.items():
+                        existing = self.state.task_video_files.get(stream_name, [])
+                        self.state.task_video_files[stream_name] = existing + filenames
+                    self.logger.debug(f"Buffered recording files: {body.files}")
 
                 elif "NoEyetracker" == message.msg_type:
                     self.listener.on_no_eyetracker(

@@ -2,7 +2,7 @@ import os.path as op
 import threading
 import queue
 import logging
-from typing import Optional, ByteString
+from typing import List, Optional, ByteString
 from timeit import default_timer as timer
 
 import cv2
@@ -14,7 +14,7 @@ from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState, Cam
 from neurobooth_os.iout.stim_param_reader import WebcamDeviceArgs
 
 from neurobooth_os.log_manager import APP_LOG_NAME
-from neurobooth_os.msg.messages import DeviceInitialization, Request, NewVideoFile
+from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 
 class WebcamException(Exception):
@@ -133,11 +133,14 @@ class VidRec_Webcam(Device, CameraPreviewer):
                 continue
         self.logger.debug('Webcam: Exiting Save Thread')
 
-    def start(self, filename: Optional[str] = None) -> None:
+    def start(self, filename: Optional[str] = None) -> List[str]:
         """Begin recording video.
 
         Args:
             filename: Base name for the output video file. Defaults to ``"temp_video"``.
+
+        Returns:
+            List containing the created video file basename.
         """
         name = filename if filename is not None else "temp_video"
         self._prepare_recording(name)
@@ -145,6 +148,7 @@ class VidRec_Webcam(Device, CameraPreviewer):
         self.logger.debug('Webcam: Beginning Recording')
         self.state = DeviceState.STARTED
         self.video_thread.start()
+        return [op.split(self.video_filename)[-1]]
 
     def _prepare_recording(self, name: str = "temp_video") -> None:
         self.open_stream()
@@ -156,9 +160,6 @@ class VidRec_Webcam(Device, CameraPreviewer):
             int(self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
         )
         self.video_out = cv2.VideoWriter(self.video_filename, fourcc, fps, frame_size)
-
-        msg_body = NewVideoFile(stream_name=self.stream_name, filename=op.split(self.video_filename)[-1])
-        meta.post_message(Request(source='Webcam', destination='CTR', body=msg_body))
         self.streaming = True
 
     def record(self) -> None:

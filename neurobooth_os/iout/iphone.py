@@ -21,7 +21,7 @@ from neurobooth_os.iout.metadator import post_message, read_sensors
 from neurobooth_os.iout.stim_param_reader import IPhoneDeviceArgs
 from neurobooth_os.iout.usbmux import USBMux
 from neurobooth_os.log_manager import APP_LOG_NAME
-from neurobooth_os.msg.messages import NewVideoFile, Request, StatusMessage, DeviceInitialization
+from neurobooth_os.msg.messages import Request, StatusMessage, DeviceInitialization
 
 # --------------------------------------------------------------------------------
 # Module-level constants and debugging flags
@@ -771,11 +771,12 @@ class IPhone(Device, CameraPreviewer):
         self.logger.debug(f'iPhone [state={self._state}]: Sending @DUMPSUCCESS Message')
         self._send_packet("@DUMPSUCCESS", msg_contents={"Message": filename})
 
-    def start(self, filename: Optional[str] = None) -> None:
+    def start(self, filename: Optional[str] = None) -> List[str]:
         """
         Called during a START message to the server. Start data capture.
 
         :param filename: The task file name supplied by the server.
+        :returns: List of created file basenames (.mov and .json).
         """
         if filename is None:
             raise ValueError("IPhone requires a filename to start recording.")
@@ -783,17 +784,8 @@ class IPhone(Device, CameraPreviewer):
         self.state = DeviceState.STARTED
         filename += "_IPhone"
         filename = op.split(filename)[-1]
-        if not DISABLE_LSL:
-            IPhone.send_file_msg(self.streamName, f"{filename}.mov")
-            time.sleep(0.05)
-            IPhone.send_file_msg(self.streamName, f"{filename}.json")
         self._start_recording(filename)
-
-    @staticmethod
-    def send_file_msg(stream_name, file_name):
-        body = NewVideoFile(stream_name=stream_name, filename=f"{file_name}")
-        msg = Request(source="IPhone", destination="CTR", body=body)
-        post_message(msg)
+        return [f"{filename}.mov", f"{filename}.json"]
 
     @staticmethod
     def send_status_msg(txt):

@@ -119,9 +119,6 @@ class GuiEventListener(SessionEventListener):
     def on_mbient_disconnected(self, warning):
         self.window.write_event_value("mbient_disconnected", warning)
 
-    def on_new_video_file(self, stream_name, filename, event):
-        self.window.write_event_value(event, f"{stream_name},{filename}")
-
     def prompt_pause_decision(self):
         resp = sg.Popup(
             "The session will pause after the current task.\n", title="Pausing session",
@@ -530,10 +527,6 @@ def gui(logger):
                     _session_button_state(window, disabled=True)
                     controller._join_lsl_stop()
                     write_output(window, "\nSession complete: OK to terminate", 'blue')
-
-            # Send a marker string with the name of the new video file created
-            elif event == "-new_filename-":
-                state.video_marker_stream.push_sample([values[event]])
 
             elif event == 'devices_connected':
                 controller.start_lsl_session(state.sess_info["subject_id_date"])
