@@ -145,6 +145,11 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
         print("Not a known node name")
         return None
     s = cfg.neurobooth_config.server_by_name(node_name)
+    if s.password is None:
+        raise cfg.ConfigException(
+            f"Cannot start remote server '{node_name}': no password configured. "
+            f"Service passwords are required in secrets.yaml on the control machine."
+        )
 
     # Identify and kill any existing Python processes for this node
     expected_script = None
@@ -268,6 +273,11 @@ def kill_remote_pid(pids, node_name):
         return None
 
     s = cfg.neurobooth_config.server_by_name(node_name)
+    if s.password is None:
+        raise cfg.ConfigException(
+            f"Cannot kill remote process on '{node_name}': no password configured. "
+            f"Service passwords are required in secrets.yaml on the control machine."
+        )
 
     if isinstance(pids, str):
         pids = [pids]

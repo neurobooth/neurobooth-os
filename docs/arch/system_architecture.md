@@ -118,64 +118,73 @@ entry against the `acquisition` array index.
 ## Configuration Schema
 
 Environment configs live in the `configs` repository under
-`environments/<env_name>/neurobooth_os_config.json`. The top-level structure:
+`environments/<env_name>/neurobooth_os_config.yaml`. The config supports two
+formats: a normalized structure (preferred) and a legacy flat structure.
 
-```json
-{
-    "remote_data_dir": "Z:/data/",
-    "video_task_dir": "C:/Users/.../Videos_to_present",
-    "split_xdf_backlog": "C:/Users/.../split_xdf_backlog.csv",
-    "cam_inx_lowfeed": 0,
-    "default_preview_stream": "IPhoneFrameIndex",
-    "screen": {
-        "fullscreen": true,
-        "width_cm": 55,
-        "subject_distance_to_screen_cm": 60,
-        "min_refresh_rate_hz": 200,
-        "max_refresh_rate_hz": 250,
-        "screen_resolution": [1920, 1080]
-    },
-    "acquisition": [
-        {
-            "name": "...",
-            "user": "...",
-            "password": "...",
-            "local_data_dir": "...",
-            "bat": "%NB_INSTALL%/neurobooth_os/server_acq.bat",
-            "task_name": "...",
-            "devices": ["Intel_D455_1", "..."]
-        }
-    ],
-    "presentation": {
-        "name": "...",
-        "user": "...",
-        "password": "...",
-        "local_data_dir": "...",
-        "bat": "%NB_INSTALL%/neurobooth_os/server_stm.bat",
-        "task_name": "...",
-        "devices": ["Eyelink_1"]
-    },
-    "control": {
-        "name": "...",
-        "user": "...",
-        "password": "...",
-        "local_data_dir": "...",
-        "devices": []
-    },
-    "database": {
-        "ssh_tunnel": true,
-        "dbname": "...",
-        "user": "...",
-        "password": "...",
-        "host": "...",
-        "port": 5432,
-        "remote_user": "...",
-        "remote_host": "..."
-    }
-}
+### Normalized format
+
+Machine-level info (user, directories) is defined once in a `machines` dict.
+Services reference machines by name and add only service-specific fields.
+Passwords are kept in `secrets.yaml`, keyed by machine name (see
+`system_configuration.md`).
+
+```yaml
+machines:
+  acq-prod:
+    user: NB_ACQ
+    local_data_dir: "E:/neurobooth_data/"
+    local_log_dir: "E:/neurobooth_logs/"
+  stm-prod:
+    user: NB_STM
+    local_data_dir: "C:/Users/NB_STM/neurobooth_data/"
+    local_log_dir: "C:/Users/NB_STM/neurobooth_logs/"
+  ctr-prod:
+    user: NB_CTR
+    local_data_dir: "C:/Users/NB_CTR/neurobooth_data/"
+    local_log_dir: "C:/Users/NB_CTR/neurobooth_logs/"
+
+acquisition:
+  - machine: acq-prod
+    bat: "%NB_INSTALL%/neurobooth_os/server_acq.bat"
+    task_name: acq-prod
+    devices: [Intel_D455_1, FLIR_blackfly_1, "..."]
+  - machine: stm-prod
+    bat: "%NB_INSTALL%/neurobooth_os/server_acq.bat"
+    task_name: acq-stm-prod
+    devices: [Mouse, Mbient_LF_2, Mbient_RF_2]
+
+presentation:
+  machine: stm-prod
+  bat: "%NB_INSTALL%/neurobooth_os/server_stm.bat"
+  task_name: stm-prod
+  devices: [Eyelink_1]
+
+control:
+  machine: ctr-prod
+
+database:
+  ssh_tunnel: true
+  dbname: "..."
+  user: "..."
+  host: "..."
+  port: 5432
+  remote_user: "..."
+  remote_host: "..."
 ```
 
+### Legacy flat format
+
+The old format (with `name`, `user`, `password`, `local_data_dir` in every
+service entry) is still accepted. It is automatically converted to the
+normalized structure at load time. See `docs/arch/config_normalization.md` for
+the design rationale.
+
+### Internal model
+
 The config is loaded into a `NeuroboothConfig` Pydantic model at startup via
-`config.load_config_by_service_name()`. Server entries are parsed into `ServerSpec`
-objects. The `acquisition` field is a `List[ServerSpec]`, supporting an arbitrary
-number of acquisition services.
+`config.load_config_by_service_name()`. Internally, machine info is stored in
+`MachineSpec` objects and services in `ServiceSpec` objects. Call sites receive
+`ResolvedService` instances (from `server_by_name()`, `current_server()`, or
+the `acquisition`, `presentation`, `control` properties) that flatten both
+layers into a single object with `name`, `user`, `password`, `local_data_dir`,
+`local_log_dir`, `bat`, `task_name`, and `devices` attributes.
