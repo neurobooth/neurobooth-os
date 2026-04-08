@@ -1,7 +1,6 @@
 import sys
 import argparse
 import threading
-import uuid
 from ctypes import c_void_p
 from time import sleep, time
 import multiprocessing as mp
