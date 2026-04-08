@@ -57,7 +57,7 @@ def main():
 
 def run_acq(logger, acq_index: int = 0):
     service_id = config.neurobooth_config.acq_service_id(acq_index)
-    acq_config = config.neurobooth_config.acquisition[acq_index]
+    acq_config = config.neurobooth_config.server_by_name(f'acquisition_{acq_index}')
     read_conn = meta.get_database_connection()
     device_manager = None
     recording = False

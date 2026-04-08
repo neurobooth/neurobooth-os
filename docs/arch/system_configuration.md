@@ -20,3 +20,46 @@ It is good practice to maintain separate files for each environment that you wil
 As you can see from the examples, the environment variables include locations, including the install folder for neurobooth, and the config folder. The config folder variable ("NB_CONFIG") states the location of the other config files. 
 Neurobooth cannot run if the required configuration file(s) are not found there.
 
+## Secrets
+
+Credentials are stored in `secrets.yaml`, located in the config folder alongside
+the main config file. The file is keyed by environment name (e.g., `production`,
+`staging`).
+
+With the normalized config format, secrets are keyed by machine name. Each machine
+only needs the credentials it actually uses. Service passwords (used for remote
+process management via `SCHTASKS`, `taskkill`, etc.) are only required on the
+control (CTR) machine.
+
+### CTR machine
+
+```yaml
+production:
+  database:
+    password: "db_password"
+  machines:
+    acq-prod:
+      password: "acq_windows_password"
+    stm-prod:
+      password: "stm_windows_password"
+```
+
+### ACQ and STM machines
+
+```yaml
+production:
+  database:
+    password: "db_password"
+```
+
+### Credential inventory
+
+| Credential | Purpose | CTR | ACQ | STM |
+|------------|---------|-----|-----|-----|
+| `database.password` | PostgreSQL auth | Required | Required | Required |
+| `machines.<name>.password` | Remote process management | Required | - | - |
+| SSH key (`~/.ssh/id_rsa`) | SSH tunnel to DB | Required | Required | Required |
+
+The legacy flat config format (with passwords in each service entry) is still
+supported. See `docs/arch/config_normalization.md` for migration details.
+

@@ -5,10 +5,10 @@ Ensures that the base neurobooth-os config file exists and makes config file ava
 
 import logging
 from os import environ, path, getenv
-from typing import Optional, List
+from typing import Dict, Optional, List
 
 import yaml
-from pydantic import BaseModel, SecretStr, conlist
+from pydantic import BaseModel, PrivateAttr, SecretStr, conlist
 
 
 class ConfigException(Exception):
@@ -64,10 +64,42 @@ class DatabaseSpec(BaseModel):
 
 
 class ServerSpec(BaseModel):
+    """Legacy flat model — kept for old-format config compatibility."""
     name: str
     user: str
     password: SecretStr
     local_data_dir: str
+    bat: Optional[str] = None
+    task_name: Optional[str] = None
+    devices: List[str] = []
+
+
+class MachineSpec(BaseModel):
+    """A physical or logical host."""
+    user: str
+    password: Optional[SecretStr] = None
+    local_data_dir: str
+    local_log_dir: Optional[str] = None
+
+
+class ServiceSpec(BaseModel):
+    """A neurobooth service running on a machine."""
+    machine: str
+    bat: Optional[str] = None
+    task_name: Optional[str] = None
+    devices: List[str] = []
+
+
+class ResolvedService(BaseModel):
+    """Flattened view combining machine and service info.
+
+    Returned by server_by_name() so existing call sites do not change.
+    """
+    name: str
+    user: str
+    password: Optional[SecretStr] = None
+    local_data_dir: str
+    local_log_dir: Optional[str] = None
     bat: Optional[str] = None
     task_name: Optional[str] = None
     devices: List[str] = []
@@ -80,11 +112,44 @@ class NeuroboothConfig(BaseModel):
     split_xdf_backlog: str
     cam_inx_lowfeed: int
     default_preview_stream: str
-    acquisition: List[ServerSpec]
-    presentation: ServerSpec
-    control: ServerSpec
+    machines: Dict[str, MachineSpec]
     database: DatabaseSpec
     screen: ScreenSpec
+
+    _acquisition_specs: List[ServiceSpec] = PrivateAttr(default_factory=list)
+    _presentation_spec: Optional[ServiceSpec] = PrivateAttr(default=None)
+    _control_spec: Optional[ServiceSpec] = PrivateAttr(default=None)
+    _resolved: Dict[str, ResolvedService] = PrivateAttr(default_factory=dict)
+
+    def __init__(self, **data):
+        # Detect old-format config (no 'machines' key, acquisition entries have 'user')
+        if 'machines' not in data:
+            data = _convert_legacy_config(data)
+        # Pull service specs out before Pydantic validation (they're private fields)
+        acq_specs = [ServiceSpec(**s) for s in data.pop('acquisition', [])]
+        pres_spec = ServiceSpec(**data.pop('presentation', {}))
+        ctrl_spec = ServiceSpec(**data.pop('control', {}))
+        super().__init__(**data)
+        self._acquisition_specs = acq_specs
+        self._presentation_spec = pres_spec
+        self._control_spec = ctrl_spec
+        self._resolved = _build_resolved_cache(self)
+
+    @property
+    def acquisition(self) -> List[ResolvedService]:
+        """Return resolved acquisition services (preserves index-based access)."""
+        return [self._resolved[f'acquisition_{i}']
+                for i in range(len(self._acquisition_specs))]
+
+    @property
+    def presentation(self) -> ResolvedService:
+        """Return resolved presentation service."""
+        return self._resolved['presentation']
+
+    @property
+    def control(self) -> ResolvedService:
+        """Return resolved control service."""
+        return self._resolved['control']
 
     def acq_service_id(self, index: int) -> str:
         """Message routing identifier for acquisition server at index."""
@@ -92,11 +157,11 @@ class NeuroboothConfig(BaseModel):
 
     def all_acq_service_ids(self) -> List[str]:
         """Return message routing identifiers for all acquisition servers."""
-        return [self.acq_service_id(i) for i in range(len(self.acquisition))]
+        return [self.acq_service_id(i) for i in range(len(self._acquisition_specs))]
 
     def get_acq_for_device(self, device_id: str) -> int:
         """Return the index of the acquisition server that owns a given device."""
-        for i, acq in enumerate(self.acquisition):
+        for i, acq in enumerate(self._acquisition_specs):
             if device_id in acq.devices:
                 return i
         raise ConfigException(f"Device '{device_id}' not found in any acquisition server.")
@@ -115,10 +180,11 @@ class NeuroboothConfig(BaseModel):
         server_name = get_server_name_from_env()
         if server_name is None:
             raise ConfigException('Could not detect current server from local environment.')
-        if server_name == 'acquisition' and len(self.acquisition) > 1:
+        if server_name == 'acquisition' and len(self._acquisition_specs) > 1:
             user_profile = getenv("USERPROFILE", "").upper()
-            for i, acq in enumerate(self.acquisition):
-                if acq.user.upper() in user_profile:
+            for i, acq in enumerate(self._acquisition_specs):
+                machine = self.machines[acq.machine]
+                if machine.user.upper() in user_profile:
                     return f'acquisition_{i}'
             raise ConfigException(
                 f'Could not match USERPROFILE "{getenv("USERPROFILE")}" '
@@ -126,22 +192,98 @@ class NeuroboothConfig(BaseModel):
             )
         return server_name
 
-    def current_server(self) -> ServerSpec:
+    def current_server(self) -> ResolvedService:
         return self.server_by_name(self.current_server_name())
 
-    def server_by_name(self, server_name: str) -> ServerSpec:
+    def server_by_name(self, server_name: str) -> ResolvedService:
         if server_name.startswith('acquisition_'):
             idx = int(server_name.split('_')[1])
-            return self.acquisition[idx]
+            key = f'acquisition_{idx}'
+            if key in self._resolved:
+                return self._resolved[key]
+            raise ConfigException(f'Acquisition index {idx} out of range.')
         if server_name == 'acquisition':
-            if len(self.acquisition) == 1:
-                return self.acquisition[0]
+            if len(self._acquisition_specs) == 1:
+                return self._resolved['acquisition_0']
             raise ConfigException('Multiple acquisition servers. Use acquisition_N.')
-        if hasattr(self, server_name):
-            server = getattr(self, server_name)
-            if isinstance(server, ServerSpec):
-                return server
+        if server_name in self._resolved:
+            return self._resolved[server_name]
         raise ConfigException(f'Invalid server name: {server_name}')
+
+
+def _resolve_service(machines: Dict[str, MachineSpec], service: ServiceSpec,
+                     name_override: Optional[str] = None) -> ResolvedService:
+    """Join a ServiceSpec with its MachineSpec to produce a ResolvedService."""
+    machine_name = service.machine
+    if machine_name not in machines:
+        raise ConfigException(f"Service references unknown machine '{machine_name}'.")
+    m = machines[machine_name]
+    return ResolvedService(
+        name=name_override or machine_name,
+        user=m.user,
+        password=m.password,
+        local_data_dir=m.local_data_dir,
+        local_log_dir=m.local_log_dir,
+        bat=service.bat,
+        task_name=service.task_name,
+        devices=service.devices,
+    )
+
+
+def _build_resolved_cache(cfg: NeuroboothConfig) -> Dict[str, ResolvedService]:
+    """Pre-resolve all services into a lookup dict."""
+    resolved = {}
+    for i, acq in enumerate(cfg._acquisition_specs):
+        resolved[f'acquisition_{i}'] = _resolve_service(cfg.machines, acq)
+    resolved['presentation'] = _resolve_service(cfg.machines, cfg._presentation_spec)
+    resolved['control'] = _resolve_service(cfg.machines, cfg._control_spec)
+    return resolved
+
+
+def _convert_legacy_config(data: dict) -> dict:
+    """Convert old flat ServerSpec config to normalized machines + services format."""
+    machines = {}
+
+    def _extract_machine(entry: dict) -> str:
+        """Pull machine fields out of a flat ServerSpec dict, return machine key."""
+        name = entry['name']
+        if name not in machines:
+            machine_data = {'user': entry['user'], 'local_data_dir': entry['local_data_dir']}
+            if 'password' in entry:
+                machine_data['password'] = entry['password']
+            machines[name] = machine_data
+        return name
+
+    def _make_service(entry: dict, machine_key: str) -> dict:
+        return {
+            'machine': machine_key,
+            'bat': entry.get('bat'),
+            'task_name': entry.get('task_name'),
+            'devices': entry.get('devices', []),
+        }
+
+    # Convert acquisition list
+    new_acq = []
+    for acq_entry in data.get('acquisition', []):
+        mk = _extract_machine(acq_entry)
+        new_acq.append(_make_service(acq_entry, mk))
+
+    # Convert presentation
+    pres = data.get('presentation', {})
+    pres_mk = _extract_machine(pres)
+    new_pres = _make_service(pres, pres_mk)
+
+    # Convert control
+    ctrl = data.get('control', {})
+    ctrl_mk = _extract_machine(ctrl)
+    new_ctrl = _make_service(ctrl, ctrl_mk)
+
+    data = dict(data)
+    data['machines'] = machines
+    data['acquisition'] = new_acq
+    data['presentation'] = new_pres
+    data['control'] = new_ctrl
+    return data
 
 
 neurobooth_config: Optional[NeuroboothConfig] = None
@@ -228,11 +370,19 @@ def validate_system_paths(server_name: str):
         validate_folder(neurobooth_config.video_task_dir)
     validate_folder(neurobooth_config.remote_data_dir)
 
-    source = neurobooth_config.server_by_name(server_name).local_data_dir
+    server = neurobooth_config.server_by_name(server_name)
+    source = server.local_data_dir
     if not path.exists(source):
         raise FileNotFoundError(f"The local_data_dir '{source}' for server {server_name} does not exist.")
     if not path.isdir(source):
         raise ConfigException(f"The local_data_dir '{source}' for server {server_name} is not a folder.")
+
+    if server.local_log_dir is not None:
+        log_dir = server.local_log_dir
+        if not path.exists(log_dir):
+            raise FileNotFoundError(f"The local_log_dir '{log_dir}' for server {server_name} does not exist.")
+        if not path.isdir(log_dir):
+            raise ConfigException(f"The local_log_dir '{log_dir}' for server {server_name} is not a folder.")
 
 
 def load_neurobooth_config(fname: Optional[str] = None):
