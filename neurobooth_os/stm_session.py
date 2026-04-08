@@ -40,6 +40,9 @@ class StmSession(BaseModel):
     next_task_start_time: Optional[str] = None
     next_transition_task_id: Optional[str] = None
 
+    # Set by CreateTasksRequest; read by _start_acq and stop_acq
+    frame_preview_device_id: Optional[str] = None
+
     class Config:
         arbitrary_types_allowed = True
 

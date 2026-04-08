@@ -33,7 +33,6 @@ from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
 calib_instructions: bool = True  # True if we have not yet performed an eyetracker calibration task
-frame_preview_device_id: Optional[str] = None
 
 
 def main():
@@ -59,7 +58,6 @@ def main():
 
 
 def run_stm(logger):
-    global frame_preview_device_id
 
     def _finish_tasks(session):
         session.logger.debug('FINISH SCREEN')
@@ -155,7 +153,7 @@ def run_stm(logger):
                     elif 'CreateTasksRequest' == current_msg_type:
                         device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
                         msg_body: CreateTasksRequest = message.body
-                        frame_preview_device_id = msg_body.frame_preview_device_id
+                        session.frame_preview_device_id = msg_body.frame_preview_device_id
 
                     elif "PerformTaskRequest" == current_msg_type:
                         if last_task_finished_time is not None:
@@ -267,9 +265,13 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 future1 = executor.submit(_wait_for_lsl_recording_to_start, session)
-                future2 = executor.submit(_start_acq, session, task_id, tsk_start_time, frame_preview_device_id)
-                # Wait for all futures to complete
-                concurrent.futures.wait([future1, future2])
+                future2 = executor.submit(_start_acq, session, task_id, tsk_start_time)
+                done, not_done = concurrent.futures.wait([future1, future2], timeout=60)
+                for f in not_done:
+                    session.logger.error(f"Task startup timed out: {f}")
+                for f in done:
+                    if f.exception() is not None:
+                        session.logger.error(f"Task startup failed: {f.exception()}")
             _get_task_instance(session, task_args, edf_fname)
 
             this_task_kwargs["task_name"] = task_id
@@ -489,20 +491,21 @@ def stop_acq(session: StmSession, task_args: TaskArgs,
     t0 = time()
     stimulus_id = task_args.stim_args.stimulus_id
     acq_ids = config.neurobooth_config.all_acq_service_ids()
+    preview_device_id = session.frame_preview_device_id
 
     if next_task_id is not None:
         session.logger.info(f'SENDING TransitionRecording TO ACQ (next={next_task_id})')
         file_name = f"{session.session_name}_{session.next_task_start_time}_{next_task_id}"
         preview_acq_id = None
-        if frame_preview_device_id is not None:
-            preview_acq_idx = config.neurobooth_config.get_acq_for_device(frame_preview_device_id)
+        if preview_device_id is not None:
+            preview_acq_idx = config.neurobooth_config.get_acq_for_device(preview_device_id)
             preview_acq_id = config.neurobooth_config.acq_service_id(preview_acq_idx)
         for acq_id in acq_ids:
             body = TransitionRecording(
                 session_name=session.session_name,
                 fname=file_name,
                 task_id=next_task_id,
-                frame_preview_device_id=frame_preview_device_id if acq_id == preview_acq_id else None,
+                frame_preview_device_id=preview_device_id if acq_id == preview_acq_id else None,
             )
             meta.post_message(Request(source="STM", destination=acq_id, body=body))
         session.transition_sent = True
@@ -523,36 +526,42 @@ def stop_acq(session: StmSession, task_args: TaskArgs,
             session.logger.info(f"stop_acq: eyetracker stop took: {time() - t_eye:.2f}")
 
 
-def _start_acq(session: StmSession, task_id: str, tsk_start_time, frame_preview_device_id):
+def _start_acq(session: StmSession, task_id: str, tsk_start_time):
     """Start recording on all ACQ servers, or wait for an in-flight TransitionRecording."""
     t1 = time()
     acq_ids = config.neurobooth_config.all_acq_service_ids()
+    preview_device_id = session.frame_preview_device_id
 
     if not session.transition_sent:
         file_name = f"{session.session_name}_{tsk_start_time}_{task_id}"
         preview_acq_id = None
-        if frame_preview_device_id is not None:
-            preview_acq_idx = config.neurobooth_config.get_acq_for_device(frame_preview_device_id)
+        if preview_device_id is not None:
+            preview_acq_idx = config.neurobooth_config.get_acq_for_device(preview_device_id)
             preview_acq_id = config.neurobooth_config.acq_service_id(preview_acq_idx)
         for acq_id in acq_ids:
             body = StartRecording(
                 session_name=session.session_name,
                 fname=file_name,
                 task_id=task_id,
-                frame_preview_device_id=frame_preview_device_id if acq_id == preview_acq_id else None
+                frame_preview_device_id=preview_device_id if acq_id == preview_acq_id else None
             )
             meta.post_message(Request(source='STM', destination=acq_id, body=body))
     else:
         session.logger.info("TransitionRecording already sent; waiting for RecordingStarted")
 
     replies = 0
+    timeout_s = 45.0
     with meta.get_database_connection() as conn:
-        while replies < len(acq_ids):
+        while replies < len(acq_ids) and (time() - t1) < timeout_s:
             reply = meta.read_next_message("STM", conn, msg_type="RecordingStarted")
             if reply is not None:
                 replies += 1
             else:
                 sleep(.1)
+
+    if replies < len(acq_ids):
+        session.logger.error(
+            f"Timed out waiting for RecordingStarted: got {replies}/{len(acq_ids)} in {timeout_s}s")
 
     session.transition_sent = False
     elapsed_time = time() - t1
