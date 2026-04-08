@@ -63,17 +63,6 @@ class DatabaseSpec(BaseModel):
     remote_host: str
 
 
-class ServerSpec(BaseModel):
-    """Legacy flat model — kept for old-format config compatibility."""
-    name: str
-    user: str
-    password: SecretStr
-    local_data_dir: str
-    bat: Optional[str] = None
-    task_name: Optional[str] = None
-    devices: List[str] = []
-
-
 class MachineSpec(BaseModel):
     """A physical or logical host."""
     user: str
@@ -122,9 +111,11 @@ class NeuroboothConfig(BaseModel):
     _resolved: Dict[str, ResolvedService] = PrivateAttr(default_factory=dict)
 
     def __init__(self, **data):
-        # Detect old-format config (no 'machines' key, acquisition entries have 'user')
         if 'machines' not in data:
-            data = _convert_legacy_config(data)
+            raise ConfigException(
+                "Config file uses the legacy flat format (no 'machines' key). "
+                "Please migrate to the normalized format. See docs/arch/config_normalization.md."
+            )
         # Pull service specs out before Pydantic validation (they're private fields)
         acq_specs = [ServiceSpec(**s) for s in data.pop('acquisition', [])]
         pres_spec = ServiceSpec(**data.pop('presentation', {}))
@@ -238,52 +229,6 @@ def _build_resolved_cache(cfg: NeuroboothConfig) -> Dict[str, ResolvedService]:
     resolved['presentation'] = _resolve_service(cfg.machines, cfg._presentation_spec)
     resolved['control'] = _resolve_service(cfg.machines, cfg._control_spec)
     return resolved
-
-
-def _convert_legacy_config(data: dict) -> dict:
-    """Convert old flat ServerSpec config to normalized machines + services format."""
-    machines = {}
-
-    def _extract_machine(entry: dict) -> str:
-        """Pull machine fields out of a flat ServerSpec dict, return machine key."""
-        name = entry['name']
-        if name not in machines:
-            machine_data = {'user': entry['user'], 'local_data_dir': entry['local_data_dir']}
-            if 'password' in entry:
-                machine_data['password'] = entry['password']
-            machines[name] = machine_data
-        return name
-
-    def _make_service(entry: dict, machine_key: str) -> dict:
-        return {
-            'machine': machine_key,
-            'bat': entry.get('bat'),
-            'task_name': entry.get('task_name'),
-            'devices': entry.get('devices', []),
-        }
-
-    # Convert acquisition list
-    new_acq = []
-    for acq_entry in data.get('acquisition', []):
-        mk = _extract_machine(acq_entry)
-        new_acq.append(_make_service(acq_entry, mk))
-
-    # Convert presentation
-    pres = data.get('presentation', {})
-    pres_mk = _extract_machine(pres)
-    new_pres = _make_service(pres, pres_mk)
-
-    # Convert control
-    ctrl = data.get('control', {})
-    ctrl_mk = _extract_machine(ctrl)
-    new_ctrl = _make_service(ctrl, ctrl_mk)
-
-    data = dict(data)
-    data['machines'] = machines
-    data['acquisition'] = new_acq
-    data['presentation'] = new_pres
-    data['control'] = new_ctrl
-    return data
 
 
 neurobooth_config: Optional[NeuroboothConfig] = None
