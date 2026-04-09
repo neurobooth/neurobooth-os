@@ -87,7 +87,8 @@ class SessionEventListener(ABC):
         """A task has started on the STM machine."""
 
     @abstractmethod
-    def on_task_finished(self, task_id: str, has_lsl_stream: str) -> None:
+    def on_task_finished(self, task_id: str, has_lsl_stream: str,
+                         video_files: Dict[str, List[str]]) -> None:
         """A task has completed."""
 
     @abstractmethod
@@ -464,7 +465,9 @@ class SessionController:
         return rec_fname
 
     def stop_lsl_recording(self, task_id: str, t_obs_id: str,
-                           obs_log_id: str, folder: str) -> None:
+                           obs_log_id: str, folder: str,
+                           video_files: Optional[Dict[str, List[str]]] = None,
+                           ) -> None:
         """Stop LSL recording in the background and trigger XDF split.
 
         The underlying LabRecorderCLI subprocess takes 3-5s to finalize
@@ -473,6 +476,12 @@ class SessionController:
         the old subprocess handle and finalize it in a background thread.
         ``start_lsl_recording`` spawns a *new* LabRecorderCLI process, so
         the two can safely run concurrently.
+
+        Args:
+            video_files: Pre-snapshotted mapping of stream name to file
+                basenames, captured by the message reader thread at
+                TaskCompletion time to avoid a race with RecordingFiles
+                for the next task.
         """
         import threading as threading_mod
 
@@ -491,9 +500,10 @@ class SessionController:
         xdf_fname = get_xdf_name(session, self.state.rec_fname)
         xdf_path = op.join(folder, xdf_fname)
 
-        # Snapshot and clear the buffered video files for this task
-        video_files = dict(self.state.task_video_files)
-        self.state.task_video_files.clear()
+        # Use the pre-snapshotted video files from the message reader
+        # thread (captured atomically at TaskCompletion time).
+        if video_files is None:
+            video_files = {}
 
         def _finalize():
             """Finalize the old LabRecorderCLI process and split the XDF."""
@@ -620,8 +630,18 @@ class SessionController:
 
                 elif "TaskCompletion" == message.msg_type:
                     body = message.body
-                    self.logger.debug(f"TaskCompletion msg for {body.task_id}")
-                    self.listener.on_task_finished(body.task_id, str(body.has_lsl_stream))
+                    # Snapshot and clear video files NOW, on the message reader
+                    # thread, before the next message can be read.  This prevents
+                    # a race where RecordingFiles for the NEXT task is buffered
+                    # before the GUI thread calls stop_lsl_recording, causing the
+                    # current task to steal the next task's files.
+                    video_files = dict(self.state.task_video_files)
+                    self.state.task_video_files.clear()
+                    self.logger.debug(
+                        f"TaskCompletion msg for {body.task_id}, "
+                        f"video_files={list(video_files.keys())}")
+                    self.listener.on_task_finished(
+                        body.task_id, str(body.has_lsl_stream), video_files)
 
                 elif "RecordingFiles" == message.msg_type:
                     body = message.body
