@@ -436,6 +436,7 @@ def gui(logger):
 
             elif event == "Stop tasks":
                 controller.stop_session(resume_on_cancel=False)
+                _session_button_state(window, disabled=True)
 
             elif event == "Calibrate":
                 write_output(window, "Eyetracker recalibration scheduled. "
