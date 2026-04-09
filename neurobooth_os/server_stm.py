@@ -194,7 +194,7 @@ def run_stm(logger):
                         logger.error(unex_msg)
                         raise RuntimeError(unex_msg)
 
-                if session_canceled and not finished:
+                if session_canceled and not finished and session is not None:
                     finished = _finish_tasks(session)
             except Exception as argument:
                 with meta.get_database_connection() as db_conn:
