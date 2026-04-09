@@ -22,7 +22,7 @@ import neurobooth_os.current_config as current_config
 from neurobooth_os.realtime.lsl_plotter import stream_plotter
 
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes, PREVIEW_AREA
-from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, enable_crash_handler, relocate_crash_handler, SystemResourceLogger
+from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, enable_crash_handler, SystemResourceLogger
 from neurobooth_os.iout.metadator import LogSession
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
@@ -642,7 +642,6 @@ def main():
     exit_code = 0
     try:
         cfg.load_config_by_service_name("CTR")  # Load Neurobooth-OS configuration
-        relocate_crash_handler("CTR")
         logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
         logger.debug("Starting GUI")
         gui(logger)

@@ -28,7 +28,7 @@ from neurobooth_os.iout import metadator as meta
 
 from neurobooth_os.tasks.welcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
-from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received, enable_crash_handler, relocate_crash_handler
+from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received, enable_crash_handler
 
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
@@ -41,7 +41,6 @@ def main():
     exit_code = 0
     try:
         config.load_config_by_service_name("STM")  # Load Neurobooth-OS configuration
-        relocate_crash_handler("STM")
         logger = make_db_logger()  # Initialize logging to default
         logger.debug("Starting STM")
         os.chdir(neurobooth_os.__path__[0])

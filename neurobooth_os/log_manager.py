@@ -71,35 +71,6 @@ def enable_crash_handler(server_name: str) -> None:
     faulthandler.enable(file=_crash_log_file)
 
 
-def relocate_crash_handler(server_name: str) -> None:
-    """Reopen the crash log at the configured local_log_dir.
-
-    Called after config is loaded to move the crash log from the initial
-    fallback location to the configured directory.
-
-    Args:
-        server_name: Identifier for the process (e.g. ``"STM"``, ``"ACQ_0"``).
-    """
-    global _crash_log_file
-    log_dir = _get_log_dir()
-    log_path = os.path.join(log_dir, "neurobooth_crash.log")
-
-    # If already writing to the correct path, nothing to do
-    if _crash_log_file is not None and hasattr(_crash_log_file, 'name') and _crash_log_file.name == log_path:
-        return
-
-    old_file = _crash_log_file
-    _crash_log_file = open(log_path, "a")
-    _crash_log_file.write(
-        f"\n--- {server_name} crash log relocated at {datetime.now().isoformat()} (PID {os.getpid()}) ---\n"
-    )
-    _crash_log_file.flush()
-    faulthandler.enable(file=_crash_log_file)
-
-    if old_file is not None:
-        old_file.close()
-
-
 def make_fallback_logger() -> logging.Logger:
     """Create a file-based logger for use when the database logger is unavailable.
 
