@@ -3,6 +3,11 @@
 Runs in a daemon thread, writing CSV snapshots at a configurable interval.
 Designed to run for the lifetime of a session on ACQ and STM machines.
 
+Enabled via the NB_ENABLE_PROCESS_LOG environment variable:
+  P — log top processes by CPU
+  M — log top processes by memory
+  A — log both (union of top CPU and top memory)
+
 Columns: timestamp, pid, name, status, cpu_pct, mem_mb, mem_pct,
          read_mbs, write_mbs, sys_cpu_pct, sys_ram_pct, n_processes
 """
@@ -22,20 +27,23 @@ HEADER = "timestamp,pid,name,status,cpu_pct,mem_mb,mem_pct,read_mbs,write_mbs,sy
 
 
 class ProcessMonitor:
-    """Periodically snapshots top processes by CPU and writes to a CSV file.
+    """Periodically snapshots top processes by CPU and/or memory and writes to a CSV file.
 
     Parameters
     ----------
     output_path : str or Path
         CSV file to append to.
+    mode : str
+        ``"P"`` for top-CPU, ``"M"`` for top-memory, ``"A"`` for both.
     interval_sec : int
         Seconds between snapshots (excluding the 1s CPU measurement window).
     top_n : int
-        Number of top-CPU processes to record per snapshot.
+        Number of top processes to record per ranking.
     """
 
-    def __init__(self, output_path: str, interval_sec: int = 3, top_n: int = 30):
+    def __init__(self, output_path: str, mode: str = "A", interval_sec: int = 3, top_n: int = 30):
         self._path = Path(output_path)
+        self._mode = mode.upper()
         self._interval = interval_sec
         self._top_n = top_n
         self._stop_event = threading.Event()
@@ -128,15 +136,34 @@ class ProcessMonitor:
                 pass
 
         self._prev_io = new_io
-        return sorted(results, key=lambda x: x['cpu_pct'], reverse=True)
+        return results
+
+    def _select(self, procs: list) -> list:
+        """Select the top-N processes according to the configured mode."""
+        if self._mode == "P":
+            return sorted(procs, key=lambda x: x['cpu_pct'], reverse=True)[:self._top_n]
+        if self._mode == "M":
+            return sorted(procs, key=lambda x: x['mem_mb'], reverse=True)[:self._top_n]
+
+        # "A" — union of top-N by CPU and top-N by memory
+        by_cpu = sorted(procs, key=lambda x: x['cpu_pct'], reverse=True)[:self._top_n]
+        by_mem = sorted(procs, key=lambda x: x['mem_mb'], reverse=True)[:self._top_n]
+        seen = set()
+        combined = []
+        for p in by_cpu + by_mem:
+            if p['pid'] not in seen:
+                seen.add(p['pid'])
+                combined.append(p)
+        return sorted(combined, key=lambda x: x['cpu_pct'], reverse=True)
 
     def _write_snapshot(self, f, procs: list) -> None:
         ts = datetime.now(timezone.utc).isoformat(timespec='milliseconds')
         sys_cpu = psutil.cpu_percent()
         sys_ram = psutil.virtual_memory().percent
         n_procs = len(procs)
+        selected = self._select(procs)
 
-        for p in procs[:self._top_n]:
+        for p in selected:
             name = p['name'].replace(',', ';')
             f.write(
                 f"{ts},{p['pid']},{name},{p['status']},"

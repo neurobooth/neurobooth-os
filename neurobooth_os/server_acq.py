@@ -98,13 +98,14 @@ def run_acq(logger, acq_index: int = 0):
                     system_resource_logger = SystemResourceLogger(machine_name=service_id)
                     system_resource_logger.start()
 
-                if os.environ.get("NB_ENABLE_PROCESS_LOG", "").lower() in ("1", "true", "yes"):
+                perf_mode = os.environ.get("NB_ENABLE_PROCESS_LOG", "").upper()
+                if perf_mode in ("P", "M", "A"):
                     log_dir = acq_config.local_log_dir
                     if log_dir is not None:
                         session_log_dir = os.path.join(log_dir, session_name)
                         os.makedirs(session_log_dir, exist_ok=True)
                         perf_path = os.path.join(session_log_dir, f"process_log_{service_id}.csv")
-                        process_monitor = ProcessMonitor(perf_path)
+                        process_monitor = ProcessMonitor(perf_path, mode=perf_mode)
                         process_monitor.start()
 
                 task_args = meta.build_tasks_for_collection(collection_id, selected_tasks)

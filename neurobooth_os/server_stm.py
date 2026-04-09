@@ -153,13 +153,14 @@ def run_stm(logger):
                     if "PrepareRequest" == current_msg_type:
                         request: PrepareRequest = message.body
                         session, task_log_entry = prepare_session(request, logger)
-                        if os.environ.get("NB_ENABLE_PROCESS_LOG", "").lower() in ("1", "true", "yes"):
+                        perf_mode = os.environ.get("NB_ENABLE_PROCESS_LOG", "").upper()
+                        if perf_mode in ("P", "M", "A"):
                             log_dir = config.neurobooth_config.presentation.local_log_dir
                             if log_dir is not None:
                                 session_log_dir = os.path.join(log_dir, session.session_name)
                                 os.makedirs(session_log_dir, exist_ok=True)
                                 perf_path = os.path.join(session_log_dir, "process_log_stm.csv")
-                                process_monitor = ProcessMonitor(perf_path)
+                                process_monitor = ProcessMonitor(perf_path, mode=perf_mode)
                                 process_monitor.start()
 
                     elif 'CreateTasksRequest' == current_msg_type:
