@@ -436,6 +436,7 @@ def gui(logger):
 
             elif event == "Stop tasks":
                 controller.stop_session(resume_on_cancel=False)
+                _session_button_state(window, disabled=True)
 
             elif event == "Calibrate":
                 write_output(window, "Eyetracker recalibration scheduled. "
@@ -637,11 +638,11 @@ def get_popup_location(window):
 
 def main():
     """The starting point of Neurobooth"""
-    enable_crash_handler("CTR")
     logger = None
     exit_code = 0
     try:
         cfg.load_config_by_service_name("CTR")  # Load Neurobooth-OS configuration
+        enable_crash_handler("CTR")
         logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
         logger.debug("Starting GUI")
         gui(logger)

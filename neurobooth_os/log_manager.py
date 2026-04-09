@@ -31,7 +31,13 @@ APP_LOG_NAME = "app"
 
 
 def _get_log_dir() -> str:
-    """Return the log directory from NB_INSTALL, falling back to the user's home directory."""
+    """Return the configured log directory, falling back to NB_INSTALL or the user's home directory."""
+    try:
+        server = config.neurobooth_config.current_server()
+        if server.local_log_dir is not None:
+            return server.local_log_dir
+    except Exception:
+        pass  # Config not loaded yet; use fallback
     return os.environ.get("NB_INSTALL", os.path.expanduser("~"))
 
 

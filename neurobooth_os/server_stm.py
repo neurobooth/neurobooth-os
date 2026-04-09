@@ -29,6 +29,7 @@ from neurobooth_os.iout import metadator as meta
 from neurobooth_os.tasks.welcome_finish_screens import welcome_screen, finish_screen
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received, enable_crash_handler
+from neurobooth_os.perf_monitor import ProcessMonitor
 
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
@@ -36,11 +37,11 @@ calib_instructions: bool = True  # True if we have not yet performed an eyetrack
 
 
 def main():
-    enable_crash_handler("STM")
     logger = None
     exit_code = 0
     try:
         config.load_config_by_service_name("STM")  # Load Neurobooth-OS configuration
+        enable_crash_handler("STM")
         logger = make_db_logger()  # Initialize logging to default
         logger.debug("Starting STM")
         os.chdir(neurobooth_os.__path__[0])
@@ -71,6 +72,7 @@ def run_stm(logger):
     finished: bool = False  # True if the "Thank you" screen has been displayed
     shutdown: bool = False  # True if message received that this server should be terminated
     last_task_finished_time: Optional[float] = None  # For inter-task timing
+    process_monitor: Optional[ProcessMonitor] = None
     init_servers = Request(source="STM", destination="CTR", body=ServerStarted(neurobooth_version=release.version,
                                                                                config_version=current_config.version))
     meta.post_message(init_servers)
@@ -132,6 +134,8 @@ def run_stm(logger):
                 current_msg_type: str = message.msg_type
 
                 if "TerminateServerRequest" == current_msg_type:
+                    if process_monitor is not None:
+                        process_monitor.stop()
                     # Close message-polling connections before device
                     # teardown, which can crash in native code and orphan
                     # any resources still held at that point.
@@ -149,6 +153,15 @@ def run_stm(logger):
                     if "PrepareRequest" == current_msg_type:
                         request: PrepareRequest = message.body
                         session, task_log_entry = prepare_session(request, logger)
+                        perf_mode = os.environ.get("NB_ENABLE_PROCESS_LOG", "").upper()
+                        if perf_mode in ("P", "M", "A"):
+                            log_dir = config.neurobooth_config.presentation.local_log_dir
+                            if log_dir is not None:
+                                session_log_dir = os.path.join(log_dir, session.session_name)
+                                os.makedirs(session_log_dir, exist_ok=True)
+                                perf_path = os.path.join(session_log_dir, "process_log_stm.csv")
+                                process_monitor = ProcessMonitor(perf_path, mode=perf_mode)
+                                process_monitor.start()
 
                     elif 'CreateTasksRequest' == current_msg_type:
                         device_log_entry_dict, subj_id = _create_tasks(message, session, task_log_entry)
