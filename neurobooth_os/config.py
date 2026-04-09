@@ -4,7 +4,7 @@ Ensures that the base neurobooth-os config file exists and makes config file ava
 """
 
 import logging
-from os import environ, path, getenv
+from os import environ, makedirs, path, getenv
 from typing import Dict, Optional, List
 
 import yaml
@@ -325,7 +325,7 @@ def validate_system_paths(server_name: str):
     if server.local_log_dir is not None:
         log_dir = server.local_log_dir
         if not path.exists(log_dir):
-            raise FileNotFoundError(f"The local_log_dir '{log_dir}' for server {server_name} does not exist.")
+            makedirs(log_dir, exist_ok=True)
         if not path.isdir(log_dir):
             raise ConfigException(f"The local_log_dir '{log_dir}' for server {server_name} is not a folder.")
 
