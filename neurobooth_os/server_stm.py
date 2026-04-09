@@ -36,11 +36,11 @@ calib_instructions: bool = True  # True if we have not yet performed an eyetrack
 
 
 def main():
-    enable_crash_handler("STM")
     logger = None
     exit_code = 0
     try:
         config.load_config_by_service_name("STM")  # Load Neurobooth-OS configuration
+        enable_crash_handler("STM")
         logger = make_db_logger()  # Initialize logging to default
         logger.debug("Starting STM")
         os.chdir(neurobooth_os.__path__[0])

@@ -34,11 +34,11 @@ def countdown(period):
 
 def main():
     acq_index = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-    enable_crash_handler(f"ACQ_{acq_index}")
     logger = None
     exit_code = 0
     try:
         config.load_config_by_service_name("ACQ", acq_index=acq_index)
+        enable_crash_handler(f"ACQ_{acq_index}")
         logger = make_db_logger()  # Initialize default logger
         logger.debug(f"Starting ACQ (index={acq_index})")
         os.chdir(neurobooth_os.__path__[0])
