@@ -76,7 +76,8 @@ class HeadlessListener(SessionEventListener):
                           log_task_id: str, tsk_start_time: str) -> None:
         logger.info(f"Task initiated: {task_id}")
 
-    def on_task_finished(self, task_id: str, has_lsl_stream: str) -> None:
+    def on_task_finished(self, task_id: str, has_lsl_stream: str,
+                         video_files=None) -> None:
         logger.info(f"Task finished: {task_id} (lsl={has_lsl_stream})")
 
     def on_tasks_created(self) -> None:

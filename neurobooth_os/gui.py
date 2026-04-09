@@ -83,8 +83,9 @@ class GuiEventListener(SessionEventListener):
             "task_initiated",
             f"['{task_id}', '{t_obs_id}', '{log_task_id}', '{tsk_start_time}']")
 
-    def on_task_finished(self, task_id, has_lsl_stream):
-        self.window.write_event_value("task_finished", f"['{task_id}', '{has_lsl_stream}']")
+    def on_task_finished(self, task_id, has_lsl_stream, video_files):
+        self.window.write_event_value(
+            "task_finished", (task_id, has_lsl_stream, video_files))
 
     def on_tasks_created(self):
         self.window.write_event_value("tasks_created", "")
@@ -512,13 +513,14 @@ def gui(logger):
             # Signal a task ended: stop LSL recording and update gui
             elif event == "task_finished":
                 t_evt = time_mod.time()
-                task_id, has_lsl_stream = eval(values['task_finished'])
+                task_id, has_lsl_stream, video_files = values['task_finished']
                 boolean_value = has_lsl_stream.lower() == 'true'
                 if boolean_value:
                     logger.debug(f"Stopping LSL for task: {task_id}")
                     controller.stop_lsl_recording(
                         task_id, task_id, state.obs_log_id,
-                        state.sess_info["subject_id_date"])
+                        state.sess_info["subject_id_date"],
+                        video_files=video_files)
                     logger.info(f"CTR task_finished handler took: {time_mod.time() - t_evt:.2f}")
                     window["task_running"].update(task_id, background_color="green")
                     write_task_notes(state.sess_info["subject_id_date"],
