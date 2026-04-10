@@ -268,7 +268,14 @@ class SessionState:
     session: object = None  # liesl.Session, typed as object to avoid import dependency
     rec_fname: Optional[str] = None
     obs_log_id: Optional[str] = None
-    task_video_files: Dict[str, List[str]] = field(default_factory=dict)
+    # Accumulated video files keyed by fname (the unique per-run identifier:
+    # "{session_name}_{tsk_start_time}_{task_id}").  Each RecordingFiles message
+    # is tagged with its fname; TaskCompletion carries the same fname for its
+    # matching run.  This makes buffering resilient to out-of-order message
+    # arrival (ACQ's RecordingFiles for the next task arriving before STM's
+    # TaskCompletion for the current task) and to repeated runs of the same
+    # task within a session (recalibration, subject repeats, session restarts).
+    task_video_files: Dict[str, Dict[str, List[str]]] = field(default_factory=dict)
 
     # Device tracking
     frame_preview_devices: Dict[str, str] = field(default_factory=dict)
@@ -630,25 +637,31 @@ class SessionController:
 
                 elif "TaskCompletion" == message.msg_type:
                     body = message.body
-                    # Snapshot and clear video files NOW, on the message reader
-                    # thread, before the next message can be read.  This prevents
-                    # a race where RecordingFiles for the NEXT task is buffered
-                    # before the GUI thread calls stop_lsl_recording, causing the
-                    # current task to steal the next task's files.
-                    video_files = dict(self.state.task_video_files)
-                    self.state.task_video_files.clear()
+                    # Pop the bucket for THIS specific task run, keyed by fname.
+                    # RecordingFiles messages are tagged with the same fname so
+                    # files for the next task that arrive before this TaskCompletion
+                    # stay in their own bucket and are picked up by the next
+                    # TaskCompletion.  Non-recording tasks (has_lsl_stream=False)
+                    # send TaskCompletion without an fname and get an empty dict.
+                    run_fname = getattr(body, "fname", None)
+                    if run_fname is not None:
+                        video_files = self.state.task_video_files.pop(run_fname, {})
+                    else:
+                        video_files = {}
                     self.logger.debug(
-                        f"TaskCompletion msg for {body.task_id}, "
+                        f"TaskCompletion msg for {body.task_id} (fname={run_fname}), "
                         f"video_files={list(video_files.keys())}")
                     self.listener.on_task_finished(
                         body.task_id, str(body.has_lsl_stream), video_files)
 
                 elif "RecordingFiles" == message.msg_type:
                     body = message.body
+                    task_bucket = self.state.task_video_files.setdefault(body.fname, {})
                     for stream_name, filenames in body.files.items():
-                        existing = self.state.task_video_files.get(stream_name, [])
-                        self.state.task_video_files[stream_name] = existing + filenames
-                    self.logger.debug(f"Buffered recording files: {body.files}")
+                        existing = task_bucket.get(stream_name, [])
+                        task_bucket[stream_name] = existing + filenames
+                    self.logger.debug(
+                        f"Buffered recording files for fname={body.fname}: {body.files}")
 
                 elif "NoEyetracker" == message.msg_type:
                     self.listener.on_no_eyetracker(

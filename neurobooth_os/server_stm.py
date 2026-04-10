@@ -231,7 +231,10 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
         session.next_task_start_time = None
     else:
         tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
-    edf_fname = f"{session.path}/{session.session_name}_{tsk_start_time}_{task_id}.edf"
+    # Unique per-run identifier; matches the fname used in StartRecording / TransitionRecording
+    # messages to ACQ and serves as the task-run bucket key for RecordingFiles on CTR.
+    fname = f"{session.session_name}_{tsk_start_time}_{task_id}"
+    edf_fname = f"{session.path}/{fname}.edf"
 
     if task_id not in session.tasks():
         session.logger.warning(f'Task {task_id} not implemented')
@@ -251,7 +254,7 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
             load_task_media(session, task_args)
             task: Task = task_args.task_instance
             task.run(**this_task_kwargs)
-            # Signal CTR to stop LSL rec
+            # Signal CTR to stop LSL rec (no fname — non-recording tasks never post RecordingFiles)
             meta.post_message(Request(source='STM', destination='CTR',
                                       body=TaskCompletion(task_id=task_id, has_lsl_stream=False)))
             return time()
@@ -285,7 +288,7 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
                 for f in done:
                     if f.exception() is not None:
                         session.logger.error(f"Task startup failed: {f.exception()}")
-            _get_task_instance(session, task_args, edf_fname)
+            _get_task_instance(session, task_args, edf_fname, fname)
 
             this_task_kwargs["task_name"] = task_id
             this_task_kwargs["subj_id"] += "_" + tsk_start_time
@@ -298,7 +301,8 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
             t01 = time()
             stimulus_id = task_args.stim_args.stimulus_id
             if "calibration_task" in stimulus_id:  # if not calibration record with start method
-                this_task_kwargs.update({"fname": edf_fname, "instructions": calib_instructions})
+                this_task_kwargs.update({"fname": edf_fname, "run_fname": fname,
+                                         "instructions": calib_instructions})
                 calib_instructions = False  # Only show the instructions the first time
 
             events = task_args.task_instance.run(**this_task_kwargs)
@@ -311,8 +315,9 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
             stop_acq(session, task_args, next_task_id=next_rec_task)
             session.logger.info(f"stop_acq took: {time() - t_stop:.2f}")
 
-            # Signal CTR to stop LSL rec
-            meta.post_message(Request(source='STM', destination='CTR', body=TaskCompletion(task_id=task_id)))
+            # Signal CTR to stop LSL rec (fname tells CTR which bucket of RecordingFiles to snapshot)
+            meta.post_message(Request(source='STM', destination='CTR',
+                                      body=TaskCompletion(task_id=task_id, fname=fname)))
             task_completion_time = time()
             session.logger.info(f'FINISHED TASK: {task_id}')
             t_log = time()
@@ -325,11 +330,15 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
     return None
 
 
-def _get_task_instance(session: StmSession, task_args: TaskArgs, edf_fname):
+def _get_task_instance(session: StmSession, task_args: TaskArgs, edf_fname: str, fname: str):
     """Ensure a task instance exists and start the eyetracker if needed.
 
     If the instance was pre-constructed during ``_create_tasks``, this
     skips construction entirely and only performs eyetracker setup.
+
+    Args:
+        fname: Unique per-run identifier used to tag RecordingFiles messages
+            so CTR can bucket them against the correct task run.
     """
     global calib_instructions
 
@@ -353,7 +362,9 @@ def _get_task_instance(session: StmSession, task_args: TaskArgs, edf_fname):
             task_args.task_instance.render_image()
             created_files = session.eye_tracker.start(edf_fname)
             if created_files:
-                files_msg = RecordingFiles(files={session.eye_tracker.streamName: created_files})
+                files_msg = RecordingFiles(
+                    fname=fname,
+                    files={session.eye_tracker.streamName: created_files})
                 meta.post_message(Request(source="STM", destination="CTR", body=files_msg))
 
 def _create_tasks(message, session, task_log_entry):

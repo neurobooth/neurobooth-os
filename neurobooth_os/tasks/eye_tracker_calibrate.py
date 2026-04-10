@@ -17,9 +17,12 @@ class Calibrate(Task_Eyetracker):
 
     def present_stimulus(self, **kwargs):
         fname = kwargs["fname"]
+        run_fname = kwargs["run_fname"]
 
         edf_basename = op.split(fname)[-1]
-        body = RecordingFiles(files={self.eye_tracker.streamName: [edf_basename]})
+        body = RecordingFiles(
+            fname=run_fname,
+            files={self.eye_tracker.streamName: [edf_basename]})
         post_message(Request(source="STM", destination="CTR", body=body))
 
         self.fname = fname
