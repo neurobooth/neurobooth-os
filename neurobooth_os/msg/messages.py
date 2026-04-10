@@ -289,6 +289,7 @@ class TaskCompletion(MsgBody):
     """
     task_id: str
     has_lsl_stream: bool = True  # True if the task has associated LSL streams (False for instructions, pauses)
+    fname: Optional[str] = None  # Unique per-run file name prefix (session_tsk_start_task). Used by CTR to look up buffered RecordingFiles for this specific task run.
 
     def __init__(self, **data):
         data['priority'] = HIGH_PRIORITY
@@ -459,9 +460,15 @@ class RecordingFiles(MsgBody):
     XDF post-processing, replacing the fragile ``videofiles`` LSL marker stream.
 
     Attributes:
+        fname: Unique per-run file name prefix (``{session_name}_{tsk_start_time}_{task_id}``),
+            matching the ``fname`` in ``StartRecording`` / ``TransitionRecording``. CTR buckets
+            RecordingFiles by this value so messages for different task runs cannot mix, even
+            when a task is repeated or a RecordingFiles for the next task arrives before the
+            current task's TaskCompletion.
         files: Mapping of LSL stream name to list of file basenames created by
             that device (e.g. ``{"FLIR": ["task_flir.avi"], "IPhone": ["task_IPhone.mov", "task_IPhone.json"]}``).
     """
+    fname: str
     files: Dict[str, List[str]]
 
     def __init__(self, **data):

@@ -253,7 +253,7 @@ class DeviceManager:
             if not device.has_capability(DeviceCapability.CALIBRATABLE)
         ]
 
-    def start_recording_devices(self, filename: str, task_devices: List[DeviceArgs]) -> Dict[str, List[str]]:
+    def start_recording_devices(self, filename: str, fname: str, task_devices: List[DeviceArgs]) -> Dict[str, List[str]]:
         """Start camera recording devices in parallel for the given task.
 
         Collects the filenames created by each device and sends a single
@@ -261,7 +261,9 @@ class DeviceManager:
         reliably without depending on the LSL marker stream.
 
         Args:
-            filename: Base path for output files, passed to each device's ``start()``.
+            filename: Full output path prefix, passed to each device's ``start()``.
+            fname: Unique per-run identifier (``{session_name}_{tsk_start_time}_{task_id}``),
+                used by CTR to bucket RecordingFiles against a specific task run.
             task_devices: Devices required by the current task.
 
         Returns:
@@ -283,7 +285,8 @@ class DeviceManager:
                 except Exception as e:
                     self.logger.exception(e)
         if all_files:
-            msg = Request(source="ACQ", destination="CTR", body=RecordingFiles(files=all_files))
+            msg = Request(source="ACQ", destination="CTR",
+                          body=RecordingFiles(fname=fname, files=all_files))
             meta.post_message(msg)
         return all_files
 
