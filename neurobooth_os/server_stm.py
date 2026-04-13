@@ -1,5 +1,6 @@
 import logging
 import sys
+import traceback
 import os
 import concurrent.futures
 from time import time, sleep
@@ -197,6 +198,8 @@ def run_stm(logger):
                 if session_canceled and not finished and session is not None:
                     finished = _finish_tasks(session)
             except Exception as argument:
+                tb_text = traceback.format_exc()
+                logger.critical(f"Task loop exception: {tb_text}")
                 with meta.get_database_connection() as db_conn:
                     err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
                     req = Request(body=err_msg, source="STM", destination="CTR")
