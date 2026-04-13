@@ -22,7 +22,7 @@ import time as time_mod
 
 import neurobooth_os.config as cfg
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.iout.split_xdf import split_sens_files, postpone_xdf_split, get_xdf_name
+from neurobooth_os.iout.split_xdf import postpone_xdf_split, get_xdf_name
 from neurobooth_os.msg.messages import (
     Message, FramePreviewRequest, Request, CreateTasksRequest, PerformTaskRequest,
     TerminateServerRequest, PrepareRequest, PauseSessionRequest,
@@ -525,31 +525,13 @@ class SessionController:
                 self.logger.error(f"Error finalizing LabRecorderCLI: {exc}")
             self.logger.info(f"liesl stop_recording took: {time_mod.time() - t_stop:.2f}")
 
-            if any(tsk in task_id for tsk in ["hevelius", "MOT", "pursuit"]):
-                postpone_xdf_split(xdf_path, t_obs_id, obs_log_id,
-                                   cfg.neurobooth_config.split_xdf_backlog,
-                                   video_files=video_files)
-            else:
-                db_conn = meta.get_database_connection()
-                split_thread = threading_mod.Thread(
-                    target=self._split_and_close,
-                    args=(xdf_path, obs_log_id, t_obs_id, db_conn, video_files),
-                    daemon=True,
-                )
-                split_thread.start()
+            postpone_xdf_split(xdf_path, t_obs_id, obs_log_id,
+                               cfg.neurobooth_config.split_xdf_backlog,
+                               video_files=video_files)
 
         self._lsl_stop_thread = threading_mod.Thread(
             target=_finalize, daemon=True, name="lsl-stop")
         self._lsl_stop_thread.start()
-
-    @staticmethod
-    def _split_and_close(xdf_path, obs_log_id, t_obs_id, db_conn, video_files=None):
-        """Run split_sens_files and close the connection when done."""
-        try:
-            split_sens_files(xdf_path, obs_log_id, t_obs_id, db_conn,
-                             video_files=video_files)
-        finally:
-            db_conn.close()
 
     # --- Notes ---
 
