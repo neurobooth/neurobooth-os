@@ -526,7 +526,7 @@ def gui(logger):
                     write_task_notes(state.sess_info["subject_id_date"],
                                      state.sess_info["staff_id"], task_id, "")
                     window["-frame_preview-"].update(disabled=False)
-                if task_id == state.last_task:
+                if task_id == state.last_task or state.session_stopping:
                     _session_button_state(window, disabled=True)
                     controller._join_lsl_stop()
                     write_output(window, "\nSession complete: OK to terminate", 'blue')
