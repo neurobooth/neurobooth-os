@@ -198,12 +198,17 @@ def run_stm(logger):
                 if session_canceled and not finished and session is not None:
                     finished = _finish_tasks(session)
             except Exception as argument:
-                tb_text = traceback.format_exc()
-                logger.critical(f"Task loop exception: {tb_text}")
-                with meta.get_database_connection() as db_conn:
-                    err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
-                    req = Request(body=err_msg, source="STM", destination="CTR")
-                    meta.post_message(req, db_conn)
+                # Give the error handler headroom if we hit RecursionError
+                sys.setrecursionlimit(sys.getrecursionlimit() + 500)
+                try:
+                    tb_text = traceback.format_exc()
+                    logger.critical(f"Task loop exception: {tb_text}")
+                    with meta.get_database_connection() as db_conn:
+                        err_msg = ErrorMessage(status="CRITICAL", text=repr(argument))
+                        req = Request(body=err_msg, source="STM", destination="CTR")
+                        meta.post_message(req, db_conn)
+                except Exception as handler_err:
+                    logger.error(f"Error handler failed: {handler_err}")
                 raise argument
     finally:
         if not read_msg_conn.closed:
