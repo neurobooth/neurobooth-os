@@ -154,8 +154,13 @@ def run_stm(logger):
                     if "PrepareRequest" == current_msg_type:
                         request: PrepareRequest = message.body
                         session, task_log_entry = prepare_session(request, logger)
-                        perf_mode = os.environ.get("NB_ENABLE_PROCESS_LOG", "").upper()
-                        if perf_mode in ("P", "M", "A"):
+                        # ProcessMonitor is disabled on STM: psutil's
+                        # process iteration causes GIL contention with
+                        # PsychoPy's rendering loop, leading to
+                        # RecursionError in pyglet's GL callback chain.
+                        # Use NB_ENABLE_PROCESS_LOG on ACQ servers only.
+                        if False:  # was: perf_mode in ("P", "M", "A")
+                            perf_mode = os.environ.get("NB_ENABLE_PROCESS_LOG", "").upper()
                             log_dir = config.neurobooth_config.presentation.local_log_dir
                             if log_dir is not None:
                                 session_log_dir = os.path.join(log_dir, session.session_name)
