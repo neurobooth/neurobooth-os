@@ -96,6 +96,7 @@ title or description. Do not mention Claude in any Release Notes
 - **Clean up after migrations.** When moving content, delete the source files.
 - **For unit tests**, use pytest
 - **When we have tests, all tests must pass** before committing.
+- **Never commit credentials** (passwords, API keys, tokens, SSH usernames) to the repo. Use git-ignored config files (e.g., `db_credentials.json`) and provide `.example` templates. Perf scripts use `extras/perf/_db.py` to load credentials from `extras/perf/db_credentials.json`.
 
 ## File Hygiene
 
