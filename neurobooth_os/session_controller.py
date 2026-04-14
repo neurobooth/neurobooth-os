@@ -244,6 +244,7 @@ class SessionState:
     # Server tracking (was: module-level globals)
     running_servers: List[str] = field(default_factory=list)
     last_task: Optional[str] = None
+    session_stopping: bool = False
     start_pressed: bool = False
     session_prepared_count: int = 0
     auto_frame_preview_device: Optional[str] = None
@@ -431,6 +432,7 @@ class SessionController:
         """
         confirmed = self.listener.prompt_stop_confirmation(resume_on_cancel)
         if confirmed:
+            self.state.session_stopping = True
             self.listener.on_output("Stop session scheduled. Session will end after the current task.")
             self.send_cancel()
         elif resume_on_cancel:
