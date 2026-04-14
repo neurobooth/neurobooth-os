@@ -73,6 +73,7 @@ venv-*
 
 # Secrets
 secrets.yaml
+db_credentials.json
 
 # Misc
 server_pids.txt
