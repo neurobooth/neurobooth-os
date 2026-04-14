@@ -706,6 +706,7 @@ class Mbient(Device):
                 self.stop()
 
             self.reset(timeout_sec=timeout_sec)
+            sleep(2)  # Let the native BLE stack finish tearing down before reconnecting
             self._ble_connect()
             self.setup()
 
