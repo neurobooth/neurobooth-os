@@ -7,7 +7,6 @@ import json
 import struct
 import threading
 from datetime import datetime
-import select
 import uuid
 import logging
 import time
@@ -412,6 +411,8 @@ class IPhone(Device, CameraPreviewer):
                 bytes_to_pull = MAX_RECV
 
             packet = sock.recv(bytes_to_pull)
+            if len(packet) == 0:
+                raise IPhonePanic("iPhone connection lost: socket closed during transfer")
             bytes_received += len(packet)
             fragments.append(packet)
 
@@ -428,11 +429,16 @@ class IPhone(Device, CameraPreviewer):
         :returns: (payload, version, type, tag): Payload is either a message dictionary (tag == 0) or byte string
             (tag == 1 or tag == 2).
         """
-        ready, _, _ = select.select([self.sock], [], [], timeout_sec)
-        if not ready:
+        self.sock.settimeout(timeout_sec)
+        try:
+            first_frame = self.sock.recv(16)
+        except socket.timeout:
             raise IPhoneTimeout(f"Timeout for packet receive exceeded ({timeout_sec} sec)")
+        except OSError as e:
+            raise IPhonePanic(f"iPhone connection lost: {e}") from e
 
-        first_frame = self.sock.recv(16)
+        if len(first_frame) == 0:
+            raise IPhonePanic("iPhone connection lost: socket closed")
         version, type_, tag, payload_size = struct.unpack("!IIII", first_frame)
 
         if tag in (
