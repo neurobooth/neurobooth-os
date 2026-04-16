@@ -790,6 +790,15 @@ class IPhone(Device, CameraPreviewer):
         self.state = DeviceState.STARTED
         filename += "_IPhone"
         filename = op.split(filename)[-1]
+        # Brief delay before sending @START to the iOS app. The prior implementation
+        # of start() had two send_file_msg() calls and a 50ms sleep here (removed in
+        # the LSL-marker-to-RecordingFiles refactor). That incidental ~100ms gap
+        # appears to have masked a latent iOS-side race: without it, the app
+        # intermittently fails to retain the frame-timestamp filename set via @START,
+        # leading to "stopRecordingVideo: Didn't have name for timestamp file" panics
+        # on the next @STOP. Restoring an explicit delay here is a defensive
+        # mitigation until the iOS-side root cause is addressed.
+        time.sleep(0.1)
         self._start_recording(filename)
         return [f"{filename}.mov", f"{filename}.json"]
 
