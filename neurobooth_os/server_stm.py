@@ -14,7 +14,7 @@ from neurobooth_os.iout.stim_param_reader import TaskArgs
 from neurobooth_os.msg.messages import Message, CreateTasksRequest, \
     TaskInitialization, Request, TaskCompletion, StartRecording, TransitionRecording, \
     SessionPrepared, PrepareRequest, TasksCreated, StopRecording, ServerStarted, \
-    ErrorMessage, RecordingFiles, RecordingStarted
+    ErrorMessage, RecordingStarted
 from neurobooth_os.stm_session import StmSession
 from neurobooth_os.tasks import Task
 from neurobooth_os.util.task_log_entry import TaskLogEntry
@@ -244,8 +244,9 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
         session.next_task_start_time = None
     else:
         tsk_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
-    # Unique per-run identifier; matches the fname used in StartRecording / TransitionRecording
-    # messages to ACQ and serves as the task-run bucket key for RecordingFiles on CTR.
+    # Unique per-run identifier; matches the fname used in StartRecording /
+    # TransitionRecording messages to ACQ and is embedded in every file name
+    # the devices create for this task run.
     fname = f"{session.session_name}_{tsk_start_time}_{task_id}"
     edf_fname = f"{session.path}/{fname}.edf"
 
@@ -267,20 +268,26 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
             load_task_media(session, task_args)
             task: Task = task_args.task_instance
             task.run(**this_task_kwargs)
-            # Signal CTR to stop LSL rec (no fname — non-recording tasks never post RecordingFiles)
+            # Signal CTR to stop LSL rec (no fname — non-recording tasks create no files)
             meta.post_message(Request(source='STM', destination='CTR',
                                       body=TaskCompletion(task_id=task_id, has_lsl_stream=False)))
             return time()
         else:
-            with meta.get_database_connection() as log_conn:
-
-                log_task_id = meta.make_new_task_row(log_conn, subj_id)
-                meta.log_task_params(
-                    log_conn,
-                    log_task_id,
-                    device_log_entry_dict,
-                    session.task_func_dict[task_id]
-                )
+            # Reuse log_task row pre-created during the previous task's
+            # TransitionRecording (so ACQ's log_sensor_file rows written
+            # at device start time reference the same log_task_id).
+            if session.next_log_task_id is not None:
+                log_task_id = session.next_log_task_id
+                session.next_log_task_id = None
+            else:
+                with meta.get_database_connection() as log_conn:
+                    log_task_id = meta.make_new_task_row(log_conn, subj_id)
+                    meta.log_task_params(
+                        log_conn,
+                        log_task_id,
+                        device_log_entry_dict,
+                        session.task_func_dict[task_id]
+                    )
             task_log_entry.date_times = ("{" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ",")
             task_log_entry.log_task_id = log_task_id
 
@@ -294,14 +301,14 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 future1 = executor.submit(_wait_for_lsl_recording_to_start, session)
-                future2 = executor.submit(_start_acq, session, task_id, tsk_start_time)
+                future2 = executor.submit(_start_acq, session, task_id, tsk_start_time, log_task_id)
                 done, not_done = concurrent.futures.wait([future1, future2], timeout=60)
                 for f in not_done:
                     session.logger.error(f"Task startup timed out: {f}")
                 for f in done:
                     if f.exception() is not None:
                         session.logger.error(f"Task startup failed: {f.exception()}")
-            _get_task_instance(session, task_args, edf_fname, fname)
+            _get_task_instance(session, task_args, edf_fname, fname, log_task_id)
 
             this_task_kwargs["task_name"] = task_id
             this_task_kwargs["subj_id"] += "_" + tsk_start_time
@@ -315,7 +322,8 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
             stimulus_id = task_args.stim_args.stimulus_id
             if "calibration_task" in stimulus_id:  # if not calibration record with start method
                 this_task_kwargs.update({"fname": edf_fname, "run_fname": fname,
-                                         "instructions": calib_instructions})
+                                         "instructions": calib_instructions,
+                                         "log_task_id": log_task_id})
                 calib_instructions = False  # Only show the instructions the first time
 
             events = task_args.task_instance.run(**this_task_kwargs)
@@ -325,10 +333,22 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
             next_rec_task = _immediately_next_task_records(session, task_id)
             if next_rec_task is not None:
                 session.next_task_start_time = datetime.now().strftime("%Hh-%Mm-%Ss")
+                # Pre-create log_task for the next task so ACQ can reference it
+                # in log_sensor_file rows written at device start time. This
+                # closes the orphan-file window where TransitionRecording starts
+                # devices before _perform_task creates the log_task row.
+                with meta.get_database_connection() as log_conn:
+                    session.next_log_task_id = meta.make_new_task_row(log_conn, subj_id)
+                    meta.log_task_params(
+                        log_conn,
+                        session.next_log_task_id,
+                        device_log_entry_dict,
+                        session.task_func_dict[next_rec_task]
+                    )
             stop_acq(session, task_args, next_task_id=next_rec_task)
             session.logger.info(f"stop_acq took: {time() - t_stop:.2f}")
 
-            # Signal CTR to stop LSL rec (fname tells CTR which bucket of RecordingFiles to snapshot)
+            # Signal CTR to stop LSL rec.
             meta.post_message(Request(source='STM', destination='CTR',
                                       body=TaskCompletion(task_id=task_id, fname=fname)))
             task_completion_time = time()
@@ -343,15 +363,19 @@ def _perform_task(device_log_entry_dict, message, session, subj_id: str, task_lo
     return None
 
 
-def _get_task_instance(session: StmSession, task_args: TaskArgs, edf_fname: str, fname: str):
+def _get_task_instance(session: StmSession, task_args: TaskArgs,
+                       edf_fname: str, fname: str,
+                       log_task_id: Optional[str] = None):
     """Ensure a task instance exists and start the eyetracker if needed.
 
     If the instance was pre-constructed during ``_create_tasks``, this
     skips construction entirely and only performs eyetracker setup.
 
     Args:
-        fname: Unique per-run identifier used to tag RecordingFiles messages
-            so CTR can bucket them against the correct task run.
+        fname: Unique per-run identifier embedded in every file name the
+            devices create for this task run.
+        log_task_id: Pre-created log_task row ID, used to register the
+            EyeTracker .edf file in log_sensor_file immediately.
     """
     global calib_instructions
 
@@ -374,11 +398,55 @@ def _get_task_instance(session: StmSession, task_args: TaskArgs, edf_fname: str,
         if "calibration_task" not in stimulus_id:
             task_args.task_instance.render_image()
             created_files = session.eye_tracker.start(edf_fname)
-            if created_files:
-                files_msg = RecordingFiles(
-                    fname=fname,
-                    files={session.eye_tracker.streamName: created_files})
-                meta.post_message(Request(source="STM", destination="CTR", body=files_msg))
+            if created_files and log_task_id is not None:
+                _register_eyetracker_files(
+                    session, log_task_id, created_files, task_args)
+
+
+def _register_eyetracker_files(session: StmSession, log_task_id: str,
+                               basenames: List[str], task_args: TaskArgs) -> None:
+    """Write log_sensor_file row(s) for EyeTracker .edf files on STM.
+
+    Mirrors the ACQ-side early write in DeviceManager._register_sensor_files
+    so that EyeTracker files are registered at start time, not during XDF
+    post-processing. Failures are logged but not raised.
+    """
+    try:
+        from neurobooth_terra import Table
+        from neurobooth_os.iout.split_xdf import LOG_SENSOR_COLUMNS
+        eye_tracker = session.eye_tracker
+        device_id = getattr(eye_tracker, 'device_id', None)
+        sensor_ids = getattr(eye_tracker, 'sensor_ids', None) or []
+        if not device_id or not sensor_ids:
+            # Fall back: look up on task_args device list
+            for dev_args in task_args.device_args:
+                if "Eyelink" in dev_args.device_id:
+                    device_id = dev_args.device_id
+                    sensor_ids = [s.sensor_id for s in dev_args.sensor_array] or dev_args.sensor_ids
+                    break
+        if not device_id or not sensor_ids:
+            session.logger.error(
+                "Cannot register EyeTracker files: missing device_id/sensor_ids")
+            return
+        session_folder = session.session_name
+        sensor_file_paths = [f'{session_folder}/{b}' for b in basenames]
+        pg_array = '{' + ', '.join(sensor_file_paths) + '}'
+        conn = meta.get_database_connection()
+        try:
+            table = Table("log_sensor_file", conn=conn)
+            for sensor_id in sensor_ids:
+                table.insert_rows(
+                    [(log_task_id, None, None, None, None,
+                      device_id, sensor_id, pg_array)],
+                    cols=LOG_SENSOR_COLUMNS,
+                )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        session.logger.error(
+            f"Early log_sensor_file write failed for EyeTracker "
+            f"(log_task_id={log_task_id}): {e}")
 
 def _create_tasks(message, session, task_log_entry):
     msg_body: CreateTasksRequest = message.body
@@ -505,7 +573,13 @@ def _drain_recording_started(expected_count: int, timeout_s: float = 10.0):
 
 
 def _cancel_transition(session: StmSession):
-    """Cancel a pending TransitionRecording by stopping ACQs and draining replies."""
+    """Cancel a pending TransitionRecording by stopping ACQs and draining replies.
+
+    The pre-created log_task row (session.next_log_task_id) is NOT deleted — it
+    stays in the database with task_id=NULL as a record that the task was
+    attempted but never completed. Downstream tooling uses that NULL as the
+    signal to skip the orphaned files.
+    """
     if not session.transition_sent:
         return
     acq_ids = config.neurobooth_config.all_acq_service_ids()
@@ -515,6 +589,7 @@ def _cancel_transition(session: StmSession):
     session.transition_sent = False
     session.next_task_start_time = None
     session.next_transition_task_id = None
+    session.next_log_task_id = None
 
 
 def stop_acq(session: StmSession, task_args: TaskArgs,
@@ -543,6 +618,7 @@ def stop_acq(session: StmSession, task_args: TaskArgs,
                 fname=file_name,
                 task_id=next_task_id,
                 frame_preview_device_id=preview_device_id if acq_id == preview_acq_id else None,
+                log_task_id=session.next_log_task_id,
             )
             meta.post_message(Request(source="STM", destination=acq_id, body=body))
         session.transition_sent = True
@@ -563,8 +639,15 @@ def stop_acq(session: StmSession, task_args: TaskArgs,
             session.logger.info(f"stop_acq: eyetracker stop took: {time() - t_eye:.2f}")
 
 
-def _start_acq(session: StmSession, task_id: str, tsk_start_time):
-    """Start recording on all ACQ servers, or wait for an in-flight TransitionRecording."""
+def _start_acq(session: StmSession, task_id: str, tsk_start_time,
+               log_task_id: Optional[str] = None):
+    """Start recording on all ACQ servers, or wait for an in-flight TransitionRecording.
+
+    Args:
+        log_task_id: Passed to ACQ in the StartRecording body so it can write
+            log_sensor_file rows immediately after device.start(). None when
+            called from non-recording code paths.
+    """
     t1 = time()
     acq_ids = config.neurobooth_config.all_acq_service_ids()
     preview_device_id = session.frame_preview_device_id
@@ -580,7 +663,8 @@ def _start_acq(session: StmSession, task_id: str, tsk_start_time):
                 session_name=session.session_name,
                 fname=file_name,
                 task_id=task_id,
-                frame_preview_device_id=preview_device_id if acq_id == preview_acq_id else None
+                frame_preview_device_id=preview_device_id if acq_id == preview_acq_id else None,
+                log_task_id=log_task_id,
             )
             meta.post_message(Request(source='STM', destination=acq_id, body=body))
     else:

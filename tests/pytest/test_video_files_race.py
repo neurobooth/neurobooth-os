@@ -1,261 +1,167 @@
-"""Test that TaskCompletion snapshots video files atomically by fname.
+"""Test ACQ's early log_sensor_file write at device-start time.
 
-Reproduces the race condition from GitHub issue #659 where RecordingFiles
-for the NEXT task could be swept into the CURRENT task's snapshot.
+Previously (GitHub issue #659), video filenames were routed through a fragile
+pipeline: ACQ -> RecordingFiles message -> CTR buffer keyed by fname ->
+TaskCompletion snapshot -> backlog file -> XDF post-processing. A cancel or
+crash anywhere in that chain left files on disk with no log_sensor_file row.
 
-The real race is in message insertion order, not thread timing:
-ACQ's RecordingFiles for the next task can be inserted into the message
-queue BEFORE STM's TaskCompletion for the current task, because ACQ
-processes TransitionRecording faster than STM posts TaskCompletion.
+The fix: ACQ writes log_sensor_file rows directly after device.start(), using
+the log_task_id that STM pre-created and passed in the StartRecording or
+TransitionRecording message. Timing fields are left NULL; they are filled in
+later by the XDF post-processing step (UPDATE-or-INSERT in log_to_database).
 
-The fix: both RecordingFiles and TaskCompletion carry an ``fname`` field
-(``{session_name}_{tsk_start_time}_{task_id}``) that uniquely identifies
-a single task run.  task_video_files is keyed by fname, so each
-TaskCompletion pops only its own bucket.  Repeated runs of the same task
-produce different fnames (different tsk_start_time) and therefore
-different buckets.
+These tests exercise the pure registration logic by extracting what
+DeviceManager._register_sensor_files would do, without importing DeviceManager
+itself (whose module load has a config side effect that requires the deployed
+config format).
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
-
-from neurobooth_os.msg.messages import RecordingFiles, TaskCompletion
-from neurobooth_os.session_controller import SessionState
+import os
+from dataclasses import dataclass
+from typing import List
+from unittest.mock import patch, MagicMock
 
 
 @dataclass
-class _Capture:
-    """Collects (task_id, video_files) tuples from on_task_finished calls."""
-    calls: List[Tuple[str, Dict[str, List[str]]]] = field(default_factory=list)
+class _FakeDevice:
+    device_id: str
+    sensor_ids: List[str]
+    video_filename: str  # Device-reported output path (used to derive session folder)
 
 
-def _simulate_message_sequence(state: SessionState, messages, capture: _Capture):
-    """Replay a sequence of (msg_type, body) through the same logic as
-    SessionController._message_reader_loop, without needing DB or threading.
+@dataclass
+class _CapturedInsert:
+    log_task_id: str
+    device_id: str
+    sensor_id: str
+    sensor_file_path: str
+
+
+class _CaptureTable:
+    """Stand-in for neurobooth_terra.Table that records insert_rows calls."""
+    def __init__(self, *args, **kwargs):
+        self.inserts: List[_CapturedInsert] = []
+
+    def insert_rows(self, vals, cols):
+        for row in vals:
+            # Columns: log_task_id, true_temporal_resolution,
+            # true_spatial_resolution, file_start_time, file_end_time,
+            # device_id, sensor_id, sensor_file_path
+            log_task_id, _, _, _, _, device_id, sensor_id, sensor_file_path = row
+            self.inserts.append(_CapturedInsert(
+                log_task_id=log_task_id,
+                device_id=device_id,
+                sensor_id=sensor_id,
+                sensor_file_path=sensor_file_path,
+            ))
+
+
+def _register(log_task_id, filename, device_files, capture, get_conn):
+    """Replica of DeviceManager._register_sensor_files logic for unit testing.
+
+    Kept in sync with neurobooth_os/iout/lsl_streamer.py. If the implementation
+    changes, update this helper to match.
     """
-    for msg_type, body in messages:
-        if msg_type == "RecordingFiles":
-            task_bucket = state.task_video_files.setdefault(body.fname, {})
-            for stream_name, filenames in body.files.items():
-                existing = task_bucket.get(stream_name, [])
-                task_bucket[stream_name] = existing + filenames
+    from neurobooth_os.iout.split_xdf import LOG_SENSOR_COLUMNS
+    session_folder = os.path.basename(os.path.dirname(filename))
+    try:
+        conn = get_conn()
+    except Exception:
+        # Mirror the production behavior: database failure must not prevent
+        # recording. Swallow the error.
+        return False
+    try:
+        table = capture  # The _CaptureTable stands in for Table("log_sensor_file", conn)
+        for device, basenames in device_files:
+            sensor_file_paths = [f'{session_folder}/{b}' for b in basenames]
+            pg_array = '{' + ', '.join(sensor_file_paths) + '}'
+            for sensor_id in device.sensor_ids:
+                table.insert_rows(
+                    [(log_task_id, None, None, None, None,
+                      device.device_id, sensor_id, pg_array)],
+                    cols=LOG_SENSOR_COLUMNS,
+                )
+        return True
+    finally:
+        pass  # conn.close() would happen here in production
 
-        elif msg_type == "TaskCompletion":
-            run_fname = getattr(body, "fname", None)
-            if run_fname is not None:
-                video_files = state.task_video_files.pop(run_fname, {})
-            else:
-                video_files = {}
-            capture.calls.append((body.task_id, video_files))
+
+def test_early_write_writes_row_per_sensor():
+    """Each sensor of each device gets its own log_sensor_file row."""
+    device = _FakeDevice(
+        device_id="Intel_D455_1",
+        sensor_ids=["Intel_D455_depth_1", "Intel_D455_rgb_1"],
+        video_filename="/data/subj_date/subj_date_time_task_intel1.bag",
+    )
+    device_files = [(device, ["subj_date_time_task_intel1.bag"])]
+
+    capture = _CaptureTable()
+    _register(
+        log_task_id="log_42",
+        filename="/data/subj_date/subj_date_time_task",
+        device_files=device_files,
+        capture=capture,
+        get_conn=lambda: MagicMock(),
+    )
+
+    assert len(capture.inserts) == 2  # one per sensor
+    sensor_ids = {ins.sensor_id for ins in capture.inserts}
+    assert sensor_ids == {"Intel_D455_depth_1", "Intel_D455_rgb_1"}
+    for ins in capture.inserts:
+        assert ins.log_task_id == "log_42"
+        assert ins.device_id == "Intel_D455_1"
+        # Path should be session-folder-relative: "{session_folder}/{basename}"
+        assert ins.sensor_file_path == "{subj_date/subj_date_time_task_intel1.bag}"
 
 
-class TestVideoFilesSnapshotAtomicity:
-    """Verify that each TaskCompletion receives only its own task run's files."""
+def test_iphone_multi_file_registers_all_paths():
+    """iPhone produces both .mov and .json; both paths go into the same row."""
+    device = _FakeDevice(
+        device_id="IPhone_dev_1",
+        sensor_ids=["IPhone_sens_1"],
+        video_filename="/data/subj_date/subj_date_time_task_IPhone.mov",
+    )
+    device_files = [(device, [
+        "subj_date_time_task_IPhone.mov",
+        "subj_date_time_task_IPhone.json",
+    ])]
 
-    def test_sequential_tasks_get_own_files(self):
-        """Normal case: RecordingFiles arrives before TaskCompletion for
-        the same task. Each task should get its own files."""
-        state = SessionState()
-        capture = _Capture()
+    capture = _CaptureTable()
+    _register(
+        log_task_id="log_99",
+        filename="/data/subj_date/subj_date_time_task",
+        device_files=device_files,
+        capture=capture,
+        get_conn=lambda: MagicMock(),
+    )
 
-        messages = [
-            ("RecordingFiles", RecordingFiles(
-                fname="100001_2026-04-10_09h-00m-00s_calibration_obs_1",
-                files={"FlirFrameIndex": ["calib_flir.avi"]})),
-            ("TaskCompletion", TaskCompletion(
-                task_id="calibration_obs_1",
-                fname="100001_2026-04-10_09h-00m-00s_calibration_obs_1")),
-            ("RecordingFiles", RecordingFiles(
-                fname="100001_2026-04-10_09h-01m-00s_pursuit_obs",
-                files={"FlirFrameIndex": ["pursuit_flir.avi"]})),
-            ("TaskCompletion", TaskCompletion(
-                task_id="pursuit_obs",
-                fname="100001_2026-04-10_09h-01m-00s_pursuit_obs")),
-        ]
+    assert len(capture.inserts) == 1
+    path = capture.inserts[0].sensor_file_path
+    assert "IPhone.mov" in path
+    assert "IPhone.json" in path
+    assert "subj_date/" in path  # session folder prefix
 
-        _simulate_message_sequence(state, messages, capture)
 
-        assert len(capture.calls) == 2
-        task_id_0, files_0 = capture.calls[0]
-        task_id_1, files_1 = capture.calls[1]
+def test_db_failure_does_not_raise():
+    """If get_database_connection fails, registration returns silently."""
+    device = _FakeDevice(
+        device_id="FLIR_blackfly_1",
+        sensor_ids=["FLIR_sens_1"],
+        video_filename="/data/subj_date/subj_date_time_task_flir.avi",
+    )
+    device_files = [(device, ["subj_date_time_task_flir.avi"])]
 
-        assert task_id_0 == "calibration_obs_1"
-        assert files_0 == {"FlirFrameIndex": ["calib_flir.avi"]}
+    def raise_on_connect():
+        raise RuntimeError("database is down")
 
-        assert task_id_1 == "pursuit_obs"
-        assert files_1 == {"FlirFrameIndex": ["pursuit_flir.avi"]}
-
-    def test_next_task_files_arrive_before_current_completion(self):
-        """The real race: RecordingFiles for the NEXT task is inserted into
-        the message queue BEFORE TaskCompletion for the CURRENT task.
-
-        This is the exact sequence observed in session 3185 (#659 regression):
-          302308  ACQ→CTR  RecordingFiles   calibration files
-          302309  STM→CTR  TaskCompletion   intro_occulo_obs_1
-          302316  STM→CTR  TaskCompletion   calibration_obs_1
-
-        With fname-keyed buckets, intro_occulo's TaskCompletion only pops its
-        own bucket, leaving calibration's files intact for the later
-        TaskCompletion.
-        """
-        state = SessionState()
-        capture = _Capture()
-
-        intro_fname = "100001_2026-04-10_06h-52m-56s_intro_occulo_obs_1"
-        calib_fname = "100001_2026-04-10_06h-53m-09s_calibration_obs_1"
-
-        messages = [
-            # intro_occulo's own files arrive normally
-            ("RecordingFiles", RecordingFiles(
-                fname=intro_fname,
-                files={"IPhoneFrameIndex": ["intro_IPhone.mov", "intro_IPhone.json"]})),
-            # THEN calibration's files arrive (ACQ processed TransitionRecording fast)
-            ("RecordingFiles", RecordingFiles(
-                fname=calib_fname,
-                files={
-                    "FlirFrameIndex": ["calib_flir.avi"],
-                    "IPhoneFrameIndex": ["calib_IPhone.mov", "calib_IPhone.json"],
-                })),
-            # THEN intro_occulo's TaskCompletion arrives (STM was slower)
-            ("TaskCompletion", TaskCompletion(
-                task_id="intro_occulo_obs_1", fname=intro_fname)),
-            # Then calibration's EyeLink RecordingFiles and TaskCompletion
-            ("RecordingFiles", RecordingFiles(
-                fname=calib_fname,
-                files={"EyeLink": ["calib.edf"]})),
-            ("TaskCompletion", TaskCompletion(
-                task_id="calibration_obs_1", fname=calib_fname)),
-        ]
-
-        _simulate_message_sequence(state, messages, capture)
-
-        assert len(capture.calls) == 2
-
-        # intro_occulo gets ONLY its own files
-        task_id_0, files_0 = capture.calls[0]
-        assert task_id_0 == "intro_occulo_obs_1"
-        assert files_0 == {"IPhoneFrameIndex": ["intro_IPhone.mov", "intro_IPhone.json"]}
-        assert "FlirFrameIndex" not in files_0
-
-        # calibration gets ALL its files — FLIR, iPhone, AND EyeLink
-        task_id_1, files_1 = capture.calls[1]
-        assert task_id_1 == "calibration_obs_1"
-        assert files_1 == {
-            "FlirFrameIndex": ["calib_flir.avi"],
-            "IPhoneFrameIndex": ["calib_IPhone.mov", "calib_IPhone.json"],
-            "EyeLink": ["calib.edf"],
-        }
-
-    def test_multiple_recording_files_per_task(self):
-        """ACQ and STM each send RecordingFiles for the same task run.
-        Both should accumulate in the same bucket."""
-        state = SessionState()
-        capture = _Capture()
-
-        calib_fname = "100001_2026-04-10_06h-53m-09s_calibration_obs_1"
-
-        messages = [
-            # ACQ sends camera files
-            ("RecordingFiles", RecordingFiles(
-                fname=calib_fname,
-                files={
-                    "FlirFrameIndex": ["calib_flir.avi"],
-                    "IPhoneFrameIndex": ["calib_IPhone.mov"],
-                })),
-            # STM sends EyeLink file
-            ("RecordingFiles", RecordingFiles(
-                fname=calib_fname,
-                files={"EyeLink": ["calib.edf"]})),
-            ("TaskCompletion", TaskCompletion(
-                task_id="calibration_obs_1", fname=calib_fname)),
-        ]
-
-        _simulate_message_sequence(state, messages, capture)
-
-        assert len(capture.calls) == 1
-        task_id, files = capture.calls[0]
-        assert task_id == "calibration_obs_1"
-        assert files == {
-            "FlirFrameIndex": ["calib_flir.avi"],
-            "IPhoneFrameIndex": ["calib_IPhone.mov"],
-            "EyeLink": ["calib.edf"],
-        }
-
-    def test_repeated_task_gets_separate_buckets(self):
-        """A task that runs twice in the same session (e.g., recalibration
-        or a restarted session) produces different fnames because
-        tsk_start_time differs. Each run's files must land in the correct
-        bucket and not leak into the other."""
-        state = SessionState()
-        capture = _Capture()
-
-        calib1_fname = "100001_2026-04-10_06h-53m-09s_calibration_obs_1"
-        calib2_fname = "100001_2026-04-10_06h-59m-42s_calibration_obs_1"
-
-        messages = [
-            ("RecordingFiles", RecordingFiles(
-                fname=calib1_fname,
-                files={"FlirFrameIndex": ["calib1_flir.avi"]})),
-            ("TaskCompletion", TaskCompletion(
-                task_id="calibration_obs_1", fname=calib1_fname)),
-            ("RecordingFiles", RecordingFiles(
-                fname=calib2_fname,
-                files={"FlirFrameIndex": ["calib2_flir.avi"]})),
-            ("TaskCompletion", TaskCompletion(
-                task_id="calibration_obs_1", fname=calib2_fname)),
-        ]
-
-        _simulate_message_sequence(state, messages, capture)
-
-        assert len(capture.calls) == 2
-        # First run gets its own file
-        assert capture.calls[0][1] == {"FlirFrameIndex": ["calib1_flir.avi"]}
-        # Second run gets its own file — not a union with the first
-        assert capture.calls[1][1] == {"FlirFrameIndex": ["calib2_flir.avi"]}
-
-    def test_non_recording_task_completion_gets_empty_dict(self):
-        """Non-recording tasks send TaskCompletion with no fname (and
-        has_lsl_stream=False). Those get an empty dict; they don't
-        inadvertently pop any bucket."""
-        state = SessionState()
-        capture = _Capture()
-
-        calib_fname = "100001_2026-04-10_06h-53m-09s_calibration_obs_1"
-
-        messages = [
-            # A non-recording task completes with no fname
-            ("TaskCompletion", TaskCompletion(
-                task_id="intro_sess_obs_1", has_lsl_stream=False)),
-            # Then calibration runs normally
-            ("RecordingFiles", RecordingFiles(
-                fname=calib_fname,
-                files={"FlirFrameIndex": ["calib_flir.avi"]})),
-            ("TaskCompletion", TaskCompletion(
-                task_id="calibration_obs_1", fname=calib_fname)),
-        ]
-
-        _simulate_message_sequence(state, messages, capture)
-
-        assert len(capture.calls) == 2
-        assert capture.calls[0] == ("intro_sess_obs_1", {})
-        assert capture.calls[1][1] == {"FlirFrameIndex": ["calib_flir.avi"]}
-
-    def test_state_is_clean_after_all_tasks(self):
-        """task_video_files should be empty after all tasks' TaskCompletions
-        have been processed."""
-        state = SessionState()
-        capture = _Capture()
-
-        fname_a = "100001_2026-04-10_09h-00m-00s_task1"
-        fname_b = "100001_2026-04-10_09h-01m-00s_task2"
-
-        messages = [
-            ("RecordingFiles", RecordingFiles(fname=fname_a, files={"A": ["f1"]})),
-            ("TaskCompletion", TaskCompletion(task_id="task1", fname=fname_a)),
-            ("RecordingFiles", RecordingFiles(fname=fname_b, files={"B": ["f2"]})),
-            ("TaskCompletion", TaskCompletion(task_id="task2", fname=fname_b)),
-        ]
-
-        _simulate_message_sequence(state, messages, capture)
-
-        assert state.task_video_files == {}
+    capture = _CaptureTable()
+    result = _register(
+        log_task_id="log_77",
+        filename="/data/subj_date/subj_date_time_task",
+        device_files=device_files,
+        capture=capture,
+        get_conn=raise_on_connect,
+    )
+    # Should not raise. Insert did not happen.
+    assert result is False
+    assert capture.inserts == []

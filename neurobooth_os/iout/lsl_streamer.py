@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 from neurobooth_os.iout.stim_param_reader import DeviceArgs, TaskArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -11,7 +12,7 @@ from neurobooth_os.iout.device import (
     Device, DeviceCapability, CameraPreviewer, CameraPreviewException,
 )
 from neurobooth_os.iout.mbient import Mbient
-from neurobooth_os.msg.messages import DeviceInitialization, RecordingFiles, Request
+from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 # --------------------------------------------------------------------------------
 # Wrappers for device setup procedures.
@@ -253,24 +254,30 @@ class DeviceManager:
             if not device.has_capability(DeviceCapability.CALIBRATABLE)
         ]
 
-    def start_recording_devices(self, filename: str, fname: str, task_devices: List[DeviceArgs]) -> Dict[str, List[str]]:
+    def start_recording_devices(self, filename: str, fname: str,
+                                 task_devices: List[DeviceArgs],
+                                 log_task_id: Optional[str] = None) -> Dict[str, List[str]]:
         """Start camera recording devices in parallel for the given task.
 
-        Collects the filenames created by each device and sends a single
-        :class:`RecordingFiles` message to CTR so that filenames are tracked
-        reliably without depending on the LSL marker stream.
+        Writes log_sensor_file rows immediately (paths only, NULL timing)
+        when log_task_id is provided, so files can be tracked even if the
+        session crashes or is cancelled before XDF post-processing runs.
 
         Args:
             filename: Full output path prefix, passed to each device's ``start()``.
             fname: Unique per-run identifier (``{session_name}_{tsk_start_time}_{task_id}``),
-                used by CTR to bucket RecordingFiles against a specific task run.
+                embedded in the basenames returned by each device.
             task_devices: Devices required by the current task.
+            log_task_id: Pre-created log_task row ID from STM. When None, the
+                early write is skipped and the XDF split's INSERT fallback
+                handles registration later (no video paths, canary warning).
 
         Returns:
             Mapping of stream name to list of created file basenames.
         """
         cameras = self._get_camera_devices(task_devices)
         all_files: Dict[str, List[str]] = {}
+        device_files: List[tuple] = []  # [(device, basenames), ...] for DB registration
         if not cameras:
             return all_files
         with ThreadPoolExecutor(max_workers=len(cameras)) as executor:
@@ -282,13 +289,49 @@ class DeviceManager:
                         stream_name = getattr(device, 'streamName', None) or getattr(device, 'stream_name', None)
                         if stream_name:
                             all_files[stream_name] = created
+                            device_files.append((device, created))
                 except Exception as e:
                     self.logger.exception(e)
-        if all_files:
-            msg = Request(source="ACQ", destination="CTR",
-                          body=RecordingFiles(fname=fname, files=all_files))
-            meta.post_message(msg)
+        if log_task_id is not None and device_files:
+            self._register_sensor_files(log_task_id, filename, device_files)
         return all_files
+
+    def _register_sensor_files(self, log_task_id: str, filename: str,
+                               device_files: List[tuple]) -> None:
+        """Write log_sensor_file rows for files just created by device.start().
+
+        Each row captures log_task_id, device_id, sensor_id and the file paths
+        (video basenames). Timing fields are left NULL; they will be populated
+        by the XDF post-processing step.
+
+        Failures are logged but not raised — the recording must continue even
+        if the registration fails. The XDF split's INSERT fallback handles the
+        missing row later.
+        """
+        try:
+            from neurobooth_terra import Table
+            from neurobooth_os.iout.split_xdf import LOG_SENSOR_COLUMNS
+            session_folder = os.path.basename(os.path.dirname(filename))
+            conn = meta.get_database_connection()
+            try:
+                table = Table("log_sensor_file", conn=conn)
+                for device, basenames in device_files:
+                    sensor_file_paths = [f'{session_folder}/{b}' for b in basenames]
+                    pg_array = '{' + ', '.join(sensor_file_paths) + '}'
+                    device_id = device.device_id
+                    sensor_ids = device.sensor_ids or []
+                    for sensor_id in sensor_ids:
+                        table.insert_rows(
+                            [(log_task_id, None, None, None, None,
+                              device_id, sensor_id, pg_array)],
+                            cols=LOG_SENSOR_COLUMNS,
+                        )
+                conn.commit()
+            finally:
+                conn.close()
+        except Exception as e:
+            self.logger.error(
+                f"Early log_sensor_file write failed for log_task_id={log_task_id}: {e}")
 
     def stop_recording_devices(self, task_devices: List[DeviceArgs]) -> None:
         """Stop camera recording devices and wait for them to finish.
