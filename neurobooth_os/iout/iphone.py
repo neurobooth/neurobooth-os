@@ -931,6 +931,10 @@ class IPhoneListeningThread(threading.Thread):
                 raise IPhonePanic('Communications Breakdown') from e
             # Simply log anything unexpected
             self.logger.error(f'iPhone: Listening loop encountered an unexpected OSError: {e}')
+        except IPhonePanic:
+            if not self._running:
+                return  # _get_packet wraps shutdown OSErrors as IPhonePanic; ignore once we've stopped
+            raise  # Propagate real panics to run() so it can disconnect
         except Exception as e:  # Simply log any other unexpected errors
             self.logger.error(f'iPhone: Listening loop encountered an unexpected error: {e}')
 
