@@ -34,6 +34,7 @@ class EyeTracker(Device):
             raise Exception("Window should never be None.")
 
         super().__init__(device_args)
+        self.tk = None  # Set by _connect_tracker(); stays None if connection fails
         self.IP = device_args.ip
         self.sample_rate = device_args.sample_rate()
         self.msec_delay = device_args.msec_delay()
@@ -86,7 +87,8 @@ class EyeTracker(Device):
         self.recording = False
         self.paused = True
         self._connect_tracker()
-        self.state = DeviceState.CONNECTED
+        if self.tk is not None:
+            self.state = DeviceState.CONNECTED
 
     def connect(self) -> None:
         """No-op: EyeTracker connects during ``__init__`` because it needs the PsychoPy window."""
@@ -102,6 +104,7 @@ class EyeTracker(Device):
             msg = Request(source="EyeTracker", destination="CTR", body=body)
             post_message(msg)
             self.logger.error(msg_text)
+            self.state = DeviceState.DISCONNECTED
             return
 
         self.tk.setAddress(self.IP)
@@ -278,6 +281,9 @@ class EyeTracker(Device):
         self.state = DeviceState.STOPPED
 
     def close(self) -> None:
+        if self.tk is None:
+            self.state = DeviceState.DISCONNECTED
+            return  # Connection never succeeded; nothing to close
         if self.recording:
             self.stop()
         self.tk.close()
