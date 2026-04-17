@@ -143,11 +143,13 @@ def run_acq(logger, acq_index: int = 0):
                     camera_frame_preview(dev_id, device_manager, logger, service_id)
 
                 task = msg_body.task_id
-                fname = msg_body.fname  # unique per-run identifier, preserved for RecordingFiles tag
+                fname = msg_body.fname  # unique per-run identifier embedded in file basenames
                 session_name = msg_body.session_name
                 filename = os.path.join(acq_config.local_data_dir, session_name, fname)
 
-                elapsed_time = start_recording(device_manager, filename, fname, task_args[task].device_args)
+                elapsed_time = start_recording(device_manager, filename, fname,
+                                               task_args[task].device_args,
+                                               log_task_id=msg_body.log_task_id)
                 logger.info(f'Device start took {elapsed_time:.2f} for {task}')
                 reply = Request(source=service_id, destination="STM", body=RecordingStarted())
                 meta.post_message(reply)
@@ -165,11 +167,13 @@ def run_acq(logger, acq_index: int = 0):
                     camera_frame_preview(dev_id, device_manager, logger, service_id)
 
                 task = msg_body.task_id
-                fname = msg_body.fname  # unique per-run identifier, preserved for RecordingFiles tag
+                fname = msg_body.fname  # unique per-run identifier embedded in file basenames
                 session_name = msg_body.session_name
                 filename = os.path.join(acq_config.local_data_dir, session_name, fname)
 
-                elapsed_start = start_recording(device_manager, filename, fname, task_args[task].device_args)
+                elapsed_start = start_recording(device_manager, filename, fname,
+                                                task_args[task].device_args,
+                                                log_task_id=msg_body.log_task_id)
                 logger.info(f'Transition: device start took {elapsed_start:.2f} for {task}')
                 reply = Request(source=service_id, destination="STM", body=RecordingStarted())
                 meta.post_message(reply)
@@ -234,18 +238,23 @@ def camera_frame_preview(device_id: str, device_manager, logger, service_id: str
         logger.debug(f'Frame preview unavailable: {body.unavailable_message}')
 
 
-def start_recording(device_manager: DeviceManager, filename: str, fname: str, task_devices: List[DeviceArgs]) -> float:
+def start_recording(device_manager: DeviceManager, filename: str, fname: str,
+                    task_devices: List[DeviceArgs],
+                    log_task_id: Optional[str] = None) -> float:
     """Start recording all cameras for the current task.
 
     Args:
         device_manager: The device manager holding the running device instances.
         filename: Full output path prefix (``local_data_dir/session/fname``).
-        fname: Unique per-run identifier, passed through to
-            :meth:`DeviceManager.start_recording_devices` for the RecordingFiles tag.
+        fname: Unique per-run identifier embedded in each device's output file
+            basenames.
         task_devices: Devices required by the current task.
+        log_task_id: Pre-created log_task row ID from STM, used by
+            DeviceManager to write log_sensor_file rows at device start time.
     """
     t0 = time()
-    device_manager.start_recording_devices(filename, fname, task_devices)
+    device_manager.start_recording_devices(filename, fname, task_devices,
+                                           log_task_id=log_task_id)
     device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
     elapsed_time = time() - t0
     return elapsed_time

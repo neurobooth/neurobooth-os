@@ -322,12 +322,19 @@ class ErrorMessage(StatusMessage):
 
 class StartRecording(MsgBody):
     """
-    Message sent from STM to ACQ telling it to start recording
+    Message sent from STM to ACQ telling it to start recording.
+
+    Attributes:
+        log_task_id: Pre-created log_task row ID, used by ACQ to write
+            log_sensor_file rows immediately after device.start(). None when
+            the log_task has not yet been created (older STM, or during
+            initialization).
     """
     fname: str
     task_id: str
     frame_preview_device_id: Optional[str] = None
     session_name: str
+    log_task_id: Optional[str] = None
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY
@@ -340,11 +347,16 @@ class TransitionRecording(MsgBody):
     atomic operation, eliminating idle time between stop and start on ACQ.
 
     ACQ replies with RecordingStarted (not RecordingStopped).
+
+    Attributes:
+        log_task_id: Pre-created log_task row ID for the next task, used by
+            ACQ to write log_sensor_file rows immediately after device.start().
     """
     fname: str
     task_id: str
     frame_preview_device_id: Optional[str] = None
     session_name: str
+    log_task_id: Optional[str] = None
 
     def __init__(self, **data):
         data['priority'] = MEDIUM_PRIORITY

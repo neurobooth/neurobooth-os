@@ -39,6 +39,10 @@ class StmSession(BaseModel):
     transition_sent: bool = False
     next_task_start_time: Optional[str] = None
     next_transition_task_id: Optional[str] = None
+    # log_task_id pre-created for the next task when TransitionRecording is sent.
+    # Consumed by _perform_task on entry so ACQ's log_sensor_file rows (written
+    # from the TransitionRecording message) share the same log_task_id.
+    next_log_task_id: Optional[str] = None
 
     # Set by CreateTasksRequest; read by _start_acq and stop_acq
     frame_preview_device_id: Optional[str] = None

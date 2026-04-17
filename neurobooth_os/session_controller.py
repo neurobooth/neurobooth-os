@@ -87,8 +87,7 @@ class SessionEventListener(ABC):
         """A task has started on the STM machine."""
 
     @abstractmethod
-    def on_task_finished(self, task_id: str, has_lsl_stream: str,
-                         video_files: Dict[str, List[str]]) -> None:
+    def on_task_finished(self, task_id: str, has_lsl_stream: str) -> None:
         """A task has completed."""
 
     @abstractmethod
@@ -269,14 +268,6 @@ class SessionState:
     session: object = None  # liesl.Session, typed as object to avoid import dependency
     rec_fname: Optional[str] = None
     obs_log_id: Optional[str] = None
-    # Accumulated video files keyed by fname (the unique per-run identifier:
-    # "{session_name}_{tsk_start_time}_{task_id}").  Each RecordingFiles message
-    # is tagged with its fname; TaskCompletion carries the same fname for its
-    # matching run.  This makes buffering resilient to out-of-order message
-    # arrival (ACQ's RecordingFiles for the next task arriving before STM's
-    # TaskCompletion for the current task) and to repeated runs of the same
-    # task within a session (recalibration, subject repeats, session restarts).
-    task_video_files: Dict[str, Dict[str, List[str]]] = field(default_factory=dict)
 
     # Device tracking
     frame_preview_devices: Dict[str, str] = field(default_factory=dict)
@@ -474,9 +465,7 @@ class SessionController:
         return rec_fname
 
     def stop_lsl_recording(self, task_id: str, t_obs_id: str,
-                           obs_log_id: str, folder: str,
-                           video_files: Optional[Dict[str, List[str]]] = None,
-                           ) -> None:
+                           obs_log_id: str, folder: str) -> None:
         """Stop LSL recording in the background and trigger XDF split.
 
         The underlying LabRecorderCLI subprocess takes 3-5s to finalize
@@ -485,12 +474,6 @@ class SessionController:
         the old subprocess handle and finalize it in a background thread.
         ``start_lsl_recording`` spawns a *new* LabRecorderCLI process, so
         the two can safely run concurrently.
-
-        Args:
-            video_files: Pre-snapshotted mapping of stream name to file
-                basenames, captured by the message reader thread at
-                TaskCompletion time to avoid a race with RecordingFiles
-                for the next task.
         """
         import threading as threading_mod
 
@@ -509,11 +492,6 @@ class SessionController:
         xdf_fname = get_xdf_name(session, self.state.rec_fname)
         xdf_path = op.join(folder, xdf_fname)
 
-        # Use the pre-snapshotted video files from the message reader
-        # thread (captured atomically at TaskCompletion time).
-        if video_files is None:
-            video_files = {}
-
         def _finalize():
             """Finalize the old LabRecorderCLI process and split the XDF."""
             t_stop = time_mod.time()
@@ -528,8 +506,7 @@ class SessionController:
             self.logger.info(f"liesl stop_recording took: {time_mod.time() - t_stop:.2f}")
 
             postpone_xdf_split(xdf_path, t_obs_id, obs_log_id,
-                               cfg.neurobooth_config.split_xdf_backlog,
-                               video_files=video_files)
+                               cfg.neurobooth_config.split_xdf_backlog)
 
         self._lsl_stop_thread = threading_mod.Thread(
             target=_finalize, daemon=True, name="lsl-stop")
@@ -621,31 +598,10 @@ class SessionController:
 
                 elif "TaskCompletion" == message.msg_type:
                     body = message.body
-                    # Pop the bucket for THIS specific task run, keyed by fname.
-                    # RecordingFiles messages are tagged with the same fname so
-                    # files for the next task that arrive before this TaskCompletion
-                    # stay in their own bucket and are picked up by the next
-                    # TaskCompletion.  Non-recording tasks (has_lsl_stream=False)
-                    # send TaskCompletion without an fname and get an empty dict.
-                    run_fname = getattr(body, "fname", None)
-                    if run_fname is not None:
-                        video_files = self.state.task_video_files.pop(run_fname, {})
-                    else:
-                        video_files = {}
                     self.logger.debug(
-                        f"TaskCompletion msg for {body.task_id} (fname={run_fname}), "
-                        f"video_files={list(video_files.keys())}")
+                        f"TaskCompletion msg for {body.task_id}")
                     self.listener.on_task_finished(
-                        body.task_id, str(body.has_lsl_stream), video_files)
-
-                elif "RecordingFiles" == message.msg_type:
-                    body = message.body
-                    task_bucket = self.state.task_video_files.setdefault(body.fname, {})
-                    for stream_name, filenames in body.files.items():
-                        existing = task_bucket.get(stream_name, [])
-                        task_bucket[stream_name] = existing + filenames
-                    self.logger.debug(
-                        f"Buffered recording files for fname={body.fname}: {body.files}")
+                        body.task_id, str(body.has_lsl_stream))
 
                 elif "NoEyetracker" == message.msg_type:
                     self.listener.on_no_eyetracker(
