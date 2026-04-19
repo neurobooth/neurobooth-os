@@ -140,10 +140,7 @@ class GuiEventListener(SessionEventListener):
             title="Warning",
             location=get_popup_location(self.window))
         confirmed = response == "OK"
-        if confirmed:
-            _session_button_state(self.window, disabled=True)
-        elif resume_on_cancel:
-            _session_button_state(self.window, disabled=False)
+        _session_button_state(self.window, disabled=confirmed)
         return confirmed
 
     def prompt_shutdown_confirmation(self):
@@ -437,7 +434,6 @@ def gui(logger):
 
             elif event == "Stop tasks":
                 controller.stop_session(resume_on_cancel=False)
-                _session_button_state(window, disabled=True)
 
             elif event == "Calibrate":
                 write_output(window, "Eyetracker recalibration scheduled. "
