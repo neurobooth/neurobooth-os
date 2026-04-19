@@ -36,16 +36,24 @@ FROM log_sensor_file lsf
 JOIN log_task lt ON lsf.log_task_id = lt.log_task_id
 JOIN log_session ls ON lt.log_session_id = ls.log_session_id
 WHERE lsf.device_id IN ('FLIR_blackfly_1', 'Intel_D455_1', 'Intel_D455_2',
-                         'Intel_D455_3', 'IPhone_dev_1')
+                         'Intel_D455_3', 'IPhone_dev_1', 'Eyelink_1'
+                         -- , 'Webcam_dev_1'  -- uncomment if webcam is deployed
+                         )
   AND NOT (
       -- FLIR produces .avi
       (lsf.device_id = 'FLIR_blackfly_1' AND lsf.sensor_file_path::text LIKE '%_flir.avi%')
       -- Intel cameras produce .bag
       OR (lsf.device_id LIKE 'Intel_D455_%' AND lsf.sensor_file_path::text LIKE '%_intel%.bag%')
-      -- iPhone produces .mov
-      OR (lsf.device_id = 'IPhone_dev_1' AND lsf.sensor_file_path::text LIKE '%_IPhone.mov%')
+      -- iPhone produces .mov and .json
+      OR (lsf.device_id = 'IPhone_dev_1'
+          AND lsf.sensor_file_path::text LIKE '%_IPhone.mov%'
+          AND lsf.sensor_file_path::text LIKE '%_IPhone.json%')
+      -- EyeLink produces .edf
+      OR (lsf.device_id = 'Eyelink_1' AND lsf.sensor_file_path::text LIKE '%.edf%')
+      -- Webcam produces .avi (uncomment if deployed)
+      -- OR (lsf.device_id = 'Webcam_dev_1' AND lsf.sensor_file_path::text LIKE '%_webcam.avi%')
   )
   -- Uncomment one of these filters:
-  -- AND ls.application_version = 'v0.81.0'
-  -- AND ls.date >= '2026-04-10'
+  -- AND ls.application_version = 'v0.86.0'
+  -- AND ls.date >= '2026-04-17'
 ORDER BY ls.date, ls.log_session_id, lt.task_id, lsf.device_id;
