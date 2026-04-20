@@ -444,7 +444,7 @@ def _register_eyetracker_files(session: StmSession, log_task_id: str,
         finally:
             conn.close()
     except Exception as e:
-        session.logger.error(
+        session.logger.critical(
             f"Early log_sensor_file write failed for EyeTracker "
             f"(log_task_id={log_task_id}): {e}")
 

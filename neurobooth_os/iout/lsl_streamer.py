@@ -330,7 +330,7 @@ class DeviceManager:
             finally:
                 conn.close()
         except Exception as e:
-            self.logger.error(
+            self.logger.critical(
                 f"Early log_sensor_file write failed for log_task_id={log_task_id}: {e}")
 
     def stop_recording_devices(self, task_devices: List[DeviceArgs]) -> None:
