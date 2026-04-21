@@ -337,6 +337,14 @@ class SessionController:
 
     def prepare_devices(self, conn, collection_id: str, selected_tasks: List[str]) -> None:
         """Send PrepareRequest to all server nodes."""
+        self.state.session_prepared_count = 0
+        self.state.stream_ids = {}
+        self.state.inlets = {}
+        self.state.inlet_keys = []
+        self.state.frame_preview_devices = {}
+        self.state.auto_frame_preview_device = None
+        self.listener.on_inlet_update([])
+
         database = cfg.neurobooth_config.database.dbname
 
         for node in get_nodes():
