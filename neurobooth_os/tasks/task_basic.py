@@ -372,6 +372,8 @@ class BasicTask:
 
         """
 
+        clear(event)  # Flush stale keys from rapid task transitions
+
         # Instruction phase (with potential repeat)
         while True:
             self.present_instructions()

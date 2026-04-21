@@ -269,9 +269,7 @@ def play_video(win, mov, wait_time=1, stop=True, keyList=None):
     while mov.status != visual.FINISHED:
         mov.draw()
         win.flip()
-        if event.getKeys(keyList=keyList):
-            if clock.getTime() < wait_time:
-                continue
+        if clock.getTime() >= wait_time and event.getKeys(keyList=keyList):
             if stop:
                 mov.stop()
                 mov.seek(0)
