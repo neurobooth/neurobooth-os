@@ -489,12 +489,54 @@ def _raise_self_window(window, logger: Optional[logging.Logger] = None) -> None:
     iconic = bool(user32.IsIconic(hwnd))
     if iconic:
         user32.ShowWindow(hwnd, SW_RESTORE)
+
+    # SwitchToThisWindow simulates Alt+Tab and tends to bypass foreground-lock
+    # more reliably than SetForegroundWindow alone. Undocumented by Microsoft
+    # but present on every Windows since XP.
+    switch_called = False
+    try:
+        switch_to = user32.SwitchToThisWindow
+        switch_to.argtypes = [HWND, ctypes.c_bool]
+        switch_to.restype = None
+        switch_to(hwnd, True)
+        switch_called = True
+    except (AttributeError, OSError):
+        pass
+
     sfw_result = bool(user32.SetForegroundWindow(hwnd))
+
+    # If we still aren't the foreground process, flash the taskbar icon so
+    # the operator has a clear visual indicator. FLASHW_TIMERNOFG flashes
+    # until the window becomes foreground (i.e., until the user clicks it).
+    flash_called = False
+    if not sfw_result:
+        class FLASHWINFO(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", ctypes.c_uint),
+                ("hwnd", HWND),
+                ("dwFlags", ctypes.c_uint),
+                ("uCount", ctypes.c_uint),
+                ("dwTimeout", ctypes.c_uint),
+            ]
+        FLASHW_ALL = 0x3
+        FLASHW_TIMERNOFG = 0xC
+        fi = FLASHWINFO(
+            cbSize=ctypes.sizeof(FLASHWINFO),
+            hwnd=hwnd,
+            dwFlags=FLASHW_ALL | FLASHW_TIMERNOFG,
+            uCount=0,
+            dwTimeout=0,
+        )
+        user32.FlashWindowEx.argtypes = [ctypes.POINTER(FLASHWINFO)]
+        user32.FlashWindowEx.restype = ctypes.c_bool
+        user32.FlashWindowEx(ctypes.byref(fi))
+        flash_called = True
 
     if logger:
         logger.info(
-            "Raise self: hwnd=%s iconic=%s SetForegroundWindow=%s tk_ok=%s",
-            hex(hwnd), iconic, sfw_result, tk_ok,
+            "Raise self: hwnd=%s iconic=%s SwitchToThisWindow=%s "
+            "SetForegroundWindow=%s FlashWindowEx=%s tk_ok=%s",
+            hex(hwnd), iconic, switch_called, sfw_result, flash_called, tk_ok,
         )
 
 
