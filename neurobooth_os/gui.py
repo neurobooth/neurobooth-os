@@ -157,8 +157,52 @@ def _release_gui_lock(lock_state: Optional[GuiLockResult]) -> None:
             pass
 
 
+def _activate_running_gui(holder_pid: Optional[int]) -> bool:
+    """Bring the existing GUI's main window to the foreground, restoring if minimized.
+
+    Returns True if at least one window owned by ``holder_pid`` was found and
+    an activation attempt was made; False otherwise. The caller falls back to
+    a popup when this returns False (e.g., GUI-A is mid-startup and has no
+    window yet, or we have no PID to search for).
+
+    Windows' foreground-lock protection may silently refuse SetForegroundWindow
+    when the caller was not recently the foreground process. In that case, the
+    Z-order change from BringWindowToTop and the SW_RESTORE from IsIconic still
+    take effect — the window un-minimizes and rises above its siblings, even if
+    focus doesn't transfer.
+    """
+    if holder_pid is None:
+        return False
+
+    user32 = ctypes.windll.user32
+    matches = []
+
+    EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+
+    def _enum_proc(hwnd, _lparam):
+        pid = ctypes.c_ulong(0)
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if pid.value == holder_pid and user32.IsWindowVisible(hwnd):
+            if user32.GetWindowTextLengthW(hwnd) > 0:
+                matches.append(hwnd)
+        return True
+
+    user32.EnumWindows(EnumWindowsProc(_enum_proc), 0)
+
+    if not matches:
+        return False
+
+    hwnd = matches[0]
+    SW_RESTORE = 9
+    if user32.IsIconic(hwnd):
+        user32.ShowWindow(hwnd, SW_RESTORE)
+    user32.BringWindowToTop(hwnd)
+    user32.SetForegroundWindow(hwnd)
+    return True
+
+
 def _show_already_running_popup() -> None:
-    """Native Windows MessageBox telling the operator the GUI is already running."""
+    """Native Windows MessageBox; fallback only when the running GUI's window cannot be found."""
     MB_ICONERROR = 0x10
     MB_TOPMOST = 0x40000
     ctypes.windll.user32.MessageBoxW(
@@ -782,12 +826,14 @@ def main():
         # the shared queue when a second instance runs while the first is alive.
         lock_state = _acquire_gui_lock()
         if not lock_state.acquired:
-            _show_already_running_popup()
+            activated = _activate_running_gui(lock_state.holder_pid)
+            if not activated:
+                _show_already_running_popup()
             logger.warning(
                 "Refusing to start: another GUI instance holds %s "
-                "(pid=%s, started=%s, reason=%s)",
+                "(pid=%s, started=%s, reason=%s, activated=%s)",
                 lock_state.path, lock_state.holder_pid,
-                lock_state.holder_started, lock_state.reason,
+                lock_state.holder_started, lock_state.reason, activated,
             )
             exit_code = 1
             return
