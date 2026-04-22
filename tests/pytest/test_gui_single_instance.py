@@ -183,22 +183,7 @@ def test_acquire_returns_open_failed_on_permission_error(lock_env, monkeypatch):
     assert "denied" in result.reason
 
 
-def test_activate_running_gui_returns_false_on_none_pid():
+def test_signal_gui_to_activate_returns_false_on_none_pid():
     import neurobooth_os.gui as gui_mod
 
-    assert gui_mod._activate_running_gui(None) is False
-
-
-def test_activate_running_gui_returns_false_when_no_window_matches():
-    """PID exists but has no visible top-level windows — e.g., a background process.
-
-    Uses os.getpid() for the current test process, which (running under pytest)
-    has no top-level FreeSimpleGUI window — so the PID filter finds no matches.
-    """
-    import neurobooth_os.gui as gui_mod
-
-    # A PID that is almost certainly not hosting a visible titled window
-    # owned by a real Windows GUI app. Uses a high arbitrary PID unlikely
-    # to exist; function short-circuits once EnumWindows finishes with no
-    # matches.
-    assert gui_mod._activate_running_gui(2**31 - 1) is False
+    assert gui_mod._signal_gui_to_activate(None) is False
