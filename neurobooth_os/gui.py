@@ -194,16 +194,14 @@ def _activate_running_gui(holder_pid: Optional[int]) -> bool:
     user32.IsIconic.restype = ctypes.c_bool
     user32.ShowWindow.argtypes = [HWND, ctypes.c_int]
     user32.ShowWindow.restype = ctypes.c_bool
-    user32.BringWindowToTop.argtypes = [HWND]
-    user32.BringWindowToTop.restype = ctypes.c_bool
+    user32.SetWindowPos.argtypes = [
+        HWND, HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint,
+    ]
+    user32.SetWindowPos.restype = ctypes.c_bool
     user32.SetForegroundWindow.argtypes = [HWND]
     user32.SetForegroundWindow.restype = ctypes.c_bool
-    user32.GetForegroundWindow.argtypes = []
-    user32.GetForegroundWindow.restype = HWND
-    user32.AttachThreadInput.argtypes = [DWORD, DWORD, ctypes.c_bool]
-    user32.AttachThreadInput.restype = ctypes.c_bool
-    kernel32.GetCurrentThreadId.argtypes = []
-    kernel32.GetCurrentThreadId.restype = DWORD
+    kernel32.GetConsoleWindow.argtypes = []
+    kernel32.GetConsoleWindow.restype = HWND
 
     matches = []
 
@@ -223,33 +221,38 @@ def _activate_running_gui(holder_pid: Optional[int]) -> bool:
     if not matches:
         return False
 
-    SW_RESTORE = 9
-    for hwnd in matches:
-        if user32.IsIconic(hwnd):
-            user32.ShowWindow(hwnd, SW_RESTORE)
-        user32.BringWindowToTop(hwnd)
-
     target = matches[-1]
 
-    # Attach to the foreground thread's input queue so SetForegroundWindow is
-    # not refused by Windows foreground-lock. Without this, when GUI-A is
-    # open but covered, the spawning cmd.exe console keeps focus instead of
-    # GUI-A rising to the top.
-    fg_hwnd = user32.GetForegroundWindow()
-    our_tid = kernel32.GetCurrentThreadId()
-    fg_tid = 0
-    attached = False
-    if fg_hwnd:
-        pid_out = DWORD(0)
-        fg_tid = user32.GetWindowThreadProcessId(fg_hwnd, ctypes.byref(pid_out))
-        if fg_tid and fg_tid != our_tid:
-            attached = bool(user32.AttachThreadInput(our_tid, fg_tid, True))
+    # Minimize our own cmd.exe console so it stops dominating the Z-order.
+    # Without this, the spawning cmd keeps foreground and covers GUI-A even
+    # after we raise it.
+    SW_MINIMIZE = 6
+    console_hwnd = kernel32.GetConsoleWindow()
+    if console_hwnd:
+        user32.ShowWindow(console_hwnd, SW_MINIMIZE)
 
-    try:
-        user32.SetForegroundWindow(target)
-    finally:
-        if attached:
-            user32.AttachThreadInput(our_tid, fg_tid, False)
+    # Restore target if minimized.
+    SW_RESTORE = 9
+    if user32.IsIconic(target):
+        user32.ShowWindow(target, SW_RESTORE)
+
+    # Force target to top of Z-order via the TOPMOST→NOTOPMOST dance.
+    # Unlike SetForegroundWindow, SetWindowPos is not refused by Windows
+    # foreground-lock — it's a pure Z-order operation. The window is lifted
+    # above everything (including other topmost windows), then dropped back
+    # into the normal layer at the top of its class.
+    HWND_TOPMOST = ctypes.c_void_p(-1)
+    HWND_NOTOPMOST = ctypes.c_void_p(-2)
+    SWP_NOMOVE = 0x2
+    SWP_NOSIZE = 0x1
+    SWP_SHOWWINDOW = 0x40
+    flags = SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
+    user32.SetWindowPos(target, HWND_TOPMOST, 0, 0, 0, 0, flags)
+    user32.SetWindowPos(target, HWND_NOTOPMOST, 0, 0, 0, 0, flags)
+
+    # Best-effort focus transfer; may be refused by foreground-lock, but the
+    # Z-order and console-minimize above already made GUI-A visible.
+    user32.SetForegroundWindow(target)
 
     return True
 
