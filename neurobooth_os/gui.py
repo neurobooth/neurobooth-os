@@ -175,9 +175,31 @@ def _activate_running_gui(holder_pid: Optional[int]) -> bool:
         return False
 
     user32 = ctypes.windll.user32
+    HWND = ctypes.c_void_p
+
+    # Without explicit argtypes, ctypes defaults HWND args to c_int (32-bit),
+    # truncating 64-bit handles on x64 Windows — calls then hit invalid
+    # handles and silently no-op.
+    user32.EnumWindows.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    user32.EnumWindows.restype = ctypes.c_bool
+    user32.GetWindowThreadProcessId.argtypes = [HWND, ctypes.POINTER(ctypes.c_ulong)]
+    user32.GetWindowThreadProcessId.restype = ctypes.c_ulong
+    user32.IsWindowVisible.argtypes = [HWND]
+    user32.IsWindowVisible.restype = ctypes.c_bool
+    user32.GetWindowTextLengthW.argtypes = [HWND]
+    user32.GetWindowTextLengthW.restype = ctypes.c_int
+    user32.IsIconic.argtypes = [HWND]
+    user32.IsIconic.restype = ctypes.c_bool
+    user32.ShowWindow.argtypes = [HWND, ctypes.c_int]
+    user32.ShowWindow.restype = ctypes.c_bool
+    user32.BringWindowToTop.argtypes = [HWND]
+    user32.BringWindowToTop.restype = ctypes.c_bool
+    user32.SetForegroundWindow.argtypes = [HWND]
+    user32.SetForegroundWindow.restype = ctypes.c_bool
+
     matches = []
 
-    EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, HWND, ctypes.c_void_p)
 
     def _enum_proc(hwnd, _lparam):
         pid = ctypes.c_ulong(0)
@@ -187,17 +209,19 @@ def _activate_running_gui(holder_pid: Optional[int]) -> bool:
                 matches.append(hwnd)
         return True
 
-    user32.EnumWindows(EnumWindowsProc(_enum_proc), 0)
+    callback = EnumWindowsProc(_enum_proc)
+    user32.EnumWindows(callback, 0)
 
     if not matches:
         return False
 
-    hwnd = matches[0]
     SW_RESTORE = 9
-    if user32.IsIconic(hwnd):
-        user32.ShowWindow(hwnd, SW_RESTORE)
-    user32.BringWindowToTop(hwnd)
-    user32.SetForegroundWindow(hwnd)
+    for hwnd in matches:
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, SW_RESTORE)
+        user32.BringWindowToTop(hwnd)
+
+    user32.SetForegroundWindow(matches[-1])
     return True
 
 
