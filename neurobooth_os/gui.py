@@ -175,15 +175,17 @@ def _activate_running_gui(holder_pid: Optional[int]) -> bool:
         return False
 
     user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
     HWND = ctypes.c_void_p
+    DWORD = ctypes.c_ulong
 
     # Without explicit argtypes, ctypes defaults HWND args to c_int (32-bit),
     # truncating 64-bit handles on x64 Windows — calls then hit invalid
     # handles and silently no-op.
     user32.EnumWindows.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
     user32.EnumWindows.restype = ctypes.c_bool
-    user32.GetWindowThreadProcessId.argtypes = [HWND, ctypes.POINTER(ctypes.c_ulong)]
-    user32.GetWindowThreadProcessId.restype = ctypes.c_ulong
+    user32.GetWindowThreadProcessId.argtypes = [HWND, ctypes.POINTER(DWORD)]
+    user32.GetWindowThreadProcessId.restype = DWORD
     user32.IsWindowVisible.argtypes = [HWND]
     user32.IsWindowVisible.restype = ctypes.c_bool
     user32.GetWindowTextLengthW.argtypes = [HWND]
@@ -196,13 +198,19 @@ def _activate_running_gui(holder_pid: Optional[int]) -> bool:
     user32.BringWindowToTop.restype = ctypes.c_bool
     user32.SetForegroundWindow.argtypes = [HWND]
     user32.SetForegroundWindow.restype = ctypes.c_bool
+    user32.GetForegroundWindow.argtypes = []
+    user32.GetForegroundWindow.restype = HWND
+    user32.AttachThreadInput.argtypes = [DWORD, DWORD, ctypes.c_bool]
+    user32.AttachThreadInput.restype = ctypes.c_bool
+    kernel32.GetCurrentThreadId.argtypes = []
+    kernel32.GetCurrentThreadId.restype = DWORD
 
     matches = []
 
     EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, HWND, ctypes.c_void_p)
 
     def _enum_proc(hwnd, _lparam):
-        pid = ctypes.c_ulong(0)
+        pid = DWORD(0)
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
         if pid.value == holder_pid and user32.IsWindowVisible(hwnd):
             if user32.GetWindowTextLengthW(hwnd) > 0:
@@ -221,7 +229,28 @@ def _activate_running_gui(holder_pid: Optional[int]) -> bool:
             user32.ShowWindow(hwnd, SW_RESTORE)
         user32.BringWindowToTop(hwnd)
 
-    user32.SetForegroundWindow(matches[-1])
+    target = matches[-1]
+
+    # Attach to the foreground thread's input queue so SetForegroundWindow is
+    # not refused by Windows foreground-lock. Without this, when GUI-A is
+    # open but covered, the spawning cmd.exe console keeps focus instead of
+    # GUI-A rising to the top.
+    fg_hwnd = user32.GetForegroundWindow()
+    our_tid = kernel32.GetCurrentThreadId()
+    fg_tid = 0
+    attached = False
+    if fg_hwnd:
+        pid_out = DWORD(0)
+        fg_tid = user32.GetWindowThreadProcessId(fg_hwnd, ctypes.byref(pid_out))
+        if fg_tid and fg_tid != our_tid:
+            attached = bool(user32.AttachThreadInput(our_tid, fg_tid, True))
+
+    try:
+        user32.SetForegroundWindow(target)
+    finally:
+        if attached:
+            user32.AttachThreadInput(our_tid, fg_tid, False)
+
     return True
 
 
