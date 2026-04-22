@@ -10,6 +10,7 @@ import msvcrt
 import os
 import os.path as op
 import sys
+import threading
 import time as time_mod
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -331,6 +332,156 @@ def _show_already_running_popup() -> None:
     )
 
 
+# Named kernel event used for IPC between a rejected second-launch (GUI-B) and
+# the already-running GUI (GUI-A). GUI-A holds a handle for its lifetime; GUI-B
+# opens and signals the event, which wakes GUI-A's listener thread, which posts
+# an event into the FreeSimpleGUI event loop, which restores/raises the window
+# from WITHIN GUI-A's own process. A process raising its own window is the
+# reliable workaround for Windows foreground-lock refusing cross-process
+# SetForegroundWindow — especially when combined with AllowSetForegroundWindow
+# called by GUI-B to grant GUI-A focus-change permission.
+_ACTIVATE_EVENT_NAME = "Local\\NeuroboothActivateGui"
+_GUI_ACTIVATE_EVENT_HANDLE: Optional[int] = None
+
+
+def _open_or_create_activation_event() -> Optional[int]:
+    """Create (or open) the named auto-reset event used for cross-process activation."""
+    kernel32 = ctypes.windll.kernel32
+    kernel32.CreateEventW.argtypes = [
+        ctypes.c_void_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_wchar_p,
+    ]
+    kernel32.CreateEventW.restype = ctypes.c_void_p
+    # bManualReset=False (auto-reset), bInitialState=False (non-signaled).
+    handle = kernel32.CreateEventW(None, False, False, _ACTIVATE_EVENT_NAME)
+    return handle or None
+
+
+def _signal_gui_to_activate(holder_pid: Optional[int],
+                            logger: Optional[logging.Logger] = None) -> bool:
+    """From GUI-B: grant foreground authority to GUI-A and signal it to raise itself."""
+    if holder_pid is None:
+        return False
+
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+
+    user32.AllowSetForegroundWindow.argtypes = [ctypes.c_ulong]
+    user32.AllowSetForegroundWindow.restype = ctypes.c_bool
+    kernel32.OpenEventW.argtypes = [ctypes.c_ulong, ctypes.c_bool, ctypes.c_wchar_p]
+    kernel32.OpenEventW.restype = ctypes.c_void_p
+    kernel32.SetEvent.argtypes = [ctypes.c_void_p]
+    kernel32.SetEvent.restype = ctypes.c_bool
+    kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+    kernel32.CloseHandle.restype = ctypes.c_bool
+    kernel32.GetLastError.argtypes = []
+    kernel32.GetLastError.restype = ctypes.c_ulong
+
+    granted = bool(user32.AllowSetForegroundWindow(holder_pid))
+
+    EVENT_MODIFY_STATE = 0x0002
+    handle = kernel32.OpenEventW(EVENT_MODIFY_STATE, False, _ACTIVATE_EVENT_NAME)
+    if not handle:
+        if logger:
+            logger.info(
+                "Activate IPC: OpenEventW failed err=%s grant=%s",
+                kernel32.GetLastError(), granted,
+            )
+        return False
+
+    signaled = bool(kernel32.SetEvent(handle))
+    kernel32.CloseHandle(handle)
+
+    if logger:
+        logger.info(
+            "Activate IPC: grant=%s open=%s set=%s pid=%s",
+            granted, True, signaled, holder_pid,
+        )
+    return signaled
+
+
+def _start_activation_listener(window,
+                               logger: Optional[logging.Logger] = None) -> Optional[threading.Thread]:
+    """From GUI-A: create the activation event and spawn a listener thread.
+
+    The listener blocks on WaitForSingleObject and, when signaled by GUI-B,
+    posts ``-activate-request-`` into the FreeSimpleGUI event loop so the
+    main thread can restore and raise the window from within this process.
+    """
+    global _GUI_ACTIVATE_EVENT_HANDLE
+
+    kernel32 = ctypes.windll.kernel32
+    kernel32.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+    kernel32.WaitForSingleObject.restype = ctypes.c_ulong
+
+    handle = _open_or_create_activation_event()
+    if handle is None:
+        if logger:
+            logger.warning("Activation event creation failed; second-launch raise disabled")
+        return None
+
+    _GUI_ACTIVATE_EVENT_HANDLE = handle
+    INFINITE = 0xFFFFFFFF
+    WAIT_OBJECT_0 = 0
+
+    def _listener():
+        while True:
+            result = kernel32.WaitForSingleObject(handle, INFINITE)
+            if result != WAIT_OBJECT_0:
+                break
+            try:
+                window.write_event_value("-activate-request-", True)
+            except Exception:
+                break  # window closed / torn down
+
+    thread = threading.Thread(target=_listener, daemon=True,
+                              name="GuiActivationListener")
+    thread.start()
+    if logger:
+        logger.info("Activation listener started")
+    return thread
+
+
+def _raise_self_window(window, logger: Optional[logging.Logger] = None) -> None:
+    """From GUI-A: raise this process's own main window.
+
+    Called in response to ``-activate-request-`` on the main thread. Uses the
+    one-shot grant from GUI-B's AllowSetForegroundWindow so the direct
+    SetForegroundWindow on our own HWND is permitted.
+    """
+    try:
+        window.bring_to_front()
+    except Exception:
+        pass
+
+    try:
+        frame_str = window.TKroot.wm_frame()
+        hwnd = int(frame_str, 0)
+    except (ValueError, AttributeError, TypeError):
+        if logger:
+            logger.info("Raise self: could not resolve own HWND")
+        return
+
+    user32 = ctypes.windll.user32
+    HWND = ctypes.c_void_p
+    user32.SetForegroundWindow.argtypes = [HWND]
+    user32.SetForegroundWindow.restype = ctypes.c_bool
+    user32.ShowWindow.argtypes = [HWND, ctypes.c_int]
+    user32.ShowWindow.restype = ctypes.c_bool
+    user32.IsIconic.argtypes = [HWND]
+    user32.IsIconic.restype = ctypes.c_bool
+
+    SW_RESTORE = 9
+    iconic = user32.IsIconic(hwnd)
+    if iconic:
+        user32.ShowWindow(hwnd, SW_RESTORE)
+    result = user32.SetForegroundWindow(hwnd)
+    if logger:
+        logger.info(
+            "Raise self: hwnd=%s iconic=%s SetForegroundWindow=%s",
+            hex(hwnd), bool(iconic), bool(result),
+        )
+
+
 def setup_log(sg_handler=None):
     logger = make_db_logger("", "")
     logger.setLevel(logging.DEBUG)
@@ -602,6 +753,7 @@ def gui(logger):
 
         window = _win_gen(_init_layout, conn)
         gui_listener.set_window(window)
+        _start_activation_listener(window, logger)
 
         plttr = stream_plotter()
         log_sess = LogSession(application_version=state.release_version, config_version=state.config_version)
@@ -611,7 +763,13 @@ def gui(logger):
             ############################################################
             # Initial Window -> Select subject, study and tasks
             ############################################################
-            if event == "study_id":
+            if event == "-activate-request-":
+                # A rejected second-launch signaled us via the IPC event.
+                # Raise our own window from this process (bypasses Windows
+                # foreground-lock in a way that cross-process calls can't).
+                _raise_self_window(window, logger)
+
+            elif event == "study_id":
                 study_id = values[event]
                 log_sess.study_id = study_id
                 _get_collections(window, study_id)
@@ -944,14 +1102,20 @@ def main():
         # the shared queue when a second instance runs while the first is alive.
         lock_state = _acquire_gui_lock()
         if not lock_state.acquired:
+            # Primary path: IPC signal so GUI-A raises its own window.
+            ipc_ok = _signal_gui_to_activate(lock_state.holder_pid, logger)
+            # Fallback path: direct Z-order manipulation. Runs even when IPC
+            # succeeds, because it also minimizes our own cmd console (a UX
+            # improvement independent of Z-order) and provides a backstop if
+            # GUI-A is slow to process the IPC event.
             activated = _activate_running_gui(lock_state.holder_pid, logger)
-            if not activated:
+            if not ipc_ok and not activated:
                 _show_already_running_popup()
             logger.warning(
                 "Refusing to start: another GUI instance holds %s "
-                "(pid=%s, started=%s, reason=%s, activated=%s)",
+                "(pid=%s, started=%s, reason=%s, ipc=%s, activated=%s)",
                 lock_state.path, lock_state.holder_pid,
-                lock_state.holder_started, lock_state.reason, activated,
+                lock_state.holder_started, lock_state.reason, ipc_ok, activated,
             )
             exit_code = 1
             return
