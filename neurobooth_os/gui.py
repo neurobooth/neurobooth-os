@@ -444,21 +444,36 @@ def _start_activation_listener(window,
 def _raise_self_window(window, logger: Optional[logging.Logger] = None) -> None:
     """From GUI-A: raise this process's own main window.
 
-    Called in response to ``-activate-request-`` on the main thread. Uses the
-    one-shot grant from GUI-B's AllowSetForegroundWindow so the direct
-    SetForegroundWindow on our own HWND is permitted.
+    Called on the main thread in response to ``-activate-request-``. The
+    approach that's actually reliable even against foreground-lock is to
+    briefly set tkinter's ``-topmost`` attribute on our own top-level window
+    and schedule it back off a moment later — that forces visible Z-order
+    (topmost renders above all non-topmost windows) regardless of whether
+    SetForegroundWindow is honored. 1-second dwell gives the operator time
+    to notice and click before the window drops back into the normal layer.
     """
+    if logger:
+        logger.info("Raise self: handling -activate-request-")
+
+    tk_ok = False
     try:
-        window.bring_to_front()
-    except Exception:
-        pass
+        window.TKroot.deiconify()          # un-minimize if minimized
+        window.TKroot.lift()               # raise in tk Z-order
+        window.TKroot.attributes('-topmost', True)
+        # Schedule un-topmost via tk after(). Runs on the main thread.
+        window.TKroot.after(1000, lambda: window.TKroot.attributes('-topmost', False))
+        window.TKroot.focus_force()
+        tk_ok = True
+    except Exception as e:
+        if logger:
+            logger.info("Raise self: tk path failed: %s", e)
 
     try:
         frame_str = window.TKroot.wm_frame()
         hwnd = int(frame_str, 0)
     except (ValueError, AttributeError, TypeError):
         if logger:
-            logger.info("Raise self: could not resolve own HWND")
+            logger.info("Raise self: could not resolve own HWND (tk_ok=%s)", tk_ok)
         return
 
     user32 = ctypes.windll.user32
@@ -471,14 +486,15 @@ def _raise_self_window(window, logger: Optional[logging.Logger] = None) -> None:
     user32.IsIconic.restype = ctypes.c_bool
 
     SW_RESTORE = 9
-    iconic = user32.IsIconic(hwnd)
+    iconic = bool(user32.IsIconic(hwnd))
     if iconic:
         user32.ShowWindow(hwnd, SW_RESTORE)
-    result = user32.SetForegroundWindow(hwnd)
+    sfw_result = bool(user32.SetForegroundWindow(hwnd))
+
     if logger:
         logger.info(
-            "Raise self: hwnd=%s iconic=%s SetForegroundWindow=%s",
-            hex(hwnd), bool(iconic), bool(result),
+            "Raise self: hwnd=%s iconic=%s SetForegroundWindow=%s tk_ok=%s",
+            hex(hwnd), iconic, sfw_result, tk_ok,
         )
 
 
