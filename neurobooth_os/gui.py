@@ -3,11 +3,16 @@
 Runs RC user interface for controlling a neurobooth session
 """
 import base64
+import ctypes
+import json
+import logging
+import msvcrt
 import os
 import os.path as op
-import logging
 import sys
 import time as time_mod
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Dict, Optional, List
 
 import cv2
@@ -27,12 +32,141 @@ from neurobooth_os.iout.metadator import LogSession
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
 from neurobooth_os.msg.messages import FramePreviewReply
-from util.nb_types import Subject
+from neurobooth_os.util.nb_types import Subject
 from neurobooth_os.session_controller import (
     SessionState, SessionController, SessionEventListener, VersionMismatchError,
     get_nodes, resize_frame_preview,
     create_session_dict, request_frame_preview,
 )
+
+
+_GUI_LOCK_FD: Optional[int] = None
+_GUI_LOCK_PATH: Optional[str] = None
+
+
+@dataclass
+class GuiLockResult:
+    """Outcome of attempting to acquire the single-instance GUI lock."""
+    acquired: bool
+    path: str
+    holder_pid: Optional[int] = None
+    holder_started: Optional[str] = None
+    reason: Optional[str] = None
+
+
+def _gui_lock_path() -> str:
+    base = os.environ.get("NB_INSTALL", os.path.expanduser("~"))
+    return os.path.join(base, "gui.lock")
+
+
+def _read_lock_holder_info(path: str) -> "tuple[Optional[int], Optional[str]]":
+    """Read PID/start from gui.lock without contending for the lock."""
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(1)
+            raw = fh.read()
+        data = json.loads(raw.decode("utf-8"))
+        pid = data.get("pid")
+        started = data.get("started")
+        return (
+            int(pid) if pid is not None else None,
+            str(started) if started is not None else None,
+        )
+    except (OSError, ValueError, UnicodeDecodeError):
+        return (None, None)
+
+
+def _acquire_gui_lock() -> GuiLockResult:
+    """Acquire the single-instance GUI lock. Keeps the fd open for process lifetime."""
+    global _GUI_LOCK_FD, _GUI_LOCK_PATH
+
+    path = _gui_lock_path()
+
+    try:
+        fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
+    except OSError as e:
+        return GuiLockResult(acquired=False, path=path, reason=f"open_failed: {e}")
+
+    holder_pid, holder_started = _read_lock_holder_info(path)
+
+    try:
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+    except OSError:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        return GuiLockResult(
+            acquired=False, path=path,
+            holder_pid=holder_pid, holder_started=holder_started,
+            reason="locked",
+        )
+
+    started = datetime.now(timezone.utc).isoformat()
+    try:
+        payload = json.dumps({"pid": os.getpid(), "started": started}).encode("utf-8")
+        os.lseek(fd, 0, os.SEEK_SET)
+        os.write(fd, b" " + payload)
+        os.ftruncate(fd, 1 + len(payload))
+        os.fsync(fd)
+    except OSError as e:
+        _GUI_LOCK_FD = fd
+        _GUI_LOCK_PATH = path
+        return GuiLockResult(
+            acquired=True, path=path,
+            holder_pid=os.getpid(),
+            reason=f"io_failed: {e}",
+        )
+
+    _GUI_LOCK_FD = fd
+    _GUI_LOCK_PATH = path
+    return GuiLockResult(
+        acquired=True, path=path,
+        holder_pid=os.getpid(), holder_started=started,
+    )
+
+
+def _release_gui_lock(lock_state: Optional[GuiLockResult]) -> None:
+    """Release the GUI lock held by this process. Idempotent; no-op on None / not-acquired."""
+    global _GUI_LOCK_FD, _GUI_LOCK_PATH
+
+    if lock_state is None or not lock_state.acquired:
+        return
+
+    fd = _GUI_LOCK_FD
+    path = _GUI_LOCK_PATH
+    _GUI_LOCK_FD = None
+    _GUI_LOCK_PATH = None
+
+    if fd is not None:
+        try:
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        except OSError:
+            pass
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+
+    if path is not None:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+def _show_already_running_popup() -> None:
+    """Native Windows MessageBox telling the operator the GUI is already running."""
+    MB_ICONERROR = 0x10
+    MB_TOPMOST = 0x40000
+    ctypes.windll.user32.MessageBoxW(
+        0,
+        "Neurobooth is already running. Please use the existing window.",
+        "Neurobooth",
+        MB_ICONERROR | MB_TOPMOST,
+    )
 
 
 def setup_log(sg_handler=None):
@@ -637,11 +771,29 @@ def main():
     """The starting point of Neurobooth"""
     logger = None
     exit_code = 0
+    lock_state: Optional[GuiLockResult] = None
     try:
         cfg.load_config_by_service_name("CTR")  # Load Neurobooth-OS configuration
         enable_crash_handler("CTR")
         logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
         logger.debug("Starting GUI")
+
+        # Must precede gui(): gui() calls meta.clear_msg_queue, which corrupts
+        # the shared queue when a second instance runs while the first is alive.
+        lock_state = _acquire_gui_lock()
+        if not lock_state.acquired:
+            _show_already_running_popup()
+            logger.warning(
+                "Refusing to start: another GUI instance holds %s "
+                "(pid=%s, started=%s, reason=%s)",
+                lock_state.path, lock_state.holder_pid,
+                lock_state.holder_started, lock_state.reason,
+            )
+            exit_code = 1
+            return
+        if lock_state.reason:
+            logger.warning("GUI lock acquired with warning: %s", lock_state.reason)
+
         gui(logger)
         logger.debug("Stopping GUI")
     except Exception as argument:
@@ -651,6 +803,7 @@ def main():
                         exc_info=sys.exc_info())
         exit_code = 1
     finally:
+        _release_gui_lock(lock_state)
         logging.shutdown()
         os._exit(exit_code)
 
