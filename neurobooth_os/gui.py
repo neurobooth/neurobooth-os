@@ -157,19 +157,15 @@ def _release_gui_lock(lock_state: Optional[GuiLockResult]) -> None:
             pass
 
 
-def _activate_running_gui(holder_pid: Optional[int]) -> bool:
+def _activate_running_gui(holder_pid: Optional[int], logger: Optional[logging.Logger] = None) -> bool:
     """Bring the existing GUI's main window to the foreground, restoring if minimized.
 
     Returns True if at least one window owned by ``holder_pid`` was found and
-    an activation attempt was made; False otherwise. The caller falls back to
-    a popup when this returns False (e.g., GUI-A is mid-startup and has no
-    window yet, or we have no PID to search for).
+    an activation attempt was made; False otherwise.
 
-    Windows' foreground-lock protection may silently refuse SetForegroundWindow
-    when the caller was not recently the foreground process. In that case, the
-    Z-order change from BringWindowToTop and the SW_RESTORE from IsIconic still
-    take effect — the window un-minimizes and rises above its siblings, even if
-    focus doesn't transfer.
+    Uses a kitchen-sink combination of Win32 calls because Windows' foreground-
+    lock and Z-order semantics are finicky — each call does part of the job.
+    See inline comments for what each piece does.
     """
     if holder_pid is None:
         return False
@@ -178,10 +174,9 @@ def _activate_running_gui(holder_pid: Optional[int]) -> bool:
     kernel32 = ctypes.windll.kernel32
     HWND = ctypes.c_void_p
     DWORD = ctypes.c_ulong
+    RECT = ctypes.c_long * 4
 
-    # Without explicit argtypes, ctypes defaults HWND args to c_int (32-bit),
-    # truncating 64-bit handles on x64 Windows — calls then hit invalid
-    # handles and silently no-op.
+    # Explicit argtypes prevent HWND truncation on x64 Windows.
     user32.EnumWindows.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
     user32.EnumWindows.restype = ctypes.c_bool
     user32.GetWindowThreadProcessId.argtypes = [HWND, ctypes.POINTER(DWORD)]
@@ -190,6 +185,12 @@ def _activate_running_gui(holder_pid: Optional[int]) -> bool:
     user32.IsWindowVisible.restype = ctypes.c_bool
     user32.GetWindowTextLengthW.argtypes = [HWND]
     user32.GetWindowTextLengthW.restype = ctypes.c_int
+    user32.GetWindowTextW.argtypes = [HWND, ctypes.c_wchar_p, ctypes.c_int]
+    user32.GetWindowTextW.restype = ctypes.c_int
+    user32.GetClassNameW.argtypes = [HWND, ctypes.c_wchar_p, ctypes.c_int]
+    user32.GetClassNameW.restype = ctypes.c_int
+    user32.GetWindowRect.argtypes = [HWND, ctypes.POINTER(RECT)]
+    user32.GetWindowRect.restype = ctypes.c_bool
     user32.IsIconic.argtypes = [HWND]
     user32.IsIconic.restype = ctypes.c_bool
     user32.ShowWindow.argtypes = [HWND, ctypes.c_int]
@@ -198,6 +199,8 @@ def _activate_running_gui(holder_pid: Optional[int]) -> bool:
         HWND, HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint,
     ]
     user32.SetWindowPos.restype = ctypes.c_bool
+    user32.BringWindowToTop.argtypes = [HWND]
+    user32.BringWindowToTop.restype = ctypes.c_bool
     user32.SetForegroundWindow.argtypes = [HWND]
     user32.SetForegroundWindow.restype = ctypes.c_bool
     kernel32.GetConsoleWindow.argtypes = []
@@ -210,49 +213,108 @@ def _activate_running_gui(holder_pid: Optional[int]) -> bool:
     def _enum_proc(hwnd, _lparam):
         pid = DWORD(0)
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-        if pid.value == holder_pid and user32.IsWindowVisible(hwnd):
-            if user32.GetWindowTextLengthW(hwnd) > 0:
-                matches.append(hwnd)
+        if pid.value != holder_pid or not user32.IsWindowVisible(hwnd):
+            return True
+        if user32.GetWindowTextLengthW(hwnd) <= 0:
+            return True
+        # Exclude console windows in case one is attributed to the python PID.
+        cls = ctypes.create_unicode_buffer(256)
+        user32.GetClassNameW(hwnd, cls, 256)
+        if cls.value == "ConsoleWindowClass":
+            return True
+        matches.append(hwnd)
         return True
 
     callback = EnumWindowsProc(_enum_proc)
     user32.EnumWindows(callback, 0)
 
     if not matches:
+        if logger:
+            logger.info("Activate: no matching windows for pid=%s", holder_pid)
         return False
 
-    target = matches[-1]
+    # Pick the largest-area match as the primary target (the main window is
+    # almost always the biggest visible titled window of its app).
+    target = matches[0]
+    target_area = -1
+    for hwnd in matches:
+        rect = RECT()
+        if user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+            area = max(0, rect[2] - rect[0]) * max(0, rect[3] - rect[1])
+            if area > target_area:
+                target_area = area
+                target = hwnd
+
+    if logger:
+        match_info = []
+        for hwnd in matches:
+            title_buf = ctypes.create_unicode_buffer(256)
+            user32.GetWindowTextW(hwnd, title_buf, 256)
+            cls_buf = ctypes.create_unicode_buffer(256)
+            user32.GetClassNameW(hwnd, cls_buf, 256)
+            rect = RECT()
+            user32.GetWindowRect(hwnd, ctypes.byref(rect))
+            match_info.append(
+                f"hwnd={hex(hwnd) if hwnd else hwnd} "
+                f"title={title_buf.value!r} class={cls_buf.value!r} "
+                f"rect=({rect[0]},{rect[1]},{rect[2]},{rect[3]})"
+            )
+        logger.info(
+            "Activate: pid=%s matches=%d target_hwnd=%s target_area=%d",
+            holder_pid, len(matches),
+            hex(target) if target else target, target_area,
+        )
+        for m in match_info:
+            logger.info("Activate match: %s", m)
 
     # Minimize our own cmd.exe console so it stops dominating the Z-order.
-    # Without this, the spawning cmd keeps foreground and covers GUI-A even
-    # after we raise it.
     SW_MINIMIZE = 6
     console_hwnd = kernel32.GetConsoleWindow()
     if console_hwnd:
         user32.ShowWindow(console_hwnd, SW_MINIMIZE)
+        if logger:
+            logger.info("Activate: minimized own console hwnd=%s", hex(console_hwnd))
 
-    # Restore target if minimized.
+    # Restore any iconic match (harmless for non-iconic).
     SW_RESTORE = 9
-    if user32.IsIconic(target):
-        user32.ShowWindow(target, SW_RESTORE)
+    for hwnd in matches:
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, SW_RESTORE)
 
-    # Force target to top of Z-order via the TOPMOST→NOTOPMOST dance.
-    # Unlike SetForegroundWindow, SetWindowPos is not refused by Windows
-    # foreground-lock — it's a pure Z-order operation. The window is lifted
-    # above everything (including other topmost windows), then dropped back
-    # into the normal layer at the top of its class.
+    # Force target to top of Z-order. Not subject to foreground-lock — this is
+    # a pure Z-order operation.
     HWND_TOPMOST = ctypes.c_void_p(-1)
     HWND_NOTOPMOST = ctypes.c_void_p(-2)
     SWP_NOMOVE = 0x2
     SWP_NOSIZE = 0x1
     SWP_SHOWWINDOW = 0x40
     flags = SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
-    user32.SetWindowPos(target, HWND_TOPMOST, 0, 0, 0, 0, flags)
-    user32.SetWindowPos(target, HWND_NOTOPMOST, 0, 0, 0, 0, flags)
+    r1 = user32.SetWindowPos(target, HWND_TOPMOST, 0, 0, 0, 0, flags)
+    r2 = user32.SetWindowPos(target, HWND_NOTOPMOST, 0, 0, 0, 0, flags)
 
-    # Best-effort focus transfer; may be refused by foreground-lock, but the
-    # Z-order and console-minimize above already made GUI-A visible.
-    user32.SetForegroundWindow(target)
+    # SwitchToThisWindow simulates Alt+Tab and is the only documented-ish API
+    # that reliably bypasses foreground-lock. Undocumented by Microsoft but
+    # present on every Windows since XP. Wrap in try/except in case it's ever
+    # removed.
+    r3 = None
+    try:
+        switch_to = user32.SwitchToThisWindow
+        switch_to.argtypes = [HWND, ctypes.c_bool]
+        switch_to.restype = None
+        switch_to(target, True)
+        r3 = "called"
+    except (AttributeError, OSError) as e:
+        r3 = f"unavailable: {e}"
+
+    r4 = user32.BringWindowToTop(target)
+    r5 = user32.SetForegroundWindow(target)
+
+    if logger:
+        logger.info(
+            "Activate: results SetWindowPos_topmost=%s SetWindowPos_notopmost=%s "
+            "SwitchToThisWindow=%s BringWindowToTop=%s SetForegroundWindow=%s",
+            r1, r2, r3, r4, r5,
+        )
 
     return True
 
@@ -882,7 +944,7 @@ def main():
         # the shared queue when a second instance runs while the first is alive.
         lock_state = _acquire_gui_lock()
         if not lock_state.acquired:
-            activated = _activate_running_gui(lock_state.holder_pid)
+            activated = _activate_running_gui(lock_state.holder_pid, logger)
             if not activated:
                 _show_already_running_popup()
             logger.warning(
