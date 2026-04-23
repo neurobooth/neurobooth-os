@@ -4,7 +4,7 @@ import logging
 import uuid
 from abc import ABC, abstractmethod
 from enum import Enum, Flag, auto
-from typing import ByteString, ClassVar, List, Optional
+from typing import Any, ByteString, ClassVar, List, Mapping, Optional
 
 from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -16,12 +16,13 @@ class CameraPreviewException(Exception):
 
 
 class CameraPreviewer:
-    def frame_preview(self) -> ByteString:
-        """
-        Retrieve a single frame from a camera.
+    """Deprecated: retained only as a transitional shim.
 
-        :returns: The raw data of the image/frame, or an empty byte string if an error occurs.
-        """
+    New devices should declare ``CAMERA_PREVIEW`` in their ``capabilities`` and
+    override ``Device.frame_preview`` directly. This class is scheduled for
+    removal once all camera devices are migrated; see issue #696.
+    """
+    def frame_preview(self) -> ByteString:
         raise NotImplementedError()
 
 
@@ -32,6 +33,7 @@ class DeviceCapability(Flag):
     CAMERA_PREVIEW = auto()   # Supports frame_preview()
     WEARABLE = auto()         # BLE/wireless; may disconnect unexpectedly, supports reconnect
     CALIBRATABLE = auto()     # Supports calibration (eyelink)
+    RECORD_PER_TASK = auto()  # Recording is driven by the per-task lifecycle (cameras)
 
 
 class DeviceState(Enum):
@@ -131,3 +133,58 @@ class Device(ABC):
             True if the device has the capability.
         """
         return cap in self.capabilities
+
+    def bring_up(self, context: Mapping[str, Any]) -> Optional["Device"]:
+        """Perform the full startup handshake and return self, or None to skip.
+
+        Default: call ``connect()`` and, for pure STREAM devices, ``start()``.
+        Devices with the ``RECORD`` capability defer ``start()`` to
+        ``DeviceManager.start_recording_devices`` (per-task). Devices with
+        optional connect (wearables, iPhone) or that depend on items in
+        ``context`` (e.g. a PsychoPy window) should override this method.
+
+        Args:
+            context: Mapping of shared objects that some devices may need
+                during start-up. The canonical key is ``"psychopy_window"``
+                (used by EyeTracker); devices that do not need anything from
+                context ignore the argument.
+
+        Returns:
+            ``self`` on success, or ``None`` if the device should be skipped
+            (e.g. a wearable that failed to connect).
+        """
+        self.connect()
+        if (self.has_capability(DeviceCapability.STREAM)
+                and not self.has_capability(DeviceCapability.RECORD)):
+            self.start()
+        return self
+
+    def on_task_reconnect(self) -> None:
+        """Hook called by DeviceManager before each task starts.
+
+        No-op by default. Override for wearables or other devices whose
+        connection may have dropped between tasks.
+        """
+        pass
+
+    def on_session_reset(self) -> bool:
+        """Hook called when the operator requests a device reset.
+
+        No-op by default; returns ``True`` to indicate nothing needed doing.
+        Override for devices that support an operator-driven reset
+        (e.g. Mbient ``reset_and_reconnect``).
+
+        Returns:
+            True on success, False otherwise.
+        """
+        return True
+
+    def frame_preview(self) -> ByteString:
+        """Return a single preview frame as encoded image bytes.
+
+        Default implementation raises; override on devices that declare the
+        ``CAMERA_PREVIEW`` capability.
+        """
+        raise CameraPreviewException(
+            f"Device {self.device_id} does not support frame preview."
+        )

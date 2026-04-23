@@ -1,7 +1,7 @@
 import os.path as op
 import threading
 import logging
-from typing import List, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Tuple
 
 import numpy as np
 
@@ -30,9 +30,6 @@ class EyeTracker(Device):
         win=None,
         with_lsl: bool = True,
     ) -> None:
-        if win is None:
-            raise Exception("Window should never be None.")
-
         super().__init__(device_args)
         self.tk = None  # Set by _connect_tracker(); stays None if connection fails
         self.IP = device_args.ip
@@ -42,12 +39,39 @@ class EyeTracker(Device):
         self.validation_area_proportion: Tuple[float, float] = device_args.validation_area_proportion()
         self.streamName = "EyeLink"
         self.with_lsl = with_lsl
-        mon = monitors.getAllMonitors()[0]
-        self.monitor_width, self.monitor_height = monitors.Monitor(mon).getSizePix()
         self.calibration_type = device_args.calibration_type()
         self.win = win
 
-        # Setup outlet stream info
+        self.monitor_width: Optional[int] = None
+        self.monitor_height: Optional[int] = None
+        self.stream_info = None
+
+        self.calibrated = True
+        self.recording = False
+        self.paused = True
+
+        if self.win is not None:
+            self.connect()
+
+    def bring_up(self, context: Mapping[str, Any]) -> Optional[Device]:
+        """Pull the PsychoPy window from context, then run the standard connect."""
+        self.win = context["psychopy_window"]
+        self.connect()
+        return self
+
+    def connect(self) -> None:
+        """Create the LSL outlet and connect to the EyeLink tracker.
+
+        Requires ``self.win`` to be set (via ``__init__`` or ``bring_up``).
+        """
+        if self.win is None:
+            raise RuntimeError(
+                "EyeTracker.connect() requires a PsychoPy window. "
+                "Pass win= to __init__ or supply psychopy_window in bring_up context."
+            )
+        mon = monitors.getAllMonitors()[0]
+        self.monitor_width, self.monitor_height = monitors.Monitor(mon).getSizePix()
+
         self.stream_info = set_stream_description(
             stream_info=StreamInfo(
                 "EyeLink", "Gaze", 13, self.sample_rate, "double64", self.outlet_id
@@ -83,16 +107,9 @@ class EyeTracker(Device):
 
         self.logger.debug(f'EyeLink: sample_rate={str(self.sample_rate)}')
 
-        self.calibrated = True
-        self.recording = False
-        self.paused = True
         self._connect_tracker()
         if self.tk is not None:
             self.state = DeviceState.CONNECTED
-
-    def connect(self) -> None:
-        """No-op: EyeTracker connects during ``__init__`` because it needs the PsychoPy window."""
-        pass
 
     def _connect_tracker(self):
         try:

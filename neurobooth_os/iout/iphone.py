@@ -10,12 +10,12 @@ from datetime import datetime
 import uuid
 import logging
 import time
-from typing import Dict, List, Tuple, Any, Optional, Union, ByteString
+from typing import Dict, List, Tuple, Any, Mapping, Optional, Union, ByteString
 from enum import IntEnum
 from hashlib import md5
 from base64 import b64decode
 
-from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState, CameraPreviewer
+from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 from neurobooth_os.iout.metadator import post_message, read_sensors
 from neurobooth_os.iout.stim_param_reader import IPhoneDeviceArgs
 from neurobooth_os.iout.usbmux import USBMux
@@ -93,7 +93,7 @@ def _handle_panic(func):
     return wrapper_panic
 
 
-class IPhone(Device, CameraPreviewer):
+class IPhone(Device):
     """
     Handles interactions with an iPhone device running the Neurobooth app.
     Intended Lifecycle:
@@ -104,7 +104,11 @@ class IPhone(Device, CameraPreviewer):
     At any point during the lifecycle a panic may occur if an error is encountered. This will disconnect the iPhone.
     """
 
-    capabilities = DeviceCapability.RECORD | DeviceCapability.CAMERA_PREVIEW
+    capabilities = (
+        DeviceCapability.RECORD
+        | DeviceCapability.RECORD_PER_TASK
+        | DeviceCapability.CAMERA_PREVIEW
+    )
 
     # Constants for interfacing with the app
     TYPE_MESSAGE = 101
@@ -518,6 +522,10 @@ class IPhone(Device, CameraPreviewer):
 
         if DEBUG_LOGGING:
             self.logger.debug(f'LSL Push: {lsl_sample}')
+
+    def bring_up(self, context: Mapping[str, Any]) -> Optional[Device]:
+        """Connect to the iPhone; return ``None`` if the handshake fails."""
+        return self if self.connect() else None
 
     def connect(self) -> bool:
         """

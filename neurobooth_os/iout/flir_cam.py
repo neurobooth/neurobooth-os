@@ -16,7 +16,7 @@ from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 from neurobooth_os.msg.messages import DeviceInitialization, Request
-from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState, CameraPreviewer
+from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 import neurobooth_os.iout.metadator as meta
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
@@ -27,9 +27,13 @@ class FlirException(Exception):
         super().__init__(*args, **kwargs)
 
 
-class VidRec_Flir(Device, CameraPreviewer):
+class VidRec_Flir(Device):
 
-    capabilities = DeviceCapability.RECORD | DeviceCapability.CAMERA_PREVIEW
+    capabilities = (
+        DeviceCapability.RECORD
+        | DeviceCapability.RECORD_PER_TASK
+        | DeviceCapability.CAMERA_PREVIEW
+    )
 
     def __init__(
         self,
