@@ -119,7 +119,9 @@ class DeviceManager:
             self.logger.debug(f'Device Manager Starting: {device_id}')
             self.logger.debug(f'Device Manager Starting with args: {device_args}')
             device_cls: Type[Device] = device_args.instance_device_class()
-            device = device_cls(device_args).bring_up(context)
+            # Pass device_args as a keyword so Device subclasses with extra
+            # positional parameters (e.g. IPhone's name) still bind correctly.
+            device = device_cls(device_args=device_args).bring_up(context)
             if device is None:
                 self.logger.warning(f'Device Manager Failed to Start: {device_id}')
                 return

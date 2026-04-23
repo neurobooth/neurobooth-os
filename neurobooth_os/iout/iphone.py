@@ -193,7 +193,7 @@ class IPhone(Device):
     MESSAGE_TYPES = set(MESSAGE_TYPES)
     MESSAGE_KEYS = {"MessageType", "SessionID", "TimeStamp", "Message"}
 
-    def __init__(self, name, sess_id="", mock=False, device_args: IPhoneDeviceArgs = None, enable_timeout_exceptions=False):
+    def __init__(self, name="IPhoneFrameIndex", sess_id="", mock=False, device_args: IPhoneDeviceArgs = None, enable_timeout_exceptions=False):
         super().__init__(device_args)
         self.connected = False
         self.tag = 0
