@@ -3,11 +3,17 @@
 Runs RC user interface for controlling a neurobooth session
 """
 import base64
+import ctypes
+import json
+import logging
+import msvcrt
 import os
 import os.path as op
-import logging
 import sys
+import threading
 import time as time_mod
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Dict, Optional, List
 
 import cv2
@@ -27,12 +33,369 @@ from neurobooth_os.iout.metadator import LogSession
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
 from neurobooth_os.msg.messages import FramePreviewReply
-from util.nb_types import Subject
+from neurobooth_os.util.nb_types import Subject
 from neurobooth_os.session_controller import (
     SessionState, SessionController, SessionEventListener, VersionMismatchError,
     get_nodes, resize_frame_preview,
     create_session_dict, request_frame_preview,
 )
+
+
+_GUI_LOCK_FD: Optional[int] = None
+_GUI_LOCK_PATH: Optional[str] = None
+
+
+@dataclass
+class GuiLockResult:
+    """Outcome of attempting to acquire the single-instance GUI lock."""
+    acquired: bool
+    path: str
+    holder_pid: Optional[int] = None
+    holder_started: Optional[str] = None
+    reason: Optional[str] = None
+
+
+def _gui_lock_path() -> str:
+    base = os.environ.get("NB_INSTALL", os.path.expanduser("~"))
+    return os.path.join(base, "gui.lock")
+
+
+def _read_lock_holder_info(path: str) -> "tuple[Optional[int], Optional[str]]":
+    """Read PID/start from gui.lock without contending for the lock."""
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(1)
+            raw = fh.read()
+        data = json.loads(raw.decode("utf-8"))
+        pid = data.get("pid")
+        started = data.get("started")
+        return (
+            int(pid) if pid is not None else None,
+            str(started) if started is not None else None,
+        )
+    except (OSError, ValueError, UnicodeDecodeError):
+        return (None, None)
+
+
+def _acquire_gui_lock() -> GuiLockResult:
+    """Acquire the single-instance GUI lock. Keeps the fd open for process lifetime."""
+    global _GUI_LOCK_FD, _GUI_LOCK_PATH
+
+    path = _gui_lock_path()
+
+    try:
+        fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
+    except OSError as e:
+        return GuiLockResult(acquired=False, path=path, reason=f"open_failed: {e}")
+
+    holder_pid, holder_started = _read_lock_holder_info(path)
+
+    try:
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+    except OSError:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        return GuiLockResult(
+            acquired=False, path=path,
+            holder_pid=holder_pid, holder_started=holder_started,
+            reason="locked",
+        )
+
+    started = datetime.now(timezone.utc).isoformat()
+    try:
+        payload = json.dumps({"pid": os.getpid(), "started": started}).encode("utf-8")
+        os.lseek(fd, 0, os.SEEK_SET)
+        os.write(fd, b" " + payload)
+        os.ftruncate(fd, 1 + len(payload))
+        os.fsync(fd)
+    except OSError as e:
+        _GUI_LOCK_FD = fd
+        _GUI_LOCK_PATH = path
+        return GuiLockResult(
+            acquired=True, path=path,
+            holder_pid=os.getpid(),
+            reason=f"io_failed: {e}",
+        )
+
+    _GUI_LOCK_FD = fd
+    _GUI_LOCK_PATH = path
+    return GuiLockResult(
+        acquired=True, path=path,
+        holder_pid=os.getpid(), holder_started=started,
+    )
+
+
+def _release_gui_lock(lock_state: Optional[GuiLockResult]) -> None:
+    """Release the GUI lock held by this process. Idempotent; no-op on None / not-acquired."""
+    global _GUI_LOCK_FD, _GUI_LOCK_PATH
+
+    if lock_state is None or not lock_state.acquired:
+        return
+
+    fd = _GUI_LOCK_FD
+    path = _GUI_LOCK_PATH
+    _GUI_LOCK_FD = None
+    _GUI_LOCK_PATH = None
+
+    if fd is not None:
+        try:
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        except OSError:
+            pass
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+
+    if path is not None:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+def _minimize_own_console() -> None:
+    """Minimize this process's attached cmd.exe console so it doesn't briefly
+    dominate the Z-order after a refused second-launch. No-op if we have no
+    attached console (e.g., launched under pythonw.exe).
+    """
+    kernel32 = ctypes.windll.kernel32
+    user32 = ctypes.windll.user32
+    HWND = ctypes.c_void_p
+    kernel32.GetConsoleWindow.argtypes = []
+    kernel32.GetConsoleWindow.restype = HWND
+    user32.ShowWindow.argtypes = [HWND, ctypes.c_int]
+    user32.ShowWindow.restype = ctypes.c_bool
+
+    console_hwnd = kernel32.GetConsoleWindow()
+    if console_hwnd:
+        SW_MINIMIZE = 6
+        user32.ShowWindow(console_hwnd, SW_MINIMIZE)
+
+
+def _show_already_running_popup() -> None:
+    """Native Windows MessageBox; fallback only when the running GUI's window cannot be found."""
+    MB_ICONERROR = 0x10
+    MB_TOPMOST = 0x40000
+    ctypes.windll.user32.MessageBoxW(
+        0,
+        "Neurobooth is already running. Please use the existing window.",
+        "Neurobooth",
+        MB_ICONERROR | MB_TOPMOST,
+    )
+
+
+# Named kernel event used for IPC between a rejected second-launch (GUI-B) and
+# the already-running GUI (GUI-A). GUI-A holds a handle for its lifetime; GUI-B
+# opens and signals the event, which wakes GUI-A's listener thread, which posts
+# an event into the FreeSimpleGUI event loop, which restores/raises the window
+# from WITHIN GUI-A's own process. A process raising its own window is the
+# reliable workaround for Windows foreground-lock refusing cross-process
+# SetForegroundWindow — especially when combined with AllowSetForegroundWindow
+# called by GUI-B to grant GUI-A focus-change permission.
+_ACTIVATE_EVENT_NAME = "Local\\NeuroboothActivateGui"
+_GUI_ACTIVATE_EVENT_HANDLE: Optional[int] = None
+
+
+def _open_or_create_activation_event() -> Optional[int]:
+    """Create (or open) the named auto-reset event used for cross-process activation."""
+    kernel32 = ctypes.windll.kernel32
+    kernel32.CreateEventW.argtypes = [
+        ctypes.c_void_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_wchar_p,
+    ]
+    kernel32.CreateEventW.restype = ctypes.c_void_p
+    # bManualReset=False (auto-reset), bInitialState=False (non-signaled).
+    handle = kernel32.CreateEventW(None, False, False, _ACTIVATE_EVENT_NAME)
+    return handle or None
+
+
+def _signal_gui_to_activate(holder_pid: Optional[int],
+                            logger: Optional[logging.Logger] = None) -> bool:
+    """From GUI-B: grant foreground authority to GUI-A and signal it to raise itself."""
+    if holder_pid is None:
+        return False
+
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+
+    user32.AllowSetForegroundWindow.argtypes = [ctypes.c_ulong]
+    user32.AllowSetForegroundWindow.restype = ctypes.c_bool
+    kernel32.OpenEventW.argtypes = [ctypes.c_ulong, ctypes.c_bool, ctypes.c_wchar_p]
+    kernel32.OpenEventW.restype = ctypes.c_void_p
+    kernel32.SetEvent.argtypes = [ctypes.c_void_p]
+    kernel32.SetEvent.restype = ctypes.c_bool
+    kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+    kernel32.CloseHandle.restype = ctypes.c_bool
+    kernel32.GetLastError.argtypes = []
+    kernel32.GetLastError.restype = ctypes.c_ulong
+
+    granted = bool(user32.AllowSetForegroundWindow(holder_pid))
+
+    EVENT_MODIFY_STATE = 0x0002
+    handle = kernel32.OpenEventW(EVENT_MODIFY_STATE, False, _ACTIVATE_EVENT_NAME)
+    if not handle:
+        if logger:
+            logger.info(
+                "Activate IPC: OpenEventW failed err=%s grant=%s",
+                kernel32.GetLastError(), granted,
+            )
+        return False
+
+    signaled = bool(kernel32.SetEvent(handle))
+    kernel32.CloseHandle(handle)
+
+    if logger:
+        logger.info(
+            "Activate IPC: grant=%s open=%s set=%s pid=%s",
+            granted, True, signaled, holder_pid,
+        )
+    return signaled
+
+
+def _start_activation_listener(window,
+                               logger: Optional[logging.Logger] = None) -> Optional[threading.Thread]:
+    """From GUI-A: create the activation event and spawn a listener thread.
+
+    The listener blocks on WaitForSingleObject and, when signaled by GUI-B,
+    posts ``-activate-request-`` into the FreeSimpleGUI event loop so the
+    main thread can restore and raise the window from within this process.
+    """
+    global _GUI_ACTIVATE_EVENT_HANDLE
+
+    kernel32 = ctypes.windll.kernel32
+    kernel32.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+    kernel32.WaitForSingleObject.restype = ctypes.c_ulong
+
+    handle = _open_or_create_activation_event()
+    if handle is None:
+        if logger:
+            logger.warning("Activation event creation failed; second-launch raise disabled")
+        return None
+
+    _GUI_ACTIVATE_EVENT_HANDLE = handle
+    INFINITE = 0xFFFFFFFF
+    WAIT_OBJECT_0 = 0
+
+    def _listener():
+        while True:
+            result = kernel32.WaitForSingleObject(handle, INFINITE)
+            if result != WAIT_OBJECT_0:
+                break
+            try:
+                window.write_event_value("-activate-request-", True)
+            except Exception:
+                break  # window closed / torn down
+
+    thread = threading.Thread(target=_listener, daemon=True,
+                              name="GuiActivationListener")
+    thread.start()
+    if logger:
+        logger.info("Activation listener started")
+    return thread
+
+
+def _raise_self_window(window, logger: Optional[logging.Logger] = None) -> None:
+    """From GUI-A: raise this process's own main window.
+
+    Called on the main thread in response to ``-activate-request-``. The
+    approach that's actually reliable even against foreground-lock is to
+    briefly set tkinter's ``-topmost`` attribute on our own top-level window
+    and schedule it back off a moment later — that forces visible Z-order
+    (topmost renders above all non-topmost windows) regardless of whether
+    SetForegroundWindow is honored. 1-second dwell gives the operator time
+    to notice and click before the window drops back into the normal layer.
+    """
+    if logger:
+        logger.info("Raise self: handling -activate-request-")
+
+    tk_ok = False
+    try:
+        window.TKroot.deiconify()          # un-minimize if minimized
+        window.TKroot.lift()               # raise in tk Z-order
+        window.TKroot.attributes('-topmost', True)
+        # Schedule un-topmost via tk after(). Runs on the main thread.
+        window.TKroot.after(1000, lambda: window.TKroot.attributes('-topmost', False))
+        window.TKroot.focus_force()
+        tk_ok = True
+    except Exception as e:
+        if logger:
+            logger.info("Raise self: tk path failed: %s", e)
+
+    try:
+        frame_str = window.TKroot.wm_frame()
+        hwnd = int(frame_str, 0)
+    except (ValueError, AttributeError, TypeError):
+        if logger:
+            logger.info("Raise self: could not resolve own HWND (tk_ok=%s)", tk_ok)
+        return
+
+    user32 = ctypes.windll.user32
+    HWND = ctypes.c_void_p
+    user32.SetForegroundWindow.argtypes = [HWND]
+    user32.SetForegroundWindow.restype = ctypes.c_bool
+    user32.ShowWindow.argtypes = [HWND, ctypes.c_int]
+    user32.ShowWindow.restype = ctypes.c_bool
+    user32.IsIconic.argtypes = [HWND]
+    user32.IsIconic.restype = ctypes.c_bool
+
+    SW_RESTORE = 9
+    iconic = bool(user32.IsIconic(hwnd))
+    if iconic:
+        user32.ShowWindow(hwnd, SW_RESTORE)
+
+    # SwitchToThisWindow simulates Alt+Tab and tends to bypass foreground-lock
+    # more reliably than SetForegroundWindow alone. Undocumented by Microsoft
+    # but present on every Windows since XP.
+    switch_called = False
+    try:
+        switch_to = user32.SwitchToThisWindow
+        switch_to.argtypes = [HWND, ctypes.c_bool]
+        switch_to.restype = None
+        switch_to(hwnd, True)
+        switch_called = True
+    except (AttributeError, OSError):
+        pass
+
+    sfw_result = bool(user32.SetForegroundWindow(hwnd))
+
+    # Flash the taskbar unconditionally. FlashWindowEx is a no-op when the
+    # window already has focus, so calling it regardless of sfw_result costs
+    # nothing on the success path and gives the operator an attention
+    # indicator when Windows silently revoked the foreground transfer
+    # (sfw_result=True is a point-in-time ack, not a durable guarantee).
+    # FLASHW_TIMERNOFG keeps the taskbar button highlighted until the window
+    # comes to the foreground (i.e., until the user clicks it).
+    class FLASHWINFO(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", ctypes.c_uint),
+            ("hwnd", HWND),
+            ("dwFlags", ctypes.c_uint),
+            ("uCount", ctypes.c_uint),
+            ("dwTimeout", ctypes.c_uint),
+        ]
+    FLASHW_ALL = 0x3
+    FLASHW_TIMERNOFG = 0xC
+    fi = FLASHWINFO(
+        cbSize=ctypes.sizeof(FLASHWINFO),
+        hwnd=hwnd,
+        dwFlags=FLASHW_ALL | FLASHW_TIMERNOFG,
+        uCount=0,
+        dwTimeout=0,
+    )
+    user32.FlashWindowEx.argtypes = [ctypes.POINTER(FLASHWINFO)]
+    user32.FlashWindowEx.restype = ctypes.c_bool
+    user32.FlashWindowEx(ctypes.byref(fi))
+
+    if logger:
+        logger.info(
+            "Raise self: hwnd=%s iconic=%s SwitchToThisWindow=%s "
+            "SetForegroundWindow=%s tk_ok=%s",
+            hex(hwnd), iconic, switch_called, sfw_result, tk_ok,
+        )
 
 
 def setup_log(sg_handler=None):
@@ -306,6 +669,7 @@ def gui(logger):
 
         window = _win_gen(_init_layout, conn)
         gui_listener.set_window(window)
+        _start_activation_listener(window, logger)
 
         plttr = stream_plotter()
         log_sess = LogSession(application_version=state.release_version, config_version=state.config_version)
@@ -315,7 +679,13 @@ def gui(logger):
             ############################################################
             # Initial Window -> Select subject, study and tasks
             ############################################################
-            if event == "study_id":
+            if event == "-activate-request-":
+                # A rejected second-launch signaled us via the IPC event.
+                # Raise our own window from this process (bypasses Windows
+                # foreground-lock in a way that cross-process calls can't).
+                _raise_self_window(window, logger)
+
+            elif event == "study_id":
                 study_id = values[event]
                 log_sess.study_id = study_id
                 _get_collections(window, study_id)
@@ -637,11 +1007,34 @@ def main():
     """The starting point of Neurobooth"""
     logger = None
     exit_code = 0
+    lock_state: Optional[GuiLockResult] = None
     try:
         cfg.load_config_by_service_name("CTR")  # Load Neurobooth-OS configuration
         enable_crash_handler("CTR")
         logger = setup_log(sg_handler=Handler().setLevel(logging.DEBUG))
         logger.debug("Starting GUI")
+
+        # Must precede gui(): gui() calls meta.clear_msg_queue, which corrupts
+        # the shared queue when a second instance runs while the first is alive.
+        lock_state = _acquire_gui_lock()
+        if not lock_state.acquired:
+            _minimize_own_console()
+            ipc_ok = _signal_gui_to_activate(lock_state.holder_pid, logger)
+            if not ipc_ok:
+                # IPC failed (GUI-A mid-startup, listener not ready, etc.).
+                # Fall back to a plain popup so the operator sees something.
+                _show_already_running_popup()
+            logger.warning(
+                "Refusing to start: another GUI instance holds %s "
+                "(pid=%s, started=%s, reason=%s, ipc=%s)",
+                lock_state.path, lock_state.holder_pid,
+                lock_state.holder_started, lock_state.reason, ipc_ok,
+            )
+            exit_code = 1
+            return
+        if lock_state.reason:
+            logger.warning("GUI lock acquired with warning: %s", lock_state.reason)
+
         gui(logger)
         logger.debug("Stopping GUI")
     except Exception as argument:
@@ -651,6 +1044,7 @@ def main():
                         exc_info=sys.exc_info())
         exit_code = 1
     finally:
+        _release_gui_lock(lock_state)
         logging.shutdown()
         os._exit(exit_code)
 
