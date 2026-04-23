@@ -34,6 +34,7 @@ class DeviceCapability(Flag):
     WEARABLE = auto()         # BLE/wireless; may disconnect unexpectedly, supports reconnect
     CALIBRATABLE = auto()     # Supports calibration (eyelink)
     RECORD_PER_TASK = auto()  # Recording is driven by the per-task lifecycle (cameras)
+    RESETTABLE = auto()       # Participates in operator-triggered reset (mbient)
 
 
 class DeviceState(Enum):

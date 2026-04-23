@@ -317,15 +317,19 @@ class DeviceManager:
                 stream.on_task_reconnect()
 
     def reset_devices(self) -> Dict[str, bool]:
-        """Call ``on_session_reset`` on every Device-backed stream.
+        """Call ``on_session_reset`` on devices that declare ``RESETTABLE``.
+
+        Devices opt in via the ``RESETTABLE`` capability so the operator's
+        "Reset" result only lists devices that actually performed a reset
+        (today: Mbients). Other devices inherit the ``on_session_reset``
+        default but are never invoked.
 
         Returns:
-            Mapping of device name to whether the reset succeeded (defaults to
-            ``True`` for devices without an override).
+            Mapping of device name to whether the reset succeeded.
         """
         results: Dict[str, bool] = {}
         for name, stream in self.streams.items():
-            if self._is_device(stream):
+            if self._is_device(stream) and stream.has_capability(DeviceCapability.RESETTABLE):
                 results[name] = stream.on_session_reset()
         return results
 

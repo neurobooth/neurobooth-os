@@ -455,7 +455,11 @@ class Mbient(Device):
     If the sensor disconnects at any point, a reconnect will be attempted.
     """
 
-    capabilities = DeviceCapability.STREAM | DeviceCapability.WEARABLE
+    capabilities = (
+        DeviceCapability.STREAM
+        | DeviceCapability.WEARABLE
+        | DeviceCapability.RESETTABLE
+    )
 
     # Class variables to ensure that the BLE scan only happens during one connect() call.
     # Will need to switch to a multiprocess.Manager if intending to use multiprocessing.

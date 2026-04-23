@@ -136,17 +136,39 @@ class TestDeviceManagerHooks:
 
         device.on_task_reconnect.assert_called_once()
 
+    def test_reset_devices_only_calls_resettable_devices(self, dm):
+        """reset_devices must filter by RESETTABLE so the operator's UI only
+        shows devices that actually performed a reset (today: Mbients).
+        """
+        resettable = MockStreamDevice(device_id='resettable')
+        resettable.capabilities = (
+            MockStreamDevice.capabilities | DeviceCapability.RESETTABLE
+        )
+        resettable.on_session_reset = MagicMock(return_value=True)
+
+        plain = MockStreamDevice(device_id='plain')
+        plain.on_session_reset = MagicMock(return_value=True)
+
+        dm.streams = {'resettable': resettable, 'plain': plain}
+
+        result = dm.reset_devices()
+
+        assert result == {'resettable': True}
+        plain.on_session_reset.assert_not_called()
+
     def test_reset_devices_collects_return_values(self, dm):
         d1 = MockStreamDevice(device_id='d1')
         d2 = MockStreamDevice(device_id='d2')
-        d1.on_session_reset = MagicMock(return_value=True)
-        d2.on_session_reset = MagicMock(return_value=False)
+        for d, ok in ((d1, True), (d2, False)):
+            d.capabilities = MockStreamDevice.capabilities | DeviceCapability.RESETTABLE
+            d.on_session_reset = MagicMock(return_value=ok)
         dm.streams = {'d1': d1, 'd2': d2}
 
         assert dm.reset_devices() == {'d1': True, 'd2': False}
 
     def test_reset_devices_skips_non_device_streams(self, dm):
         device = MockStreamDevice()
+        device.capabilities = MockStreamDevice.capabilities | DeviceCapability.RESETTABLE
         dm.streams = {'device': device, 'raw_outlet': object()}
 
         result = dm.reset_devices()
@@ -321,3 +343,24 @@ class TestRecordPerTaskAssignment:
         from neurobooth_os.iout.eyelink_tracker import EyeTracker
         assert DeviceCapability.RECORD_PER_TASK not in EyeTracker.capabilities
         assert DeviceCapability.CALIBRATABLE in EyeTracker.capabilities
+
+
+class TestResettableAssignment:
+    """Only Mbient declares RESETTABLE — the capability exists so the operator
+    "Reset" result lists only devices that actually performed a reset.
+    """
+
+    def test_mbient_has_resettable(self):
+        from neurobooth_os.iout.mbient import Mbient
+        assert DeviceCapability.RESETTABLE in Mbient.capabilities
+
+    def test_cameras_are_not_resettable(self):
+        from neurobooth_os.iout.flir_cam import VidRec_Flir
+        from neurobooth_os.iout.webcam import VidRec_Webcam
+        from neurobooth_os.iout.camera_intel import VidRec_Intel
+        for cls in (VidRec_Flir, VidRec_Webcam, VidRec_Intel):
+            assert DeviceCapability.RESETTABLE not in cls.capabilities
+
+    def test_eyetracker_is_not_resettable(self):
+        from neurobooth_os.iout.eyelink_tracker import EyeTracker
+        assert DeviceCapability.RESETTABLE not in EyeTracker.capabilities
