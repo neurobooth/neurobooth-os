@@ -6,9 +6,9 @@ Covers the new surfaces: ``Device.bring_up`` default, the lifecycle hooks
 gating, ``MarkerStreamDevice`` delegation, and each ``DeviceArgs`` subclass's
 ``device_class()`` wiring.
 
-Backward-compat fallbacks (mouse string-match in ``DeviceArgs.instance_device_class``,
-legacy ``marker_stream()`` function, ``CameraPreviewer`` shim) are intentionally
-not tested — they are scheduled for removal in #708.
+Backward-compat fallbacks (mouse string-match in ``DeviceArgs.instance_device_class``
+and the legacy ``marker_stream()`` function) are intentionally not tested —
+they are scheduled for removal in #708.
 """
 
 import logging

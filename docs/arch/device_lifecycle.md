@@ -1,4 +1,4 @@
-change# Device Lifecycle
+# Device Lifecycle
 
 All hardware devices in neurobooth-os inherit from a common `Device` base class
 defined in `neurobooth_os/iout/device.py`. This document explains the design,
@@ -16,51 +16,47 @@ interface that `DeviceManager` can call generically.
 ## Class hierarchy
 
 ```
-Device (ABC)                        CameraPreviewer (mixin)
-  |                                       |
-  +-- MouseStream                         |
-  +-- MicStream                           |
-  +-- Mbient                              |
-  +-- VidRec_Intel                        |
-  +-- EyeTracker                          |
-  +-- VidRec_Flir  --------(also)--------+
-  +-- VidRec_Webcam -------(also)--------+
-  +-- IPhone  -------------(also)--------+
+Device (ABC)
+  |
+  +-- MouseStream
+  +-- MicStream
+  +-- Mbient
+  +-- VidRec_Intel
+  +-- EyeTracker
+  +-- VidRec_Flir
+  +-- VidRec_Webcam
+  +-- IPhone
+  +-- MarkerStreamDevice
 ```
 
-Camera devices inherit from both `Device` and `CameraPreviewer` using Python's
-multiple inheritance. `CameraPreviewer` is a mixin that adds the
-`frame_preview()` method; it has no `__init__` and no state, so there are no
-Method Resolution Order (MRO) conflicts. All device constructors call
-`super().__init__(device_args)`, which resolves to `Device.__init__` via
-Python's C3 linearization algorithm.
+Single inheritance from `Device`. Optional abilities -- frame previews, per-task
+recording, wearable reconnect, operator-triggered reset -- are expressed as
+entries in the `capabilities` flag on each subclass, not as separate base
+classes. `DeviceManager` discovers who supports what by querying those flags.
 
-### Method Resolution Order (MRO)
+### Frame previews without a mixin
 
-When a class inherits from multiple parents, Python needs a rule for deciding
-which parent's method to use. The Method Resolution Order (MRO) is the sequence
-Python searches when resolving an attribute or method call. Python computes it
-using C3 linearization, which guarantees a consistent left-to-right,
-depth-first ordering that respects the inheritance graph.
-
-For a camera device like `VidRec_Flir(Device, CameraPreviewer)`, the MRO is:
-
-```
-VidRec_Flir -> Device -> ABC -> CameraPreviewer -> object
-```
-
-When `VidRec_Flir.__init__` calls `super().__init__(device_args)`, Python walks
-the MRO and finds `Device.__init__` first. `CameraPreviewer` has no `__init__`,
-so there is no conflict. If `CameraPreviewer` ever gained an `__init__`, the
-`super()` chain would call it automatically -- which is why `super()` is
-preferred over explicit `Device.__init__(self, ...)` calls.
-
-You can inspect the MRO of any class at runtime:
+Frame previews are the common example: any subclass that declares
+`CameraPreviewCapability.CAMERA_PREVIEW` overrides `Device.frame_preview`
+directly. The base class provides a default that raises
+`CameraPreviewException`, so a device that sets the flag without providing an
+override fails loudly rather than silently returning nothing.
 
 ```python
->>> VidRec_Flir.__mro__
-(<class 'VidRec_Flir'>, <class 'Device'>, <class 'ABC'>, <class 'CameraPreviewer'>, <class 'object'>)
+class VidRec_Flir(Device):
+    capabilities = (
+        DeviceCapability.RECORD
+        | DeviceCapability.RECORD_PER_TASK
+        | DeviceCapability.CAMERA_PREVIEW
+    )
+
+    def frame_preview(self) -> ByteString:
+        ...  # encode and return a single frame
 ```
+
+`DeviceManager.camera_frame_preview(device_id)` then looks the device up by
+name, checks for the capability, and calls `frame_preview()` -- no
+`isinstance` check, no imports of specific device classes.
 
 ## Abstract Base Class (ABC)
 
@@ -158,8 +154,12 @@ class DeviceCapability(Flag):
 `Flag` is a Python enum type that supports bitwise combination with `|`:
 
 ```python
-class VidRec_Flir(Device, CameraPreviewer):
-    capabilities = DeviceCapability.RECORD | DeviceCapability.CAMERA_PREVIEW
+class VidRec_Flir(Device):
+    capabilities = (
+        DeviceCapability.RECORD
+        | DeviceCapability.RECORD_PER_TASK
+        | DeviceCapability.CAMERA_PREVIEW
+    )
 ```
 
 `DeviceManager` uses these flags to query devices generically:
@@ -258,8 +258,9 @@ defined with device-specific implementations.
 
 ## Adding a new device
 
-1. Create a class that inherits from `Device` (and `CameraPreviewer` if it
-   supports frame previews).
+1. Create a class that inherits from `Device`. If it supports frame previews,
+   declare `DeviceCapability.CAMERA_PREVIEW` in its `capabilities` flag and
+   override `Device.frame_preview`.
 2. Set `capabilities` as a class variable.
 3. Override `connect()` to set up hardware and create the LSL outlet.
 4. Override `start()` and `stop()`.
@@ -282,7 +283,7 @@ idempotency.
 
 | File | Contents |
 |------|----------|
-| `neurobooth_os/iout/device.py` | `Device`, `DeviceCapability`, `DeviceState`, `CameraPreviewer` |
+| `neurobooth_os/iout/device.py` | `Device`, `DeviceCapability`, `DeviceState`, `CameraPreviewException` |
 | `neurobooth_os/iout/lsl_streamer.py` | `DeviceManager`, factory functions |
 | `neurobooth_os/iout/mock_device.py` | Mock implementations for testing |
 | `tests/pytest/test_device_lifecycle.py` | Lifecycle tests |
