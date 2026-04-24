@@ -396,7 +396,8 @@ touch indirectly:
 
 - **`create_streams(win, task_params)`** — iterates the unique `DeviceArgs`
   across all tasks for the session, instantiates each via
-  `device_args.instance_device_class()(device_args)`, and calls `bring_up`.
+  `type(device_args).device_class()(device_args=device_args)`, and calls
+  `bring_up`.
 - **`start_recording_devices`** / **`stop_recording_devices`** — operate on
   devices with `RECORD_PER_TASK` in parallel.
 - **`reconnect_for_task`** — calls `on_task_reconnect()` on every Device-backed
