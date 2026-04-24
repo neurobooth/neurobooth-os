@@ -5,9 +5,6 @@ Covers the new surfaces: ``Device.bring_up`` default, the lifecycle hooks
 ``DeviceManager`` hook dispatch, capability-based ``camera_frame_preview``
 gating, ``MarkerStreamDevice`` delegation, and each ``DeviceArgs`` subclass's
 ``device_class()`` wiring.
-
-The legacy ``marker_stream()`` function is intentionally not tested — it is
-scheduled for removal in #708.
 """
 
 import logging
