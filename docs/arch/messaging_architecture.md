@@ -229,7 +229,12 @@ The same function is used for other dynamic imports with different allowlists:
 | `read_next_message` | `_ALLOWED_MESSAGE_MODULES` | `msg.messages` |
 | `_dynamic_parse` (YAML config parsers) | `_ALLOWED_PARSER_MODULES` | `iout.stim_param_reader`, `tasks.MOT.task` |
 | `build_task` (task constructors) | `_ALLOWED_TASK_MODULES` | `tasks` (prefix, covers all submodules) |
-| `DeviceManager.create_streams` | `_ALLOWED_DEVICE_MODULES` | `iout.lsl_streamer` |
+
+`DeviceManager.create_streams` previously used an `_ALLOWED_DEVICE_MODULES`
+allowlist to resolve a `device_start_function` string from each device YAML.
+That mechanism was retired in #696 — each `DeviceArgs` subclass now declares
+its concrete `Device` directly via `device_class()`, so no string-to-callable
+lookup happens at device startup.
 
 ## Message Lifecycle
 
