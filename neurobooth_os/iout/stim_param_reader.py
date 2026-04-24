@@ -169,10 +169,6 @@ class DeviceArgs(EnvArgs):
             "Define a DeviceArgs subclass that overrides device_class()."
         )
 
-    def instance_device_class(self) -> Type["Device"]:
-        """Resolve the Device class for this instance via :meth:`device_class`."""
-        return type(self).device_class()
-
 
 class MicYetiDeviceArgs(DeviceArgs):
 
