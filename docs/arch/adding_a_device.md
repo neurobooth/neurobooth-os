@@ -427,6 +427,3 @@ touch indirectly:
   flowing it through a YAML like every other device. If you're curious or
   want to pick it up, see the tracking issue for
   [pluggable-device cleanup](https://github.com/neurobooth/neurobooth-os/issues/708).
-- **`device_start_function` in `DeviceArgs`** is a dead field retained for
-  backward compatibility with older YAMLs; it will be removed once deployed
-  configs have migrated.

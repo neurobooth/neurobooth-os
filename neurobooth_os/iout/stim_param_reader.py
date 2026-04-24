@@ -130,7 +130,6 @@ class DeviceArgs(EnvArgs):
 
     # Attributes required for program execution
     device_id: str                                  # Unique identifier for device
-    device_start_function: Optional[str] = ""       # Deprecated: kept for backwards compatibility with legacy configs
     arg_parser: str                 # A string representing the function that parses the device arguments into objects
     sensor_ids: Optional[List[str]]                 # List of unique identifiers for sensors contained in device
     sensor_array: List[SerializeAsAny[SensorArgs]] = []     # List of the SensorArgs for sensors in device
@@ -164,12 +163,6 @@ class DeviceArgs(EnvArgs):
         Each ``DeviceArgs`` subclass overrides this with a lazy import of its
         concrete Device, which avoids import cycles and lets acquisition nodes
         avoid loading device modules they don't use.
-
-        The base implementation dispatches on the legacy
-        ``device_start_function`` field to preserve backwards compatibility
-        with configs that use ``arg_parser: iout.stim_param_reader.py::DeviceArgs()``
-        (currently only the Mouse device). New devices should declare their own
-        ``DeviceArgs`` subclass and override this method directly.
         """
         raise NotImplementedError(
             f"{cls.__name__} has no device_class binding. "
@@ -177,21 +170,8 @@ class DeviceArgs(EnvArgs):
         )
 
     def instance_device_class(self) -> Type["Device"]:
-        """Resolve the Device class for this instance.
-
-        Preference order:
-            1. A subclass that overrides :meth:`device_class`.
-            2. Legacy fallback via :attr:`device_start_function` for configs
-               still using the base ``DeviceArgs`` (Mouse).
-        """
-        try:
-            return type(self).device_class()
-        except NotImplementedError:
-            fn = (self.device_start_function or "").lower()
-            if "start_mouse_stream" in fn:
-                from neurobooth_os.iout.mouse_tracker import MouseStream
-                return MouseStream
-            raise
+        """Resolve the Device class for this instance via :meth:`device_class`."""
+        return type(self).device_class()
 
 
 class MicYetiDeviceArgs(DeviceArgs):
@@ -452,9 +432,6 @@ class MouseDeviceArgs(DeviceArgs):
 
     Mouse has no device-specific fields; this subclass exists solely to
     provide the ``device_class`` binding that drives pluggable instantiation.
-    Its addition lets the Mouse YAML move from ``arg_parser: DeviceArgs`` to
-    ``arg_parser: MouseDeviceArgs``, removing the only remaining consumer of
-    the legacy ``device_start_function`` fallback in ``instance_device_class``.
     """
 
     @classmethod

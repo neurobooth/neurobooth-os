@@ -6,9 +6,8 @@ Covers the new surfaces: ``Device.bring_up`` default, the lifecycle hooks
 gating, ``MarkerStreamDevice`` delegation, and each ``DeviceArgs`` subclass's
 ``device_class()`` wiring.
 
-Backward-compat fallbacks (mouse string-match in ``DeviceArgs.instance_device_class``
-and the legacy ``marker_stream()`` function) are intentionally not tested —
-they are scheduled for removal in #708.
+The legacy ``marker_stream()`` function is intentionally not tested — it is
+scheduled for removal in #708.
 """
 
 import logging
@@ -269,11 +268,7 @@ class TestMarkerStreamDevice:
 
 
 class TestDeviceArgsClassRegistry:
-    """Each DeviceArgs subclass resolves to the correct concrete Device.
-
-    These are the primary path; the legacy mouse string-match fallback in the
-    base class is intentionally not tested (tracked for removal in #708).
-    """
+    """Each DeviceArgs subclass resolves to the correct concrete Device."""
 
     def test_mic_yeti_args(self):
         from neurobooth_os.iout.stim_param_reader import MicYetiDeviceArgs
