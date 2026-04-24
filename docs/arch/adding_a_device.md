@@ -420,11 +420,3 @@ touch indirectly:
 | `neurobooth_os/iout/mock_device.py`       | Mock implementations for testing                        |
 | `tests/pytest/test_device_lifecycle.py`   | Base-class lifecycle tests                              |
 | `tests/pytest/test_device_pluggable.py`   | `bring_up`, hooks, capability dispatch, registry tests  |
-
-## Known open items
-
-- **Marker stream is presentation-node-only.** `DeviceManager.create_streams`
-  still hard-codes the marker stream at the presentation node instead of
-  flowing it through a YAML like every other device. If you're curious or
-  want to pick it up, see the tracking issue for
-  [pluggable-device cleanup](https://github.com/neurobooth/neurobooth-os/issues/708).

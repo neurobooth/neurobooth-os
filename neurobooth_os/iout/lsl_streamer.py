@@ -87,8 +87,6 @@ class DeviceManager:
         self.assigned_devices = SERVER_ASSIGNMENTS[node_name]
         self.logger.debug(f'Devices assigned to {node_name}: {self.assigned_devices}')
 
-        self.marker_stream = node_name in ['presentation']
-
     def create_streams(self, win=None, task_params=None) -> None:
         """Initialize devices and LSL streams for this node's assigned devices.
 
@@ -97,6 +95,13 @@ class DeviceManager:
         ``Device`` class from the ``DeviceArgs`` subclass, instantiates it,
         and hands it a shared ``context`` dict.
 
+        Most devices are task-referenced, so their fully-populated
+        ``DeviceArgs`` (with ``sensor_array`` filled in by ``build_task``)
+        come via ``task_params``. Session-level devices that no task
+        references — e.g. the marker — are discovered through
+        ``metadator.read_devices`` and brought up with whatever their YAML
+        declares.
+
         Args:
             win: PsychoPy window (required for EyeTracker on the presentation node).
             task_params: Mapping of task IDs to TaskArgs. Used to determine which
@@ -104,13 +109,19 @@ class DeviceManager:
         """
         context: Mapping[str, Any] = {"psychopy_window": win}
 
-        if self.marker_stream:
-            from neurobooth_os.iout.marker import MarkerStreamDevice
-            self.logger.debug('Device Manager Starting: marker')
-            marker = MarkerStreamDevice()
-            marker.connect()
-            marker.start()
-            self.streams[MarkerStreamDevice.DEVICE_ID] = marker
+        task_device_args = DeviceManager._get_unique_devices(task_params)
+        session_device_args: Dict[str, DeviceArgs] = {}
+        missing = [d for d in self.assigned_devices if d not in task_device_args]
+        if missing:
+            registry = meta.read_devices()
+            for device_id in missing:
+                if device_id in registry:
+                    session_device_args[device_id] = registry[device_id]
+                else:
+                    self.logger.warning(
+                        f'Device Manager: assigned device "{device_id}" has no YAML entry; skipping.'
+                    )
+        all_device_args = {**task_device_args, **session_device_args}
 
         register_lock = threading.Lock()
 
@@ -130,11 +141,11 @@ class DeviceManager:
 
         with ThreadPoolExecutor(max_workers=N_ASYNC_THREADS) as executor:
             futures = []
-            kwargs: Dict[str, DeviceArgs] = DeviceManager._get_unique_devices(task_params)
-            for device_key, device_args in kwargs.items():
-                if device_key not in self.assigned_devices:
+            for device_id in self.assigned_devices:
+                if device_id not in all_device_args:
                     continue
-                if device_key in ASYNC_STARTUP:
+                device_args = all_device_args[device_id]
+                if device_id in ASYNC_STARTUP:
                     futures.append(executor.submit(start_and_register_device, device_args))
                 else:  # Run sequentially if not specified as async
                     start_and_register_device(device_args)

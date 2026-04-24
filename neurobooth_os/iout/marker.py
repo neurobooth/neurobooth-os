@@ -5,6 +5,7 @@ from typing import Any, List, Mapping, Optional
 from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
+from neurobooth_os.iout.stim_param_reader import DeviceArgs
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.msg.messages import DeviceInitialization, Request
 import neurobooth_os.iout.metadator as meta
@@ -59,10 +60,9 @@ def marker_stream(name="Marker", outlet_id=None):
 class MarkerStreamDevice(Device):
     """Device wrapper around the LSL marker outlet.
 
-    The marker outlet has no hardware, sensors, or YAML config — it exists to
-    let tasks annotate the data stream. Wrapping it in a ``Device`` lets
-    ``DeviceManager`` treat it like any other stream instead of special-casing
-    the presentation node.
+    The marker outlet has no hardware — it exists to let tasks annotate the
+    data stream. Wrapping it in a ``Device`` lets ``DeviceManager`` treat it
+    like any other config-driven stream.
 
     Tasks call ``push_sample()`` directly on this object via the
     ``marker_outlet`` that ``STMSession`` forwards from ``DeviceManager.streams``.
@@ -70,15 +70,15 @@ class MarkerStreamDevice(Device):
 
     capabilities = DeviceCapability.STREAM
 
-    DEVICE_ID = "marker"
+    _DEFAULT_DEVICE_ID = "marker"
 
-    def __init__(self, name: str = "Marker", outlet_id: Optional[str] = None) -> None:
-        super().__init__(device_args=None)
-        self.device_id = self.DEVICE_ID
-        self.sensor_ids = [self.DEVICE_ID]
+    def __init__(self, device_args: Optional[DeviceArgs] = None,
+                 name: str = "Marker") -> None:
+        super().__init__(device_args)
+        if self.device_id is None:
+            self.device_id = self._DEFAULT_DEVICE_ID
+            self.sensor_ids = [self._DEFAULT_DEVICE_ID]
         self.name = name
-        if outlet_id is not None:
-            self.outlet_id = outlet_id
 
     def connect(self) -> None:
         stream_info = set_stream_description(

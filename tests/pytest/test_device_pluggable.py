@@ -41,7 +41,6 @@ def dm():
     manager.logger = logging.getLogger('test_device_pluggable')
     manager.streams = {}
     manager.assigned_devices = []
-    manager.marker_stream = False
     return manager
 
 
@@ -211,13 +210,25 @@ class TestCameraFramePreviewGating:
 
 
 class TestMarkerStreamDevice:
-    def test_identity(self):
+    def test_identity_default(self):
+        """Without device_args, MarkerStreamDevice falls back to 'marker' for id and sensor."""
         from neurobooth_os.iout.marker import MarkerStreamDevice
 
         device = MarkerStreamDevice()
-        assert device.device_id == MarkerStreamDevice.DEVICE_ID == 'marker'
+        assert device.device_id == 'marker'
         assert device.sensor_ids == ['marker']
         assert device.has_capability(DeviceCapability.STREAM)
+
+    def test_identity_from_device_args(self):
+        """With device_args, MarkerStreamDevice takes device_id and sensor_ids from them."""
+        from neurobooth_os.iout.marker import MarkerStreamDevice
+
+        args = MagicMock()
+        args.device_id = 'marker_X'
+        args.sensor_ids = ['marker_sensor_X']
+        device = MarkerStreamDevice(device_args=args)
+        assert device.device_id == 'marker_X'
+        assert device.sensor_ids == ['marker_sensor_X']
 
     def test_push_sample_forwards_to_outlet(self):
         from neurobooth_os.iout.marker import MarkerStreamDevice
@@ -309,6 +320,11 @@ class TestDeviceArgsClassRegistry:
         from neurobooth_os.iout.stim_param_reader import MouseDeviceArgs
         from neurobooth_os.iout.mouse_tracker import MouseStream
         assert MouseDeviceArgs.device_class() is MouseStream
+
+    def test_marker_args(self):
+        from neurobooth_os.iout.stim_param_reader import MarkerDeviceArgs
+        from neurobooth_os.iout.marker import MarkerStreamDevice
+        assert MarkerDeviceArgs.device_class() is MarkerStreamDevice
 
 
 # ---------------------------------------------------------------------------
