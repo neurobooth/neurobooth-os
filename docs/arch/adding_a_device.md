@@ -127,6 +127,7 @@ devices participate in each operation.
 | `WEARABLE`         | BLE/wireless; connection may drop and be re-established.       |
 | `CALIBRATABLE`     | Supports calibration (EyeLink).                                |
 | `RESETTABLE`       | Participates in the operator-triggered reset.                  |
+| `SESSION_LEVEL`    | Brought up regardless of whether any task references it (marker). |
 
 A safe default: forgetting to set `capabilities` on a subclass leaves it at
 `DeviceCapability(0)`, so the device is simply not matched by any query.
@@ -286,11 +287,14 @@ single-machine `laptop` config collapses these so Mouse and marker land on
 the presentation service directly.
 
 `DeviceManager` reads its assigned list at startup (`SERVER_ASSIGNMENTS` in
-`lsl_streamer.py`), and each service brings up only the devices assigned to
-it. A device that is assigned to this service but not referenced by any
-task (the marker is the canonical example) is still brought up — its
-`DeviceArgs` come from `metadator.read_devices()` rather than from a
-task's device list.
+`lsl_streamer.py`), and each service brings up only the devices that are
+both assigned to it and referenced by a selected task. A device assigned
+but not referenced by any task is skipped by default — unless it declares
+`DeviceCapability.SESSION_LEVEL`, in which case `DeviceManager` loads its
+`DeviceArgs` via `metadator.read_devices()` and brings it up anyway. The
+marker is the canonical `SESSION_LEVEL` device; most devices (cameras,
+wearables, etc.) rely on task-populated `sensor_array` state in their
+`__init__` and must stay task-driven.
 
 ## Worked example: `MouseStream`
 
@@ -396,7 +400,7 @@ Follow the patterns there when writing tests for your device:
 | Intel RealSense  | `VidRec_Intel`    | `RECORD \| RECORD_PER_TASK`                                |
 | iPhone           | `IPhone`          | `RECORD \| RECORD_PER_TASK \| CAMERA_PREVIEW`              |
 | EyeLink tracker  | `EyeTracker`      | `RECORD \| CALIBRATABLE`                                   |
-| Marker stream    | `MarkerStreamDevice` | `STREAM`                                                |
+| Marker stream    | `MarkerStreamDevice` | `STREAM \| SESSION_LEVEL`                               |
 
 ### How `DeviceManager` dispatches
 
@@ -404,11 +408,12 @@ Follow the patterns there when writing tests for your device:
 touch indirectly:
 
 - **`create_streams(win, task_params)`** — iterates `self.assigned_devices`,
-  looks each `DeviceArgs` up in either the task-derived map (populated from
-  `task_params`) or the registry (`metadator.read_devices()`, used for
-  devices assigned to this server but not referenced by any task),
-  instantiates via `type(device_args).device_class()(device_args=device_args)`,
-  and calls `bring_up`.
+  preferring the task-derived `DeviceArgs` map (populated from `task_params`);
+  for devices that are assigned but not task-referenced, loads their
+  `DeviceArgs` from the registry (`metadator.read_devices()`) **only if**
+  they declare `DeviceCapability.SESSION_LEVEL`. Instantiates each survivor
+  via `type(device_args).device_class()(device_args=device_args)` and calls
+  `bring_up`.
 - **`start_recording_devices`** / **`stop_recording_devices`** — operate on
   devices with `RECORD_PER_TASK` in parallel.
 - **`reconnect_for_task`** — calls `on_task_reconnect()` on every Device-backed

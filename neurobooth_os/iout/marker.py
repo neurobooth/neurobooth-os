@@ -21,7 +21,7 @@ class MarkerStreamDevice(Device):
     ``marker_outlet`` that ``STMSession`` forwards from ``DeviceManager.streams``.
     """
 
-    capabilities = DeviceCapability.STREAM
+    capabilities = DeviceCapability.STREAM | DeviceCapability.SESSION_LEVEL
 
     _DEFAULT_DEVICE_ID = "marker"
 

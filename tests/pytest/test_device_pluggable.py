@@ -377,3 +377,27 @@ class TestResettableAssignment:
     def test_eyetracker_is_not_resettable(self):
         from neurobooth_os.iout.eyelink_tracker import EyeTracker
         assert DeviceCapability.RESETTABLE not in EyeTracker.capabilities
+
+
+class TestSessionLevelAssignment:
+    """Only MarkerStreamDevice declares SESSION_LEVEL — the capability gates
+    which assigned-but-not-task-referenced devices DeviceManager brings up.
+
+    Without this opt-in, registry-loaded DeviceArgs for devices like cameras
+    arrive without a populated sensor_array and crash on ``__init__``.
+    """
+
+    def test_marker_has_session_level(self):
+        from neurobooth_os.iout.marker import MarkerStreamDevice
+        assert DeviceCapability.SESSION_LEVEL in MarkerStreamDevice.capabilities
+
+    def test_cameras_are_not_session_level(self):
+        from neurobooth_os.iout.flir_cam import VidRec_Flir
+        from neurobooth_os.iout.webcam import VidRec_Webcam
+        from neurobooth_os.iout.camera_intel import VidRec_Intel
+        for cls in (VidRec_Flir, VidRec_Webcam, VidRec_Intel):
+            assert DeviceCapability.SESSION_LEVEL not in cls.capabilities
+
+    def test_mbient_is_not_session_level(self):
+        from neurobooth_os.iout.mbient import Mbient
+        assert DeviceCapability.SESSION_LEVEL not in Mbient.capabilities

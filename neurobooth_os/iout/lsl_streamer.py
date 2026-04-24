@@ -109,18 +109,37 @@ class DeviceManager:
         """
         context: Mapping[str, Any] = {"psychopy_window": win}
 
+        # Task-referenced devices come through with their sensor_array fully
+        # populated by metadator.build_task. Devices that are assigned to this
+        # server but not referenced by any selected task are only brought up
+        # if they opt in via DeviceCapability.SESSION_LEVEL — today the marker
+        # stream is the only such device. Pulling a registry entry whose
+        # __init__ derives state from sensor_array would crash here (the
+        # registry path does not populate it), so the opt-in is strict.
         task_device_args = DeviceManager._get_unique_devices(task_params)
         session_device_args: Dict[str, DeviceArgs] = {}
         missing = [d for d in self.assigned_devices if d not in task_device_args]
         if missing:
             registry = meta.read_devices()
             for device_id in missing:
-                if device_id in registry:
-                    session_device_args[device_id] = registry[device_id]
-                else:
+                if device_id not in registry:
                     self.logger.warning(
                         f'Device Manager: assigned device "{device_id}" has no YAML entry; skipping.'
                     )
+                    continue
+                dev_args = registry[device_id]
+                try:
+                    dev_class = type(dev_args).device_class()
+                except NotImplementedError:
+                    self.logger.warning(
+                        f'Device Manager: assigned device "{device_id}" has no device_class binding; skipping.'
+                    )
+                    continue
+                if DeviceCapability.SESSION_LEVEL in dev_class.capabilities:
+                    session_device_args[device_id] = dev_args
+                # Else: device isn't task-referenced and hasn't opted into
+                # session-level startup. Silently skip — matches pre-v0.88.0
+                # behaviour of "only bring up what a selected task asks for."
         all_device_args = {**task_device_args, **session_device_args}
 
         register_lock = threading.Lock()
