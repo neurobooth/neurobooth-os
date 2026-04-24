@@ -15,17 +15,6 @@ class CameraPreviewException(Exception):
     pass
 
 
-class CameraPreviewer:
-    """Deprecated: retained only as a transitional shim.
-
-    New devices should declare ``CAMERA_PREVIEW`` in their ``capabilities`` and
-    override ``Device.frame_preview`` directly. This class is scheduled for
-    removal once all camera devices are migrated; see issue #696.
-    """
-    def frame_preview(self) -> ByteString:
-        raise NotImplementedError()
-
-
 class DeviceCapability(Flag):
     """Flags describing what a device can do. Devices may have multiple capabilities."""
     STREAM = auto()           # Continuous LSL streaming (mouse, mic, mbient)
