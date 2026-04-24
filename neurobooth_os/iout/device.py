@@ -24,6 +24,7 @@ class DeviceCapability(Flag):
     CALIBRATABLE = auto()     # Supports calibration (eyelink)
     RECORD_PER_TASK = auto()  # Recording is driven by the per-task lifecycle (cameras)
     RESETTABLE = auto()       # Participates in operator-triggered reset (mbient)
+    SESSION_LEVEL = auto()    # Brought up regardless of whether any task references it (marker)
 
 
 class DeviceState(Enum):
