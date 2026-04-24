@@ -447,6 +447,22 @@ class MbientDeviceArgs(DeviceArgs):
         return Mbient
 
 
+class MouseDeviceArgs(DeviceArgs):
+    """DeviceArgs for the Mouse device.
+
+    Mouse has no device-specific fields; this subclass exists solely to
+    provide the ``device_class`` binding that drives pluggable instantiation.
+    Its addition lets the Mouse YAML move from ``arg_parser: DeviceArgs`` to
+    ``arg_parser: MouseDeviceArgs``, removing the only remaining consumer of
+    the legacy ``device_start_function`` fallback in ``instance_device_class``.
+    """
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.mouse_tracker import MouseStream
+        return MouseStream
+
+
 class InstructionArgs(EnvArgs):
     """
         Arguments controlling psychopy instructions

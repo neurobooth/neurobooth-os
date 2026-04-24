@@ -310,6 +310,11 @@ class TestDeviceArgsClassRegistry:
         from neurobooth_os.iout.mbient import Mbient
         assert MbientDeviceArgs.device_class() is Mbient
 
+    def test_mouse_args(self):
+        from neurobooth_os.iout.stim_param_reader import MouseDeviceArgs
+        from neurobooth_os.iout.mouse_tracker import MouseStream
+        assert MouseDeviceArgs.device_class() is MouseStream
+
 
 # ---------------------------------------------------------------------------
 # RECORD_PER_TASK capability assignments
