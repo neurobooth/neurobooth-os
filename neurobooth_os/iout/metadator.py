@@ -39,11 +39,6 @@ _ALLOWED_TASK_MODULES: frozenset = frozenset({
     "tasks",  # prefix-match: covers tasks.*, tasks.MOT.task.*, etc.
 })
 
-_ALLOWED_DEVICE_MODULES: frozenset = frozenset({
-    "iout.lsl_streamer",
-})
-
-
 class LogSession(BaseModel):
     log_session_id: Optional[int] = None
     subject_id: Optional[str] = None

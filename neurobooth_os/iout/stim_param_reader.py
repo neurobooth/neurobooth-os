@@ -2,9 +2,12 @@ from os import environ, path
 
 from pydantic import BaseModel, ConfigDict, NonNegativeFloat, NonNegativeInt, Field, PositiveInt, PositiveFloat, \
     SerializeAsAny
-from typing import Optional, List, Callable, Tuple, Dict
+from typing import TYPE_CHECKING, Optional, List, Callable, Tuple, Dict, Type
 import os
 import yaml
+
+if TYPE_CHECKING:
+    from neurobooth_os.iout.device import Device
 
 """
 Loads yaml files containing task/stimulus/instruction parameters and validates them.
@@ -127,7 +130,7 @@ class DeviceArgs(EnvArgs):
 
     # Attributes required for program execution
     device_id: str                                  # Unique identifier for device
-    device_start_function: str      # A string representing the function that starts the device
+    device_start_function: Optional[str] = ""       # Deprecated: kept for backwards compatibility with legacy configs
     arg_parser: str                 # A string representing the function that parses the device arguments into objects
     sensor_ids: Optional[List[str]]                 # List of unique identifiers for sensors contained in device
     sensor_array: List[SerializeAsAny[SensorArgs]] = []     # List of the SensorArgs for sensors in device
@@ -154,6 +157,42 @@ class DeviceArgs(EnvArgs):
                 kwargs['device_sn'] = sn
         super().__init__(**kwargs)
 
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        """Return the concrete ``Device`` subclass to instantiate from these args.
+
+        Each ``DeviceArgs`` subclass overrides this with a lazy import of its
+        concrete Device, which avoids import cycles and lets acquisition nodes
+        avoid loading device modules they don't use.
+
+        The base implementation dispatches on the legacy
+        ``device_start_function`` field to preserve backwards compatibility
+        with configs that use ``arg_parser: iout.stim_param_reader.py::DeviceArgs()``
+        (currently only the Mouse device). New devices should declare their own
+        ``DeviceArgs`` subclass and override this method directly.
+        """
+        raise NotImplementedError(
+            f"{cls.__name__} has no device_class binding. "
+            "Define a DeviceArgs subclass that overrides device_class()."
+        )
+
+    def instance_device_class(self) -> Type["Device"]:
+        """Resolve the Device class for this instance.
+
+        Preference order:
+            1. A subclass that overrides :meth:`device_class`.
+            2. Legacy fallback via :attr:`device_start_function` for configs
+               still using the base ``DeviceArgs`` (Mouse).
+        """
+        try:
+            return type(self).device_class()
+        except NotImplementedError:
+            fn = (self.device_start_function or "").lower()
+            if "start_mouse_stream" in fn:
+                from neurobooth_os.iout.mouse_tracker import MouseStream
+                return MouseStream
+            raise
+
 
 class MicYetiDeviceArgs(DeviceArgs):
 
@@ -168,6 +207,11 @@ class MicYetiDeviceArgs(DeviceArgs):
         mic_nm = kwargs['ENV_devices'][my_id]['microphone_name']
         kwargs['microphone_name'] = mic_nm
         super().__init__(**kwargs)
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.microphone import MicStream
+        return MicStream
 
 
 class EyelinkDeviceArgs(DeviceArgs):
@@ -204,6 +248,11 @@ class EyelinkDeviceArgs(DeviceArgs):
     def calibration_type(self):
         return self.sensor_array[0].calibration_type
 
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.eyelink_tracker import EyeTracker
+        return EyeTracker
+
 
 class IPhoneDeviceArgs(DeviceArgs):
     """
@@ -232,6 +281,11 @@ class IPhoneDeviceArgs(DeviceArgs):
 
     def lenspos(self):
         return str(self.sensor_array[0].lenspos)
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.iphone import IPhone
+        return IPhone
 
 
 class FlirDeviceArgs(DeviceArgs):
@@ -277,6 +331,11 @@ class FlirDeviceArgs(DeviceArgs):
 
     def offset_y(self):
         return self.sensor_array[0].offsetY
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.flir_cam import VidRec_Flir
+        return VidRec_Flir
 
 
 class IntelDeviceArgs(DeviceArgs):
@@ -327,6 +386,11 @@ class IntelDeviceArgs(DeviceArgs):
                 return True
         return False
 
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.camera_intel import VidRec_Intel
+        return VidRec_Intel
+
 
 class WebcamDeviceArgs(DeviceArgs):
     """
@@ -356,6 +420,11 @@ class WebcamDeviceArgs(DeviceArgs):
     def height_px(self):
         return self.sensor_array[0].height_px
 
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.webcam import VidRec_Webcam
+        return VidRec_Webcam
+
 
 class MbientDeviceArgs(DeviceArgs):
 
@@ -371,6 +440,11 @@ class MbientDeviceArgs(DeviceArgs):
 
         super().__init__(**kwargs)
         self.device_name = self.device_id.split("_")[1]
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.mbient import Mbient
+        return Mbient
 
 
 class InstructionArgs(EnvArgs):

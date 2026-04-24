@@ -30,7 +30,7 @@ class RealSenseException(Exception):
 
 class VidRec_Intel(Device):
 
-    capabilities = DeviceCapability.RECORD
+    capabilities = DeviceCapability.RECORD | DeviceCapability.RECORD_PER_TASK
 
     def __init__(
         self,

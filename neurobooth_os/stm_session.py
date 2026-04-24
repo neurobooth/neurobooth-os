@@ -69,7 +69,7 @@ class StmSession(BaseModel):
         self.prompt = True
 
         self.device_manager = self.init_device_manager()
-        self.eye_tracker = self.device_manager.get_eyelink_stream()
+        self.eye_tracker = self.device_manager.get_calibration_device()
 
     @staticmethod
     def init_window() -> visual.Window:

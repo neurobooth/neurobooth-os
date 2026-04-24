@@ -4,73 +4,14 @@ import threading
 from neurobooth_os.iout.stim_param_reader import DeviceArgs, TaskArgs
 from neurobooth_os.log_manager import APP_LOG_NAME
 from neurobooth_os import config
-from typing import Any, Dict, List, Callable, ByteString, Optional
+from typing import Any, Dict, List, Mapping, ByteString, Optional, Type
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.device import (
-    Device, DeviceCapability, CameraPreviewer, CameraPreviewException,
+    Device, DeviceCapability, CameraPreviewException,
 )
-from neurobooth_os.iout.mbient import Mbient
 from neurobooth_os.msg.messages import DeviceInitialization, Request
-
-# --------------------------------------------------------------------------------
-# Wrappers for device setup procedures.
-# --------------------------------------------------------------------------------
-def start_eyelink_stream(win, device_args):
-    from neurobooth_os.iout.eyelink_tracker import EyeTracker
-    return EyeTracker(win=win, device_args=device_args)
-
-
-def start_mouse_stream(_, device_args):
-    from neurobooth_os.iout.mouse_tracker import MouseStream
-    device = MouseStream(device_args)
-    device.connect()
-    device.start()
-    return device
-
-
-def start_mbient_stream(_, device_args):
-    device = Mbient(device_args)
-    if not device.connect():
-        return None
-    device.start()
-    return device
-
-
-def start_intel_stream(_, device_args):
-    from neurobooth_os.iout.camera_intel import VidRec_Intel
-    device = VidRec_Intel(device_args)
-    device.connect()
-    return device
-
-
-def start_flir_stream(_, device_args):
-    from neurobooth_os.iout.flir_cam import VidRec_Flir
-    device = VidRec_Flir(device_args)
-    device.connect()
-    return device
-
-
-def start_webcam_stream(_, device_args):
-    from neurobooth_os.iout.webcam import VidRec_Webcam
-    device = VidRec_Webcam(device_args)
-    device.connect()
-    return device
-
-
-def start_iphone_stream(_, device_args):
-    from neurobooth_os.iout.iphone import IPhone
-    device = IPhone(name="IPhoneFrameIndex", device_args=device_args)
-    return device if device.connect() else None
-
-
-def start_yeti_stream(_, device_args):
-    from neurobooth_os.iout.microphone import MicStream
-    device = MicStream(device_args)
-    device.connect()
-    device.start()
-    return device
 
 
 config.load_config(validate_paths=False)
@@ -81,11 +22,8 @@ SERVER_ASSIGNMENTS['presentation'] = config.neurobooth_config.presentation.devic
 SERVER_ASSIGNMENTS['control'] = config.neurobooth_config.control.devices
 
 
-N_ASYNC_THREADS: int = 3  # The maximum number of mbients on one machine
-ASYNC_STARTUP: List[str] = [
-    # Mbient BLE connections are serialized to avoid crashes from concurrent BLE operations.
-    # See docs/perf/Mbient Connection Times [2026-04-03].md for timing analysis.
-]
+N_ASYNC_THREADS: int = 3
+ASYNC_STARTUP: List[str] = []  # Device IDs whose bring_up runs concurrently in the thread pool.
 
 
 class DeviceNotFoundException(Exception):
@@ -154,15 +92,25 @@ class DeviceManager:
     def create_streams(self, win=None, task_params=None) -> None:
         """Initialize devices and LSL streams for this node's assigned devices.
 
+        Each device's startup lifecycle is driven by its ``Device.bring_up``
+        override, so this method stays device-type-agnostic: it looks up the
+        ``Device`` class from the ``DeviceArgs`` subclass, instantiates it,
+        and hands it a shared ``context`` dict.
+
         Args:
             win: PsychoPy window (required for EyeTracker on the presentation node).
             task_params: Mapping of task IDs to TaskArgs. Used to determine which
                 devices are needed across all tasks in the collection.
         """
-        if self.marker_stream:  # TODO: Handle the marker stream better
-            from neurobooth_os.iout import marker_stream
-            self.logger.debug(f'Device Manager Starting: marker')
-            self.streams["marker"] = marker_stream()
+        context: Mapping[str, Any] = {"psychopy_window": win}
+
+        if self.marker_stream:
+            from neurobooth_os.iout.marker import MarkerStreamDevice
+            self.logger.debug('Device Manager Starting: marker')
+            marker = MarkerStreamDevice()
+            marker.connect()
+            marker.start()
+            self.streams[MarkerStreamDevice.DEVICE_ID] = marker
 
         register_lock = threading.Lock()
 
@@ -170,11 +118,10 @@ class DeviceManager:
             device_id = device_args.device_id
             self.logger.debug(f'Device Manager Starting: {device_id}')
             self.logger.debug(f'Device Manager Starting with args: {device_args}')
-            device_start_function: Callable = meta.str_fileid_to_eval(
-                device_args.device_start_function,
-                allowed_modules=meta._ALLOWED_DEVICE_MODULES,
-            )
-            device = device_start_function(win, device_args)
+            device_cls: Type[Device] = device_args.instance_device_class()
+            # Pass device_args as a keyword so Device subclasses with extra
+            # positional parameters (e.g. IPhone's name) still bind correctly.
+            device = device_cls(device_args=device_args).bring_up(context)
             if device is None:
                 self.logger.warning(f'Device Manager Failed to Start: {device_id}')
                 return
@@ -243,16 +190,16 @@ class DeviceManager:
     # ---- Recording device lifecycle ----
 
     def _get_camera_devices(self, task_devices: List[DeviceArgs]) -> List[Device]:
-        """Return camera-type recording devices for the given task.
+        """Return per-task recording devices (cameras) for the given task.
 
-        Excludes devices like EyeTracker that have RECORD capability but are
-        managed separately by the presentation server.
+        Selects devices whose recording is driven by the task lifecycle via the
+        ``RECORD_PER_TASK`` capability. EyeTracker declares ``RECORD`` but not
+        ``RECORD_PER_TASK``, so it is excluded here (it is managed by the
+        presentation server during initialization).
         """
-        return [
-            device for device in
-            self.get_devices_with_capability(DeviceCapability.RECORD, task_devices).values()
-            if not device.has_capability(DeviceCapability.CALIBRATABLE)
-        ]
+        return list(self.get_devices_with_capability(
+            DeviceCapability.RECORD_PER_TASK, task_devices
+        ).values())
 
     def start_recording_devices(self, filename: str, fname: str,
                                  task_devices: List[DeviceArgs],
@@ -286,7 +233,7 @@ class DeviceManager:
                 try:
                     created = future.result()
                     if created:
-                        stream_name = getattr(device, 'streamName', None) or getattr(device, 'stream_name', None)
+                        stream_name = getattr(device, 'streamName', None)
                         if stream_name:
                             all_files[stream_name] = created
                             device_files.append((device, created))
@@ -345,47 +292,46 @@ class DeviceManager:
         for device in cameras:  # Wait for cameras to actually stop
             device.ensure_stopped(10)
 
-    def get_eyelink_stream(self) -> Optional[Device]:
-        """Return the EyeTracker device, or None if not present."""
+    def get_calibration_device(self) -> Optional[Device]:
+        """Return the first device with the ``CALIBRATABLE`` capability, if any.
+
+        Today only EyeTracker declares ``CALIBRATABLE``; the "first wins" rule
+        is explicit here so a second calibratable device would be a config
+        issue rather than a silent bug.
+        """
         calibratables = self.get_devices_with_capability(DeviceCapability.CALIBRATABLE)
         if calibratables:
             return next(iter(calibratables.values()))
         return None
 
-    # ---- Mbient-specific methods ----
+    # ---- Session-level hooks ----
 
-    def get_mbient_streams(self) -> Dict[str, Mbient]:
-        """Return all Mbient devices.
+    def reconnect_for_task(self) -> None:
+        """Call ``on_task_reconnect`` on every Device-backed stream.
 
-        Filters by isinstance rather than WEARABLE capability, because callers
-        depend on Mbient-specific methods (``task_start_reconnect``,
-        ``reset_and_reconnect``).
+        Devices override this hook when they need per-task recovery (e.g.,
+        Mbient re-establishes dropped BLE links). Default is a no-op.
         """
-        return {
-            name: stream for name, stream in self.streams.items()
-            if isinstance(stream, Mbient)
-        }
+        for stream in self.streams.values():
+            if self._is_device(stream):
+                stream.on_task_reconnect()
 
-    def mbient_reconnect(self) -> None:
-        """Attempt to reconnect any Mbient devices that have disconnected."""
-        Mbient.task_start_reconnect(list(self.get_mbient_streams().values()))
+    def reset_devices(self) -> Dict[str, bool]:
+        """Call ``on_session_reset`` on devices that declare ``RESETTABLE``.
 
-    def mbient_reset(self) -> Dict[str, bool]:
-        """Reset all Mbient devices sequentially and attempt to reconnect.
+        Devices opt in via the ``RESETTABLE`` capability so the operator's
+        "Reset" result only lists devices that actually performed a reset
+        (today: Mbients). Other devices inherit the ``on_session_reset``
+        default but are never invoked.
 
         Returns:
             Mapping of device name to whether the reset succeeded.
         """
-        mbient_streams = self.get_mbient_streams()
-
-        if len(mbient_streams) == 0:
-            self.logger.debug('No mbients to reset.')
-            return {}
-
-        return {
-            stream_name: stream.reset_and_reconnect()
-            for stream_name, stream in mbient_streams.items()
-        }
+        results: Dict[str, bool] = {}
+        for name, stream in self.streams.items():
+            if self._is_device(stream) and stream.has_capability(DeviceCapability.RESETTABLE):
+                results[name] = stream.on_session_reset()
+        return results
 
     def camera_frame_preview(self, device_id: str) -> ByteString:
         """Capture a single preview frame from a camera device.
@@ -403,7 +349,7 @@ class DeviceManager:
             raise CameraPreviewException(f'Device {device_id} unavailable.')
 
         camera = self.streams[device_id]
-        if not isinstance(camera, CameraPreviewer):
+        if not self._is_device(camera) or not camera.has_capability(DeviceCapability.CAMERA_PREVIEW):
             raise CameraPreviewException(f'Device {device_id} is not a valid preview device.')
 
         return camera.frame_preview()
@@ -420,16 +366,13 @@ class DeviceManager:
     def reconnect_streams(self) -> None:
         """Restart any non-camera streams that have stopped, and re-post DeviceInitialization messages.
 
-        Camera-type recording devices are skipped because they are started
-        per-task via ``start_recording_devices()``. The EyeTracker (RECORD but
-        also CALIBRATABLE) is *not* skipped, matching pre-refactor behavior.
+        Skips devices with ``RECORD_PER_TASK`` because they are (re)started
+        per-task via ``start_recording_devices()``. EyeTracker declares
+        ``RECORD | CALIBRATABLE`` (not ``RECORD_PER_TASK``) and so is included
+        here, matching pre-refactor behavior.
         """
         for stream_name, stream in self.streams.items():
-            # Skip camera-type recording devices (they are started per-task, not reconnected).
-            # EyeTracker has RECORD but is NOT skipped here (matches old is_camera() behavior).
-            if (self._is_device(stream)
-                    and stream.has_capability(DeviceCapability.RECORD)
-                    and not stream.has_capability(DeviceCapability.CALIBRATABLE)):
+            if self._is_device(stream) and stream.has_capability(DeviceCapability.RECORD_PER_TASK):
                 continue
 
             if not stream.streaming:

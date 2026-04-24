@@ -10,7 +10,7 @@ from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 import neurobooth_os.iout.metadator as meta
-from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState, CameraPreviewer
+from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 from neurobooth_os.iout.stim_param_reader import WebcamDeviceArgs
 
 from neurobooth_os.log_manager import APP_LOG_NAME
@@ -22,9 +22,13 @@ class WebcamException(Exception):
         super().__init__(*args, **kwargs)
 
 
-class VidRec_Webcam(Device, CameraPreviewer):
+class VidRec_Webcam(Device):
 
-    capabilities = DeviceCapability.RECORD | DeviceCapability.CAMERA_PREVIEW
+    capabilities = (
+        DeviceCapability.RECORD
+        | DeviceCapability.RECORD_PER_TASK
+        | DeviceCapability.CAMERA_PREVIEW
+    )
 
     def __init__(
         self,
@@ -47,10 +51,10 @@ class VidRec_Webcam(Device, CameraPreviewer):
 
     def connect(self) -> None:
         """Create the LSL outlet and notify the control server."""
-        self.stream_name = "WebcamFrameIndex"
+        self.streamName = "WebcamFrameIndex"
         info = set_stream_description(
             stream_info=StreamInfo(
-                name=self.stream_name,
+                name=self.streamName,
                 type="videostream",
                 channel_format="double64",
                 channel_count=2,
@@ -69,7 +73,7 @@ class VidRec_Webcam(Device, CameraPreviewer):
             size_rgb=str((self.device_args.width_px(), self.device_args.height_px())),
         )
         msg_body = DeviceInitialization(
-            stream_name=self.stream_name,
+            stream_name=self.streamName,
             outlet_id=self.outlet_id,
             device_id=self.device_args.device_id,
             camera_preview=True,
@@ -85,7 +89,7 @@ class VidRec_Webcam(Device, CameraPreviewer):
         """Re-create the LSL outlet (e.g. after stream closure)."""
         info = set_stream_description(
             stream_info=StreamInfo(
-                name=self.stream_name,
+                name=self.streamName,
                 type="videostream",
                 channel_format="double64",
                 channel_count=2,

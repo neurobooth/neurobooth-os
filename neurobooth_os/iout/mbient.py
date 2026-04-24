@@ -5,7 +5,7 @@ from ctypes import c_void_p
 from time import sleep, time
 import multiprocessing as mp
 import logging
-from typing import Any, Dict, List, Callable, NamedTuple, Optional
+from typing import Any, Dict, List, Callable, Mapping, NamedTuple, Optional
 from abc import ABC, abstractmethod
 from enum import IntEnum
 
@@ -455,7 +455,11 @@ class Mbient(Device):
     If the sensor disconnects at any point, a reconnect will be attempted.
     """
 
-    capabilities = DeviceCapability.STREAM | DeviceCapability.WEARABLE
+    capabilities = (
+        DeviceCapability.STREAM
+        | DeviceCapability.WEARABLE
+        | DeviceCapability.RESETTABLE
+    )
 
     # Class variables to ensure that the BLE scan only happens during one connect() call.
     # Will need to switch to a multiprocess.Manager if intending to use multiprocessing.
@@ -718,6 +722,25 @@ class Mbient(Device):
         except Exception as e:
             self.logger.error(self.format_message(f'Error during reset and reconnect: {e}'))
             return False
+
+    def bring_up(self, context: Mapping[str, Any]) -> Optional[Device]:
+        """Connect and start streaming, returning None if the BLE handshake fails."""
+        if not self.connect():
+            return None
+        self.start()
+        return self
+
+    def on_task_reconnect(self) -> None:
+        """Before each task, reconnect this Mbient if its BLE link dropped.
+
+        The class-level static method handles scanning and retry budgeting
+        across all Mbient instances; we delegate the single-device call to it.
+        """
+        Mbient.task_start_reconnect([self])
+
+    def on_session_reset(self) -> bool:
+        """Reset the board and re-establish the BLE connection (operator action)."""
+        return self.reset_and_reconnect()
 
     def connect(self) -> bool:
         """

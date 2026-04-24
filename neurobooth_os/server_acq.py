@@ -125,7 +125,7 @@ def run_acq(logger, acq_index: int = 0):
             # TODO: reset_mbients and frame_preview should be reworked as dynamic hooks that register a callback
             elif "ResetMbients" == current_msg_type:
 
-                reset_results = device_manager.mbient_reset()
+                reset_results = device_manager.reset_devices()
 
                 reply_body = MbientResetResults(results=reset_results)
                 reply = Request(
@@ -255,7 +255,7 @@ def start_recording(device_manager: DeviceManager, filename: str, fname: str,
     t0 = time()
     device_manager.start_recording_devices(filename, fname, task_devices,
                                            log_task_id=log_task_id)
-    device_manager.mbient_reconnect()  # Attempt to reconnect Mbients if disconnected
+    device_manager.reconnect_for_task()  # Per-device on_task_reconnect hook (Mbient re-establishes BLE)
     elapsed_time = time() - t0
     return elapsed_time
 
