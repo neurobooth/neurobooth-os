@@ -1016,11 +1016,10 @@ def script_capture_data(subject_id: str, recording_folder: str, capture_duration
         ENV_devices={'IPhone_dev_1': {}},
         device_id='IPhone_dev_1',
         sensor_ids=['IPhone_sens_1'],
-        # sensor array, arg parser, and device start function are not needed by the
-        # test script but are not optional and are needed for pydantic validation
+        # sensor_array and arg_parser aren't used by the test script but pydantic
+        # still requires them.
         sensor_array=[],
         arg_parser='',
-        device_start_function='',
     )
 
     iphone = IPhone("IPhone", device_args=dev_args)
