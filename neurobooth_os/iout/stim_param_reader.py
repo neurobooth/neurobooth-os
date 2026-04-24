@@ -436,6 +436,20 @@ class MouseDeviceArgs(DeviceArgs):
         return MouseStream
 
 
+class MarkerDeviceArgs(DeviceArgs):
+    """DeviceArgs for the LSL marker stream.
+
+    The marker has no hardware; this subclass exists solely to let the
+    marker stream flow through the same config-driven path as every other
+    device, instead of being hard-coded in ``DeviceManager.create_streams``.
+    """
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.marker import MarkerStreamDevice
+        return MarkerStreamDevice
+
+
 class InstructionArgs(EnvArgs):
     """
         Arguments controlling psychopy instructions
