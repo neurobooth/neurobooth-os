@@ -276,12 +276,21 @@ acquisition:
       - your_device             # ← here
 ```
 
-Most devices go on an acquisition server. EyeLink and Mouse are the only ones
-that currently run on the presentation server. The control server has no
-devices.
+Most devices go on an acquisition service. In a typical multi-machine
+deployment there are *two* acquisition services — one on the dedicated ACQ
+host (cameras, iPhone, the main microphone, ACQ-side Mbients) and a
+secondary one on the STM host (the Mouse and the STM-side Mbients). The
+presentation service runs on the STM host too but carries only `Eyelink_1`
+and the `marker` stream; the control service has no devices at all. The
+single-machine `laptop` config collapses these so Mouse and marker land on
+the presentation service directly.
 
-`DeviceManager` reads this list at startup (`SERVER_ASSIGNMENTS` in
-`lsl_streamer.py`), and each server brings up only the devices assigned to it.
+`DeviceManager` reads its assigned list at startup (`SERVER_ASSIGNMENTS` in
+`lsl_streamer.py`), and each service brings up only the devices assigned to
+it. A device that is assigned to this service but not referenced by any
+task (the marker is the canonical example) is still brought up — its
+`DeviceArgs` come from `metadator.read_devices()` rather than from a
+task's device list.
 
 ## Worked example: `MouseStream`
 
@@ -394,10 +403,12 @@ Follow the patterns there when writing tests for your device:
 `DeviceManager` (in `lsl_streamer.py`) is device-agnostic. The code paths you'll
 touch indirectly:
 
-- **`create_streams(win, task_params)`** — iterates the unique `DeviceArgs`
-  across all tasks for the session, instantiates each via
-  `type(device_args).device_class()(device_args=device_args)`, and calls
-  `bring_up`.
+- **`create_streams(win, task_params)`** — iterates `self.assigned_devices`,
+  looks each `DeviceArgs` up in either the task-derived map (populated from
+  `task_params`) or the registry (`metadator.read_devices()`, used for
+  devices assigned to this server but not referenced by any task),
+  instantiates via `type(device_args).device_class()(device_args=device_args)`,
+  and calls `bring_up`.
 - **`start_recording_devices`** / **`stop_recording_devices`** — operate on
   devices with `RECORD_PER_TASK` in parallel.
 - **`reconnect_for_task`** — calls `on_task_reconnect()` on every Device-backed
