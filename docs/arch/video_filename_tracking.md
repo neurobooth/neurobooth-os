@@ -1,172 +1,216 @@
 # Video Filename Tracking
 
-This document describes the current mechanism for recording video filenames in
-`log_sensor_file` and compares the resulting data to the pre-#611 system.
-Intended audience: anyone touching `split_xdf`, `server_acq`, `server_stm`,
-`session_controller`, or downstream scripts that read `log_sensor_file`.
+This document describes how recording filenames end up in the
+`log_sensor_file` database table. Intended audience: anyone touching
+`split_xdf`, `server_acq`, `server_stm`, `session_controller`, or
+downstream scripts that read `log_sensor_file`.
 
-The current design landed in #678 ("Tag RecordingFiles and TaskCompletion with
-fname to fix #659 regression"); see git history for earlier iterations
-(the LSL `videofiles` marker-stream design pre-#611 and the first #659 fix).
+The current design landed in **#686 ("Coordinate log_sensor_file
+registration through the database")**. Earlier iterations are visible in
+git history: pre-#611 used an LSL `videofiles` marker stream; #678
+added a fname-keyed `RecordingFiles` message + CTR buffering pipeline
+that #686 then replaced.
 
 ## Mechanism
 
-Filenames travel from the producer (ACQ's DeviceManager or STM's task/eye
-tracker code) to CTR via the database `message_queue`, as a `RecordingFiles`
-message. CTR accumulates them in an in-memory buffer on the message reader
-thread, and passes the buffer contents to `split_xdf` when the matching
-`TaskCompletion` arrives.
-
-Each `RecordingFiles` message is **tagged with `fname`**, the unique per-run
-identifier:
+Each machine writes its own `log_sensor_file` rows directly, at the
+moment it creates the files. Nothing flows through CTR for filename
+purposes; CTR's only job in the file pipeline is the subsequent XDF
+post-processing step that fills in timing fields.
 
 ```
-fname = f"{session_name}_{tsk_start_time}_{task_id}"
+STM                    ACQ                              CTR
+ │                      │                                │
+ ├─ pre-create log_task                                  │
+ │  for next task                                        │
+ │  (next_log_task_id)                                   │
+ │                      │                                │
+ ├─ TransitionRecording(log_task_id) ─────────────►      │
+ │                      │                                │
+ │                      ├─ device.start() per camera     │
+ │                      ├─ _register_sensor_files writes │
+ │                      │  log_sensor_file row(s) with   │
+ │                      │  paths, NULL timing            │
+ │                      │                                │
+ ├─ eye_tracker.start()                                  │
+ ├─ _register_eyetracker_files writes EDF row(s)         │
+ │                      │                                │
+ ├─ task runs ...       │                                │
+ │                      │                                │
+ ├─ TaskCompletion ──────────────────────────────►       │
+ │                      │                                │  stop_lsl_recording
+ │                      │                                │  → postpone_xdf_split
+ │                      │                                │
+ │                      │                                │  (later) split_xdf
+ │                      │                                │  → log_to_database
+ │                      │                                │  UPDATEs timing,
+ │                      │                                │  prepends HDF5 path
 ```
 
-`tsk_start_time` is generated when STM enters `_perform_task` for a given
-task and contains hour/minute/second resolution. Repeated runs of the same
-task (recalibration, session restart, subject repeats) produce different
-`tsk_start_time` values and therefore different fnames. The fname flows
-through the same code paths used for file naming, so the buffer key matches
-the filename prefix on disk.
+The result: every camera and the EyeTracker have a `log_sensor_file`
+row before the task even ends. The XDF post-processing step *fills in*
+timing fields and the HDF5 path; it does not create the row from
+scratch (except as a fallback — see below).
 
-`TaskCompletion` carries the same `fname`. When CTR reads it, it pops only
-the bucket for that specific fname. Files for other task runs stay untouched.
+## ACQ early write — `DeviceManager._register_sensor_files`
 
-### Sequence (happy path)
+`start_recording_devices(filename, fname, task_devices, log_task_id)`
+accepts the `log_task_id` that STM created for the task. After
+launching every camera in parallel and collecting the file basenames it
+created, the method calls `_register_sensor_files`, which inserts one
+`log_sensor_file` row per `(device_id, sensor_id)` with:
 
-```
-STM                    ACQ                    CTR
- │                      │                      │
- ├─ post TransitionRecording(fname=F1) ──────► │
- │                      │                      │
- │                      ├─ start cameras       │
- │                      ├─ post RecordingFiles(fname=F1, files=...) ─────►
- │                      │                      │  buffer[F1] = {...}
- ├─ task runs ...       │                      │
- │                      │                      │
- ├─ post TaskCompletion(fname=F1) ─────────────►
- │                      │                      │  pop buffer[F1]
- │                      │                      │  → split_xdf → log_sensor_file
-```
+- `log_task_id` — from the STM-supplied value
+- `device_id` / `sensor_id` — read off the Device instance
+- `sensor_file_path` — `{session_folder}/{basename}` for each created file
+- `file_start_time` / `file_end_time` / `true_temporal_resolution` — `NULL`
 
-### Sequence (out-of-order, the race #659 was fighting)
+Failures are logged but not raised. A database hiccup must not stop a
+recording; the XDF split's INSERT fallback (see below) registers the
+file later if the early write was missed. See
+`neurobooth_os/iout/lsl_streamer.py` (`start_recording_devices`,
+`_register_sensor_files`).
 
-```
-STM                    ACQ                    CTR
- │                      │                      │
- ├─ post TransitionRecording(fname=F2, task=next) ───►
- │                      │                      │
- │                      ├─ start cameras       │
- │                      ├─ post RecordingFiles(fname=F2, files=...) ───► (inserted as id=N)
- │                      │                      │  buffer[F2] = {...}
- │                      │                      │
- ├─ post TaskCompletion(fname=F1, task=current) ─────────────► (inserted as id=N+1)
- │                      │                      │  pop buffer[F1]
- │                      │                      │  → correctly empty
- │                      │                      │  F2's bucket is still intact
- │                      │                      │
- ├─ post TaskCompletion(fname=F2, task=next) ─────────────►
- │                      │                      │  pop buffer[F2]
- │                      │                      │  → contains F2's files ✓
-```
+## STM early write — `_register_eyetracker_files`
 
-The key property: messages inserted into the DB out of order still get
-bucketed correctly because the bucket key is the task-run identifier, not
-arrival order or message type grouping.
+EyeTracker `.edf` files are written on STM, not ACQ, so STM mirrors
+the ACQ pattern. Inside `_get_task_instance`, after
+`session.eye_tracker.start(edf_fname)` returns the basenames, STM
+calls `_register_eyetracker_files(session, log_task_id, basenames,
+task_args)`, which inserts the same shape of `log_sensor_file` row
+(paths only, NULL timing) for each EyeTracker sensor. Same failure
+policy: log and continue.
 
-## Data comparison to pre-#611 system
+See `neurobooth_os/server_stm.py` (`_get_task_instance`,
+`_register_eyetracker_files`).
 
-### `log_sensor_file.sensor_file_path`
+## `log_task_id` threading — STM pre-creates, ACQ consumes
 
-**Same data, same format.** The array still contains
-`[hdf5_path, video_path_1, video_path_2, ...]` in the same order as before.
-The mechanism for collecting the paths is different but the resulting column
-value is identical.
+ACQ needs `log_task_id` *before* it starts recording the next task,
+which is earlier than the task is normally logged. STM pre-creates the
+`log_task` row at the end of the current task, alongside its
+`stop_acq → TransitionRecording` flow:
 
-Validated by the check script at `extras/sql/check_missing_video_files.sql` —
-for a correctly-functioning session, every camera row should contain its
-expected video file extension.
+1. `_perform_task` for task N finishes the stimulus and calls
+   `stop_acq`.
+2. STM calls `meta.make_new_task_row(...)` for task N+1 and stashes
+   the ID in `session.next_log_task_id`. `log_task_params` is logged
+   here too, so `log_device_param` rows exist before any device starts.
+3. STM posts `TransitionRecording(log_task_id=session.next_log_task_id, ...)`
+   to ACQ. ACQ launches devices and uses that ID for its early write.
+4. When `_perform_task` for task N+1 begins, it re-uses
+   `session.next_log_task_id` instead of creating a new row, then
+   clears the field.
 
-### `log_sensor_file.file_start_time` / `file_end_time`
+If the session is cancelled or crashes between steps 3 and 4, the
+pre-created `log_task` row stays in the database with `task_id = NULL`
+— a clear signal that the task started recording but never completed.
+Files registered against that `log_task_id` exist in `log_sensor_file`
+with NULL timing.
 
-**Same derivation, same values, same bug.** These are still computed by
-`compute_clocks_diff()` at XDF split time (see #671). The fname-keyed
-buffering change does not touch timestamp computation. If #671 is fixed, the
-values become correct; if not, they have the same clock-drift risk as before.
+`StartRecording` and `TransitionRecording` both carry an
+`Optional[str]` `log_task_id` field. When `None` (e.g. an old STM
+talking to a new ACQ during a rolling deploy, or an internal code path
+that doesn't have a task ID), ACQ skips the early write and the XDF
+split's INSERT fallback handles the row later.
 
-### `log_sensor_file.true_temporal_resolution`
+See `neurobooth_os/server_stm.py` (`_perform_task`, `stop_acq`,
+`_cancel_transition`) and `neurobooth_os/msg/messages.py`
+(`StartRecording`, `TransitionRecording`).
 
-**Same derivation, same values.** Computed from the XDF `time_stamps` array
-during split. Unchanged.
+## XDF post-processing — `split_xdf.log_to_database`
 
-### XDF file contents
+After LabRecorder finalises the XDF, `log_to_database` walks every
+`DeviceData` and updates the corresponding `log_sensor_file` row.
+Three cases are handled in order:
 
-**One visible difference.** Pre-#611 XDF files contained a `videofiles` LSL
-marker stream with samples of the form `"FlirFrameIndex,task_flir.avi"`. The
-current XDF files do **not** contain this stream — it was removed in
-d0dfbf8 (the first #659 fix) when filename transport moved off LSL and onto
-the DB message queue.
+1. **Early row exists, HDF5 path not yet in it (the common case).**
+   ```sql
+   UPDATE log_sensor_file
+   SET true_temporal_resolution = %s,
+       file_start_time = %s,
+       file_end_time = %s,
+       sensor_file_path = ARRAY[%s]::text[] || sensor_file_path
+   WHERE log_task_id = %s
+     AND device_id = %s
+     AND sensor_id = %s
+     AND NOT (sensor_file_path @> ARRAY[%s]::text[])
+   ```
+   Prepends the HDF5 path and fills in timing.
 
-Consequences:
-- `parse_xdf()` no longer reads the `videofiles` stream. The branch that did
-  still exists in the pre-d0dfbf8 code paths but is dead.
-- Any external tool that re-opens old XDF files expecting `videofiles` will
-  still find it (old files are unchanged); any tool that expects it in
-  *new* XDF files will get nothing.
-- The `video_files` parameter now flows into `parse_xdf`/`split_sens_files`
-  from the CTR buffer, not from the XDF file itself.
+2. **Early row exists, HDF5 path already present (idempotent re-run).**
+   The first UPDATE matches zero rows (the `NOT @>` guard fails). A
+   second UPDATE without the array-mutation just refreshes timing
+   fields, so re-running post-processing on the same XDF is safe.
 
-### `log_sensor_file` row cardinality
+3. **No early row at all (fallback).** Both UPDATEs match zero rows.
+   `log_to_database` falls back to the original `INSERT` path,
+   producing a row that contains only the HDF5 path — no video files.
+   The neurobooth-terra copy script then warns "log_sensor_file_id not
+   found" for any video file in the session, which serves as a canary
+   that the early write or the entire registration pipeline is broken.
 
-**Same.** Still one row per `(log_task_id, device_id, sensor_id)`. The
-multi-sensor devices (Intel `rgb_1` + `depth_1`) still produce two rows per
-task, with identical `sensor_file_path` arrays. The FLIR still produces one
-row with one hdf5 and one avi. No new rows, no removed rows.
+See `neurobooth_os/iout/split_xdf.py` (`log_to_database`).
 
-### Failure modes
+## What this design replaces
 
-**Different, and fewer.**
+The earlier (#678) design routed every recording filename through CTR
+as a `RecordingFiles` message, which CTR buffered by `fname` and fed
+to `split_xdf` on `TaskCompletion`. That pipeline is gone:
 
-| Failure mode | Pre-#611 | d0dfbf8 (first fix) | Current |
-|---|---|---|---|
-| LSL gap between recordings (markers lost) | Yes — #659 | No | No |
-| Message-order race (next task's files swept into current) | N/A | Yes — #659 regression | No |
-| Repeated tasks within a session mixing files | N/A | Yes (task_id collision) | No |
-| Downstream missing-video queries | Broken by LSL gap | Broken by order race | Should work |
+- ACQ no longer sends `RecordingFiles`. The class still exists in
+  `msg/messages.py` for backward compatibility but is unreferenced —
+  scheduled for removal once any external consumers are confirmed gone.
+- CTR's `task_video_files` buffer and the `video_files` parameters
+  threaded through `on_task_finished` / `stop_lsl_recording` /
+  `postpone_xdf_split` / `split_sens_files` / `parse_xdf` were all
+  removed.
+- The XDF backlog format simplified accordingly (no JSON video-files
+  blob).
 
-### Data timing
+The motivation: file registration now happens on the same machine that
+creates the file, at the same moment, with no inter-machine
+coordination needed. A break anywhere in the old chain (cancel, crash,
+LSL gap during `TransitionRecording`, message-order race) used to
+leave files orphaned on disk; now the `log_sensor_file` row is in
+place before the file is even closed.
 
-**Slightly different but invisible.** In the pre-#611 system, filenames
-entered `log_sensor_file` during the XDF split, after LabRecorder finalized
-the XDF file. In the current system, filenames enter the CTR buffer as soon
-as the device's `start()` returns; they're still written to
-`log_sensor_file` during the XDF split on the same schedule. The timing of
-DB writes is unchanged from the reader's perspective.
+## Failure modes
 
-## What to look for when validating
+| Scenario                         | `log_task.task_id` | `log_sensor_file` row | Copy-script action |
+| -------------------------------- | ------------------ | --------------------- | ------------------ |
+| Normal completion                | set                | yes, timing filled    | transfer           |
+| User abort during task ('q')     | set                | yes, timing filled    | transfer           |
+| Cancel before `_perform_task`    | NULL               | yes, NULL timing      | **skip**           |
+| Crash before `_perform_task`     | NULL               | yes, NULL timing      | **skip**           |
+| Database unreachable for early write | set            | row created later by XDF split fallback (HDF5 only) | transfer + canary warning for missing video |
+| Bug: row never created           | --                 | missing               | **canary warning** |
 
-Run `extras/sql/check_missing_video_files.sql` (filtered to the target
-release) after each session and confirm zero rows. Any row returned means
-either:
-- A device failed to produce its video file (check device logs), or
-- A `RecordingFiles` message was lost or mistagged (check `body.fname`
-  values in the `message_queue` table for the session)
+The neurobooth-terra `dataflow.copy_files` query JOINs `log_task` and
+filters out rows where `log_task.task_id IS NULL`, so files from
+cancelled or crashed tasks are silently skipped. The "log_sensor_file_id
+not found" warning is reserved for the bug case (missing row entirely)
+and is the load-bearing canary for this whole pipeline — keep it.
 
-## Files and line references
+## Validation
 
-- `neurobooth_os/msg/messages.py` — `RecordingFiles.fname`,
-  `TaskCompletion.fname`
-- `neurobooth_os/iout/lsl_streamer.py` — `start_recording_devices(filename, fname, task_devices)`
-- `neurobooth_os/server_acq.py` — extracts `fname` from
-  `StartRecording`/`TransitionRecording`, passes through to
-  `start_recording`
-- `neurobooth_os/server_stm.py` — constructs `fname` in `_perform_task`,
-  threads through to `_get_task_instance` and `TaskCompletion`
-- `neurobooth_os/tasks/eye_tracker_calibrate.py` — uses `kwargs["run_fname"]`
-  in its `RecordingFiles` message
-- `neurobooth_os/session_controller.py` — `task_video_files: Dict[fname, Dict[stream, files]]`;
-  message reader buckets by `body.fname`, pops by `TaskCompletion.fname`
-- `tests/pytest/test_video_files_race.py` — unit tests including the session
-  3185 message-order race and the repeated-task case
+`extras/sql/check_missing_video_files.sql` returns zero rows on a
+healthy session. Any row returned means either:
+
+- A device failed to produce its expected video file (check device
+  logs for that session), or
+- Both the early write and the XDF split fallback failed (check the
+  ACQ log for "Early log_sensor_file write failed" and the CTR log
+  for split-related errors).
+
+## Key code references
+
+| File                                              | Role                                                                        |
+| ------------------------------------------------- | --------------------------------------------------------------------------- |
+| `neurobooth_os/iout/lsl_streamer.py`              | `DeviceManager.start_recording_devices`, `_register_sensor_files`           |
+| `neurobooth_os/server_stm.py`                     | `_perform_task`, `_register_eyetracker_files`, `next_log_task_id` lifecycle |
+| `neurobooth_os/server_acq.py`                     | extracts `log_task_id` from `StartRecording` / `TransitionRecording`        |
+| `neurobooth_os/msg/messages.py`                   | `StartRecording.log_task_id`, `TransitionRecording.log_task_id`             |
+| `neurobooth_os/iout/split_xdf.py`                 | `log_to_database` UPDATE-or-INSERT                                          |
+| `extras/sql/check_missing_video_files.sql`        | post-session validation query                                               |
+| `neurobooth-terra/neurobooth_terra/dataflow.py`   | `copy_files` JOIN filter that drops cancelled-task files                    |
