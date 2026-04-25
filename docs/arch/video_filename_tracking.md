@@ -1,324 +1,172 @@
-# Video Filename Tracking: How It Works and What Broke
+# Video Filename Tracking
 
-## Overview
+This document describes the current mechanism for recording video filenames in
+`log_sensor_file` and compares the resulting data to the pre-#611 system.
+Intended audience: anyone touching `split_xdf`, `server_acq`, `server_stm`,
+`session_controller`, or downstream scripts that read `log_sensor_file`.
 
-When neurobooth records data, each device produces files — `.bag` (Intel cameras),
-`.avi` (FLIR), `.mov`/`.json` (iPhone), `.edf` (Eyelink). These filenames must be
-stored in the `log_sensor_file` database table so downstream pipelines can find them.
+The current design landed in #678 ("Tag RecordingFiles and TaskCompletion with
+fname to fix #659 regression"); see git history for earlier iterations
+(the LSL `videofiles` marker-stream design pre-#611 and the first #659 fix).
 
-The current system routes filenames through an LSL marker stream on the CTR machine.
-This document describes the full flow, the bug introduced by `TransitionRecording`,
-and the options for fixing it.
+## Mechanism
 
-## The Data Flow
+Filenames travel from the producer (ACQ's DeviceManager or STM's task/eye
+tracker code) to CTR via the database `message_queue`, as a `RecordingFiles`
+message. CTR accumulates them in an in-memory buffer on the message reader
+thread, and passes the buffer contents to `split_xdf` when the matching
+`TaskCompletion` arrives.
 
-There are five stages. Understanding each is necessary to see where the bug occurs.
-
-### Stage 1: Device sends filename (ACQ machine)
-
-When a camera device starts recording, it posts a `NewVideoFile` message to the
-database message queue, addressed to CTR:
-
-```
-FlirCamera.start()         → posts NewVideoFile("FlirFrameIndex", "subj_task_flir.avi")
-IntelCamera._prepare_recording() → posts NewVideoFile("Intel1FrameIndex", "subj_task_intel1.bag")
-IPhone.start()             → posts NewVideoFile("IPhoneFrameIndex", "subj_task_IPhone.mov")
-                             posts NewVideoFile("IPhoneFrameIndex", "subj_task_IPhone.json")
-EyelinkTracker.start()     → posts NewVideoFile("EyelinkFrameIndex", "subj_task.edf")
-```
-
-These messages travel through the PostgreSQL `message_queue` table. They are not
-instant — the message must be written by ACQ, then read by CTR on its next poll
-cycle (~250ms).
-
-**Key files:**
-- `iout/flir_cam.py:184` — FLIR sends NewVideoFile
-- `iout/camera_intel.py:136` — Intel sends NewVideoFile
-- `iout/iphone.py:787-789` — iPhone sends two (`.mov` + `.json`)
-- `iout/eyelink_tracker.py:188` — Eyelink sends NewVideoFile
-
-### Stage 2: CTR pushes filename to LSL marker stream (CTR machine)
-
-CTR's message reader thread receives the `NewVideoFile` message and dispatches it
-to the GUI event loop:
+Each `RecordingFiles` message is **tagged with `fname`**, the unique per-run
+identifier:
 
 ```
-SessionController._message_reader()           # reads from DB queue
-  → listener.on_new_video_file(stream_name, filename, event)
-    → window.write_event_value("-new_filename-", "FlirFrameIndex,subj_task_flir.avi")
+fname = f"{session_name}_{tsk_start_time}_{task_id}"
 ```
 
-The GUI event loop picks up the event and pushes it to the `videofiles` LSL outlet:
+`tsk_start_time` is generated when STM enters `_perform_task` for a given
+task and contains hour/minute/second resolution. Repeated runs of the same
+task (recalibration, session restart, subject repeats) produce different
+`tsk_start_time` values and therefore different fnames. The fname flows
+through the same code paths used for file naming, so the buffer key matches
+the filename prefix on disk.
 
-```python
-# gui.py:535-536
-elif event == "-new_filename-":
-    state.video_marker_stream.push_sample([values[event]])
-```
+`TaskCompletion` carries the same `fname`. When CTR reads it, it pops only
+the bucket for that specific fname. Files for other task runs stay untouched.
 
-The marker format is a single string: `"StreamName,filename.ext"`.
-
-The `videofiles` stream was created during session preparation:
-
-```python
-# session_controller.py:346
-self.state.video_marker_stream = marker_stream("videofiles")
-```
-
-This is a real LSL `StreamOutlet` of type "Markers". It exists on the CTR machine.
-
-**Key files:**
-- `session_controller.py:626-628` — dispatches NewVideoFile to listener
-- `gui.py:122-123` — GUI listener forwards to event loop
-- `gui.py:535-536` — event loop pushes to LSL marker stream
-- `iout/marker.py:11-54` — marker stream creation
-
-### Stage 3: LabRecorderCLI captures the marker in XDF (CTR machine)
-
-CTR runs LabRecorderCLI (via `liesl.Session`) to record all LSL streams into XDF
-files. The `videofiles` marker stream is one of the streams being recorded.
-
-When CTR calls `session.start_recording(fname)`, LabRecorderCLI begins writing an
-XDF file. Any `push_sample` to the `videofiles` outlet after this point is captured
-in the XDF. When CTR calls `stop_recording()`, LabRecorderCLI finalizes the file.
-
-**The critical constraint: markers pushed to the `videofiles` outlet while no
-LabRecorderCLI recording is active are lost.** They go to the LSL outlet but no
-consumer is capturing them.
-
-**Key files:**
-- `session_controller.py:456-470` — `start_lsl_recording()`
-- `session_controller.py:472-527` — `stop_lsl_recording()` + background finalize
-
-### Stage 4: split_xdf reads markers from XDF (CTR machine, background thread)
-
-After LabRecorderCLI finalizes the XDF, `split_sens_files()` runs in a background
-thread. It parses the XDF and extracts the `videofiles` markers:
-
-```python
-# split_xdf.py:69-81
-video_files = {}
-if "videofiles" in [d["info"]["name"][0] for d in data]:
-    video_data = [v for v in data if v["info"]["name"] == ["videofiles"]]
-    for d in video_data[0]["time_series"]:
-        if d[0] == "":
-            continue
-        stream_id, file_id = d[0].split(",")  # "FlirFrameIndex,subj_task_flir.avi"
-        if stream_id in video_files:
-            video_files[stream_id].append(file_id)
-        else:
-            video_files[stream_id] = [file_id]
-```
-
-Each device's data stream is then associated with its video files:
-
-```python
-# split_xdf.py:99-106
-results.append(DeviceData(
-    device_id=device_id,
-    device_data=device_data,
-    marker_data=marker,
-    video_files=video_files[device_name] if device_name in video_files else [],
-    ...
-))
-```
-
-If a device's `NewVideoFile` marker was not captured in this XDF, `video_files` will
-not contain an entry for that device, and the video filename will be missing from the
-`DeviceData`.
-
-**Key files:**
-- `iout/split_xdf.py:56-106` — `parse_xdf()`
-- `iout/split_xdf.py:147-190` — `log_to_database()`
-- `session_controller.py:529-535` — `_split_and_close()`
-
-### Stage 5: log_to_database writes to log_sensor_file (CTR machine)
-
-For each device, the function builds a file path array and inserts it into the
-database:
-
-```python
-# split_xdf.py:170-190
-sensor_file_paths = [hdf5_file, *dev.video_files]
-sensor_file_paths = [f'{session_folder}/{f}' for f in sensor_file_paths]
-sensor_file_paths = '{' + ', '.join(sensor_file_paths) + '}'
-
-for sensor_id in dev.sensor_ids:
-    vals = [(log_task_id, temporal_resolution, None,
-             start_time, end_time, dev.device_id, sensor_id,
-             sensor_file_paths)]
-    table_sens_log.insert_rows(vals, LOG_SENSOR_COLUMNS)
-```
-
-The `sensor_file_path` column contains a PostgreSQL array like:
-```
-{session/subj_task_R001-FlirFrameIndex-frame.hdf5, session/subj_task_flir.avi}
-```
-
-If the video filename was missing from Stage 4, the array only contains the HDF5 file.
-Downstream scripts that look for specific video files (`.avi`, `.bag`, `.mov`) in this
-array will fail with "log_sensor_file_id not found".
-
-**Note:** Some tasks (pursuit, MOT, hevelius) use `postpone_xdf_split()` instead of
-immediate splitting. These write XDF metadata to a backlog file for later processing
-by `extras/run_xdf_split_postproces.py`. The same marker-capture problem applies.
-
-## What TransitionRecording Changed
-
-### Before (v0.66.1): Sequential stop-then-start
+### Sequence (happy path)
 
 ```
-Time →
-
-TASK N running
-  │
-  ├─ STM: stop_acq() sends StopRecording to ACQ
-  │    ACQ: stops devices
-  │
-  ├─ STM: sends TaskCompletion to CTR
-  │    CTR: stop_lsl_recording()
-  │         LabRecorderCLI finalizes XDF for Task N
-  │         split_xdf runs in background
-  │
-  ├─ STM: sends TaskInitialization to CTR
-  │    CTR: start_lsl_recording()
-  │         LabRecorderCLI starts new XDF for Task N+1
-  │
-  ├─ STM: _start_acq() sends StartRecording to ACQ
-  │    ACQ: starts devices
-  │    ACQ devices: post NewVideoFile to CTR  ←─── AFTER recording started
-  │    CTR: receives NewVideoFile, pushes to videofiles stream
-  │         (captured in Task N+1's XDF ✓)
-  │
-TASK N+1 running
+STM                    ACQ                    CTR
+ │                      │                      │
+ ├─ post TransitionRecording(fname=F1) ──────► │
+ │                      │                      │
+ │                      ├─ start cameras       │
+ │                      ├─ post RecordingFiles(fname=F1, files=...) ─────►
+ │                      │                      │  buffer[F1] = {...}
+ ├─ task runs ...       │                      │
+ │                      │                      │
+ ├─ post TaskCompletion(fname=F1) ─────────────►
+ │                      │                      │  pop buffer[F1]
+ │                      │                      │  → split_xdf → log_sensor_file
 ```
 
-Devices start **after** CTR has started the new LSL recording. The `NewVideoFile`
-markers are always captured.
-
-### After (v0.70.0): Overlapping stop+start via TransitionRecording
+### Sequence (out-of-order, the race #659 was fighting)
 
 ```
-Time →
-
-TASK N running
-  │
-  ├─ STM: stop_acq() sends TransitionRecording to ACQ
-  │    ACQ: stops Task N devices
-  │    ACQ: starts Task N+1 devices                    ←─── EARLY
-  │    ACQ devices: post NewVideoFile to CTR            ←─── TOO EARLY
-  │    ACQ: sends RecordingStarted to STM
-  │
-  ├─ STM: sends TaskCompletion for Task N to CTR
-  │    CTR: stop_lsl_recording()
-  │         LabRecorderCLI finalizes XDF for Task N
-  │
-  │    ════════ GAP: no LSL recording active ════════
-  │
-  │    CTR: processes NewVideoFile from DB queue
-  │         pushes marker to videofiles stream
-  │         (NO XDF recording → marker LOST ✗)
-  │
-  ├─ STM: sends TaskInitialization for Task N+1 to CTR
-  │    CTR: start_lsl_recording()
-  │         LabRecorderCLI starts new XDF for Task N+1
-  │         (but the markers were already pushed and lost)
-  │
-TASK N+1 running
+STM                    ACQ                    CTR
+ │                      │                      │
+ ├─ post TransitionRecording(fname=F2, task=next) ───►
+ │                      │                      │
+ │                      ├─ start cameras       │
+ │                      ├─ post RecordingFiles(fname=F2, files=...) ───► (inserted as id=N)
+ │                      │                      │  buffer[F2] = {...}
+ │                      │                      │
+ ├─ post TaskCompletion(fname=F1, task=current) ─────────────► (inserted as id=N+1)
+ │                      │                      │  pop buffer[F1]
+ │                      │                      │  → correctly empty
+ │                      │                      │  F2's bucket is still intact
+ │                      │                      │
+ ├─ post TaskCompletion(fname=F2, task=next) ─────────────►
+ │                      │                      │  pop buffer[F2]
+ │                      │                      │  → contains F2's files ✓
 ```
 
-The `TransitionRecording` optimization moved device startup earlier — into the
-`stop_acq` call of the previous task. Devices now send `NewVideoFile` messages
-before CTR has cycled its LSL recording. The markers arrive at CTR during the gap
-between recordings and are pushed to the `videofiles` outlet with no XDF consumer.
+The key property: messages inserted into the DB out of order still get
+bucketed correctly because the bucket key is the task-run identifier, not
+arrival order or message type grouping.
 
-The markers can also land in Task N's XDF instead of Task N+1's, if CTR processes
-the `NewVideoFile` message before it processes `TaskCompletion`. This would put
-the wrong filenames in the wrong task's `log_sensor_file` entry.
+## Data comparison to pre-#611 system
 
-## Fix Options
+### `log_sensor_file.sensor_file_path`
 
-### Option 1: Buffer markers on CTR
+**Same data, same format.** The array still contains
+`[hdf5_path, video_path_1, video_path_2, ...]` in the same order as before.
+The mechanism for collecting the paths is different but the resulting column
+value is identical.
 
-**What:** Hold `NewVideoFile` markers in a list on CTR. Only push them to the
-`videofiles` LSL outlet after the next `start_lsl_recording()` call.
+Validated by the check script at `extras/sql/check_missing_video_files.sql` —
+for a correctly-functioning session, every camera row should contain its
+expected video file extension.
 
-**Implementation:**
-- Add a `pending_video_markers: List[str]` to `SessionState`
-- In `on_new_video_file()`: append to buffer instead of pushing immediately
-- In `start_lsl_recording()`: flush the buffer to the marker stream
+### `log_sensor_file.file_start_time` / `file_end_time`
 
-**Complexity:** Small (~15 lines). No changes to ACQ, STM, split_xdf, or the
-database schema.
+**Same derivation, same values, same bug.** These are still computed by
+`compute_clocks_diff()` at XDF split time (see #671). The fname-keyed
+buffering change does not touch timestamp computation. If #671 is fixed, the
+values become correct; if not, they have the same clock-drift risk as before.
 
-**Risk:** If a marker arrives after the recording has already started and the XDF
-has moved on, it could still be missed. The buffer approach assumes markers for
-task N+1 always arrive before task N+1's recording starts, which is true in practice
-because `_start_acq` waits for `RecordingStarted` from ACQ before the task runs.
+### `log_sensor_file.true_temporal_resolution`
 
-**Preserves TransitionRecording benefit:** Yes.
+**Same derivation, same values.** Computed from the XDF `time_stamps` array
+during split. Unchanged.
 
-### Option 2: Delay device start in TransitionRecording
+### XDF file contents
 
-**What:** Don't start the next task's devices until CTR confirms the new LSL
-recording is active. Effectively revert to the sequential timing.
+**One visible difference.** Pre-#611 XDF files contained a `videofiles` LSL
+marker stream with samples of the form `"FlirFrameIndex,task_flir.avi"`. The
+current XDF files do **not** contain this stream — it was removed in
+d0dfbf8 (the first #659 fix) when filename transport moved off LSL and onto
+the DB message queue.
 
-**Implementation:** Add a round-trip: ACQ waits for a "RecordingReady" message
-from CTR before starting devices.
+Consequences:
+- `parse_xdf()` no longer reads the `videofiles` stream. The branch that did
+  still exists in the pre-d0dfbf8 code paths but is dead.
+- Any external tool that re-opens old XDF files expecting `videofiles` will
+  still find it (old files are unchanged); any tool that expects it in
+  *new* XDF files will get nothing.
+- The `video_files` parameter now flows into `parse_xdf`/`split_sens_files`
+  from the CTR buffer, not from the XDF file itself.
 
-**Complexity:** Small (~20 lines), but adds a new message type and a database
-round-trip (~250ms+ per transition).
+### `log_sensor_file` row cardinality
 
-**Risk:** Eliminates the performance benefit of TransitionRecording. The whole
-point was to avoid the inter-task gap.
+**Same.** Still one row per `(log_task_id, device_id, sensor_id)`. The
+multi-sensor devices (Intel `rgb_1` + `depth_1`) still produce two rows per
+task, with identical `sensor_file_path` arrays. The FLIR still produces one
+row with one hdf5 and one avi. No new rows, no removed rows.
 
-**Preserves TransitionRecording benefit:** No — defeats the purpose.
+### Failure modes
 
-### Option 3: Write filenames directly to log_sensor_file from ACQ
+**Different, and fewer.**
 
-**What:** Instead of routing filenames through the LSL marker stream, have each
-device (or the DeviceManager) write video filenames directly to the `log_sensor_file`
-table in the database.
+| Failure mode | Pre-#611 | d0dfbf8 (first fix) | Current |
+|---|---|---|---|
+| LSL gap between recordings (markers lost) | Yes — #659 | No | No |
+| Message-order race (next task's files swept into current) | N/A | Yes — #659 regression | No |
+| Repeated tasks within a session mixing files | N/A | Yes (task_id collision) | No |
+| Downstream missing-video queries | Broken by LSL gap | Broken by order race | Should work |
 
-**Implementation:**
-- Each device already knows its filename at `start()` time
-- ACQ would need access to the `log_task_id` for the current task to write the
-  correct row. Currently `log_task_id` is created by STM (`server_stm.py:250`)
-  and sent to CTR in `TaskInitialization`, but never sent to ACQ.
-- Would require:
-  1. Add `log_task_id` to `StartRecording` and `TransitionRecording` messages
-  2. STM sends the `log_task_id` when telling ACQ to start recording
-  3. ACQ (or DeviceManager) writes filenames to `log_sensor_file` directly
-  4. Remove the `videofiles` marker stream and the `NewVideoFile` message path
-  5. Update `split_xdf.py` to not rely on `videofiles` markers for filenames
-     (the video files would already be in the database)
+### Data timing
 
-**Complexity:** Medium (~80-100 lines across 6-8 files). The changes span STM
-(message construction), ACQ (database writes), the message schema, split_xdf
-(remove video_files parsing or make it a fallback), and session_controller
-(remove marker stream creation and NewVideoFile handling).
+**Slightly different but invisible.** In the pre-#611 system, filenames
+entered `log_sensor_file` during the XDF split, after LabRecorder finalized
+the XDF file. In the current system, filenames enter the CTR buffer as soon
+as the device's `start()` returns; they're still written to
+`log_sensor_file` during the XDF split on the same schedule. The timing of
+DB writes is unchanged from the reader's perspective.
 
-**Risk:** Requires ACQ to have write access to `log_sensor_file`, which it
-currently doesn't do. The `neurobooth_terra` Table class would need to be
-available on ACQ (it may already be, since ACQ imports from `neurobooth_terra`
-indirectly). Also requires passing `log_task_id` through a code path that
-currently doesn't have it.
+## What to look for when validating
 
-**Preserves TransitionRecording benefit:** Yes.
+Run `extras/sql/check_missing_video_files.sql` (filtered to the target
+release) after each session and confirm zero rows. Any row returned means
+either:
+- A device failed to produce its video file (check device logs), or
+- A `RecordingFiles` message was lost or mistagged (check `body.fname`
+  values in the `message_queue` table for the session)
 
-### Recommendation
+## Files and line references
 
-**Option 1 (buffer markers) is the right fix for now.** It's minimal, low-risk,
-preserves the performance optimization, and doesn't change the data flow
-architecture. The only assumption is that `NewVideoFile` markers for the next task
-arrive at CTR before that task's LSL recording starts, which is guaranteed by the
-`RecordingStarted` wait in `_start_acq`.
-
-Option 3 is the architecturally "correct" solution — routing filenames through an
-LSL marker stream on a different machine was always fragile. But it's 5-6x more
-complex than Option 1, touches more files, requires schema changes to messages,
-and introduces a new write path to the database from ACQ. It should be considered
-as a future improvement, not an urgent fix for the current bug.
-
-Option 2 should be avoided — it reverts the performance gain that motivated
-`TransitionRecording` in the first place.
+- `neurobooth_os/msg/messages.py` — `RecordingFiles.fname`,
+  `TaskCompletion.fname`
+- `neurobooth_os/iout/lsl_streamer.py` — `start_recording_devices(filename, fname, task_devices)`
+- `neurobooth_os/server_acq.py` — extracts `fname` from
+  `StartRecording`/`TransitionRecording`, passes through to
+  `start_recording`
+- `neurobooth_os/server_stm.py` — constructs `fname` in `_perform_task`,
+  threads through to `_get_task_instance` and `TaskCompletion`
+- `neurobooth_os/tasks/eye_tracker_calibrate.py` — uses `kwargs["run_fname"]`
+  in its `RecordingFiles` message
+- `neurobooth_os/session_controller.py` — `task_video_files: Dict[fname, Dict[stream, files]]`;
+  message reader buckets by `body.fname`, pops by `TaskCompletion.fname`
+- `tests/pytest/test_video_files_race.py` — unit tests including the session
+  3185 message-order race and the repeated-task case
