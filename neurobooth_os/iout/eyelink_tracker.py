@@ -86,8 +86,7 @@ class EyeTracker(Device):
                 "EyeTracker.connect() requires a PsychoPy window. "
                 "Pass win= to __init__ or supply psychopy_window in bring_up context."
             )
-        mon = monitors.getAllMonitors()[0]
-        self.monitor_width, self.monitor_height = monitors.Monitor(mon).getSizePix()
+        self.monitor_width, self.monitor_height = self._resolve_monitor_size()
 
         self.stream_info = set_stream_description(
             stream_info=StreamInfo(
@@ -127,6 +126,16 @@ class EyeTracker(Device):
         self._connect_tracker()
         if self.tk is not None:
             self.state = DeviceState.CONNECTED
+
+    def _resolve_monitor_size(self) -> Tuple[int, int]:
+        """Look up the active monitor's pixel dimensions.
+
+        Subclass hook: ``MockEyeTracker`` overrides to return canned
+        values so headless unit tests don't need a configured PsychoPy
+        monitor center.
+        """
+        mon = monitors.getAllMonitors()[0]
+        return monitors.Monitor(mon).getSizePix()
 
     def _connect_tracker(self):
         _require_pylink()
@@ -231,23 +240,31 @@ class EyeTracker(Device):
         Returns:
             List containing the created EDF file basename.
         """
-        _require_pylink()
         if filename is None:
             filename = "TEST.edf"
         self.filename = filename
-
         self.fname_temp = "name8chr.edf"
-        self.tk.openDataFile(self.fname_temp)
+
         self.streaming = True
         self.state = DeviceState.STARTED
 
-        pylink.beginRealTimeMode(100)
-        self.tk.startRecording(1, 1, 1, 1)
+        self._begin_native_recording()
         self.recording = True
         self.stream_thread = threading.Thread(target=self.record)
         self.logger.debug('EyeLink: Starting Record Thread')
         self.stream_thread.start()
         return [op.split(filename)[-1]]
+
+    def _begin_native_recording(self) -> None:
+        """Open the EDF file and start the EyeLink in real-time recording mode.
+
+        Subclass hook: ``MockEyeTracker`` overrides to skip the native
+        ``pylink.beginRealTimeMode`` / ``startRecording`` calls.
+        """
+        _require_pylink()
+        self.tk.openDataFile(self.fname_temp)
+        pylink.beginRealTimeMode(100)
+        self.tk.startRecording(1, 1, 1, 1)
 
     def record(self):
         self.paused = False
@@ -320,9 +337,18 @@ class EyeTracker(Device):
         self.recording = False
         if self.streaming:
             self.stream_thread.join()
-            self.tk.receiveDataFile(self.fname_temp, self.filename)
+            self._receive_data_file()
             self.streaming = False
         self.state = DeviceState.STOPPED
+
+    def _receive_data_file(self) -> None:
+        """Copy the EDF file from the tracker to ``self.filename``.
+
+        Subclass hook: ``MockEyeTracker`` overrides to write a stub
+        ``.edf`` file at the expected path so downstream code that
+        catalogues sensor files doesn't choke on a missing path.
+        """
+        self.tk.receiveDataFile(self.fname_temp, self.filename)
 
     def close(self) -> None:
         if self.tk is None:
