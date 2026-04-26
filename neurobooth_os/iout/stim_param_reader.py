@@ -230,6 +230,21 @@ class EyelinkDeviceArgs(DeviceArgs):
         return EyeTracker
 
 
+class MockEyelinkDeviceArgs(EyelinkDeviceArgs):
+    """DeviceArgs for :class:`MockEyeTracker` — same fields, different device class.
+
+    Selected at runtime by the substitution registry when ``EyeTracker``
+    is in ``NB_MOCK_DEVICES``; instances are built via Pydantic
+    ``model_construct``, so this subclass exists primarily to point
+    ``device_class()`` at the mock implementation.
+    """
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.mock.mock_eyetracker import MockEyeTracker
+        return MockEyeTracker
+
+
 class IPhoneDeviceArgs(DeviceArgs):
     """
     IPhone device arguments
@@ -728,3 +743,4 @@ from neurobooth_os.iout.mock_substitution import register_mock  # noqa: E402
 
 register_mock(MbientDeviceArgs, MockMbientDeviceArgs)
 register_mock(IPhoneDeviceArgs, MockIPhoneDeviceArgs)
+register_mock(EyelinkDeviceArgs, MockEyelinkDeviceArgs)
