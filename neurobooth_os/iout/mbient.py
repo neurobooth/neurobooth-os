@@ -789,15 +789,7 @@ class Mbient(Device):
         :returns: Whether the connection and setup was successful.
         """
         try:
-            self.prepare_scan()  # Wake up devices
-            self._ble_connect()
-            self.logger.debug(self.format_message(f'Device Model: {self.device_wrapper.model_name}'))
-            self.logger.debug(self.format_message(f'Wrapper Class: {self.device_wrapper.__class__.__name__}'))
-
-            # Perform a sensor reset and reconnect
-            self.reset()
-            sleep(self.retry_delay_sec)  # Wait a moment before trying to re-connect after the reset
-            self._ble_connect()
+            self._acquire_hardware()
 
             # Set up the device to stream acceleration and angular velocity
             if not DISABLE_LSL:
@@ -828,6 +820,24 @@ class Mbient(Device):
     def prepare(self) -> bool:
         """Backward-compatible alias for :meth:`connect`."""
         return self.connect()
+
+    def _acquire_hardware(self) -> None:
+        """BLE scan, connect, board reset, and reconnect.
+
+        Subclass hook: ``MockMbient`` overrides this to skip BLE and the
+        native reset cycle. Anything that touches the mbientlab SDK belongs
+        here, not in ``connect()``.
+        """
+        _require_mbientlab()
+        self.prepare_scan()  # Wake up devices
+        self._ble_connect()
+        self.logger.debug(self.format_message(f'Device Model: {self.device_wrapper.model_name}'))
+        self.logger.debug(self.format_message(f'Wrapper Class: {self.device_wrapper.__class__.__name__}'))
+
+        # Perform a sensor reset and reconnect
+        self.reset()
+        sleep(self.retry_delay_sec)  # Wait a moment before trying to re-connect after the reset
+        self._ble_connect()
 
     def _create_outlet(self) -> StreamOutlet:
         """Create an LSL outlet; helper for prepare."""
@@ -868,6 +878,23 @@ class Mbient(Device):
 
     def setup(self) -> None:
         """Configure the device (i.e., connection settings, sensor settings, data streaming callback)"""
+        self._attach_data_source()
+
+        txt = f"Mbient {self.dev_name} is connected"  # Send message to GUI terminal
+        self.send_status_msg(txt, "INFO")
+        self.logger.debug(self.format_message('Setup Completed'))
+
+    def _attach_data_source(self) -> None:
+        """Wire up the data source feeding ``_lsl_data_handler``.
+
+        Real path: configure connection/sensor settings, create the
+        accel+gyro fuser, and subscribe the C-level callback that calls
+        ``_callback`` (which dispatches to ``data_handlers``).
+
+        Subclass hook: ``MockMbient`` overrides this to spawn a synthetic
+        data thread that pushes samples directly through the data
+        handlers, with no native MetaWear/cbindings interaction.
+        """
         _require_mbientlab()
         self.device_wrapper.setup_connection_settings(self.connection_params)
         sensor_signals = self.device_wrapper.setup_sensor_settings(self.accel_params, self.gyro_params)
@@ -885,10 +912,6 @@ class Mbient(Device):
             self.data_handlers = [self._lsl_data_handler, *self.data_handlers]  # Make sure LSL is called first!
         libmetawear.mbl_mw_datasignal_subscribe(processor, None, self.callback)
         self.subscribed_signals.append(processor)
-
-        txt = f"Mbient {self.dev_name} is connected"  # Send message to GUI terminal
-        self.send_status_msg(txt, "INFO")
-        self.logger.debug(self.format_message('Setup Completed'))
 
     def log_battery_info(self) -> None:
         """
