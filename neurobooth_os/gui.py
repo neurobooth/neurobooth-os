@@ -659,6 +659,24 @@ def gui(logger):
     logger.info(f"Neurobooth application version = {state.release_version}")
     logger.info(f"Neurobooth config version = {state.config_version}")
 
+    # Defensive: surface mock-device substitution clearly so a forgotten
+    # NB_MOCK_DEVICES env var or stray mock_devices config field cannot
+    # silently corrupt a real recording. Logged at CRITICAL so it shows in
+    # session logs; a popup is shown so the operator sees it before any
+    # session starts.
+    from neurobooth_os.iout.mock_substitution import active_mock_targets
+    _mock_targets = active_mock_targets()
+    if _mock_targets:
+        _banner = ("MOCK DEVICES ACTIVE — this session will NOT record real "
+                   f"hardware data. Active targets: {sorted(_mock_targets)}")
+        logger.critical(_banner)
+        try:
+            sg.popup_ok(_banner, title="Mock devices active",
+                        background_color="#ffe6e6", text_color="#660000")
+        except Exception:
+            # Popup is best-effort; the log line is the source of truth.
+            pass
+
     nodes = get_nodes()
 
     system_resource_logger = SystemResourceLogger(machine_name='CTR')

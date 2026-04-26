@@ -5,7 +5,27 @@ from typing import Any, List, Mapping, Optional, Tuple
 
 import numpy as np
 
-import pylink
+# Hardware import — guarded so this module is importable on a hardware-less
+# laptop. Real EyeTracker code paths still require pylink and will fail
+# loudly when called without it.
+try:
+    import pylink
+    _HAS_PYLINK = True
+except ImportError:
+    pylink = None  # type: ignore[assignment]
+    _HAS_PYLINK = False
+
+
+def _require_pylink() -> None:
+    """Raise a clear error if real-EyeLink code is reached without pylink."""
+    if not _HAS_PYLINK:
+        raise RuntimeError(
+            "EyeLink hardware code path invoked but pylink is not installed. "
+            "Install the EyeLink SDK (pylink) to use a real EyeLink, or use "
+            "MockEyeTracker via NB_MOCK_DEVICES=EyeTracker for hardware-less testing."
+        )
+
+
 from psychopy import visual, monitors
 from pylsl import StreamInfo, StreamOutlet, local_clock
 
@@ -13,9 +33,6 @@ from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 from neurobooth_os.iout.metadator import post_message
 from neurobooth_os.iout.stim_param_reader import EyelinkDeviceArgs
 from neurobooth_os.msg.messages import NoEyetracker, Request, DeviceInitialization
-from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
-    EyeLinkCoreGraphicsPsychoPy,
-)
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 
@@ -112,6 +129,7 @@ class EyeTracker(Device):
             self.state = DeviceState.CONNECTED
 
     def _connect_tracker(self):
+        _require_pylink()
         try:
             self.tk = pylink.EyeLink(self.IP)
         except RuntimeError:
@@ -176,6 +194,14 @@ class EyeTracker(Device):
         post_message(msg)
 
     def calibrate(self):
+        # Imported here rather than at module top so eyelink_tracker.py loads
+        # cleanly on a hardware-less laptop. EyeLinkCoreGraphicsPsychoPy chains
+        # through to pylink at import time; calibrate() is only ever called
+        # against a real (or appropriately mocked) hardware path.
+        _require_pylink()
+        from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
+            EyeLinkCoreGraphicsPsychoPy,
+        )
         self.logger.debug('EyeLink: Performing Calibration')
         calib_prompt = "You will see dots on the screen, please gaze at them"
         calib_msg = visual.TextStim(
@@ -205,6 +231,7 @@ class EyeTracker(Device):
         Returns:
             List containing the created EDF file basename.
         """
+        _require_pylink()
         if filename is None:
             filename = "TEST.edf"
         self.filename = filename

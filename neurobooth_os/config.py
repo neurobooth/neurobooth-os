@@ -104,6 +104,13 @@ class NeuroboothConfig(BaseModel):
     machines: Dict[str, MachineSpec]
     database: DatabaseSpec
     screen: ScreenSpec
+    # Persistent mock-device opt-in. Comma-separated device-class names
+    # (e.g. ["Mbient", "IPhone"]) or the special value ["all"]. Overridden
+    # by the NB_MOCK_DEVICES environment variable when set. Devices listed
+    # here are substituted with their registered mock counterpart at
+    # DeviceManager startup. See docs/arch/adding_a_device.md → "Running
+    # with mocks".
+    mock_devices: Optional[List[str]] = None
 
     _acquisition_specs: List[ServiceSpec] = PrivateAttr(default_factory=list)
     _presentation_spec: Optional[ServiceSpec] = PrivateAttr(default=None)
