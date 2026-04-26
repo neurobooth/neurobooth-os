@@ -62,3 +62,17 @@ production:
 | `machines.<name>.password` | Remote process management | Required | - | - |
 | SSH key (`~/.ssh/id_rsa`) | SSH tunnel to DB | Required | Required | Required |
 
+## Machine clock
+
+LSL stream alignment across machines depends on each host's clock being
+disciplined to a shared time source. On MGH/HMS-network machines:
+
+1. **Time server.** Control Panel → Clock and Region → Date and Time →
+   Internet Time → "Change settings…" → set the server to
+   `www.partners.org`.
+2. **Sync interval.** Windows defaults to syncing once per week
+   (`SpecialPollInterval = 604800` seconds). For acquisition machines,
+   drop this to a much smaller value via `regedit` at
+   `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\NtpClient`,
+   key `SpecialPollInterval` (DWORD).
+
