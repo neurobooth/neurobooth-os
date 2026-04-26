@@ -264,6 +264,21 @@ class IPhoneDeviceArgs(DeviceArgs):
         return IPhone
 
 
+class MockIPhoneDeviceArgs(IPhoneDeviceArgs):
+    """DeviceArgs for :class:`MockIPhone` — same fields, different device class.
+
+    Selected at runtime by the substitution registry when ``IPhone`` is in
+    ``NB_MOCK_DEVICES``; instances are built via Pydantic ``model_construct``,
+    so this subclass exists primarily to point ``device_class()`` at the
+    mock implementation.
+    """
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.mock.mock_iphone import MockIPhone
+        return MockIPhone
+
+
 class FlirDeviceArgs(DeviceArgs):
     """
     FLIR device arguments
@@ -712,3 +727,4 @@ class RawTaskParams(EnvArgs):
 from neurobooth_os.iout.mock_substitution import register_mock  # noqa: E402
 
 register_mock(MbientDeviceArgs, MockMbientDeviceArgs)
+register_mock(IPhoneDeviceArgs, MockIPhoneDeviceArgs)
