@@ -1,16 +1,18 @@
 # System Configuration
 
-As described in release_process.md, deployments should generally be made from packaged releases managed in GitHub, using git's checkout function. 
+As described in `docs/release process.md`, deployments should generally be made from packaged releases managed in GitHub, using git's checkout function.
 This document assumes that step has been completed.
 
-Once the new code is checked-out, configuration data may need to be updated, and config files may need to be created or modified. Neurobooth provides example files that can be used in this process. They can be found in the neurobooth-os/examples/configs.
+Once the new code is checked-out, configuration data may need to be updated, and config files may need to be created or modified. Reference configs for every environment live in the companion `neurobooth/configs` repository (`environments/<env>/neurobooth_os_config.yaml`); copy and edit those rather than starting from scratch.
 
 Please note that the process described here is completely manual, so that no config data is accidentally over-written during deployment.
-Consult the release notes for any modifications to the example files, as these modifications serve sa notice that changes were made to configuration data, and that some additional data may be required. 
+Consult the release notes for any modifications to the reference configs, as these modifications signal that changes were made to configuration data and that some additional data may be required.
 
 ## Config files
-At least one config file (neurobooth_os_config.json) should be modified as necessary and placed in the folder named in the NB_CONFIG environment variable. (See below)
+At least one config file (`neurobooth_os_config.yaml`) should be modified as necessary and placed in the folder named in the `NB_CONFIG` environment variable. (See below)
 Any additional config files required by the system will also be placed in this folder or in a sub-folder. It is expected that device-specific config files will be placed in a sub-folder called "devices".
+
+The format of `neurobooth_os_config.yaml` is the **normalized** machines + services layout: a top-level `machines:` dict keyed by machine name, and `acquisition` / `presentation` / `control` sections that reference machines by name. The legacy flat format (with `name` / `user` / `password` / `local_data_dir` inlined in each service entry) is **no longer supported** — `NeuroboothConfig.__init__` raises `ConfigException` if `machines` is missing. See the Pydantic models in `neurobooth_os/config.py` (`MachineSpec`, `ServiceSpec`, `ResolvedService`, `NeuroboothConfig`) for the authoritative schema.
 
 ## Environment Variables
 Several environment variables must be setup to run neurobooth. An example Windows batch file can be found that creates all the required variables (or updates them if they already exist). 
@@ -59,7 +61,4 @@ production:
 | `database.password` | PostgreSQL auth | Required | Required | Required |
 | `machines.<name>.password` | Remote process management | Required | - | - |
 | SSH key (`~/.ssh/id_rsa`) | SSH tunnel to DB | Required | Required | Required |
-
-The legacy flat config format (with passwords in each service entry) is still
-supported. See `docs/arch/config_normalization.md` for migration details.
 
