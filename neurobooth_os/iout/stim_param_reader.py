@@ -230,6 +230,21 @@ class EyelinkDeviceArgs(DeviceArgs):
         return EyeTracker
 
 
+class MockEyelinkDeviceArgs(EyelinkDeviceArgs):
+    """DeviceArgs for :class:`MockEyeTracker` — same fields, different device class.
+
+    Selected at runtime by the substitution registry when ``EyeTracker``
+    is in ``NB_MOCK_DEVICES``; instances are built via Pydantic
+    ``model_construct``, so this subclass exists primarily to point
+    ``device_class()`` at the mock implementation.
+    """
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.mock.mock_eyetracker import MockEyeTracker
+        return MockEyeTracker
+
+
 class IPhoneDeviceArgs(DeviceArgs):
     """
     IPhone device arguments
@@ -262,6 +277,21 @@ class IPhoneDeviceArgs(DeviceArgs):
     def device_class(cls) -> Type["Device"]:
         from neurobooth_os.iout.iphone import IPhone
         return IPhone
+
+
+class MockIPhoneDeviceArgs(IPhoneDeviceArgs):
+    """DeviceArgs for :class:`MockIPhone` — same fields, different device class.
+
+    Selected at runtime by the substitution registry when ``IPhone`` is in
+    ``NB_MOCK_DEVICES``; instances are built via Pydantic ``model_construct``,
+    so this subclass exists primarily to point ``device_class()`` at the
+    mock implementation.
+    """
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.mock.mock_iphone import MockIPhone
+        return MockIPhone
 
 
 class FlirDeviceArgs(DeviceArgs):
@@ -421,6 +451,21 @@ class MbientDeviceArgs(DeviceArgs):
     def device_class(cls) -> Type["Device"]:
         from neurobooth_os.iout.mbient import Mbient
         return Mbient
+
+
+class MockMbientDeviceArgs(MbientDeviceArgs):
+    """DeviceArgs for :class:`MockMbient` — same fields, different device class.
+
+    Selected at runtime by the substitution registry when ``Mbient`` is in
+    ``NB_MOCK_DEVICES``; instances are built via Pydantic ``model_construct``,
+    so this subclass exists primarily to point ``device_class()`` at the
+    mock implementation.
+    """
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.mock.mock_mbient import MockMbient
+        return MockMbient
 
 
 class MouseDeviceArgs(DeviceArgs):
@@ -684,3 +729,18 @@ class RawTaskParams(EnvArgs):
     instruction_id: Optional[str] = None
     device_id_array: List[str]
     arg_parser: str
+
+
+# ---------------------------------------------------------------------------
+# Mock-device registrations
+#
+# Done here (not in each mock module) so the registry is populated as soon as
+# this module is imported — which happens unconditionally during config load.
+# Without this, mocks would only register on demand and the first
+# ``apply_mock_substitution`` call would silently miss them.
+# ---------------------------------------------------------------------------
+from neurobooth_os.iout.mock_substitution import register_mock  # noqa: E402
+
+register_mock(MbientDeviceArgs, MockMbientDeviceArgs)
+register_mock(IPhoneDeviceArgs, MockIPhoneDeviceArgs)
+register_mock(EyelinkDeviceArgs, MockEyelinkDeviceArgs)

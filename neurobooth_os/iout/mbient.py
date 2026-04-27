@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import argparse
 import threading
@@ -9,8 +11,36 @@ from typing import Any, Dict, List, Callable, Mapping, NamedTuple, Optional
 from abc import ABC, abstractmethod
 from enum import IntEnum
 
-from mbientlab.warble import BleScanner
-from mbientlab.metawear import MetaWear, libmetawear, parse_value, cbindings, Module, Model
+# Hardware imports — guarded so this module is importable on a hardware-less
+# laptop (the mock subclass loads the parent without needing mbientlab).
+# Real device code paths still require these and will fail loudly when called
+# without the SDK installed.
+try:
+    from mbientlab.warble import BleScanner
+    from mbientlab.metawear import (
+        MetaWear, libmetawear, parse_value, cbindings, Module, Model,
+    )
+    _HAS_MBIENTLAB = True
+except ImportError:
+    BleScanner = None  # type: ignore[assignment]
+    MetaWear = None  # type: ignore[assignment]
+    libmetawear = None  # type: ignore[assignment]
+    parse_value = None  # type: ignore[assignment]
+    cbindings = None  # type: ignore[assignment]
+    Module = None  # type: ignore[assignment]
+    Model = None  # type: ignore[assignment]
+    _HAS_MBIENTLAB = False
+
+
+def _require_mbientlab() -> None:
+    """Raise a clear error if real-Mbient code is reached without the SDK."""
+    if not _HAS_MBIENTLAB:
+        raise RuntimeError(
+            "Mbient hardware code path invoked but the mbientlab SDK is not "
+            "installed. Install mbientlab to use real Mbient devices, or use "
+            "MockMbient via NB_MOCK_DEVICES=Mbient for hardware-less testing."
+        )
+
 
 from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 from neurobooth_os.iout.metadator import post_message, get_database_connection
@@ -207,14 +237,19 @@ class MetaWearWrapper(ABC):
     """
     A wrapper around a MetaWear object that provices an additional layer of abstraction.
     """
-    SUPPORTED_DEVICE_MODELS = [  # Should be the models with both accelerometer and gyroscope
-        Model.METAMOTION_S,
-        Model.METAMOTION_R,
-        Model.METAMOTION_RL,
-        Model.METAMOTION_C,
-        Model.METAWEAR_RG,
-        Model.METAWEAR_RPRO
-    ]
+
+    @classmethod
+    def supported_device_models(cls):
+        """Return the list of supported device-model constants (lazy: requires mbientlab)."""
+        _require_mbientlab()
+        return [
+            Model.METAMOTION_S,
+            Model.METAMOTION_R,
+            Model.METAMOTION_RL,
+            Model.METAMOTION_C,
+            Model.METAWEAR_RG,
+            Model.METAWEAR_RPRO,
+        ]
 
     @staticmethod
     def create_wrapper(device: MetaWear) -> 'MetaWearWrapper':
@@ -224,9 +259,10 @@ class MetaWearWrapper(ABC):
         :param device: The MetaWear object to wrap.
         :returns: An appropriate wrapper selected based on the board's configuration.
         """
+        _require_mbientlab()
         board = device.board
         model = libmetawear.mbl_mw_metawearboard_get_model(board)
-        if model not in MetaWearWrapper.SUPPORTED_DEVICE_MODELS:
+        if model not in MetaWearWrapper.supported_device_models():
             model_name = libmetawear.mbl_mw_metawearboard_get_model_name(board).decode()
             raise UnsupportedDevice(f'Unsupported Device Model: {model_name}')
 
@@ -509,8 +545,12 @@ class Mbient(Device):
         self.data_handlers: List['Mbient.DATA_HANDLER'] = []
         self._auto_reconnect_failures: int = 0
 
-        # Streaming-related variables
-        self.callback = cbindings.FnVoid_VoidP_DataP(self._callback)
+        # Streaming-related variables. The C-level callback binding is created
+        # lazily in setup() (where it's actually subscribed) so that
+        # constructing an Mbient instance does not require the mbientlab SDK
+        # to be installed — the mock subclass can call super().__init__
+        # without triggering the cbindings dereference.
+        self.callback = None
         self.n_samples_streamed = 0
 
         self.logger.debug(self.format_message(f'acc={self.accel_params}; gyro={self.gyro_params}'))
@@ -749,15 +789,7 @@ class Mbient(Device):
         :returns: Whether the connection and setup was successful.
         """
         try:
-            self.prepare_scan()  # Wake up devices
-            self._ble_connect()
-            self.logger.debug(self.format_message(f'Device Model: {self.device_wrapper.model_name}'))
-            self.logger.debug(self.format_message(f'Wrapper Class: {self.device_wrapper.__class__.__name__}'))
-
-            # Perform a sensor reset and reconnect
-            self.reset()
-            sleep(self.retry_delay_sec)  # Wait a moment before trying to re-connect after the reset
-            self._ble_connect()
+            self._acquire_hardware()
 
             # Set up the device to stream acceleration and angular velocity
             if not DISABLE_LSL:
@@ -788,6 +820,24 @@ class Mbient(Device):
     def prepare(self) -> bool:
         """Backward-compatible alias for :meth:`connect`."""
         return self.connect()
+
+    def _acquire_hardware(self) -> None:
+        """BLE scan, connect, board reset, and reconnect.
+
+        Subclass hook: ``MockMbient`` overrides this to skip BLE and the
+        native reset cycle. Anything that touches the mbientlab SDK belongs
+        here, not in ``connect()``.
+        """
+        _require_mbientlab()
+        self.prepare_scan()  # Wake up devices
+        self._ble_connect()
+        self.logger.debug(self.format_message(f'Device Model: {self.device_wrapper.model_name}'))
+        self.logger.debug(self.format_message(f'Wrapper Class: {self.device_wrapper.__class__.__name__}'))
+
+        # Perform a sensor reset and reconnect
+        self.reset()
+        sleep(self.retry_delay_sec)  # Wait a moment before trying to re-connect after the reset
+        self._ble_connect()
 
     def _create_outlet(self) -> StreamOutlet:
         """Create an LSL outlet; helper for prepare."""
@@ -828,6 +878,24 @@ class Mbient(Device):
 
     def setup(self) -> None:
         """Configure the device (i.e., connection settings, sensor settings, data streaming callback)"""
+        self._attach_data_source()
+
+        txt = f"Mbient {self.dev_name} is connected"  # Send message to GUI terminal
+        self.send_status_msg(txt, "INFO")
+        self.logger.debug(self.format_message('Setup Completed'))
+
+    def _attach_data_source(self) -> None:
+        """Wire up the data source feeding ``_lsl_data_handler``.
+
+        Real path: configure connection/sensor settings, create the
+        accel+gyro fuser, and subscribe the C-level callback that calls
+        ``_callback`` (which dispatches to ``data_handlers``).
+
+        Subclass hook: ``MockMbient`` overrides this to spawn a synthetic
+        data thread that pushes samples directly through the data
+        handlers, with no native MetaWear/cbindings interaction.
+        """
+        _require_mbientlab()
         self.device_wrapper.setup_connection_settings(self.connection_params)
         sensor_signals = self.device_wrapper.setup_sensor_settings(self.accel_params, self.gyro_params)
 
@@ -835,6 +903,8 @@ class Mbient(Device):
         # (As opposed to an anonymous lambda or function-scoped variable.)
         # If not, then the program will silently fail when the callback gets triggered.
         # Speculation: Python can garbage collect variables that the C bindings expect to exist => memory access error.
+        if self.callback is None:
+            self.callback = cbindings.FnVoid_VoidP_DataP(self._callback)
         processor = MetaWearWrapper.create_data_fusion_processor(sensor_signals)
         if DISABLE_LSL:
             self.logger.warning('LSL Disabled!')
@@ -842,10 +912,6 @@ class Mbient(Device):
             self.data_handlers = [self._lsl_data_handler, *self.data_handlers]  # Make sure LSL is called first!
         libmetawear.mbl_mw_datasignal_subscribe(processor, None, self.callback)
         self.subscribed_signals.append(processor)
-
-        txt = f"Mbient {self.dev_name} is connected"  # Send message to GUI terminal
-        self.send_status_msg(txt, "INFO")
-        self.logger.debug(self.format_message('Setup Completed'))
 
     def log_battery_info(self) -> None:
         """

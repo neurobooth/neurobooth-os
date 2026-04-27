@@ -11,6 +11,9 @@ import neurobooth_os.iout.metadator as meta
 from neurobooth_os.iout.device import (
     Device, DeviceCapability, CameraPreviewException,
 )
+from neurobooth_os.iout.mock_substitution import (
+    active_mock_targets, apply_mock_substitution,
+)
 from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 
@@ -117,6 +120,27 @@ class DeviceManager:
         # __init__ derives state from sensor_array would crash here (the
         # registry path does not populate it), so the opt-in is strict.
         task_device_args = DeviceManager._get_unique_devices(task_params)
+
+        # Mock-device substitution. NB_MOCK_DEVICES env var or the
+        # NeuroboothConfig.mock_devices field can swap real DeviceArgs for
+        # mock counterparts before device_class() is resolved. See
+        # neurobooth_os/iout/mock_substitution.py.
+        active_mocks = active_mock_targets()
+        if active_mocks:
+            self.logger.info(
+                f'Device Manager: mock targets active = {sorted(active_mocks)}'
+            )
+            substituted = {}
+            for dev_id, dev_args in task_device_args.items():
+                new_args = apply_mock_substitution(dev_args, active_mocks)
+                if new_args is not dev_args:
+                    self.logger.info(
+                        f'Device Manager: mocking {dev_id} '
+                        f'({type(dev_args).__name__} -> {type(new_args).__name__})'
+                    )
+                substituted[dev_id] = new_args
+            task_device_args = substituted
+
         session_device_args: Dict[str, DeviceArgs] = {}
         missing = [d for d in self.assigned_devices if d not in task_device_args]
         if missing:
@@ -128,6 +152,14 @@ class DeviceManager:
                     )
                     continue
                 dev_args = registry[device_id]
+                if active_mocks:
+                    new_args = apply_mock_substitution(dev_args, active_mocks)
+                    if new_args is not dev_args:
+                        self.logger.info(
+                            f'Device Manager: mocking {device_id} '
+                            f'({type(dev_args).__name__} -> {type(new_args).__name__})'
+                        )
+                        dev_args = new_args
                 try:
                     dev_class = type(dev_args).device_class()
                 except NotImplementedError:

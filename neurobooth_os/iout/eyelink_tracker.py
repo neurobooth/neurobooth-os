@@ -5,7 +5,27 @@ from typing import Any, List, Mapping, Optional, Tuple
 
 import numpy as np
 
-import pylink
+# Hardware import — guarded so this module is importable on a hardware-less
+# laptop. Real EyeTracker code paths still require pylink and will fail
+# loudly when called without it.
+try:
+    import pylink
+    _HAS_PYLINK = True
+except ImportError:
+    pylink = None  # type: ignore[assignment]
+    _HAS_PYLINK = False
+
+
+def _require_pylink() -> None:
+    """Raise a clear error if real-EyeLink code is reached without pylink."""
+    if not _HAS_PYLINK:
+        raise RuntimeError(
+            "EyeLink hardware code path invoked but pylink is not installed. "
+            "Install the EyeLink SDK (pylink) to use a real EyeLink, or use "
+            "MockEyeTracker via NB_MOCK_DEVICES=EyeTracker for hardware-less testing."
+        )
+
+
 from psychopy import visual, monitors
 from pylsl import StreamInfo, StreamOutlet, local_clock
 
@@ -13,9 +33,6 @@ from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 from neurobooth_os.iout.metadator import post_message
 from neurobooth_os.iout.stim_param_reader import EyelinkDeviceArgs
 from neurobooth_os.msg.messages import NoEyetracker, Request, DeviceInitialization
-from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
-    EyeLinkCoreGraphicsPsychoPy,
-)
 from neurobooth_os.iout.stream_utils import DataVersion, set_stream_description
 from neurobooth_os.log_manager import APP_LOG_NAME
 
@@ -69,8 +86,7 @@ class EyeTracker(Device):
                 "EyeTracker.connect() requires a PsychoPy window. "
                 "Pass win= to __init__ or supply psychopy_window in bring_up context."
             )
-        mon = monitors.getAllMonitors()[0]
-        self.monitor_width, self.monitor_height = monitors.Monitor(mon).getSizePix()
+        self.monitor_width, self.monitor_height = self._resolve_monitor_size()
 
         self.stream_info = set_stream_description(
             stream_info=StreamInfo(
@@ -111,7 +127,18 @@ class EyeTracker(Device):
         if self.tk is not None:
             self.state = DeviceState.CONNECTED
 
+    def _resolve_monitor_size(self) -> Tuple[int, int]:
+        """Look up the active monitor's pixel dimensions.
+
+        Subclass hook: ``MockEyeTracker`` overrides to return canned
+        values so headless unit tests don't need a configured PsychoPy
+        monitor center.
+        """
+        mon = monitors.getAllMonitors()[0]
+        return monitors.Monitor(mon).getSizePix()
+
     def _connect_tracker(self):
+        _require_pylink()
         try:
             self.tk = pylink.EyeLink(self.IP)
         except RuntimeError:
@@ -176,6 +203,14 @@ class EyeTracker(Device):
         post_message(msg)
 
     def calibrate(self):
+        # Imported here rather than at module top so eyelink_tracker.py loads
+        # cleanly on a hardware-less laptop. EyeLinkCoreGraphicsPsychoPy chains
+        # through to pylink at import time; calibrate() is only ever called
+        # against a real (or appropriately mocked) hardware path.
+        _require_pylink()
+        from neurobooth_os.tasks.smooth_pursuit.EyeLinkCoreGraphicsPsychoPy import (
+            EyeLinkCoreGraphicsPsychoPy,
+        )
         self.logger.debug('EyeLink: Performing Calibration')
         calib_prompt = "You will see dots on the screen, please gaze at them"
         calib_msg = visual.TextStim(
@@ -208,19 +243,28 @@ class EyeTracker(Device):
         if filename is None:
             filename = "TEST.edf"
         self.filename = filename
-
         self.fname_temp = "name8chr.edf"
-        self.tk.openDataFile(self.fname_temp)
+
         self.streaming = True
         self.state = DeviceState.STARTED
 
-        pylink.beginRealTimeMode(100)
-        self.tk.startRecording(1, 1, 1, 1)
+        self._begin_native_recording()
         self.recording = True
         self.stream_thread = threading.Thread(target=self.record)
         self.logger.debug('EyeLink: Starting Record Thread')
         self.stream_thread.start()
         return [op.split(filename)[-1]]
+
+    def _begin_native_recording(self) -> None:
+        """Open the EDF file and start the EyeLink in real-time recording mode.
+
+        Subclass hook: ``MockEyeTracker`` overrides to skip the native
+        ``pylink.beginRealTimeMode`` / ``startRecording`` calls.
+        """
+        _require_pylink()
+        self.tk.openDataFile(self.fname_temp)
+        pylink.beginRealTimeMode(100)
+        self.tk.startRecording(1, 1, 1, 1)
 
     def record(self):
         self.paused = False
@@ -293,9 +337,18 @@ class EyeTracker(Device):
         self.recording = False
         if self.streaming:
             self.stream_thread.join()
-            self.tk.receiveDataFile(self.fname_temp, self.filename)
+            self._receive_data_file()
             self.streaming = False
         self.state = DeviceState.STOPPED
+
+    def _receive_data_file(self) -> None:
+        """Copy the EDF file from the tracker to ``self.filename``.
+
+        Subclass hook: ``MockEyeTracker`` overrides to write a stub
+        ``.edf`` file at the expected path so downstream code that
+        catalogues sensor files doesn't choke on a missing path.
+        """
+        self.tk.receiveDataFile(self.fname_temp, self.filename)
 
     def close(self) -> None:
         if self.tk is None:

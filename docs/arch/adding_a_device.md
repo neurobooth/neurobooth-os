@@ -433,6 +433,102 @@ touch indirectly:
 | `neurobooth_os/iout/device.py`            | `Device`, `DeviceCapability`, `DeviceState`, `CameraPreviewException` |
 | `neurobooth_os/iout/stim_param_reader.py` | `DeviceArgs` and every subclass                         |
 | `neurobooth_os/iout/lsl_streamer.py`      | `DeviceManager`                                         |
-| `neurobooth_os/iout/mock_device.py`       | Mock implementations for testing                        |
+| `neurobooth_os/iout/mock_device.py`       | `Device` base-class testing scaffolding (`MockStreamDevice`, `MockRecordingDevice`) |
+| `neurobooth_os/iout/mock/`                | Hardware mocks (`MockMbient`, `MockIPhone`, `MockEyeTracker`) |
+| `neurobooth_os/iout/mock_substitution.py` | Substitution registry + env/config plumbing             |
 | `tests/pytest/test_device_lifecycle.py`   | Base-class lifecycle tests                              |
 | `tests/pytest/test_device_pluggable.py`   | `bring_up`, hooks, capability dispatch, registry tests  |
+| `tests/pytest/test_mock_substitution.py`  | Substitution mechanism + lazy-import smoke tests        |
+| `tests/pytest/test_mock_*.py`             | Per-device mock lifecycle tests                         |
+
+## Running with mocks
+
+Neurobooth supports a single-laptop "mock everything" mode for development
+and demos: each real hardware-touching `Device` has a sibling mock subclass
+that runs the full lifecycle (`bring_up` → `start` → `stop` → `close`,
+plus `frame_preview` / `calibrate` / `on_task_reconnect` / `on_session_reset`)
+without any BLE radio, USB iPhone, or EyeLink box attached. The selection
+happens at `device_class()` resolution time inside
+`DeviceManager.create_streams`, so YAML configs and per-task device lists
+stay identical to a real-hardware run.
+
+### Activating mocks
+
+Two opt-in sources, in priority order:
+
+1. **`NB_MOCK_DEVICES` environment variable** (wins when set):
+   ```bash
+   # Mock just the Mbients for this run; everything else uses real hardware
+   NB_MOCK_DEVICES=Mbient python -m neurobooth_os.gui
+
+   # Multiple devices (whitespace-tolerant)
+   NB_MOCK_DEVICES="Mbient, IPhone, EyeTracker" python -m neurobooth_os.gui
+
+   # Mock every registered device
+   NB_MOCK_DEVICES=all python -m neurobooth_os.gui
+   ```
+2. **`mock_devices` field in `neurobooth_os_config.yaml`** (persistent
+   fallback; overridden by the env var):
+   ```yaml
+   mock_devices: ["Mbient", "IPhone", "EyeTracker"]
+   ```
+
+Targets are **device-class names** (`Mbient`, `IPhone`, `EyeTracker`),
+not device-IDs. So `NB_MOCK_DEVICES=Mbient` mocks every Mbient in the
+assigned set.
+
+When at least one mock is active, the GUI logs a CRITICAL banner and
+opens a dialog at startup so a forgotten env var can't silently corrupt
+a real recording.
+
+### What each mock does
+
+| Mock              | Hardware bypass              | Synthetic output                                                   |
+|-------------------|------------------------------|--------------------------------------------------------------------|
+| `MockMbient`      | No BLE / `mbientlab` SDK     | Daemon thread emits acc+gyro samples (1g down, zero rotation) at the higher of `acc_hz` / `gyro_hz` |
+| `MockIPhone`      | No `USBMux` / socket         | In-process queue runs the state machine; daemon thread emits `@INPROGRESSTIMESTAMP` between `@STARTTIMESTAMP` and `@STOPTIMESTAMP` at the configured FPS; `frame_preview()` returns canned bytes |
+| `MockEyeTracker`  | No `pylink` / EyeLink box    | Daemon thread emits 13-column synthetic gaze samples at `sample_rate` Hz; writes a stub `.edf` at the requested path; `calibrate()` is a no-op |
+
+All mocks live in `neurobooth_os/iout/mock/` and register their
+`MockXxxDeviceArgs` subclass via
+`mock_substitution.register_mock(real_cls, mock_cls)` at module-import
+time (called from `stim_param_reader.py`).
+
+### Adding a mock for a new device
+
+The pluggable-device design only requires three things from a new mock:
+
+1. **A subclass of the real `DeviceArgs`** in `stim_param_reader.py` whose
+   `device_class()` returns your mock device class:
+   ```python
+   class MockFooDeviceArgs(FooDeviceArgs):
+       @classmethod
+       def device_class(cls) -> Type["Device"]:
+           from neurobooth_os.iout.mock.mock_foo import MockFoo
+           return MockFoo
+   ```
+2. **A subclass of the real `Device`** in `neurobooth_os/iout/mock/mock_foo.py`
+   that overrides only the methods that touch hardware. Prefer extracting
+   small subclass hooks in the real device class (e.g. `_acquire_hardware`,
+   `_attach_data_source`) and overriding those, rather than re-implementing
+   `connect()` / `start()` wholesale.
+3. **A `register_mock` call** at the bottom of `stim_param_reader.py`:
+   ```python
+   register_mock(FooDeviceArgs, MockFooDeviceArgs)
+   ```
+
+If the real device's module imports a hardware SDK at the top level
+(e.g. `import mbientlab`), wrap that import in a `try / except ImportError`
+and gate hardware code paths behind a `_require_<sdk>()` helper — see
+`mbient.py` and `eyelink_tracker.py` for the pattern. Without that
+guard, the mock can't import on a hardware-less laptop.
+
+### Live laptop vs unit tests
+
+- **Live laptop** sessions assume a real `psychopy.visual.Window`, a real
+  LSL backend, and a real database. Mocks bypass only hardware, not LSL
+  or messaging.
+- **Unit tests** (`tests/pytest/test_mock_*.py`) run with `DISABLE_LSL`
+  and a stubbed `post_message`, so they don't need any networking or
+  database. The `MockEyeTracker` tests pass a `MagicMock` window because
+  none of the overridden methods draw to it.

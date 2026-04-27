@@ -193,16 +193,21 @@ class IPhone(Device):
     MESSAGE_TYPES = set(MESSAGE_TYPES)
     MESSAGE_KEYS = {"MessageType", "SessionID", "TimeStamp", "Message"}
 
-    def __init__(self, name="IPhoneFrameIndex", sess_id="", mock=False, device_args: IPhoneDeviceArgs = None, enable_timeout_exceptions=False):
+    def __init__(self, name="IPhoneFrameIndex", sess_id="", device_args: IPhoneDeviceArgs = None, enable_timeout_exceptions=False):
         super().__init__(device_args)
         self.connected = False
         self.tag = 0
         self.iphone_sessionID = sess_id
         self.name = name
-        self.mock = mock
         self.device_args = device_args
         self.enable_timeout_exceptions = enable_timeout_exceptions
         self.streamName = "IPhoneFrameIndex"
+
+        # Wire-level transport. The real path installs a socket from
+        # ``USBMux.connect`` in ``_handshake``; ``MockIPhone`` swaps in an
+        # in-process queue.  Anything socket-shaped (``send`` / ``recv`` /
+        # ``settimeout`` / ``close``) is acceptable here.
+        self.transport: Optional[Any] = None
 
         # --------------------------------------------------------------------------------
         # Lock-based threading objects and their associated protected data
@@ -351,7 +356,7 @@ class IPhone(Device):
         )
 
         try:
-            self.sock.send(packet)
+            self.transport.send(packet)
         except Exception as e:
             self.logger.error(f'iPhone: PANIC: {e}')
             raise IPhonePanic(f'Error occurred sending signal through the socket') from e
@@ -433,9 +438,9 @@ class IPhone(Device):
         :returns: (payload, version, type, tag): Payload is either a message dictionary (tag == 0) or byte string
             (tag == 1 or tag == 2).
         """
-        self.sock.settimeout(timeout_sec)
+        self.transport.settimeout(timeout_sec)
         try:
-            first_frame = self.sock.recv(16)
+            first_frame = self.transport.recv(16)
         except socket.timeout:
             raise IPhoneTimeout(f"Timeout for packet receive exceeded ({timeout_sec} sec)")
         except OSError as e:
@@ -451,10 +456,10 @@ class IPhone(Device):
                 MessageTag.DUMP_FILE_CHUNK,
                 MessageTag.DUMP_LAST_FILE_CHUNK
         ):
-            payload = IPhone.recvall(self.sock, payload_size)
+            payload = IPhone.recvall(self.transport, payload_size)
             return payload, version, type_, tag
         elif tag == MessageTag.NORMAL_MESSAGE:
-            payload = self.sock.recv(payload_size)
+            payload = self.transport.recv(payload_size)
             msg = IPhone._json_unwrap(payload)
             self._validate_message(msg)
             return msg, version, type_, tag
@@ -536,21 +541,14 @@ class IPhone(Device):
         """
         return self.prepare()
 
-    def prepare(self, mock: bool = False, config: Optional[CONFIG] = None) -> bool:
+    def prepare(self, config: Optional[CONFIG] = None) -> bool:
         """
         Called during a PREPARE message to the server (i.e., "Connect Devices").
         Connects to the iPhone and opens an LSL outlet.
 
-        :param mock: Whether to use a mock iPhone
         :param config: iPhone configuation options
         :returns: Whether the connection was successful
         """
-        if mock:
-            success = self._mock_handshake() and self.connected
-            if success:
-                self.state = DeviceState.CONNECTED
-            return success
-
         if config is None:
             config = {
                 "NOTIFYONFRAME": self.device_args.notifyonframe(),
@@ -593,7 +591,7 @@ class IPhone(Device):
 
         self.device = self.usbmux.devices[0]
         try:
-            self.sock = self.usbmux.connect(self.device, IPHONE_PORT)
+            self.transport = self.usbmux.connect(self.device, IPHONE_PORT)
             self._update_state('@HANDSHAKE')
         except Exception as e:
             self.logger.error(f'iPhone [state={self._state}]: Unable to connect; error={e}')
@@ -602,7 +600,6 @@ class IPhone(Device):
         # As soon as we're connected, start the parallel listening thread.
         self._listen_thread = IPhoneListeningThread(self)
         self._listen_thread.start()
-        # self.sock.setblocking(0)
         self.connected = True
 
         # Send the configuration to the iPhone and wait for a response
@@ -616,31 +613,6 @@ class IPhone(Device):
             return True
         except IPhonePanic as e:
             self.panic(e)
-            return False
-
-    def _mock_handshake(self) -> bool:
-        try:
-            HOST = "127.0.0.1"  # Symbolic name meaning the local host
-            PORT = 50009  # Arbitrary non-privileged port
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.connect((HOST, PORT))
-            self.connected = True
-
-            self._update_state('@HANDSHAKE')
-            self._update_state('@STANDBY')
-            self._update_state('@READY')
-            return True
-        except IPhonePanic as e:
-            if self.sock is not None:
-                self.sock.close()
-                self.sock = None
-            self.panic(e)
-            return False
-        except Exception as e:
-            if self.sock is not None:
-                self.sock.close()
-                self.sock = None
-            self.logger.error(f'iPhone [state={self._state}]: Unable to connect; error={e}')
             return False
 
     def _create_outlet(self) -> StreamOutlet:
@@ -865,7 +837,9 @@ class IPhone(Device):
 
         # Try to stop the listener thread
         self._listen_thread.stop()
-        self.sock.close()  # Closing the socket will force an error that will break the thread out of its wait
+        # Closing the transport will force an error that will break the
+        # listener thread out of its blocking ``recv``.
+        self.transport.close()
         if join_listener:
             self._listen_thread.join(timeout=3)
             if self._listen_thread.is_alive():
