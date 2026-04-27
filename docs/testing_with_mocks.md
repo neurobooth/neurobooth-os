@@ -93,17 +93,29 @@ production environments leave it unset.
 
 ## What gets mocked
 
-| Device           | Mock class         | Hardware bypassed                |
-|------------------|--------------------|----------------------------------|
-| Mbient wearable  | `MockMbient`       | BLE radio, `mbientlab` SDK       |
-| iPhone (camera)  | `MockIPhone`       | USB / `usbmux` / iOS app socket  |
-| EyeLink tracker  | `MockEyeTracker`   | EyeLink box, `pylink`, `.edf` capture |
+| Device                 | Mock class           | Activation key in `NB_MOCK_DEVICES` | Hardware bypassed                       |
+|------------------------|----------------------|-------------------------------------|-----------------------------------------|
+| Mbient wearable        | `MockMbient`         | `Mbient`                            | BLE radio, `mbientlab` SDK              |
+| iPhone (camera)        | `MockIPhone`         | `IPhone`                            | USB / `usbmux` / iOS app socket         |
+| EyeLink tracker        | `MockEyeTracker`     | `EyeTracker`                        | EyeLink box, `pylink`, `.edf` capture   |
+| Yeti microphone        | `MockMicStream`      | `MicStream`                         | `pyaudio`, audio input device           |
+| FLIR camera            | `MockVidRec_Flir`    | `VidRec_Flir`                       | `PySpin`, FLIR Spinnaker SDK            |
+| Intel RealSense camera | `MockVidRec_Intel`   | `VidRec_Intel`                      | `pyrealsense2`, RealSense SDK           |
 
 The substitution happens inside `DeviceManager.create_streams` at
 `device_class()` resolution time — so by the time `bring_up()` runs,
 the device instance is already the mock subclass. Operator-facing
 behavior (the GUI, log messages, task transitions, file registration)
 follows the real lifecycle path.
+
+The "Activation key" column is the literal string `NB_MOCK_DEVICES`
+expects (i.e. `real_cls.device_class().__name__`). Examples:
+
+```bash
+NB_MOCK_DEVICES="Mbient,IPhone"            # wearables + iphone, real cameras/mic
+NB_MOCK_DEVICES="MicStream,VidRec_Flir"    # mic + FLIR cameras, real everything else
+NB_MOCK_DEVICES=all                        # every registered mock
+```
 
 ### What each mock produces
 
@@ -122,6 +134,21 @@ follows the real lifecycle path.
   `stop()` it writes a small placeholder `.edf` at the requested path
   so file-cataloguing downstream doesn't choke on a missing file.
   `calibrate()` is a no-op.
+- **`MockMicStream`** — a daemon thread pushes zero-filled int16 audio
+  chunks to the LSL outlet at the configured `sample_rate /
+  sample_chunk_size` rate. The chunk shape matches the real
+  microphone's stream; values are silence.
+- **`MockVidRec_Flir`** — emits black `320x240x3` frames at the
+  configured FPS through the existing save thread, producing a real
+  (small) `.avi` file at the requested path via `cv2.VideoWriter`.
+  `frame_preview()` returns a real 1-frame PNG (synthesised on the
+  fly). Requires `cv2` (opencv-python) — the real path needs it too.
+- **`MockVidRec_Intel`** — emits 4-column synthetic LSL samples at the
+  configured RGB sample rate. On `stop()` writes a small placeholder
+  `.bag` file at the requested path; downstream code finds the file
+  but **anything that opens and parses the `.bag`** (e.g. RealSense
+  Viewer, `rosbag`-style tooling) will fail because the bytes aren't a
+  valid RealSense bag.
 
 ### Multiple instances of the same device
 
@@ -145,9 +172,10 @@ assigns more than one.
 ## What is *not* mocked
 
 `apply_mock_substitution` only swaps a `DeviceArgs` class if it appears
-in `MOCK_REGISTRY`. Three devices currently have registered mocks:
-`MbientDeviceArgs`, `IPhoneDeviceArgs`, `EyelinkDeviceArgs`. Every
-other device class in the assigned set passes through to its real
+in `MOCK_REGISTRY`. Six device classes currently have registered mocks:
+`MbientDeviceArgs`, `IPhoneDeviceArgs`, `EyelinkDeviceArgs`,
+`MicYetiDeviceArgs`, `FlirDeviceArgs`, `IntelDeviceArgs`. Every other
+device class in the assigned set passes through to its real
 implementation **regardless of `NB_MOCK_DEVICES=all`** — `all` means
 "every registered mock target", not "every device".
 
@@ -164,15 +192,11 @@ This matters in two distinct ways:
 
 ### Devices that *do* need hardware (and don't have mocks yet)
 
-- **Intel RealSense camera** (`VidRec_Intel` in `camera_intel.py`)
-- **FLIR camera** (`VidRec_Flir` in `flir_cam.py`)
-- **Yeti microphone** (`MicStream` in `microphone.py`)
 - **Webcam** (`VidRec_Webcam` in `webcam.py`)
 
-These modules still have **eager** top-level SDK imports
-(`import pyrealsense2`, `import PySpin`, `import pyaudio`) — Phase 0's
-lazy-import treatment only covered `mbient.py` and `eyelink_tracker.py`.
-Two consequences for a hardware-less laptop:
+This module still has **eager** top-level SDK imports — the
+lazy-import + mock pattern hasn't been extended to it. Two
+consequences for a hardware-less laptop:
 
 1. If the SDK isn't installed, `device_class()` resolution raises
    `ImportError` when `DeviceManager.create_streams` tries to load the
@@ -183,22 +207,19 @@ Two consequences for a hardware-less laptop:
    `DeviceManager` skips the device — the rest of the session still
    runs.
 
-If your collection requires any of these (mvp-30 includes Intel + FLIR
-+ Yeti), you have three options:
+If your collection requires the webcam, you have three options:
 
-- **(a) Install the SDKs even without the hardware.** Lets the modules
-  import; bring_up will fail per-device but the session continues
-  without those streams.
-- **(b) Use a reduced collection** like `test_no_eyelink` (in
-  `examples/`) that strips out the missing-hardware devices. This is
-  the path documented in `single_machine_testing.md`.
+- **(a) Install the SDK even without the hardware.** Lets the module
+  import; bring_up will fail and the session continues without that
+  stream.
+- **(b) Use a reduced collection** that strips out the webcam.
 - **(c) Trim the laptop env's `acquisition.devices` list** in
   `neurobooth_os_config.yaml` so no unmocked-and-unavailable devices
   are assigned to begin with.
 
-A full hardware-less mvp-30 run on a laptop would require extending
-the lazy-import + mock pattern to those four modules — a follow-up
-beyond the scope of #732 / #733 / #734 / #735.
+A full hardware-less mvp-30 run on a laptop now works against `all` —
+all of the cameras, the microphone, and the wearables/iPhone/EyeLink
+have registered mocks.
 
 ## What stays real
 
@@ -235,23 +256,25 @@ Confirm:
    expected `device_id` / `sensor_id` and stub file paths.
 4. XDF split succeeds.
 
-This currently works only if the laptop env's `acquisition.devices`
-list contains nothing beyond Mouse, Marker, Mbient, IPhone, and EyeLink
-(see [What is *not* mocked](#what-is-not-mocked)). Collections that
-also assign Intel / FLIR / mic devices need one of the workarounds in
-that section.
+This works for any collection whose devices are all in
+[What gets mocked](#what-gets-mocked) plus Mouse and Marker (which
+need no mock). Collections that assign a webcam need one of the
+workarounds in [What is *not* mocked](#what-is-not-mocked).
 
 ### Hardware-less unit tests
 
-Each mock has a sibling test module under `tests/pytest/`:
+Each registered mock has a sibling test module under `tests/pytest/`:
 
 - `test_mock_substitution.py` — registry, env-var parsing, lazy imports.
 - `test_mock_mbient.py` — bring-up / start / stop / close round-trip.
 - `test_mock_iphone.py` — handshake, recording state cycle, frame preview.
 - `test_mock_eyetracker.py` — connect, synthetic samples, stub EDF write.
+- `test_mock_microphone.py` — connect, start, stop, registry round-trip.
+- `test_mock_flir.py` — connect, start, stop, real `.avi` produced, frame preview.
+- `test_mock_intel.py` — construct without pyrealsense2, start, stub `.bag` written.
 
 These tests run on a hardware-less laptop without `mbientlab`, `pylink`,
-`pyrealsense2`, or `PySpin` installed:
+`pyrealsense2`, `PySpin`, or `pyaudio` installed:
 
 ```bash
 python -m pytest tests/pytest/test_mock_*.py

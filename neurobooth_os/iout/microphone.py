@@ -1,11 +1,34 @@
+from __future__ import annotations
+
 from pylsl import StreamInfo, StreamOutlet, local_clock
-import pyaudio
 import numpy as np
 import threading
 import time
 import wave
 import logging
 from typing import NamedTuple, List, Optional
+
+# Hardware import — guarded so this module is importable on a hardware-less
+# laptop. Real MicStream code paths still require pyaudio and will fail
+# loudly when called without it.
+try:
+    import pyaudio
+    _HAS_PYAUDIO = True
+except ImportError:
+    pyaudio = None  # type: ignore[assignment]
+    _HAS_PYAUDIO = False
+
+
+def _require_pyaudio() -> None:
+    """Raise a clear error if real-microphone code is reached without pyaudio."""
+    if not _HAS_PYAUDIO:
+        raise RuntimeError(
+            "Microphone hardware code path invoked but pyaudio is not "
+            "installed. Install pyaudio to use a real microphone, or use "
+            "MockMicStream via NB_MOCK_DEVICES=MicStream for hardware-less "
+            "testing."
+        )
+
 
 from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
 from neurobooth_os.iout.metadator import post_message
@@ -27,16 +50,20 @@ class AudioDeviceException(Exception):
 
 
 # available audio format constants.  The format used is specified in the config file as a string, with the actual
-# constant retrieved from this dictionary
-SAMPLE_FORMATS = {
-    'paFloat32': pyaudio.paFloat32, # 32 bit float
-    'paInt32': pyaudio.paInt32,  #: 32 bit int
-    'paInt24': pyaudio.paInt24,  #: 24 bit int
-    'paInt16': pyaudio.paInt16,  #: 16 bit int
-    'paInt8': pyaudio.paInt8,    #: 8 bit int
-    'paUInt8': pyaudio.paUInt8,  #: 8 bit unsigned int
-    'paCustomFormat': pyaudio.paCustomFormat,  #: a custom data format
-}
+# constant retrieved from this dictionary. Lazy: only populated when pyaudio
+# is installed; the mock subclass doesn't consult this map.
+if _HAS_PYAUDIO:
+    SAMPLE_FORMATS = {
+        'paFloat32': pyaudio.paFloat32,  # 32 bit float
+        'paInt32': pyaudio.paInt32,      # 32 bit int
+        'paInt24': pyaudio.paInt24,      # 24 bit int
+        'paInt16': pyaudio.paInt16,      # 16 bit int
+        'paInt8': pyaudio.paInt8,        # 8 bit int
+        'paUInt8': pyaudio.paUInt8,      # 8 bit unsigned int
+        'paCustomFormat': pyaudio.paCustomFormat,  # a custom data format
+    }
+else:
+    SAMPLE_FORMATS = {}
 
 
 class MicStream(Device):
@@ -57,11 +84,15 @@ class MicStream(Device):
         self.fps = sensor.sample_rate
         self.save_on_disk = save_on_disk
         self.channels = sensor.channels
-        self.format = SAMPLE_FORMATS[sensor.format]
+        # ``SAMPLE_FORMATS`` is empty when pyaudio isn't installed; fall back
+        # to ``None`` so __init__ doesn't raise on hardware-less laptops.
+        # The real ``connect()`` path will fail loudly via ``_require_pyaudio``;
+        # the mock subclass doesn't use ``self.format``.
+        self.format = SAMPLE_FORMATS.get(sensor.format)
         self._sensor = sensor
 
         # Will be initialized in connect()
-        self.p: Optional[pyaudio.PyAudio] = None
+        self.p = None  # pyaudio.PyAudio when real
         self.stream_in = None
         self.outlet_audio: Optional[StreamOutlet] = None
 
@@ -71,14 +102,25 @@ class MicStream(Device):
 
     def connect(self) -> None:
         """Create the audio stream, LSL outlet, and notify the control server."""
-        # Create audio object
+        self.last_time = local_clock()
+        self._acquire_audio_stream()
+        self._publish_outlet()
+        self.state = DeviceState.CONNECTED
+
+    def _acquire_audio_stream(self) -> None:
+        """Open the pyaudio device-input stream.
+
+        Subclass hook: ``MockMicStream`` overrides to skip pyaudio entirely.
+        """
+        _require_pyaudio()
         audio = pyaudio.PyAudio()
         self.p = audio
-        self.last_time = local_clock()
 
         # Identify the correct device
-        device = MicStream.find_matching_audio_device(self._device_args, MicStream.get_audio_devices(audio))
-        self.logger.debug(f'Using audio device "{device.name}" at index {device.index}.')
+        device = MicStream.find_matching_audio_device(
+            self._device_args, MicStream.get_audio_devices(audio))
+        self.logger.debug(
+            f'Using audio device "{device.name}" at index {device.index}.')
         self.device_name = device.name
 
         # Create stream
@@ -91,6 +133,9 @@ class MicStream(Device):
             frames_per_buffer=self._sensor.sample_chunk_size,
             input_device_index=device.index,
         )
+
+    def _publish_outlet(self) -> None:
+        """Build the LSL outlet and post DeviceInitialization. Subclasses should not need to override."""
 
         # Setup outlet stream infos
         self._stream_info_audio = set_stream_description(
@@ -121,7 +166,6 @@ class MicStream(Device):
         )
 
         self.outlet_audio = StreamOutlet(self._stream_info_audio)
-        self.state = DeviceState.CONNECTED
 
     @staticmethod
     def get_audio_devices(audio: pyaudio.PyAudio, host_api_idx: int = 0) -> List[AudioDeviceInfo]:

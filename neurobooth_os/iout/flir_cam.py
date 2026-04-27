@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 import os.path as op
 import numpy as np
 import queue
@@ -9,7 +11,29 @@ import logging
 from typing import Callable, Any, List, Optional, ByteString
 
 import cv2
-import PySpin
+
+# Hardware import — guarded so this module is importable on a hardware-less
+# laptop. Real VidRec_Flir code paths still require PySpin and will fail
+# loudly when called without it.
+try:
+    import PySpin
+    _HAS_PYSPIN = True
+except ImportError:
+    PySpin = None  # type: ignore[assignment]
+    _HAS_PYSPIN = False
+
+
+def _require_pyspin() -> None:
+    """Raise a clear error if real-FLIR code is reached without PySpin."""
+    if not _HAS_PYSPIN:
+        raise RuntimeError(
+            "FLIR hardware code path invoked but PySpin is not installed. "
+            "Install the FLIR Spinnaker SDK (PySpin) to use a real FLIR "
+            "camera, or use MockVidRec_Flir via NB_MOCK_DEVICES=VidRec_Flir "
+            "for hardware-less testing."
+        )
+
+
 from pylsl import StreamInfo, StreamOutlet
 
 from neurobooth_os.iout.stim_param_reader import FlirDeviceArgs
@@ -65,6 +89,7 @@ class VidRec_Flir(Device):
                           f'frame_size={str((self.device_args.width_px(), self.device_args.height_px()))}')
 
     def get_cam(self):
+        _require_pyspin()
         self.system = PySpin.System.GetInstance()
         cam_list = self.system.GetCameras()
         self.cam = cam_list.GetBySerial(self.serial_num)
@@ -86,6 +111,7 @@ class VidRec_Flir(Device):
             self.logger.error(f'FLIR: Error Setting Value [{func.__name__}({val})]: {e}')
 
     def setup_cam(self):
+        _require_pyspin()
         self.cam.Init()
         self.open = True
 

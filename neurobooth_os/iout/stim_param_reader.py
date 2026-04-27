@@ -190,6 +190,15 @@ class MicYetiDeviceArgs(DeviceArgs):
         return MicStream
 
 
+class MockMicYetiDeviceArgs(MicYetiDeviceArgs):
+    """DeviceArgs for :class:`MockMicStream` — same fields, different device class."""
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.mock.mock_microphone import MockMicStream
+        return MockMicStream
+
+
 class EyelinkDeviceArgs(DeviceArgs):
     """
     Eyelink device arguments
@@ -344,6 +353,15 @@ class FlirDeviceArgs(DeviceArgs):
         return VidRec_Flir
 
 
+class MockFlirDeviceArgs(FlirDeviceArgs):
+    """DeviceArgs for :class:`MockVidRec_Flir` — same fields, different device class."""
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.mock.mock_flir import MockVidRec_Flir
+        return MockVidRec_Flir
+
+
 class IntelDeviceArgs(DeviceArgs):
 
     # Attributes required for program execution
@@ -396,6 +414,15 @@ class IntelDeviceArgs(DeviceArgs):
     def device_class(cls) -> Type["Device"]:
         from neurobooth_os.iout.camera_intel import VidRec_Intel
         return VidRec_Intel
+
+
+class MockIntelDeviceArgs(IntelDeviceArgs):
+    """DeviceArgs for :class:`MockVidRec_Intel` — same fields, different device class."""
+
+    @classmethod
+    def device_class(cls) -> Type["Device"]:
+        from neurobooth_os.iout.mock.mock_intel import MockVidRec_Intel
+        return MockVidRec_Intel
 
 
 class WebcamDeviceArgs(DeviceArgs):
@@ -744,3 +771,6 @@ from neurobooth_os.iout.mock_substitution import register_mock  # noqa: E402
 register_mock(MbientDeviceArgs, MockMbientDeviceArgs)
 register_mock(IPhoneDeviceArgs, MockIPhoneDeviceArgs)
 register_mock(EyelinkDeviceArgs, MockEyelinkDeviceArgs)
+register_mock(MicYetiDeviceArgs, MockMicYetiDeviceArgs)
+register_mock(FlirDeviceArgs, MockFlirDeviceArgs)
+register_mock(IntelDeviceArgs, MockIntelDeviceArgs)
