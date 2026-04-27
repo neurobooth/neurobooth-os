@@ -2,6 +2,8 @@
 """
     Wrapper around intel camera library
 """
+from __future__ import annotations
+
 import os.path as op
 from time import time
 import threading
@@ -10,7 +12,29 @@ import logging
 from typing import List, Optional
 
 from pylsl import local_clock
-import pyrealsense2 as rs
+
+# Hardware import — guarded so this module is importable on a hardware-less
+# laptop. Real VidRec_Intel code paths still require pyrealsense2 and will
+# fail loudly when called without it.
+try:
+    import pyrealsense2 as rs
+    _HAS_PYREALSENSE2 = True
+except ImportError:
+    rs = None  # type: ignore[assignment]
+    _HAS_PYREALSENSE2 = False
+
+
+def _require_pyrealsense2() -> None:
+    """Raise a clear error if real-Intel code is reached without pyrealsense2."""
+    if not _HAS_PYREALSENSE2:
+        raise RuntimeError(
+            "Intel RealSense hardware code path invoked but pyrealsense2 "
+            "is not installed. Install pyrealsense2 to use a real RealSense "
+            "camera, or use MockVidRec_Intel via NB_MOCK_DEVICES=VidRec_Intel "
+            "for hardware-less testing."
+        )
+
+
 from pylsl import StreamInfo, StreamOutlet
 
 import neurobooth_os.iout.metadator as meta
@@ -49,6 +73,17 @@ class VidRec_Intel(Device):
 
         self.device_index = int(device_args.device_id[-1])
         self.serial_num = device_args.device_sn
+        self.config = None
+        self.pipeline = None
+        self._configure_pipeline()
+
+    def _configure_pipeline(self) -> None:
+        """Build the pyrealsense2 ``config`` and ``pipeline``.
+
+        Subclass hook: ``MockVidRec_Intel`` overrides to skip pyrealsense2
+        entirely. The real path requires the SDK to be installed.
+        """
+        _require_pyrealsense2()
         self.config = rs.config()
         self.config.enable_device(self.serial_num)
         self.pipeline = rs.pipeline()
@@ -61,7 +96,7 @@ class VidRec_Intel(Device):
             self.device_args.sample_rate()[0],
         )
 
-        if device_args.has_depth_sensor():
+        if self.device_args.has_depth_sensor():
             self.config.enable_stream(
                 rs.stream.depth,
                 self.device_args.framesize()[1][0],
