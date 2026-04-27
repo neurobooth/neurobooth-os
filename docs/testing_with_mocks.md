@@ -42,14 +42,52 @@ silently corrupt a real recording.
 
 ### Persistent fallback (config file)
 
-Mock targets can also live in `neurobooth_os_config.yaml`:
+Mock targets can also live in `neurobooth_os_config.yaml`. The
+`mock_devices` entry is a **top-level field** on the config — peer to
+`environment`, `screen`, `machines`, `acquisition`, `presentation`,
+`control`, and `database`. YAML doesn't care about ordering, but
+placing it near `environment:` reads naturally since both flag what
+kind of run this is:
 
 ```yaml
-mock_devices: ["Mbient", "IPhone", "EyeTracker"]
+environment: local
+mock_devices: ["Mbient", "IPhone", "EyeTracker"]   # ← here
+remote_data_dir: C:/data/
+...
+
+screen:
+  ...
+
+machines:
+  laptop:
+    ...
+
+acquisition:
+  - machine: laptop
+    devices:
+      - Mic_Yeti_dev_1
 ```
+
+Equivalent shorthand forms YAML accepts:
+
+```yaml
+mock_devices: [Mbient, IPhone, EyeTracker]   # flow style
+mock_devices:                                # block style
+  - Mbient
+  - IPhone
+  - EyeTracker
+mock_devices: ["all"]                        # the "all" sentinel
+```
+
+Omit the field entirely (or set `mock_devices: null`) for production
+envs — that's the default and means no mocks.
 
 The env var **wins** when both are set, so a developer can always
 force-enable or force-disable mocks for one run without editing config.
+For example, on a laptop env that sets `mock_devices: ["all"]` in the
+file, running with `set NB_MOCK_DEVICES=` (empty string) gives a
+one-off real-hardware run without touching the YAML.
+
 A laptop dev environment typically sets `mock_devices` in the file;
 production environments leave it unset.
 
