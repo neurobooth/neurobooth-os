@@ -85,6 +85,83 @@ follows the real lifecycle path.
   so file-cataloguing downstream doesn't choke on a missing file.
   `calibrate()` is a no-op.
 
+### Multiple instances of the same device
+
+Substitution is **per-device-instance**, not per-class. A collection
+that assigns five Mbients (`Mbient_BK_1`, `Mbient_LF_2`,
+`Mbient_LH_2`, `Mbient_RF_2`, `Mbient_RH_2` — the mvp-30 layout)
+gets five independent `MockMbient` instances when
+`NB_MOCK_DEVICES=Mbient` is set. Each one:
+
+- Is built via `model_construct(**original_args.model_dump())`, so it
+  keeps its own field values (`mac`, `device_name`, `acc_hz`,
+  `gyro_hz`) from the YAML.
+- Has its own daemon thread emitting samples.
+- Pushes to its own LSL outlet under the same `mbient_<dev_name>`
+  stream name the real device would have used.
+
+`MockIPhone` and `MockEyeTracker` are typically deployed as a single
+instance, but the same per-instance rule applies if your collection
+assigns more than one.
+
+## What is *not* mocked
+
+`apply_mock_substitution` only swaps a `DeviceArgs` class if it appears
+in `MOCK_REGISTRY`. Three devices currently have registered mocks:
+`MbientDeviceArgs`, `IPhoneDeviceArgs`, `EyelinkDeviceArgs`. Every
+other device class in the assigned set passes through to its real
+implementation **regardless of `NB_MOCK_DEVICES=all`** — `all` means
+"every registered mock target", not "every device".
+
+This matters in two distinct ways:
+
+### Devices that work fine without a mock
+
+- **Mouse** — `MouseDeviceArgs` has no mock and doesn't need one. The
+  real `Mouse` class reads OS-level mouse events; on a laptop with a
+  trackpad it captures trackpad events. `NB_MOCK_DEVICES=all` does
+  **not** replace it.
+- **Marker** (`MarkerStreamDevice`) — pure-Python LSL marker producer;
+  no hardware to mock.
+
+### Devices that *do* need hardware (and don't have mocks yet)
+
+- **Intel RealSense camera** (`VidRec_Intel` in `camera_intel.py`)
+- **FLIR camera** (`VidRec_Flir` in `flir_cam.py`)
+- **Yeti microphone** (`MicStream` in `microphone.py`)
+- **Webcam** (`VidRec_Webcam` in `webcam.py`)
+
+These modules still have **eager** top-level SDK imports
+(`import pyrealsense2`, `import PySpin`, `import pyaudio`) — Phase 0's
+lazy-import treatment only covered `mbient.py` and `eyelink_tracker.py`.
+Two consequences for a hardware-less laptop:
+
+1. If the SDK isn't installed, `device_class()` resolution raises
+   `ImportError` when `DeviceManager.create_streams` tries to load the
+   module, and the entire startup fails. The mocks for the other
+   devices won't help.
+2. If the SDK *is* installed but no real camera/mic is attached, the
+   class loads but `bring_up()` fails. It returns `None` and
+   `DeviceManager` skips the device — the rest of the session still
+   runs.
+
+If your collection requires any of these (mvp-30 includes Intel + FLIR
++ Yeti), you have three options:
+
+- **(a) Install the SDKs even without the hardware.** Lets the modules
+  import; bring_up will fail per-device but the session continues
+  without those streams.
+- **(b) Use a reduced collection** like `test_no_eyelink` (in
+  `examples/`) that strips out the missing-hardware devices. This is
+  the path documented in `single_machine_testing.md`.
+- **(c) Trim the laptop env's `acquisition.devices` list** in
+  `neurobooth_os_config.yaml` so no unmocked-and-unavailable devices
+  are assigned to begin with.
+
+A full hardware-less mvp-30 run on a laptop would require extending
+the lazy-import + mock pattern to those four modules — a follow-up
+beyond the scope of #732 / #733 / #734 / #735.
+
 ## What stays real
 
 Mocks bypass **only** hardware. Everything else runs as in production:
@@ -114,11 +191,17 @@ python -m neurobooth_os.gui
 Confirm:
 
 1. The startup banner names the active mocks.
-2. Each device's `bring_up` succeeds (logs show
+2. Each *mocked* device's `bring_up` succeeds (logs show
    `Device Manager Substituting MockXxx for Xxx`).
 3. A short task runs end-to-end; `log_sensor_file` rows appear with the
    expected `device_id` / `sensor_id` and stub file paths.
 4. XDF split succeeds.
+
+This currently works only if the laptop env's `acquisition.devices`
+list contains nothing beyond Mouse, Marker, Mbient, IPhone, and EyeLink
+(see [What is *not* mocked](#what-is-not-mocked)). Collections that
+also assign Intel / FLIR / mic devices need one of the workarounds in
+that section.
 
 ### Hardware-less unit tests
 
@@ -170,6 +253,12 @@ There are several signals depending on what you're checking:
 
 ## Pitfalls
 
+- **`all` only mocks what has a registered mock.** Setting
+  `NB_MOCK_DEVICES=all` does **not** try to mock the Mouse, Marker,
+  Intel camera, FLIR, or microphone — only Mbient / IPhone / EyeLink
+  (the three classes in `MOCK_REGISTRY` today). Devices without a
+  registered mock pass through to their real implementations
+  unchanged, so a working trackpad keeps working under `=all`.
 - **Targets are class names, not device IDs.** `NB_MOCK_DEVICES=Mbient`
   mocks every Mbient. `NB_MOCK_DEVICES=Mbient_dev_1` mocks **nothing** —
   there's no class by that name. The env-var-driven path was designed
