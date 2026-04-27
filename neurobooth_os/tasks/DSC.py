@@ -195,12 +195,37 @@ class DSC(Task_Eyetracker):
         #     )
         self.io.quit()
 
-    def _wait_release(self, keys=None):
-        while True:
+    def _wait_release(self, keys=None, timeout_s: float = 2.0):
+        """Wait for a key-release event, with a bounded fallback.
+
+        PsychoPy's keyboard backend occasionally drops the release event for
+        a key whose press was registered (observed under heavy camera /
+        LSL load). Without a timeout, ``_wait_release`` hangs the task
+        thread forever and the task runs past its ``tot_time`` budget —
+        the busy-cursor symptom seen in long DSC_obs sessions on the
+        staging machine.
+
+        :param keys: keys to wait for; passed through to ``getReleases``.
+        :param timeout_s: maximum wall-clock seconds to wait before
+            giving up and returning an empty list. Two seconds is well
+            above any realistic finger-up latency but short enough that
+            a missed release doesn't blow the trial budget.
+        :returns: the list returned by ``getReleases`` once non-empty,
+            or ``[]`` if ``timeout_s`` elapses first.
+        """
+        deadline = core.CountdownTimer(timeout_s)
+        while deadline.getTime() > 0:
             rels = self.keyboard.getReleases(keys=keys)
             if len(rels):
                 return rels
             utils.countdown(0.001)
+        # Timed out — log so the dropped-release pattern is visible in
+        # session logs without manual instrumentation.
+        print(
+            f"DSC: _wait_release timed out after {timeout_s:g}s "
+            f"(keys={keys}); proceeding with empty release set"
+        )
+        return []
 
     def _my_textbox2(self, text, pos=(0, 0)):
         tbx = TextBox2(
