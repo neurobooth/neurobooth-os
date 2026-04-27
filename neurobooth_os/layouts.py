@@ -42,6 +42,7 @@ def _init_layout(conn, exclusion=None):
                 size=(44, 1),
                 background_color="white",
                 text_color="black",
+                focus=True,
             ),
         ],
         [_space()],
