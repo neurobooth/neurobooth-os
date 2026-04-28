@@ -12,7 +12,7 @@ The neurobooth-os project is a Python-based data acquisition and stimulus presen
 
 Since the initial audit, **all critical security vulnerabilities are resolved** (SQL injection, credentials in code, dynamic-import allowlist), the **device subsystem has been redesigned** to be pluggable (#696, #708 series, #721), **resource lifecycle issues are mostly closed** (SSH tunnel cleanup #663, socket/cursor leaks in usbmux/iPhone/metadator #663, log_sensor_file race fixes #659/#678, EyeLink shutdown crash #688, iPhone listener panic #687, mbient access violation #684), and **a comprehensive hardware-mock infrastructure has landed** (#737, #738) bringing test coverage from effectively zero to 160 unit tests. The XDF stop-recording work is off the GUI thread (#604), all XDF splits are postponed to end-of-day post-processing (#680), and the device-pluggable design lets new devices be added without editing `DeviceManager`/`lsl_streamer.py`/`metadator.py`.
 
-Remaining work focuses on `tox.ini` / CI / packaging hygiene (still no GitHub Actions workflow, `tox.ini` references nonexistent test paths, `setup.py` lists only pandas, no `requirements_dev.txt`), the `eval()` calls in `extras/`, two remaining bare `except:` clauses, scattered `BaseException` catches that may mask programmer errors, and the Python 3.8 EOL situation.
+Remaining work focuses on CI / packaging hygiene (still no GitHub Actions workflow, `setup.py` lists only pandas, no `requirements_dev.txt`), the `eval()` calls in `extras/`, two remaining bare `except:` clauses, scattered `BaseException` catches that may mask programmer errors, and the Python 3.8 EOL situation.
 
 ### Overall Scores by Area
 
@@ -373,15 +373,9 @@ The mock infrastructure (PRs #737, #738) is the biggest lift: tests run on a har
 
 `pytest` over the full suite intermittently segfaults at process shutdown on Windows after C-extension teardown (`pyrealsense2` / `pyaudio` / `pylsl`). Per-file invocation completes cleanly. This is a Windows-and-C-extension issue, not a test-logic problem; flagged because it precludes a single-command "all tests pass" check until resolved. Workarounds: run one test file at a time, or use `pytest --forked` with the `pytest-forked` plugin.
 
-### 4.3 Medium: `tox.ini` Test Paths Still Out of Sync
+### 4.3 ~~Medium: `tox.ini` Test Paths Still Out of Sync~~ RESOLVED
 
-```ini
-commands =
-    pytest --cov=neurobooth_os neurobooth_os/netcomm/tests/test_server.py  # doesn't exist
-    pytest --cov=neurobooth_os neurobooth_os/tests/                        # doesn't exist
-```
-
-Actual test files are at `tests/pytest/` and `neurobooth_os/iout/tests/`. `tox.ini` would also need `requirements_dev.txt` (not present) before `tox` could run successfully. Items 8.2 and 8.5 are blockers for `tox` working at all.
+**Resolved by:** removing `tox.ini`. The project targets a single Python version (3.8) and has no GitHub Actions workflow, so tox's matrix value didn't apply. Tests are now invoked directly via `pytest`.
 
 ### 4.4 Medium: No CI Integration
 
@@ -473,11 +467,11 @@ The script creates config files but doesn't set restrictive permissions (`chmod 
 
 ### 8.1 Critical: No CI/CD Workflows
 
-`.github/workflows/` directory does not exist. There is no automated testing, linting, coverage reporting, or deployment automation. `tox.ini` exists but has no pipeline to run it.
+`.github/workflows/` directory does not exist. There is no automated testing, linting, coverage reporting, or deployment automation.
 
 ### 8.2 Critical: Missing `requirements_dev.txt`
 
-`tox.ini` references `requirements_dev.txt` and `contributing.rst` tells developers to `pip install -r requirements_dev.txt`, but the file does not exist in the repository. This blocks developer onboarding.
+`contributing.rst` tells developers to `pip install -r requirements_dev.txt`, but the file does not exist in the repository. This blocks developer onboarding.
 
 ### 8.3 High: `setup.py` Lists Only One Dependency
 
@@ -508,19 +502,13 @@ The actual output IS valid Python — the triple-quoted lines start and close a 
 
 PR #741 (in flight at audit time) drops the unrelated stale `__version__ = "0.0.54.0"` from `__init__.py` and points `setup.py` at `current_config.py:version` so `pip install` reads the same source-of-truth that deploy stamps.
 
-### 8.5 High: `tox.ini` Test Paths Out of Sync
+### 8.5 ~~High: `tox.ini` Test Paths Out of Sync~~ RESOLVED
 
-```ini
-commands =
-    pytest --cov=neurobooth_os neurobooth_os/netcomm/tests/test_server.py  # doesn't exist
-    pytest --cov=neurobooth_os neurobooth_os/tests/                        # doesn't exist
-```
-
-Actual test files are at `tests/pytest/` and `neurobooth_os/iout/tests/`.
+**Resolved by:** removing `tox.ini` (see §4.3).
 
 ### 8.6 Medium: Python 3.8 Only
 
-`tox.ini` and `environment_staging.yml` target Python 3.8.18, which reached end-of-life in October 2024. No support for Python 3.9+.
+`environment_staging.yml` targets Python 3.8.18, which reached end-of-life in October 2024. No support for Python 3.9+.
 
 ### 8.7 Medium: `.gitignore` Missing Common Patterns
 
@@ -585,7 +573,7 @@ Dependencies are fractured across three sources with no consistency:
 
 7. Create `.github/workflows/tests.yml` for automated testing on push/PR — STILL OPEN
 8. ~~Write unit tests for core modules~~ — LARGELY DONE: 160 tests across 14 files (was effectively 1). Mock-device infrastructure (#737, #738) lets the suite run on a hardware-less laptop. Coverage now meaningful for `Device` lifecycle, pluggable-device registry, mock substitution, mock device behaviour, log_sensor_file race regressions.
-9. Fix `tox.ini` test paths to match actual file locations — STILL OPEN
+9. ~~Fix `tox.ini` test paths to match actual file locations~~ — DONE: `tox.ini` removed (single-Python-version project with no CI workflow doesn't benefit from tox)
 10. Add database mocking to `test_metadator.py` — STILL OPEN; new `test_db_connection.py` is mostly DB-mocked but `test_metadator.py` still requires a live DB
 11. Add `setup.py` dependencies to match actual requirements — STILL OPEN
 12. Fix bare `except:` clauses — PARTIALLY DONE: down from 3 to 2 (`flir_cam.py:198` was tightened; `split_xdf.py:299` and `usbmux.py:28` remain bare)
