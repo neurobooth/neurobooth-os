@@ -287,10 +287,14 @@ so the test doesn't hit the database.
 
 ### CI / containerised environments
 
-The Phase 0 import refactor means `mbient.py` and `eyelink_tracker.py`
-import cleanly without their hardware SDKs installed (the SDKs are
-wrapped in `try / except ImportError`). So a CI image with just `pylsl`
-and `psychopy` installed can run the full mock suite.
+The lazy-import refactor covers every hardware-backed device that has a
+registered mock — `mbient.py`, `eyelink_tracker.py`, `microphone.py`,
+`flir_cam.py`, and `camera_intel.py` all wrap their SDK imports in
+`try / except ImportError` and expose a `_require_<sdk>()` helper that
+raises only when real-hardware code paths are reached. So a CI image
+with just `pylsl`, `psychopy`, and `cv2` (opencv-python) installed can
+run the full mock suite — `mbientlab`, `pylink`, `pyaudio`, `PySpin`,
+and `pyrealsense2` are all optional.
 
 If your CI environment does not have a configured PsychoPy monitor
 center (`monitors.getAllMonitors()` returns an empty list), the
@@ -315,11 +319,11 @@ There are several signals depending on what you're checking:
 ## Pitfalls
 
 - **`all` only mocks what has a registered mock.** Setting
-  `NB_MOCK_DEVICES=all` does **not** try to mock the Mouse, Marker,
-  Intel camera, FLIR, or microphone — only Mbient / IPhone / EyeLink
-  (the three classes in `MOCK_REGISTRY` today). Devices without a
-  registered mock pass through to their real implementations
-  unchanged, so a working trackpad keeps working under `=all`.
+  `NB_MOCK_DEVICES=all` covers the six classes in `MOCK_REGISTRY`
+  today — Mbient / IPhone / EyeLink / MicStream / VidRec_Flir /
+  VidRec_Intel. It does **not** try to mock Mouse, Marker, or Webcam:
+  those pass through to their real implementations unchanged, so a
+  working trackpad keeps working under `=all`.
 - **Targets are class names, not device IDs.** `NB_MOCK_DEVICES=Mbient`
   mocks every Mbient. `NB_MOCK_DEVICES=Mbient_dev_1` mocks **nothing** —
   there's no class by that name. The env-var-driven path was designed
@@ -362,4 +366,4 @@ of `stim_param_reader.py`.
   mocked single-laptop setup.
 - `neurobooth_os/iout/mock_substitution.py` — the substitution
   registry and env/config plumbing.
-- `neurobooth_os/iout/mock/` — the three mock implementations.
+- `neurobooth_os/iout/mock/` — the six mock implementations.
