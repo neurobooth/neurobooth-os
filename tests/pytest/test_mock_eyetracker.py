@@ -156,6 +156,51 @@ class TestMockEyeTrackerLSLFlow:
             device.close()
 
 
+class TestMockEyelinkHandle:
+    """The ``tk`` stub must accept every call production code makes against it.
+
+    Production reaches ``tk`` through three call sites: ``EyeTracker.close``,
+    the ``Task_Eyetracker`` wrappers (``sendMessage`` / ``setOfflineMode`` /
+    ``startRecording`` / ``sendCommand`` / ``doDriftCorrect`` /
+    ``imageBackdrop``), and ``Calibrate.present_stimulus`` (which drives
+    the EDF file lifecycle by hand). Any missing stub crashes a real
+    session under ``NB_MOCK_DEVICES``.
+    """
+
+    def test_calibrate_task_sequence_writes_stub_edf(self, mock_args, mock_window, tmp_path):
+        # Exercises the exact call sequence Calibrate.present_stimulus runs
+        # against ``self.eye_tracker.tk``. The receiveDataFile destination
+        # must end up on disk so log_sensor_file cataloguing succeeds.
+        device = MockEyeTracker(device_args=mock_args, win=mock_window)
+        dst = str(tmp_path / "calibration.edf")
+        try:
+            device.tk.openDataFile("name8chr.edf")
+            device.calibrate()
+            device.tk.startRecording(1, 1, 1, 1)
+            device.tk.stopRecording()
+            device.tk.closeDataFile()
+            device.tk.receiveDataFile("name8chr.edf", dst)
+        finally:
+            device.close()
+        assert os.path.exists(dst)
+        with open(dst, "rb") as f:
+            assert f.read() == _STUB_EDF_BYTES
+
+    def test_task_eyetracker_wrapper_calls(self, mock_args, mock_window):
+        # Each ``Task_Eyetracker`` wrapper guards on ``eye_tracker is not None``
+        # and then calls straight through to ``tk``. None of these may raise.
+        device = MockEyeTracker(device_args=mock_args, win=mock_window)
+        try:
+            device.tk.sendMessage("any message")
+            device.tk.setOfflineMode()
+            device.tk.startRecording(1, 1, 1, 1)
+            device.tk.sendCommand("any command")
+            device.tk.doDriftCorrect(0, 0, 1, 1)
+            device.tk.imageBackdrop("path", 0, 0, 0, 0, 0, 0)
+        finally:
+            device.close()
+
+
 class TestMockEyeTrackerRegistration:
 
     def test_mock_eyetracker_is_registered(self):
@@ -167,15 +212,28 @@ class TestMockEyeTrackerRegistration:
 
     def test_apply_substitution_swaps_class(self):
         from neurobooth_os.iout.mock_substitution import apply_mock_substitution
+        sensor = EyelinkSensorArgs.model_construct(
+            sensor_id="eyelink_sens_1",
+            sample_rate=SAMPLE_RATE_HZ,
+            calibration_type="HV5",
+            msec_delay=10,
+            calibration_area_proportion=(0.85, 0.85),
+            validation_area_proportion=(0.85, 0.85),
+        )
         real = EyelinkDeviceArgs.model_construct(
             ENV_devices={},
             device_id="EyeLink_dev_1",
             sensor_ids=["eyelink_sens_1"],
             ip="100.1.1.1",
-            sensor_array=[],
+            sensor_array=[sensor],
             arg_parser="iout.stim_param_reader.py::EyelinkDeviceArgs()",
         )
         result = apply_mock_substitution(real, active={"EyeTracker"})
         assert isinstance(result, MockEyelinkDeviceArgs)
         assert result.device_id == "EyeLink_dev_1"
         assert result.ip == "100.1.1.1"
+        # Nested sensor models must survive the swap as model instances —
+        # EyeTracker.__init__ reaches sensor fields via attribute access
+        # (sample_rate(), msec_delay(), etc.).
+        assert isinstance(result.sensor_array[0], EyelinkSensorArgs)
+        assert result.sensor_array[0].sample_rate == SAMPLE_RATE_HZ

@@ -4,7 +4,9 @@ import re
 import os
 import subprocess
 import ast
-from typing import List, Tuple
+import tempfile
+import xml.sax.saxutils as _saxutils
+from typing import List, Optional, Tuple
 
 import neurobooth_os.config as cfg
 
@@ -20,7 +22,10 @@ logger = setup_log(__name__)
 
 def _run_cmd(cmd_list: list, server_name: str = None, user: str = None, password: str = None) -> str:
     full_cmd = list(cmd_list)
-    if server_name:
+    # Single-machine testing: an empty user means "run on this machine" — skip
+    # /S /U /P so tasklist/SCHTASKS/WMIC execute locally. See
+    # docs/single_machine_testing.md.
+    if server_name and user:
         executable = full_cmd[0].upper()
         if executable == "WMIC":
             # WMIC uses /NODE:, /USER:, /PASSWORD: instead of /S, /U, /P
@@ -118,6 +123,49 @@ def get_all_python_processes_with_cmd(server_name: str = None, user: str = None,
     return processes
 
 
+def _build_task_xml(bat_path: str, acq_index: Optional[int]) -> str:
+    """Build a Task Scheduler XML for an event-triggered server task.
+
+    SCHTASKS /Create has no CLI flag for the battery-condition setting, so a
+    CLI-created task inherits the Windows default DisallowStartIfOnBatteries=true
+    and silently sits in "Queued" on a laptop running on battery (the .bat
+    never launches). /Create /XML lets us write that setting explicitly.
+
+    The trigger keys off Application Event ID 777 — nothing emits that event;
+    it exists only so /Run can launch the task on demand.
+    """
+    command = _saxutils.escape(bat_path)
+    args_block = ""
+    if acq_index is not None:
+        args_block = f"      <Arguments>{_saxutils.escape(str(acq_index))}</Arguments>\n"
+    return (
+        '<?xml version="1.0" encoding="UTF-16"?>\n'
+        '<Task version="1.3" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">\n'
+        '  <Triggers>\n'
+        '    <EventTrigger>\n'
+        '      <Enabled>true</Enabled>\n'
+        "      <Subscription>&lt;QueryList&gt;&lt;Query&gt;&lt;Select Path='Application'&gt;"
+        "*[System/EventID=777]&lt;/Select&gt;&lt;/Query&gt;&lt;/QueryList&gt;</Subscription>\n"
+        '    </EventTrigger>\n'
+        '  </Triggers>\n'
+        '  <Settings>\n'
+        '    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>\n'
+        '    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n'
+        '    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>\n'
+        '    <AllowStartOnDemand>true</AllowStartOnDemand>\n'
+        '    <Enabled>true</Enabled>\n'
+        '    <ExecutionTimeLimit>PT72H</ExecutionTimeLimit>\n'
+        '  </Settings>\n'
+        '  <Actions>\n'
+        '    <Exec>\n'
+        f'      <Command>{command}</Command>\n'
+        f'{args_block}'
+        '    </Exec>\n'
+        '  </Actions>\n'
+        '</Task>\n'
+    )
+
+
 def start_server(node_name, acq_index=None, save_pid_txt=True):
     """Makes a network call to run script serv_{node_name}.bat
 
@@ -145,11 +193,12 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
         print("Not a known node name")
         return None
     s = cfg.neurobooth_config.server_by_name(node_name)
-    if s.password is None:
+    if s.user and s.password is None:
         raise cfg.ConfigException(
             f"Cannot start remote server '{node_name}': no password configured. "
             f"Service passwords are required in secrets.yaml on the control machine."
         )
+    pwd = s.password.get_secret_value() if s.password else None
 
     # Identify and kill any existing Python processes for this node
     expected_script = None
@@ -160,22 +209,22 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
 
     if expected_script:
         logger.info(f"Proactively checking for and killing existing '{expected_script}' processes on {node_name}.")
-        running_python_procs = get_all_python_processes_with_cmd(s.name, s.user, s.password.get_secret_value())
+        running_python_procs = get_all_python_processes_with_cmd(s.name, s.user, pwd)
         for proc in running_python_procs:
             if expected_script in proc.get('commandline', ''):
                 logger.warning(f"Found existing '{expected_script}' process (PID: {proc['pid']}). Attempting to kill.")
                 kill_remote_pid([proc['pid']], node_name)
-    
+
     # Kill any previous server that were recorded
     kill_pid_txt(node_name=node_name)
 
     # Get list of python processes before starting new one
-    pids_old = get_python_pids(s.name, s.user, s.password.get_secret_value())
+    pids_old = get_python_pids(s.name, s.user, pwd)
     logger.debug(f"Python processes found before: {pids_old}")
 
     # Get list of scheduled tasks and run TaskOnEvent if not running
     try:
-        schtasks_query_output = _run_cmd(["SCHTASKS", "/query", "/fo", "CSV", "/nh"], s.name, s.user, s.password.get_secret_value())
+        schtasks_query_output = _run_cmd(["SCHTASKS", "/query", "/fo", "CSV", "/nh"], s.name, s.user, pwd)
     except Exception:
         schtasks_query_output = "" # No scheduled tasks or command failed
 
@@ -208,25 +257,30 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
 
     cmd_schtasks_base = ["SCHTASKS"]
 
-    if task_name not in scheduled_tasks:
-        print(f"Windows task: {task_name} was not found. Attempting to create")
-        # Inner quotes around the bat path ensure subprocess quoting
-        # produces \"path\" arg on the command line, so SCHTASKS stores
-        # the bat as the executable and the index as a separate argument.
-        # Without inner quotes, the space-containing value gets wrapped
-        # as "path arg" — SCHTASKS treats the whole thing as the program
-        # path and the argument is lost.
-        tr_cmd = f'"{s.bat}" {acq_index}' if acq_index is not None else s.bat
-        cmd_1 = cmd_schtasks_base + [
-            "/Create", "/TN", task_name, "/TR", tr_cmd, "/SC", "ONEVENT", "/EC", "Application", "/MO", "*[System/EventID=777]", "/f"
-        ]
-        _run_cmd(cmd_1, s.name, s.user, s.password.get_secret_value())
+    # Always (re)create via /XML /F. /F overwrites stale tasks left by older
+    # versions of this code that used /TR — those were created with the
+    # default DisallowStartIfOnBatteries=true and would queue forever on a
+    # laptop on battery. See _build_task_xml for the schema we apply.
+    print(f"Creating Windows task: {task_name}")
+    xml_content = _build_task_xml(s.bat, acq_index)
+    fd, xml_path = tempfile.mkstemp(suffix='.xml')
+    try:
+        with os.fdopen(fd, 'wb') as f:
+            f.write(b'\xff\xfe')  # SCHTASKS /XML expects UTF-16 LE with BOM
+            f.write(xml_content.encode('utf-16-le'))
+        cmd_1 = cmd_schtasks_base + ["/Create", "/TN", task_name, "/XML", xml_path, "/F"]
+        _run_cmd(cmd_1, s.name, s.user, pwd)
+    finally:
+        try:
+            os.remove(xml_path)
+        except OSError:
+            pass
 
     cmd_2 = cmd_schtasks_base + ["/Run", "/TN", task_name]
-    _run_cmd(cmd_2, s.name, s.user, s.password.get_secret_value())
+    _run_cmd(cmd_2, s.name, s.user, pwd)
 
     sleep(0.3)
-    pids_new = get_python_pids(s.name, s.user, s.password.get_secret_value())
+    pids_new = get_python_pids(s.name, s.user, pwd)
     logger.debug(f"Python processes found after: {pids_new}")
 
     pid = [p for p in pids_new if p not in pids_old]
@@ -273,11 +327,12 @@ def kill_remote_pid(pids, node_name):
         return None
 
     s = cfg.neurobooth_config.server_by_name(node_name)
-    if s.password is None:
+    if s.user and s.password is None:
         raise cfg.ConfigException(
             f"Cannot kill remote process on '{node_name}': no password configured. "
             f"Service passwords are required in secrets.yaml on the control machine."
         )
+    pwd = s.password.get_secret_value() if s.password else None
 
     if isinstance(pids, str):
         pids = [pids]
@@ -286,7 +341,7 @@ def kill_remote_pid(pids, node_name):
         cmd_args = ["taskkill", "/PID", str(pid), "/F"]
         # _run_cmd handles adding remote credentials if s.name is not None
         try:
-            _run_cmd(cmd_args, s.name, s.user, s.password.get_secret_value())
+            _run_cmd(cmd_args, s.name, s.user, pwd)
             logger.info(f"Killed PID {pid} on {node_name} server.")
         except Exception as e:
             logger.warning(f"Failed to kill PID {pid} on {node_name} server: {e}")

@@ -100,14 +100,28 @@ class TestMockMicStreamRegistration:
 
     def test_apply_substitution_swaps_class(self):
         from neurobooth_os.iout.mock_substitution import apply_mock_substitution
+        sensor = MicYetiSensorArgs.model_construct(
+            sensor_id="mic_sens_1",
+            sample_rate=SAMPLE_RATE_HZ,
+            sample_chunk_size=CHUNK_SIZE,
+            input=True,
+            output=False,
+            channels=1,
+            format="paInt16",
+        )
         real = MicYetiDeviceArgs.model_construct(
             ENV_devices={},
             device_id="Mic_Yeti_dev_1",
             sensor_ids=["mic_sens_1"],
-            sensor_array=[],
+            sensor_array=[sensor],
             microphone_name="Yeti",
             arg_parser="iout.stim_param_reader.py::MicYetiDeviceArgs()",
         )
         result = apply_mock_substitution(real, active={"MicStream"})
         assert isinstance(result, MockMicYetiDeviceArgs)
         assert result.microphone_name == "Yeti"
+        # Nested sensor models must survive the swap as model instances —
+        # MicStream.__init__ reaches them via attribute access, and a regression
+        # to ``model_dump()`` would replace them with plain dicts here.
+        assert isinstance(result.sensor_array[0], MicYetiSensorArgs)
+        assert result.sensor_array[0].sample_chunk_size == CHUNK_SIZE

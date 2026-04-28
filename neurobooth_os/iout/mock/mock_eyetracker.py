@@ -44,12 +44,63 @@ _STUB_EDF_BYTES = b"MOCK_EDF_FILE_PLACEHOLDER\n"
 class _MockEyelinkHandle:
     """Stub satisfying the ``self.tk`` attribute on inherited paths.
 
-    ``EyeTracker.close()`` calls ``self.tk.close()``; the mock has no
-    native handle, so a no-op is enough.
+    Production code reaches ``self.tk`` from three places, all of which
+    must succeed when the mock is active:
+
+    1. ``EyeTracker.close()`` — calls ``self.tk.close()``.
+    2. ``Task_Eyetracker`` wrappers (``sendMessage`` / ``setOfflineMode`` /
+       ``startRecording`` / ``sendCommand`` / ``doDriftCorrect`` /
+       ``imageBackdrop``) — guarded by ``if self.eye_tracker is not None``,
+       so once the mock is wired in they call straight through to ``tk``.
+    3. ``Calibrate.present_stimulus`` — drives the EDF file lifecycle by
+       hand (``openDataFile`` / ``startRecording`` / ``stopRecording`` /
+       ``closeDataFile`` / ``receiveDataFile``) and bypasses the
+       ``_receive_data_file`` mock hook, so this stub must materialise
+       the calibration ``.edf`` itself.
+
+    All other methods are no-ops.
     """
 
     def close(self) -> None:
         return None
+
+    def openDataFile(self, filename: str) -> int:
+        return 0
+
+    def startRecording(self, *args, **kwargs) -> int:
+        return 0
+
+    def stopRecording(self) -> None:
+        return None
+
+    def closeDataFile(self) -> None:
+        return None
+
+    def receiveDataFile(self, src: str, dst: str) -> int:
+        # Calibrate writes the calibration .edf via this path (not via
+        # ``_receive_data_file``), so the stub bytes must land at ``dst``
+        # so downstream file cataloguing doesn't choke on a missing path.
+        try:
+            with open(dst, "wb") as fh:
+                fh.write(_STUB_EDF_BYTES)
+        except OSError:
+            pass
+        return len(_STUB_EDF_BYTES)
+
+    def sendMessage(self, msg: str) -> None:
+        return None
+
+    def setOfflineMode(self) -> None:
+        return None
+
+    def sendCommand(self, msg: str) -> int:
+        return 0
+
+    def doDriftCorrect(self, *args, **kwargs) -> int:
+        return 0
+
+    def imageBackdrop(self, *args, **kwargs) -> int:
+        return 0
 
 
 class MockEyeTracker(EyeTracker):

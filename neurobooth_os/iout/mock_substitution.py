@@ -125,5 +125,9 @@ def apply_mock_substitution(device_args: "DeviceArgs",
     mock_cls = MOCK_REGISTRY[real_cls]
     # Reuse the validated field values from the real instance. model_construct
     # skips re-validation, which is what we want — the YAML already validated
-    # them once.
-    return mock_cls.model_construct(**device_args.model_dump())
+    # them once. Iterate via ``dict(device_args)`` so nested ``BaseModel``
+    # instances (notably ``sensor_array`` items) stay as model instances;
+    # ``model_dump()`` would recursively turn them into plain dicts, which
+    # downstream device code does not expect — it reaches sensor fields via
+    # attribute access (e.g. ``sensor.sample_chunk_size``).
+    return mock_cls.model_construct(**dict(device_args))

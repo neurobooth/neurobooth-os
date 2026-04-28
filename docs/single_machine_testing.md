@@ -5,26 +5,82 @@ This document describes the steps required to run Neurobooth on a single machine
 Note: You must be running Windows 10 or greater to run Neurobooth on your machine.
 
 ## Configuration
-To run on a single machine you must modify the neurobooth config file, typically "neurobooth_os_config.json". 
-The following changes should be applied:
-- The `acquisition` field is an array of server objects. Each entry must have name, user, and password all set to "". For single-machine testing, a single acquisition entry is sufficient.
-- The entries for control and presentation must have name, user, and password all set to "".
-- TODO: Describe how to set the monitor width, etc.
+The main config file is `neurobooth_os_config.yaml`, located in the folder named by the `NB_CONFIG` environment variable. The format is the normalized machines + services layout: a top-level `machines:` dict keyed by machine name, plus `acquisition` / `presentation` / `control` sections that reference machines by name. See [system_configuration.md](arch/system_configuration.md) for the authoritative schema.
 
-If you're running the db on the same machine as the neurobooth code, the following additional changes are required:
-- The database host value should be set to the loopback address "127.0.0.1"
-- You will likely also need to update some of your other database params (e.g. user and password)
+For single-machine testing, define one machine in `machines:` with `user` set to `""`, and have all three service sections reference that machine by its dict key. An empty `user` triggers a local-execution shortcut in `netcomm/client.py:_run_cmd` so SCHTASKS, WMIC, and tasklist run on this machine without remote credentials — no Windows password is required, and `machines.<name>.password` should be omitted entirely.
 
-For more information on configuration settings, please see: [system_configuration.md](system_configuration.md) 
+Minimal example (`neurobooth_os_config.yaml`):
+
+```yaml
+environment: local
+remote_data_dir: C:/data/
+video_task_dir: C:/path/to/videos
+split_xdf_backlog: C:/neurobooth/split_xdf_backlog.csv
+cam_inx_lowfeed: 0
+default_preview_stream: IPhoneFrameIndex
+
+screen:
+  fullscreen: false
+  width_cm: 55
+  subject_distance_to_screen_cm: 60
+  min_refresh_rate_hz: 50
+  max_refresh_rate_hz: 250
+  screen_resolution: [1920, 1080]
+
+machines:
+  laptop:
+    user: ""
+    local_data_dir: C:/neurobooth/neurobooth_data/
+
+acquisition:
+  - machine: laptop
+    bat: "%NB_INSTALL%/neurobooth_os/server_acq.bat"
+    task_name: acquisition
+    devices:
+      - Mic_Yeti_dev_1
+
+presentation:
+  machine: laptop
+  bat: "%NB_INSTALL%/neurobooth_os/server_stm.bat"
+  task_name: presentation
+  devices:
+    - Mouse
+    - marker
+
+control:
+  machine: laptop
+  devices: []
+
+database:
+  ssh_tunnel: false
+  dbname: mock_neurobooth
+  user: postgres
+  host: 127.0.0.1
+  port: 5432
+  remote_user: <your-windows-username>
+  remote_host: 127.0.0.1
+```
+
+The top-level `environment:` value (here, `local`) selects which section is loaded from `secrets.yaml`. Passwords live in `secrets.yaml` (in the same folder as `neurobooth_os_config.yaml`, or pointed to by the `NB_SECRETS` env var) and are merged into the config at load time. For local testing the only password you need is the database password:
+
+```yaml
+local:
+  database:
+    password: "<your_db_password>"
+```
+
+`machines.<name>.password` is **not** required for single-machine testing; it is only needed on the CTR machine in a multi-machine production deployment.
+
+If you're running the database on the same machine as the neurobooth code, set `database.host` to `127.0.0.1` and `database.ssh_tunnel: false` (as in the example above), and update the other `database` fields (`user`, `dbname`, etc.) to match your local Postgres install.
+
+For more information on configuration settings, see [system_configuration.md](arch/system_configuration.md).
 
 ## Servers
-ACQ and STM servers are started via the GUI using WMI. See the [WMI instructions](enable_WMI_instuctions.txt) document to get started. 
-WMI invokes the server_acq and server_stm batch file scripts to run the servers. The first the scripts are invoked this way
-they are added to the Windows Task Scheduler and then run almost immediately afterward. You can view the tasks in the scheduler for troubleshooting.
+ACQ and STM servers are started by the GUI through Windows `SCHTASKS`. On first launch, the GUI registers a scheduled task that runs the appropriate batch file (`server_acq.bat` or `server_stm.bat`) and then triggers it; on subsequent launches the existing task is reused. `WMIC` and `tasklist` are used alongside SCHTASKS to inventory and clean up Python processes between runs. You can view and troubleshoot the tasks in the Windows Task Scheduler.
 
-Please Note: When the tasks are first added to the scheduler, they are created with a number of default settings, one of which
-causes the task to not run if the machine is not running on AC power.  You should probably change that if you plan to work 
-on a laptop and may run on battery. 
+For single-machine testing, you do **not** need to enable remote WMI or configure a domain user — when `machines.<name>.user` is empty, `netcomm/client.py:_run_cmd` skips the remote `/S /U /P` arguments and runs SCHTASKS / WMIC / tasklist locally on the calling machine. The [WMI instructions](enable_WMI_instuctions.txt) are only relevant for multi-machine production deployments where CTR launches ACQ and STM on separate hosts.
+
+Please Note: When the tasks are first added to the scheduler, they are created with a number of default settings, one of which causes the task to not run if the machine is not running on AC power. You should probably change that if you plan to work on a laptop and may run on battery.
 
 ## Database
 You can run the Neurobooth servers on one machine without also running the database on that machine. 
