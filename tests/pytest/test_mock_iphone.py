@@ -177,6 +177,114 @@ class TestMockIPhoneLSLFlow:
             device.close()
 
 
+class TestIPhoneDisconnectedGuard:
+    """Once iPhone is in #DISCONNECTED / #ERROR, command methods should
+    short-circuit instead of cascading IPhonePanic across every subsequent
+    task transition.
+
+    Reproduces the Wang 2026-04-27 cascade pattern: a single root-cause
+    panic (e.g. ensure_stopped timeout) leaves the iPhone in
+    #DISCONNECTED, after which every per-task ``frame_preview`` /
+    ``start`` / ``stop`` would otherwise re-panic and post a noisy
+    ``StatusMessage`` to CTR.
+    """
+
+    @staticmethod
+    def _force_disconnected(device):
+        # Stop the synthetic-stream daemon thread so it doesn't keep
+        # injecting @INPROGRESSTIMESTAMP into the disconnected device's
+        # listener after the test asserts. Otherwise daemon teardown
+        # produces noisy "NoneType has no push_sample" errors as the
+        # autouse fixture restores DISABLE_LSL=False post-test.
+        if device.transport is not None:
+            device.transport._stop_streaming.set()
+        device._state = "#DISCONNECTED"
+        device.connected = False
+
+    def test_frame_preview_returns_empty_when_disconnected(self, mock_args):
+        device = MockIPhone(device_args=mock_args)
+        try:
+            device.connect()
+            self._force_disconnected(device)
+            assert device.frame_preview() == b""
+        finally:
+            device.close()
+
+    def test_start_returns_empty_list_when_disconnected(self, mock_args):
+        device = MockIPhone(device_args=mock_args)
+        try:
+            device.connect()
+            self._force_disconnected(device)
+            files = device.start("/tmp/some_task")
+            assert files == []
+            assert device.streaming is False
+        finally:
+            device.close()
+
+    def test_stop_does_not_panic_when_disconnected(self, mock_args):
+        device = MockIPhone(device_args=mock_args)
+        try:
+            device.connect()
+            device.start("/tmp/some_task")
+            self._force_disconnected(device)
+            device.stop()  # must not raise IPhonePanic
+            assert device.streaming is False
+        finally:
+            device.close()
+
+    def test_ensure_stopped_short_circuits_when_disconnected(self, mock_args):
+        device = MockIPhone(device_args=mock_args)
+        try:
+            device.connect()
+            self._force_disconnected(device)
+            import time as time_mod
+            t0 = time_mod.time()
+            device.ensure_stopped(timeout_seconds=5)
+            elapsed = time_mod.time() - t0
+            assert elapsed < 1.0, (
+                f"ensure_stopped should short-circuit immediately when "
+                f"disconnected; took {elapsed:.2f}s"
+            )
+        finally:
+            device.close()
+
+    def test_no_panic_status_messages_during_cascade(
+        self, mock_args, monkeypatch
+    ):
+        """A disconnected device put through the per-task command sequence
+        repeatedly should produce zero ``PANIC``-bearing ``StatusMessage``
+        posts to CTR. This is the Wang regression we're guarding against.
+        """
+        from neurobooth_os.iout import iphone as iphone_mod
+        from neurobooth_os.msg.messages import StatusMessage
+        posted = []
+        monkeypatch.setattr(
+            iphone_mod, "post_message", lambda msg: posted.append(msg))
+
+        device = MockIPhone(device_args=mock_args)
+        try:
+            device.connect()
+            self._force_disconnected(device)
+
+            for _ in range(3):
+                device.frame_preview()
+                device.start("/tmp/cascade_test")
+                device.stop()
+                device.ensure_stopped(timeout_seconds=2)
+
+            panic_messages = [
+                m for m in posted
+                if hasattr(m, "body") and isinstance(m.body, StatusMessage)
+                and "PANIC" in (m.body.text or "")
+            ]
+            assert panic_messages == [], (
+                f"Disconnected iPhone should not post PANIC StatusMessages; "
+                f"got {[m.body.text for m in panic_messages]}"
+            )
+        finally:
+            device.close()
+
+
 class TestMockIPhoneRegistration:
     """Verify the substitution registry is wired up for IPhone."""
 

@@ -647,6 +647,53 @@ class IPhone(Device):
 
         return StreamOutlet(info)
 
+    def _is_available_for_command(self) -> bool:
+        """Whether the iPhone is in a state that can accept new commands.
+
+        The state machine only permits ``@PREVIEW`` / ``@START`` / ``@STOP``
+        from active states (``#READY`` / ``#RECORDING``).  Once the device
+        has fallen into ``#DISCONNECTED`` or ``#ERROR`` — typically after
+        an iOS-side stop-sequence timeout — every subsequent command-send
+        will raise ``IPhonePanic`` from inside ``_update_state``, which
+        ``panic()`` then translates into a ``StatusMessage`` posted to CTR.
+
+        Without an entry guard, a single trigger panic can produce a
+        cascade of dozens of identical PANIC notifications across an
+        otherwise-running session (observed at Wang on 2026-04-27: one
+        ``ensure_stopped`` timeout produced ~80 minutes of follow-on
+        panic spam from per-task ``frame_preview`` / ``start`` / ``stop``
+        calls). The recovery path is operator-driven (restart iOS app
+        and/or the session), which calls ``connect()`` and resets state.
+
+        State-only invariant: we deliberately do *not* also gate on
+        ``self.connected``. ``self.connected`` only flips back to ``True``
+        via ``connect()`` (the same place state transitions through
+        ``@HANDSHAKE`` / ``@CONNECTED`` / ``#READY``), but ``self._state``
+        can in principle be advanced by the listener thread receiving an
+        async update from the device. Conjunctively requiring both would
+        risk permanently blocking a listener-only recovery — review of
+        wang/merrimac logs across 90 days didn't surface such a recovery
+        in practice, but the asymmetry between how the two flags are
+        managed is a real footgun, so we lean on the single signal that
+        does track state transitions reliably.
+
+        Returns False when the device is in a state that needs operator
+        intervention; True otherwise.
+        """
+        return self._state not in ("#DISCONNECTED", "#ERROR")
+
+    def _log_command_skipped(self, command: str) -> None:
+        """Log a debug-level entry when a command is skipped due to disconnect.
+
+        Debug rather than warning so the per-task skip noise stays out of
+        the operator-facing log; the original triggering panic was already
+        logged at error level + posted to CTR.
+        """
+        self.logger.debug(
+            f'iPhone [state={self._state}]: Skipping {command} (device unavailable; '
+            f'restart iOS app + session to recover)'
+        )
+
     @_handle_panic
     def _start_recording(self, filename: str) -> None:
         """
@@ -654,6 +701,9 @@ class IPhone(Device):
 
         :param filename: The file name root (i.e., no extension) to be passed to the iPhone.
         """
+        if not self._is_available_for_command():
+            self._log_command_skipped("@START")
+            return
         self.logger.debug(f'iPhone [state={self._state}]: Sending @START Message')
         self._send_and_wait_for_response(
             "@START",
@@ -664,6 +714,12 @@ class IPhone(Device):
     @_handle_panic
     def _stop_recording(self) -> None:
         """Signal the iPhone to stop recording."""
+        if not self._is_available_for_command():
+            self._log_command_skipped("@STOP")
+            # Set ready_event so ensure_stopped() doesn't time out waiting
+            # on a transition that will never come.
+            self.ready_event.set()
+            return
         self.logger.debug(f'iPhone [state={self._state}]: Sending @STOP Message')
         self.ready_event.clear()  # Clear this event so that ensure_stopped() can wait on it
         self._send_and_wait_for_response(
@@ -675,8 +731,12 @@ class IPhone(Device):
         """
         Retrieve a frame preview from the iPhone.
 
-        :returns: The raw data of the image, or an empty byte string if the condition times out.
+        :returns: The raw data of the image, or an empty byte string if the
+            iPhone is unavailable or the condition times out.
         """
+        if not self._is_available_for_command():
+            self._log_command_skipped("@PREVIEW")
+            return b""
         self.logger.debug(f'iPhone [state={self._state}]: Sending @PREVIEW Message')
         with self._frame_preview_cond:
             self._frame_preview_data = b""
@@ -768,10 +828,15 @@ class IPhone(Device):
         Called during a START message to the server. Start data capture.
 
         :param filename: The task file name supplied by the server.
-        :returns: List of created file basenames (.mov and .json).
+        :returns: List of created file basenames (.mov and .json), or an
+            empty list if the iPhone is unavailable.
         """
         if filename is None:
             raise ValueError("IPhone requires a filename to start recording.")
+        if not self._is_available_for_command():
+            self._log_command_skipped("start")
+            self.streaming = False
+            return []
         self.streaming = True
         self.state = DeviceState.STARTED
         filename += "_IPhone"
@@ -807,6 +872,12 @@ class IPhone(Device):
 
         :param timeout_seconds: How long to wait for the transition back to #READY before a panic is triggered.
         """
+        if not self._is_available_for_command():
+            # ``_stop_recording`` already logged the skip and set
+            # ``ready_event`` so we don't pretend to wait for a transition
+            # the iPhone can't make.
+            self._log_command_skipped("ensure_stopped")
+            return
         success = self.ready_event.wait(timeout=timeout_seconds)
         if not success:
             self.logger.error('iPhone: PANIC')
