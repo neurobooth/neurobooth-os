@@ -140,7 +140,21 @@ class MockVidRec_Flir(VidRec_Flir):  # noqa: N801 — match real class casing
                 "MockVidRec_Flir: synthetic record loop exited; video written")
 
     def frame_preview(self) -> ByteString:
-        img, _ = self.imgage_proc()
+        # Draw on a fresh full-size frame so the label is legible
+        # regardless of frame-decimation settings, and so recorded video
+        # frames stay untouched.
+        img = np.full(
+            (_MOCK_FRAME_HEIGHT, _MOCK_FRAME_WIDTH, 3), 40, dtype=np.uint8)
+        cv2.putText(
+            img,
+            "MOCK FLIR",
+            (40, 130),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.0,
+            (255, 255, 255),
+            2,
+            cv2.LINE_AA,
+        )
         rc, encoded = cv2.imencode(".png", img)
         return encoded.tobytes() if rc else b""
 
