@@ -10,8 +10,8 @@ responses.
 
 When the controller sends ``@START``, the transport spawns a daemon
 thread that emits ``@INPROGRESSTIMESTAMP`` messages at the configured
-FPS until ``@STOP`` is sent.  ``frame_preview()`` returns canned bytes
-without touching the camera.
+FPS until ``@STOP`` is sent.  ``frame_preview()`` returns a canned
+labeled PNG without touching the camera.
 """
 
 from __future__ import annotations
@@ -24,6 +24,9 @@ import threading
 import time
 from typing import List, Optional
 
+import cv2
+import numpy as np
+
 from neurobooth_os.iout.iphone import (
     CONFIG,
     IPhone,
@@ -33,10 +36,35 @@ from neurobooth_os.iout.iphone import (
 )
 
 
-# Placeholder bytes returned by ``frame_preview()``.  Not a valid PNG —
-# the iPhone code just hands the bytes back to the caller, so opaque
-# bytes are sufficient for the lifecycle.  Tests assert non-emptiness.
-_CANNED_PREVIEW_BYTES = b"MOCK_IPHONE_FRAME_PREVIEW_PLACEHOLDER"
+_PREVIEW_WIDTH = 320
+_PREVIEW_HEIGHT = 240
+
+
+def _build_canned_preview_bytes() -> bytes:
+    """Build a labeled PNG used as the canned ``@PREVIEW`` response.
+
+    Returns a real PNG so the GUI's ``len(image) < 100`` short-circuit
+    in ``handle_frame_preview_reply`` doesn't fire — the operator sees
+    a clearly-labeled placeholder rather than ``ERROR: Unable to
+    preview (None)``.
+    """
+    img = np.full(
+        (_PREVIEW_HEIGHT, _PREVIEW_WIDTH, 3), 40, dtype=np.uint8)
+    cv2.putText(
+        img,
+        "MOCK iPhone",
+        (40, 130),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1.0,
+        (255, 255, 255),
+        2,
+        cv2.LINE_AA,
+    )
+    rc, encoded = cv2.imencode(".png", img)
+    return encoded.tobytes() if rc else b""
+
+
+_CANNED_PREVIEW_BYTES = _build_canned_preview_bytes()
 
 
 class _MockIPhoneTransport:

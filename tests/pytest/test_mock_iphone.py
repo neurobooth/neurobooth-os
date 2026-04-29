@@ -9,8 +9,8 @@ infrastructure or running iOS app.  Coverage:
   the state machine end-to-end.
 - LSL ``_lsl_push_sample`` sees ``@STARTTIMESTAMP``, several
   ``@INPROGRESSTIMESTAMP``, then ``@STOPTIMESTAMP``.
-- ``frame_preview()`` returns the canned bytes the mock transport
-  injects.
+- ``frame_preview()`` returns a real PNG (the canned labeled image
+  the mock transport injects).
 - The substitution registry is populated by importing
   ``stim_param_reader``.
 """
@@ -21,10 +21,7 @@ import pytest
 
 from neurobooth_os.iout import iphone as iphone_mod
 from neurobooth_os.iout.device import DeviceState
-from neurobooth_os.iout.mock.mock_iphone import (
-    _CANNED_PREVIEW_BYTES,
-    MockIPhone,
-)
+from neurobooth_os.iout.mock.mock_iphone import MockIPhone
 from neurobooth_os.iout.stim_param_reader import (
     IPhoneDeviceArgs,
     IPhoneSensorArgs,
@@ -167,13 +164,15 @@ class TestMockIPhoneLSLFlow:
             f"Expected several @INPROGRESSTIMESTAMP messages; got {in_progress}"
         )
 
-    def test_frame_preview_returns_canned_bytes(self, mock_args):
+    def test_frame_preview_returns_png_bytes(self, mock_args):
         device = MockIPhone(device_args=mock_args)
         try:
             device.connect()
             preview = device.frame_preview()
-            assert preview == _CANNED_PREVIEW_BYTES
+            assert isinstance(preview, bytes)
             assert len(preview) > 0
+            # cv2.imencode produces a real PNG; check the magic bytes.
+            assert preview[:8] == b"\x89PNG\r\n\x1a\n"
         finally:
             device.close()
 
