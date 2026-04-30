@@ -298,6 +298,30 @@ def _start_activation_listener(window,
     return thread
 
 
+def _focus_subject_id_on_startup(window, logger: Optional[logging.Logger] = None) -> None:
+    """Reliably land keyboard focus on the Subject ID input at GUI start.
+
+    PySimpleGUI's ``focus=True`` on the Input element sets Tk-level focus
+    when the window first renders, but Windows does not auto-foreground a
+    process's new window when the launching process (CMD / .bat / shortcut)
+    holds the foreground — typing then goes to whatever was foreground
+    rather than into the input. Mirror the foreground-grab pattern from
+    ``_raise_self_window``: briefly set topmost, force focus on the Tk
+    root (so the OS treats the window as foreground), then set Tk focus
+    on the input element.
+    """
+    try:
+        window.TKroot.deiconify()
+        window.TKroot.lift()
+        window.TKroot.attributes('-topmost', True)
+        window.TKroot.after(500, lambda: window.TKroot.attributes('-topmost', False))
+        window.TKroot.focus_force()
+        window['subject_id'].set_focus()
+    except Exception as e:
+        if logger:
+            logger.info("Focus on startup failed: %s", e)
+
+
 def _raise_self_window(window, logger: Optional[logging.Logger] = None) -> None:
     """From GUI-A: raise this process's own main window.
 
@@ -692,6 +716,7 @@ def gui(logger):
         plttr = stream_plotter()
         log_sess = LogSession(application_version=state.release_version, config_version=state.config_version)
         event, values = window.read(0.1)
+        _focus_subject_id_on_startup(window, logger)
         while True:
             event, values = window.read(0.5)
             ############################################################
