@@ -20,11 +20,13 @@ URL = ''
 LICENSE = 'BSD (3-clause)'
 DOWNLOAD_URL = 'https://github.com/neurobooth/neurobooth-os'
 
-# get the version
+# Get the version from neurobooth_os/current_config.py — that's the file
+# the deploy step (configs/version.bat) overwrites with the real release
+# tag. A plain source checkout reads the sentinel "NO VERSION SET".
 version = None
-with open(os.path.join('neurobooth_os', '__init__.py'), 'r') as fid:
+with open(os.path.join('neurobooth_os', 'current_config.py'), 'r') as fid:
     for line in (line.strip() for line in fid):
-        if line.startswith('__version__'):
+        if line.startswith('version'):
             version = line.split('=')[1].strip().strip('\'').strip('"')
             break
 if version is None:
