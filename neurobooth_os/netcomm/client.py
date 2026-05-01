@@ -123,7 +123,8 @@ def get_all_python_processes_with_cmd(server_name: str = None, user: str = None,
 
 
 def _build_task_xml(bat_path: str, acq_index: Optional[int],
-                    user: Optional[str] = None) -> str:
+                    user: Optional[str] = None,
+                    machine: Optional[str] = None) -> str:
     """Build a Task Scheduler XML for an event-triggered server task.
 
     SCHTASKS /Create has no CLI flag for the battery-condition setting, so a
@@ -137,8 +138,11 @@ def _build_task_xml(bat_path: str, acq_index: Optional[int],
     When ``user`` is provided, a <Principals> block is included so SCHTASKS
     /S /XML accepts the file: remote task creation requires an explicit
     UserId, and the /TR flow that this code replaced got it from /U
-    automatically. Local creation (no /S) auto-fills Principals from the
-    calling context, so we omit the block when ``user`` is empty/None.
+    automatically. The UserId is qualified as ``machine\\user`` (matching
+    how SCHTASKS /Query reports the existing task's Author) unless ``user``
+    already contains a backslash, in which case it's used as-is. Local
+    creation (no /S) auto-fills Principals from the calling context, so
+    we omit the block when ``user`` is empty/None.
     """
     command = _saxutils.escape(bat_path)
     args_block = ""
@@ -148,7 +152,14 @@ def _build_task_xml(bat_path: str, acq_index: Optional[int],
     principals_block = ""
     actions_open = "  <Actions>\n"
     if user:
-        user_escaped = _saxutils.escape(user)
+        # Qualify with the target machine name when not already domain-qualified.
+        # Bare "ACQ" is rejected by Task Scheduler XML validation as ambiguous;
+        # "ACQ\\ACQ" (which is what /Query shows for the existing task) is not.
+        if "\\" not in user and machine:
+            qualified_user = f"{machine}\\{user}"
+        else:
+            qualified_user = user
+        user_escaped = _saxutils.escape(qualified_user)
         principals_block = (
             '  <Principals>\n'
             '    <Principal id="Author">\n'
@@ -285,7 +296,7 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
     # default DisallowStartIfOnBatteries=true and would queue forever on a
     # laptop on battery. See _build_task_xml for the schema we apply.
     print(f"Creating Windows task: {task_name}")
-    xml_content = _build_task_xml(s.bat, acq_index, user=s.user)
+    xml_content = _build_task_xml(s.bat, acq_index, user=s.user, machine=s.name)
     fd, xml_path = tempfile.mkstemp(suffix='.xml')
     try:
         with os.fdopen(fd, 'wb') as f:
