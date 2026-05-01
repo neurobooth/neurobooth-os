@@ -11,13 +11,12 @@ from typing import List, Optional, Tuple
 import neurobooth_os.config as cfg
 
 
-def setup_log(name):
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
-    return logger
-
-
-logger = setup_log(__name__)
+# Route through the "app" logger so messages reach the PostgreSQLHandler
+# attached by make_db_logger (log_manager.py). A privately-named logger
+# (e.g. logging.getLogger(__name__)) has no handlers attached and no
+# propagation path to the "app" logger, so its messages are silently
+# dropped — that's why SCHTASKS / WMIC failures used to vanish.
+logger = logging.getLogger("app")
 
 
 def _run_cmd(cmd_list: list, server_name: str = None, user: str = None, password: str = None) -> str:
