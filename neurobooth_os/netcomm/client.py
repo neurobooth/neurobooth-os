@@ -122,7 +122,8 @@ def get_all_python_processes_with_cmd(server_name: str = None, user: str = None,
     return processes
 
 
-def _build_task_xml(bat_path: str, acq_index: Optional[int]) -> str:
+def _build_task_xml(bat_path: str, acq_index: Optional[int],
+                    user: Optional[str] = None) -> str:
     """Build a Task Scheduler XML for an event-triggered server task.
 
     SCHTASKS /Create has no CLI flag for the battery-condition setting, so a
@@ -132,11 +133,33 @@ def _build_task_xml(bat_path: str, acq_index: Optional[int]) -> str:
 
     The trigger keys off Application Event ID 777 — nothing emits that event;
     it exists only so /Run can launch the task on demand.
+
+    When ``user`` is provided, a <Principals> block is included so SCHTASKS
+    /S /XML accepts the file: remote task creation requires an explicit
+    UserId, and the /TR flow that this code replaced got it from /U
+    automatically. Local creation (no /S) auto-fills Principals from the
+    calling context, so we omit the block when ``user`` is empty/None.
     """
     command = _saxutils.escape(bat_path)
     args_block = ""
     if acq_index is not None:
         args_block = f"      <Arguments>{_saxutils.escape(str(acq_index))}</Arguments>\n"
+
+    principals_block = ""
+    actions_open = "  <Actions>\n"
+    if user:
+        user_escaped = _saxutils.escape(user)
+        principals_block = (
+            '  <Principals>\n'
+            '    <Principal id="Author">\n'
+            f'      <UserId>{user_escaped}</UserId>\n'
+            '      <LogonType>InteractiveToken</LogonType>\n'
+            '      <RunLevel>LeastPrivilege</RunLevel>\n'
+            '    </Principal>\n'
+            '  </Principals>\n'
+        )
+        actions_open = '  <Actions Context="Author">\n'
+
     return (
         '<?xml version="1.0" encoding="UTF-16"?>\n'
         '<Task version="1.3" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">\n'
@@ -147,6 +170,7 @@ def _build_task_xml(bat_path: str, acq_index: Optional[int]) -> str:
         "*[System/EventID=777]&lt;/Select&gt;&lt;/Query&gt;&lt;/QueryList&gt;</Subscription>\n"
         '    </EventTrigger>\n'
         '  </Triggers>\n'
+        f'{principals_block}'
         '  <Settings>\n'
         '    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>\n'
         '    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n'
@@ -155,7 +179,7 @@ def _build_task_xml(bat_path: str, acq_index: Optional[int]) -> str:
         '    <Enabled>true</Enabled>\n'
         '    <ExecutionTimeLimit>PT72H</ExecutionTimeLimit>\n'
         '  </Settings>\n'
-        '  <Actions>\n'
+        f'{actions_open}'
         '    <Exec>\n'
         f'      <Command>{command}</Command>\n'
         f'{args_block}'
@@ -261,7 +285,7 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
     # default DisallowStartIfOnBatteries=true and would queue forever on a
     # laptop on battery. See _build_task_xml for the schema we apply.
     print(f"Creating Windows task: {task_name}")
-    xml_content = _build_task_xml(s.bat, acq_index)
+    xml_content = _build_task_xml(s.bat, acq_index, user=s.user)
     fd, xml_path = tempfile.mkstemp(suffix='.xml')
     try:
         with os.fdopen(fd, 'wb') as f:
