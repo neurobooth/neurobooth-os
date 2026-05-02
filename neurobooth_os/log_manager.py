@@ -207,26 +207,38 @@ class SystemResourceLogger(Thread):
         # Perform initial calls that return meaningless data
         psutil.cpu_percent(percpu=True)
 
-        # Main logging loop
-        while not self.sleep_event.wait(self.log_interval_sec):  # Will return True if event set by stop()
-            cpu: List[CpuUsage] = self.log_cpu()
-            ram: Dict[str, int] = self.log_memory()
-            disk: List[DiskUsage] = self.log_disk_io()
-            net: Dict[str, int] = self.log_network_io()
+        app_log = logging.getLogger("app")
 
-            record: SysResourceRecord = SysResourceRecord(
-                machine_name=self.machine_name,
-                session_start=self.session_start,
-                ram_used=ram['RAM_used'],
-                ram_total=ram['RAM_total'],
-                swap_used=ram['SWAP_used'],
-                swap_total=ram['SWAP_total'],
-                net_recd=net['Network_bytes_received'],
-                net_sent=net['Network_bytes_sent'],
-                disk_usage=disk,
-                cpu_usage=cpu,
-            )
-            self.emit(record)
+        # Main logging loop. Each iteration is wrapped so that a transient
+        # failure in any single psutil call (or the DB insert) doesn't kill
+        # the whole thread silently — that's what hid the broken Windows
+        # perf counters on STM since 2026-03-18 (psutil.swap_memory() raised
+        # PdhAddEnglishCounterW failed, the exception bubbled out of run(),
+        # and SystemResourceLogger died on iteration 1 of every session).
+        while not self.sleep_event.wait(self.log_interval_sec):  # Will return True if event set by stop()
+            try:
+                cpu: List[CpuUsage] = self.log_cpu()
+                ram: Dict[str, int] = self.log_memory()
+                disk: List[DiskUsage] = self.log_disk_io()
+                net: Dict[str, int] = self.log_network_io()
+
+                record: SysResourceRecord = SysResourceRecord(
+                    machine_name=self.machine_name,
+                    session_start=self.session_start,
+                    ram_used=ram['RAM_used'],
+                    ram_total=ram['RAM_total'],
+                    swap_used=ram['SWAP_used'],
+                    swap_total=ram['SWAP_total'],
+                    net_recd=net['Network_bytes_received'],
+                    net_sent=net['Network_bytes_sent'],
+                    disk_usage=disk,
+                    cpu_usage=cpu,
+                )
+                self.emit(record)
+            except Exception:
+                app_log.exception(
+                    "SystemResourceLogger iteration failed on %s; "
+                    "skipping this sample and continuing.", self.machine_name)
 
     @staticmethod
     def log_cpu() -> List[CpuUsage]:
@@ -236,13 +248,21 @@ class SystemResourceLogger(Thread):
     @staticmethod
     def log_memory() -> Dict[str, Any]:
         ram = psutil.virtual_memory()
-        swap = psutil.swap_memory()
+        # psutil.swap_memory() reads Windows PDH perf counters and can raise
+        # PdhAddEnglishCounterW failed when those counters are corrupted.
+        # Treat swap as zeroed in that case so the RAM sample still records.
+        try:
+            swap_used = psutil.swap_memory().used
+            swap_total = psutil.swap_memory().total
+        except Exception:
+            swap_used = 0
+            swap_total = 0
 
         return {
             'RAM_used': ram.total - ram.available,
             'RAM_total': ram.total,
-            'SWAP_used': swap.used,
-            'SWAP_total': swap.total,
+            'SWAP_used': swap_used,
+            'SWAP_total': swap_total,
         }
 
     @staticmethod
