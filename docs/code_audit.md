@@ -327,14 +327,9 @@ Multiple unresolved errors in notebook output cells:
 
 Massive repetition of identical device lists across tasks. Could be reduced ~70% using YAML anchors/aliases.
 
-### 3.5 Low: Batch Script Issues
+### 3.5 ~~Low: Batch Script Issues~~ RESOLVED
 
-**Location:** `set_conda_env.bat`
-
-- No error checking after conda commands
-- Hardcoded wheel path: `c:\spinnaker\spinnaker_python-3.1.0.79-cp38-cp38-win_amd64.whl`
-- Uses `pause` for manual intervention instead of automated error handling
-- References `environment_staging.yml` but actual file may be `environment.yml`
+**Resolved by:** uv migration (#632) -- `set_conda_env.bat` removed entirely. The new install path is documented in `README.md` and uses `uv sync` (no manual `pause`/wheel-path/yml-name issues).
 
 ### 3.6 Low: Non-Descriptive Config File Names
 
@@ -381,9 +376,9 @@ The mock infrastructure (PRs #737, #738) is the biggest lift: tests run on a har
 
 `.github/workflows/` does not exist. The 160 tests have to be run manually. Adding a workflow that runs `pytest tests/pytest/ neurobooth_os/iout/tests/ --no-cov` per file (sidestepping the segfault issue) on push/PR would significantly increase confidence in changes touching the device subsystem, where the test coverage is now substantial.
 
-### 4.5 Low: Deployment-test Batch Scripts Still Hardcoded
+### 4.5 ~~Low: Deployment-test Batch Scripts Still Hardcoded~~ RESOLVED
 
-`tests/deployment-test/run_timing_tests*.bat` still reference `C:\Users\CTR\anaconda3\Scripts\activate.bat`. These are operator-side timing scripts, not unit tests, so the impact is minor.
+**Resolved by:** uv migration (#632) -- `tests/deployment-test/run_timing_tests*.bat` now activate `%NB_INSTALL%\.venv\Scripts\activate.bat` instead of the hardcoded `C:\Users\CTR\anaconda3` path. Same fix applied to `extras/reset_mbients.bat` and `extras/serv_acq_upload - neurobooth_OS.bat`.
 
 ---
 
@@ -509,7 +504,7 @@ PR #741 (in flight at audit time) drops the unrelated stale `__version__ = "0.0.
 
 ### 8.6 Medium: Python 3.8 Only
 
-`environment_staging.yml` targets Python 3.8.18, which reached end-of-life in October 2024. No support for Python 3.9+.
+`pyproject.toml` pins `requires-python = ">=3.8,<3.9"`. Python 3.8 reached end-of-life in October 2024. The Python upgrade is tracked in #682 and is intentionally deferred until after the uv migration (#632) lands so the two changes don't compound.
 
 ### 8.7 Medium: `.gitignore` Missing Common Patterns
 

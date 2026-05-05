@@ -24,15 +24,29 @@ Development is performed on feature branches as usual. When complete, feature br
 3. Publish the release in GitHub (remove the "pre-release" flag).
 4. Deploy the published release into production environment(s). 
  
-Checking out and deploying releases: 
+Checking out and deploying releases:
 
-The examples below show how to checkout released code install it using pip. Release v0.0.1 is used for demonstration. 
+Release `v0.0.1` is used in the examples below.
 
-To checkout a release without installing specify the tag and branch (master):
-	`git checkout tags/<tag>`
+To checkout a release without installing, specify the tag:
 
-To install a release using pip: 
-	`pip install git+https://github.com/neurobooth/neurobooth-os@v0.0.1`
+```
+git checkout tags/v0.0.1
+```
 
-If desired, the release can be installed in a particular location using the -target flag
+To install a release into a uv-managed venv (the canonical path; this is what the booth machines run):
+
+```
+git clone --branch v0.0.1 https://github.com/neurobooth/neurobooth-os.git
+cd neurobooth-os
+uv sync
+```
+
+See [README.md](../README.md) for prerequisites (`uv` install) and per-machine extras (`--extra eyelink` on STM, manual Spinnaker wheel on ACQ). The `Upgrading from a conda-based booth` section in the README covers in-place upgrades.
+
+For ad-hoc installs into an existing venv (e.g. for a one-off script), you can also use:
+
+```
+uv pip install git+https://github.com/neurobooth/neurobooth-os@v0.0.1
+```
 
