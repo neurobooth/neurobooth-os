@@ -184,6 +184,7 @@ include = ["neurobooth_os*"]
 addopts = "--cov=neurobooth_os"
 testpaths = [
     "neurobooth_os",
+    "tests",
 ]
 
 [tool.mypy]
