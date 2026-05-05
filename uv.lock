@@ -752,6 +752,7 @@ wheels = [
 
 [[package]]
 name = "neurobooth-os"
+version = "0.0.0+dev"
 source = { editable = "." }
 dependencies = [
     { name = "arabic-reshaper", marker = "sys_platform == 'win32'" },

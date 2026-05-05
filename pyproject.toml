@@ -23,7 +23,11 @@ classifiers = [
     "Operating System :: MacOS",
 ]
 requires-python = ">=3.8,<3.9"
-dynamic = ["version"]
+# Decoupled from runtime version metadata. neurobooth_os/current_release.py
+# is for cross-service consistency checks and DB session-version logging;
+# neurobooth_os/current_config.py is for the configs repo's version. Neither
+# is the package's build version.
+version = "0.0.0+dev"
 dependencies = [
     # Scientific stack
     "numpy>=1.23.5",
@@ -173,9 +177,6 @@ constraint-dependencies = ["psycopg2<2.9.10"]
 # update-browser code path that actually uses it. Override the transitive
 # to a marker that resolves trivially.
 override-dependencies = ["pypi-search; sys_platform == 'never'"]
-
-[tool.setuptools.dynamic]
-version = {attr = "neurobooth_os.current_config.version"}
 
 [tool.setuptools.packages.find]
 include = ["neurobooth_os*"]

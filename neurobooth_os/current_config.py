@@ -3,4 +3,4 @@
     GENERATED FILE. DO NOT EDIT MANUALLY
 """
 
-version = '0.0.0+unset'
+version = 'NO VERSION SET'
