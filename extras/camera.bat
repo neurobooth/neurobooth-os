@@ -1,2 +1,2 @@
-call  %NB_CONDA_INSTALL%\Scripts\activate.bat %NB_CONDA_ENV%
+call %NB_INSTALL%\.venv\Scripts\activate.bat
 call start /W python %NB_INSTALL%\extras\see_cam.py

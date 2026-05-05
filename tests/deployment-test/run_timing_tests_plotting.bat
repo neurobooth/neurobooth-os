@@ -1,2 +1,2 @@
-call  C:\Users\CTR\anaconda3\Scripts\activate.bat C:\Users\CTR\anaconda3\envs\neurobooth-staging
-call start/W ipython --pdb -i C:\neurobooth-os\extras\plot_timing_test_sync.py -- -i "100064_2022-11-09" -t "_20h-02m-48s"
+call %NB_INSTALL%\.venv\Scripts\activate.bat
+call start/W ipython --pdb -i %NB_INSTALL%\extras\plot_timing_test_sync.py -- -i "100064_2022-11-09" -t "_20h-02m-48s"
