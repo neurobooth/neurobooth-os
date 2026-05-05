@@ -411,7 +411,7 @@ The mock infrastructure (PRs #737, #738) is the biggest lift: tests run on a har
 
 ## 6. eyelink_setup/
 
-**Files analyzed:** README.rst, `start_tk_new` shell script (907 lines), network diagrams.
+**Files analyzed:** README.md, `start_tk_new` shell script (907 lines), network diagrams.
 
 ### 6.1 Strengths
 
