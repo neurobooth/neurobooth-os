@@ -8,36 +8,50 @@ ECG, mouse and microphone in a booth.
 Installations
 -------------
 
-We recommend the Anaconda Python distribution. To install neurobooth-os, simply do:
+Dependencies are managed with `uv <https://docs.astral.sh/uv/>`_. Install uv
+once (no admin needed)::
 
-$ pip install -e git+https://github.com/neurobooth/neurobooth-os.git#egg=neurobooth_os
+    winget install astral-sh.uv
 
-and it will install neurobooth-os along with the dependencies which are not already installed.
+or::
 
-To check if everything worked fine, you can do::
+    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-$ python -c 'import neurobooth_os'
+Then, from the repo root::
 
-and it should not give any error messages.
+    git clone https://github.com/neurobooth/neurobooth-os.git
+    cd neurobooth-os
+    uv sync
 
-Install Pylink running on the STM::
+This creates a `.venv` with Python 3.8 and every pinned dependency from
+`uv.lock`. To verify::
 
-$ pip install --index-url=https://pypi.sr-support.com sr-research-pylink
+    uv run python -c "import neurobooth_os"
 
-If pip install from sr-research doesn't work, please follow the following steps:
+should print nothing and exit cleanly.
 
-* Create an sr-research support account
-* Download the `EyeLink Developers Kit v2.1.1 (32 and 64 bit)` installer from the SR Research
-Support forum.
-* Install the Eyelink Developers Kit
-* Run: `$ cd C:'\\Program Files (x86)\\SR Research\\EyeLink\\SampleExperiments\\Python\\'`
-* Run: `$ python install_pylink.py`
+Per-machine extras (run AFTER `uv sync`):
 
-For pyspin FLIR installation on the ACQ: 
-Download SDK from https://www.flir.com/products/spinnaker-sdk/?vertical=machine+vision&segment=iis
-direct link to wheel file: https://flir.app.boxcn.net/v/SpinnakerSDK/file/982785545712
-then unzip the file, cd to the folder and run: 
-`$  pip install spinnaker_python-2.x.x.x-cp3x-cp3x-win_amd64.whl`
+**STM** -- EyeLink eye tracker::
+
+    uv sync --extra eyelink
+
+The `eyelink` extra installs `sr-research-pylink` from the SR Research
+custom index (configured in `pyproject.toml`). If that fails, fall back to
+the manual installer:
+
+* Create an SR Research support account
+* Download the `EyeLink Developers Kit v2.1.1 (32 and 64 bit)` installer
+* Install the EyeLink Developers Kit
+* `cd "C:\Program Files (x86)\SR Research\EyeLink\SampleExperiments\Python"`
+* `uv run python install_pylink.py`
+
+**ACQ** -- FLIR Spinnaker SDK (proprietary, distributed as a local wheel):
+
+* Download the Spinnaker SDK from https://www.flir.com/products/spinnaker-sdk/
+* Extract the `.whl` and install into the venv::
+
+    uv pip install spinnaker_python-3.x.x.x-cp38-cp38-win_amd64.whl
 
 
 Setup

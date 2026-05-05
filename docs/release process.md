@@ -7,7 +7,7 @@ The goals for this process are:
 3. To make it easier to determine what code modifications are in each environment, and whether issues identified in one environment are likely to affect another. 
 
 This process uses GitHub's release support. In this model, a release is a bundle of code with a name and a git tag. By convention, the release name and tag are the same.
-The release name also appears in the deployed code so anyone looking at the environment can tell what version is deployed. In source, `neurobooth_os/current_config.py` holds the version inside a `version = ...` assignment. The file is marked as a generated file; the deployment scripts (`configs/checkout_and_deploy.bat` / `configs/version.bat`) overwrite the assignment with the real release tag at deploy time. A plain master checkout reads the sentinel `'NO VERSION SET'`.
+The release name also appears in the deployed code so anyone looking at the environment can tell what version is deployed. In source, `neurobooth_os/current_config.py` holds the version inside a `version = ...` assignment. The file is marked as a generated file; the deployment scripts (`configs/checkout_and_deploy.bat` / `configs/version.bat`) overwrite the assignment with the real release tag at deploy time. A plain master checkout reads the sentinel `'0.0.0+unset'` (PEP 440-compliant; setuptools rejects the older `'NO VERSION SET'` literal during a `uv sync`).
 
 Because deploy stamps the version in, **the source value is never edited by hand**. There is no pre-release version-bump commit and no post-release increment — release numbering is driven entirely by git tags + GitHub releases.
 
