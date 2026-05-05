@@ -10,6 +10,7 @@ supported-markers = [
 
 [manifest]
 constraints = [{ name = "psycopg2", specifier = "<2.9.10" }]
+overrides = [{ name = "pypi-search", marker = "sys_platform == 'never'" }]
 
 [[package]]
 name = "alabaster"
@@ -400,20 +401,6 @@ wheels = [
 ]
 
 [[package]]
-name = "gmsh-interop"
-version = "2024.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy", marker = "sys_platform == 'win32'" },
-    { name = "packaging", marker = "sys_platform == 'win32'" },
-    { name = "pytools", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/00/8bfaf010f9d0f1ffe583db6c4a70409edb5d5aaf84af2424649256845bb1/gmsh_interop-2024.1.tar.gz", hash = "sha256:ec9bedf9dfd951032e4806d6f00f6f75c3d513ae655173fb459d6a5bce820ce2", size = 25240, upload-time = "2024-04-26T19:06:40.165Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/96/49/03a32591e922281423375a395773935a62fef6cbba68b02e5ddefcbae746/gmsh_interop-2024.1-py2.py3-none-any.whl", hash = "sha256:e1eb66431cff0e27c1e36d46ce270d1af2b500ac101f7b0c953bc54f9477095e", size = 22269, upload-time = "2024-04-26T19:06:38.207Z" },
-]
-
-[[package]]
 name = "greenlet"
 version = "3.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -691,22 +678,6 @@ wheels = [
 ]
 
 [[package]]
-name = "meshpy"
-version = "2022.1.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "gmsh-interop", marker = "sys_platform == 'win32'" },
-    { name = "numpy", marker = "sys_platform == 'win32'" },
-    { name = "pytools", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/80/ee/6ec21159624454a2522211c17b72d2211237c74b45c353a6504f801a3d3a/MeshPy-2022.1.3.tar.gz", hash = "sha256:a7158e31ece25fa6c6cebce9fd1e968157d661dc8769fb30ceba69c351478475", size = 474632, upload-time = "2022-11-06T19:54:17.881Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/ec/a80f3e2c82d924d537f19ff716de0d77ec268be42f25ec2bf33076cea5db/MeshPy-2022.1.3-cp38-cp38-win32.whl", hash = "sha256:183cb130a3dccea7df35c517869f5159f34a8d9fb1b666eb48779495fdac96c9", size = 346677, upload-time = "2022-11-06T19:53:53.127Z" },
-    { url = "https://files.pythonhosted.org/packages/57/f1/cdb85c2b0c0f5a9aa21c322b335648502e0802e7f7612c9512d033b40bd3/MeshPy-2022.1.3-cp38-cp38-win_amd64.whl", hash = "sha256:e7a7fc0f7cd8f93758ed5ed15f2806ec48da3f7ddad6838d9d564db18cb1f436", size = 379756, upload-time = "2022-11-06T19:53:54.595Z" },
-    { url = "https://files.pythonhosted.org/packages/dd/7f/b913240c5027a1ebc3770d73e6a2cf400154f1af7cada667c7735338f0cb/MeshPy-2022.1.3-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:5ae9d56f04a368cfe9aa04091057a1eb705fd571faaa54e0c82e45c45166214e", size = 378774, upload-time = "2022-11-06T19:54:11.434Z" },
-]
-
-[[package]]
 name = "metawear"
 version = "1.0.8"
 source = { registry = "https://pypi.org/simple" }
@@ -926,7 +897,7 @@ requires-dist = [
     { name = "paramiko", specifier = ">=2.8.1" },
     { name = "pillow", specifier = ">=10.0.1" },
     { name = "psutil", specifier = ">=5.9.6" },
-    { name = "psychopy", specifier = ">=2023.1.2" },
+    { name = "psychopy", specifier = ">=2023.1.2,<2024" },
     { name = "psychtoolbox", specifier = ">=3.0.19.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.9,<2.9.10" },
     { name = "py-cpuinfo", specifier = ">=9.0.0" },
@@ -1110,15 +1081,6 @@ wheels = [
 ]
 
 [[package]]
-name = "platformdirs"
-version = "4.3.6"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/13/fc/128cc9cb8f03208bdbf93d3aa862e16d376844a14f9a0ce5cf4507372de4/platformdirs-4.3.6.tar.gz", hash = "sha256:357fb2acbc885b0419afd3ce3ed34564c13c9b95c89360cd9563f73aa5e2b907", size = 21302, upload-time = "2024-09-17T19:06:50.688Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3c/a6/bc1012356d8ece4d66dd75c4b9fc6c1f6650ddd5991e421177d9f8f671be/platformdirs-4.3.6-py3-none-any.whl", hash = "sha256:73e575e1408ab8103900836b97580d5307456908a03e92031bab39e4554cc3fb", size = 18439, upload-time = "2024-09-17T19:06:49.212Z" },
-]
-
-[[package]]
 name = "pluggy"
 version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1163,11 +1125,12 @@ wheels = [
 
 [[package]]
 name = "psychopy"
-version = "2025.1.1"
+version = "2023.2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "arabic-reshaper", marker = "sys_platform == 'win32'" },
     { name = "astunparse", marker = "sys_platform == 'win32'" },
+    { name = "blosc2", marker = "sys_platform == 'win32'" },
     { name = "cryptography", marker = "sys_platform == 'win32'" },
     { name = "esprima", marker = "sys_platform == 'win32'" },
     { name = "ffpyplayer", marker = "sys_platform == 'win32'" },
@@ -1181,23 +1144,19 @@ dependencies = [
     { name = "jedi", marker = "sys_platform == 'win32'" },
     { name = "markdown-it-py", marker = "sys_platform == 'win32'" },
     { name = "matplotlib", marker = "sys_platform == 'win32'" },
-    { name = "meshpy", marker = "sys_platform == 'win32'" },
-    { name = "moviepy", marker = "sys_platform == 'win32'" },
     { name = "msgpack", marker = "sys_platform == 'win32'" },
     { name = "msgpack-numpy", marker = "sys_platform == 'win32'" },
     { name = "numpy", marker = "sys_platform == 'win32'" },
     { name = "opencv-python", marker = "sys_platform == 'win32'" },
     { name = "openpyxl", marker = "sys_platform == 'win32'" },
-    { name = "packaging", marker = "sys_platform == 'win32'" },
     { name = "pandas", marker = "sys_platform == 'win32'" },
     { name = "pillow", marker = "sys_platform == 'win32'" },
     { name = "psutil", marker = "sys_platform == 'win32'" },
-    { name = "psychtoolbox", marker = "platform_machine != 'arm64' and sys_platform == 'win32'" },
-    { name = "pyarrow", marker = "sys_platform == 'win32'" },
+    { name = "psychtoolbox", marker = "sys_platform == 'win32'" },
     { name = "pyglet", marker = "sys_platform == 'win32'" },
     { name = "pyparallel", marker = "sys_platform == 'win32'" },
     { name = "pypiwin32", marker = "sys_platform == 'win32'" },
-    { name = "pyqt6", marker = "sys_platform == 'win32'" },
+    { name = "pyqt5", marker = "sys_platform == 'win32'" },
     { name = "pyserial", marker = "sys_platform == 'win32'" },
     { name = "python-bidi", marker = "sys_platform == 'win32'" },
     { name = "python-gitlab", marker = "sys_platform == 'win32'" },
@@ -1216,10 +1175,7 @@ dependencies = [
     { name = "wxpython", marker = "sys_platform == 'win32'" },
     { name = "xmlschema", marker = "sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a7/2f/d24a6ac493475ffdcc66b0b8ebe2127f9306f98ef2411982d8b836ab31df/psychopy-2025.1.1.tar.gz", hash = "sha256:c70ce04d45acfd75d468fc9978585a062b8e29209089b8faa78b46ea55409139", size = 44859978, upload-time = "2025-05-12T13:43:33.936Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3e/0f/55e49ebc1d33b321e53e7fa57b445fc035a5c401d46b17fa087fb603ed35/psychopy-2025.1.1-py3-none-any.whl", hash = "sha256:532f2593283a519a37159d413870fe284bfa94dc171906bd5bc4fcd8a3451583", size = 46478207, upload-time = "2025-05-12T13:43:30.078Z" },
-]
+sdist = { url = "https://files.pythonhosted.org/packages/16/17/a73ebae6cfcbd6f4cf094fba59b17f1ca1b03b6a8c0afdaa11468bc3fe62/psychopy-2023.2.3.tar.gz", hash = "sha256:f856549eb9099a062c59d53f4abee0864e780fd5c8027f1802412444b47ac355", size = 35942616, upload-time = "2023-10-09T16:16:55.595Z" }
 
 [[package]]
 name = "psychtoolbox"
@@ -1269,18 +1225,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/37/a8/d832f7293ebb21690860d2e01d8115e5ff6f2ae8bbdc953f0eb0fa4bd2c7/py-cpuinfo-9.0.0.tar.gz", hash = "sha256:3cdbbf3fac90dc6f118bfd64384f309edeadd902d7c8fb17f02ffa1fc3f49690", size = 104716, upload-time = "2022-10-25T20:38:06.303Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e0/a9/023730ba63db1e494a271cb018dcd361bd2c917ba7004c3e49d5daf795a2/py_cpuinfo-9.0.0-py3-none-any.whl", hash = "sha256:859625bc251f64e21f077d099d4162689c762b5d6a4c3c97553d56241c9674d5", size = 22335, upload-time = "2022-10-25T20:38:27.636Z" },
-]
-
-[[package]]
-name = "pyarrow"
-version = "17.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/27/4e/ea6d43f324169f8aec0e57569443a38bab4b398d09769ca64f7b4d467de3/pyarrow-17.0.0.tar.gz", hash = "sha256:4beca9521ed2c0921c1023e68d097d0299b62c362639ea315572a58f3f50fd28", size = 1112479, upload-time = "2024-07-17T10:41:25.092Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d1/db/42ac644453cfdfc60fe002b46d647fe7a6dfad753ef7b28e99b4c936ad5d/pyarrow-17.0.0-cp38-cp38-win_amd64.whl", hash = "sha256:02dae06ce212d8b3244dd3e7d12d9c4d3046945a5933d28026598e9dbbda1fca", size = 25229211, upload-time = "2024-07-17T10:40:32.315Z" },
 ]
 
 [[package]]
@@ -1465,36 +1409,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pyqt6"
-version = "6.7.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pyqt6-qt6", marker = "sys_platform == 'win32'" },
-    { name = "pyqt6-sip", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/f9/b0c2ba758b14a7219e076138ea1e738c068bf388e64eee68f3df4fc96f5a/PyQt6-6.7.1.tar.gz", hash = "sha256:3672a82ccd3a62e99ab200a13903421e2928e399fda25ced98d140313ad59cb9", size = 1051212, upload-time = "2024-07-19T08:49:58.247Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/69/99d22ee685c08a99fcf2048d366fe6173ba6e43ee13b95a3a2ac2911c52c/PyQt6-6.7.1-cp38-abi3-win_amd64.whl", hash = "sha256:fa3954698233fe286a8afc477b84d8517f0788eb46b74da69d3ccc0170d3714c", size = 6596360, upload-time = "2024-07-19T08:49:55.594Z" },
-]
-
-[[package]]
-name = "pyqt6-qt6"
-version = "6.7.3"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/7e/57/3b44f6af1020fa543bd564c5bd346ba4aab1f1be0b861c2e8a0ad88cf3ca/PyQt6_Qt6-6.7.3-py3-none-win_amd64.whl", hash = "sha256:36ea0892b8caeb983af3f285f45fb8dfbb93cfd972439f4e01b7efb2868f6230", size = 58467498, upload-time = "2024-09-29T16:25:39.569Z" },
-]
-
-[[package]]
-name = "pyqt6-sip"
-version = "13.8.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e9/b7/95ac49b181096ef40144ef05aff8de7c9657de7916a70533d202ed9f0fd2/PyQt6_sip-13.8.0.tar.gz", hash = "sha256:2f74cf3d6d9cab5152bd9f49d570b2dfb87553ebb5c4919abfde27f5b9fd69d4", size = 92264, upload-time = "2024-07-12T15:55:14.173Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/33/29/daf492243ce000143a8bb3c9f84b7387e35f738254637790fa216a77c609/PyQt6_sip-13.8.0-cp38-cp38-win_amd64.whl", hash = "sha256:7a0bbc0918eab5b6351735d40cf22cbfa5aa2476b55e0d5fe881aeed7d871c29", size = 53452, upload-time = "2024-07-12T15:55:05.309Z" },
-]
-
-[[package]]
 name = "pyrealsense2"
 version = "2.55.1.6486"
 source = { registry = "https://pypi.org/simple" }
@@ -1595,19 +1509,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/86/f5/8c0653e5bb54e0cbdfe27bf32d41f27bc4e12faa8742778c17f2a71be2c0/python-xlib-0.33.tar.gz", hash = "sha256:55af7906a2c75ce6cb280a584776080602444f75815a7aff4d287bb2d7018b32", size = 269068, upload-time = "2022-12-25T18:53:00.824Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fc/b8/ff33610932e0ee81ae7f1269c890f697d56ff74b9f5b2ee5d9b7fa2c5355/python_xlib-0.33-py2.py3-none-any.whl", hash = "sha256:c3534038d42e0df2f1392a1b30a15a4ff5fdc2b86cfa94f072bf11b10a164398", size = 182185, upload-time = "2022-12-25T18:52:58.662Z" },
-]
-
-[[package]]
-name = "pytools"
-version = "2024.1.14"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "platformdirs", marker = "sys_platform == 'win32'" },
-    { name = "typing-extensions", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/36/03/a77353d9763877fa8984de29a32aaf26ca98227cc405157d46c8a6e1cf6a/pytools-2024.1.14.tar.gz", hash = "sha256:39e5bbaf81fa432e688b82dd0980212d18f97b23e51a8c7afe7592249fe40ab1", size = 83715, upload-time = "2024-09-05T14:30:00.147Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/70/19/87514026ff33ae67681e7e721872db8d34fd0fc25ec28906fb7b1e5c57d0/pytools-2024.1.14-py3-none-any.whl", hash = "sha256:f70c549cdab36e4d31a48a88ce8d969af24816482d73b10012dcac42ce9425e8", size = 89876, upload-time = "2024-09-05T14:29:58.592Z" },
 ]
 
 [[package]]
@@ -1755,11 +1656,11 @@ wheels = [
 
 [[package]]
 name = "setuptools"
-version = "70.3.0"
+version = "66.1.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/65/d8/10a70e86f6c28ae59f101a9de6d77bf70f147180fbf40c3af0f64080adc3/setuptools-70.3.0.tar.gz", hash = "sha256:f171bab1dfbc86b132997f26a119f6056a57950d058587841a0082e8830f9dc5", size = 2333112, upload-time = "2024-07-09T16:08:06.251Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/7b/00030a938499c8f8345be02ab5b7d748d359ea59c2f020b7b0a21b82f832/setuptools-66.1.1.tar.gz", hash = "sha256:ac4008d396bc9cd983ea483cb7139c0240a07bbc74ffb6232fceffedc6cf03a8", size = 2644145, upload-time = "2023-01-20T19:59:32.138Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ef/15/88e46eb9387e905704b69849618e699dc2f54407d8953cc4ec4b8b46528d/setuptools-70.3.0-py3-none-any.whl", hash = "sha256:fe384da74336c398e0d956d1cae0669bc02eed936cdb1d49b57de1990dc11ffc", size = 931070, upload-time = "2024-07-09T16:07:58.829Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/8b/abb577ca6ab2c71814d535b1ed1464c5f4aaefe1a31bbeb85013eb9b2401/setuptools-66.1.1-py3-none-any.whl", hash = "sha256:6f590d76b713d5de4e49fe4fbca24474469f53c83632d5d0fd056f7ff7e8112b", size = 1260206, upload-time = "2023-01-20T19:59:29.439Z" },
 ]
 
 [[package]]

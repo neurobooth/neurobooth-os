@@ -33,7 +33,9 @@ dependencies = [
     "xarray>=2023.1.0",
     "numexpr>=2.8.4",
     # Stimulus / psychophysics
-    "psychopy>=2023.1.2",
+    # 2024.1.0 removed MovieStim3 (used in tasks/utils.py); stay on the 2023
+    # series to match the conda env behavior. Upgrade tracked separately.
+    "psychopy>=2023.1.2,<2024",
     "psychtoolbox>=3.0.19.0",
     "pyglet>=1.4.11",
     "questplus>=2023.1",
@@ -166,6 +168,11 @@ environments = ["sys_platform == 'win32'"]
 # requires MSVC Build Tools. Constrain the transitive to the last release
 # with cp38 wheels.
 constraint-dependencies = ["psycopg2<2.9.10"]
+# psychopy 2023.x transitively requires `pypi-search`, which only ever lived
+# on conda-forge (not PyPI). neurobooth doesn't exercise psychopy's
+# update-browser code path that actually uses it. Override the transitive
+# to a marker that resolves trivially.
+override-dependencies = ["pypi-search; sys_platform == 'never'"]
 
 [tool.setuptools.dynamic]
 version = {attr = "neurobooth_os.current_config.version"}
