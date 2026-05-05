@@ -12,7 +12,7 @@ The neurobooth-os project is a Python-based data acquisition and stimulus presen
 
 Since the initial audit, **all critical security vulnerabilities are resolved** (SQL injection, credentials in code, dynamic-import allowlist), the **device subsystem has been redesigned** to be pluggable (#696, #708 series, #721), **resource lifecycle issues are mostly closed** (SSH tunnel cleanup #663, socket/cursor leaks in usbmux/iPhone/metadator #663, log_sensor_file race fixes #659/#678, EyeLink shutdown crash #688, iPhone listener panic #687, mbient access violation #684), and **a comprehensive hardware-mock infrastructure has landed** (#737, #738) bringing test coverage from effectively zero to 160 unit tests. The XDF stop-recording work is off the GUI thread (#604), all XDF splits are postponed to end-of-day post-processing (#680), and the device-pluggable design lets new devices be added without editing `DeviceManager`/`lsl_streamer.py`/`metadator.py`.
 
-Remaining work focuses on CI / packaging hygiene (still no GitHub Actions workflow, `setup.py` lists only pandas, no `requirements_dev.txt`), the `eval()` calls in `extras/`, two remaining bare `except:` clauses, scattered `BaseException` catches that may mask programmer errors, and the Python 3.8 EOL situation.
+Remaining work focuses on CI hygiene (still no GitHub Actions workflow), the `eval()` calls in `extras/`, two remaining bare `except:` clauses, scattered `BaseException` catches that may mask programmer errors, and the Python 3.8 EOL situation. Packaging is consolidated under uv (#632) -- single `pyproject.toml` + committed `uv.lock`.
 
 ### Overall Scores by Area
 
@@ -643,4 +643,5 @@ machines. `setup.py` and `environment_staging.yml` removed.
 66. ~~Single-instance gui.py guard~~ — DONE (PR #510)
 67. ~~Config normalization (machines + services)~~ — DONE (PRs #597, #662, #035f376)
 68. ~~Move crash and startup logs to local_log_dir~~ — DONE (PR #673)
-69. ~~Drop stale `__version__` from `__init__.py`; setup.py reads `current_config.py`~~ — IN PROGRESS (PR #741)
+69. ~~Drop stale `__version__` from `__init__.py`; setup.py reads `current_config.py`~~ — DONE (PR #741)
+70. ~~Migrate from conda to uv; consolidate dependencies into `pyproject.toml`~~ — DONE (#632)
