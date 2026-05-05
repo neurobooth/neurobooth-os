@@ -67,6 +67,7 @@ target/
 
 # venvs
 venv-*
+.venv/
 
 # Logs
 *.log
