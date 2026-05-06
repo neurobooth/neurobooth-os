@@ -2,10 +2,190 @@
 requires = ["setuptools>=42.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "neurobooth-os"
+description = "Code for database management for Neurobooth application."
+readme = "README.md"
+license = {text = "BSD-3-Clause"}
+maintainers = [
+    {name = "Adonay Nunes", email = "adonay.s.nunes@gmail.com"},
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved",
+    "Programming Language :: Python",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS",
+]
+requires-python = ">=3.8,<3.9"
+# Decoupled from runtime version metadata. neurobooth_os/current_release.py
+# is for cross-service consistency checks and DB session-version logging;
+# neurobooth_os/current_config.py is for the configs repo's version. Neither
+# is the package's build version.
+version = "0.0.0+dev"
+dependencies = [
+    # Scientific stack
+    "numpy>=1.23.5",
+    "scipy>=1.10.1",
+    "pandas>=2.0.3",
+    "matplotlib>=3.7.3",
+    "xarray>=2023.1.0",
+    "numexpr>=2.8.4",
+    # Stimulus / psychophysics
+    # 2024.1.0 removed MovieStim3 (used in tasks/utils.py); stay on the 2023
+    # series to match the conda env behavior. Upgrade tracked separately.
+    "psychopy>=2023.1.2,<2024",
+    "psychtoolbox>=3.0.19.0",
+    "pyglet>=1.4.11",
+    "questplus>=2023.1",
+    # LSL / streaming / messaging
+    "pylsl>=1.16.2",
+    "liesl>=0.3.5.0",
+    "pyxdf>=1.16.4",
+    "pyzmq>=25.1.1",
+    "websockets>=12.0",
+    # File / storage formats
+    "h5py>=3.10.0",
+    "h5io>=0.2.1",
+    "openpyxl>=3.1.2",
+    "pyyaml>=6.0.1",
+    "ujson>=5.8.0",
+    "json-tricks>=3.17.3",
+    # 2.0.1+ dropped cp38 Windows wheels.
+    "blosc2>=2.0.0,<2.0.1",
+    # Database / API
+    # 2.9.10 dropped cp38 wheels; pin to last-cp38-wheel release.
+    "psycopg2-binary>=2.9.9,<2.9.10",
+    "pycap>=2.6.0",
+    "pydantic>=2.5.2",
+    "neurobooth-terra @ git+https://github.com/neurobooth/neurobooth-terra.git",
+    # Networking
+    "paramiko>=2.8.1",
+    "sshtunnel>=0.4.0",
+    "requests>=2.31.0",
+    "requests-toolbelt>=1.0.0",
+    "urllib3>=2.0.7",
+    "python-gitlab>=4.1.1",
+    "gitpython>=3.1.40",
+    # GUI
+    "pyqt5>=5.15.10",
+    "pyqt5-qt5>=5.15.2",
+    "pyqt5-sip>=12.13.0",
+    "FreeSimpleGUI>=5.2.0.post1",
+    "wxpython>=4.2.1",
+    # Image / video
+    "pillow>=10.0.1",
+    "opencv-python>=4.8.1.78",
+    "imageio>=2.32.0",
+    "imageio-ffmpeg>=0.4.9",
+    "moviepy>=1.0.3",
+    # 4.5.2+ dropped cp38 wheels on Windows.
+    "ffpyplayer>=4.5.1,<4.5.2",
+    "sk-video>=1.1.10",
+    "python-vlc>=3.0.11115",
+    # Audio
+    "pyaudio>=0.2.13",
+    "sounddevice>=0.4.6",
+    "soundfile>=0.12.1",
+    # Hardware: cameras, wearables, input
+    "pyrealsense2>=2.54.2.5684",
+    "pyserial>=3.5",
+    "pyparallel>=0.2.2",
+    "metawear>=1.0.8",
+    "warble>=1.2.9",
+    "pynput>=1.7.6",
+    "pywinhook>=1.6.2",
+    # Windows interop
+    "pywin32>=306",
+    "pypiwin32>=223",
+    # Crypto / security
+    "cryptography>=41.0.5",
+    "bcrypt>=3.2.0",
+    "pynacl>=1.5.0",
+    # Concurrency / runtime
+    "gevent>=23.9.1",
+    "greenlet>=3.0.1",
+    "zope-event>=5.0",
+    "zope-interface>=6.1",
+    # Utility
+    "psutil>=5.9.6",
+    "tqdm>=4.66.1",
+    "py-cpuinfo>=9.0.0",
+    "msgpack>=1.0.7",
+    "msgpack-numpy>=0.4.8",
+    "cython>=3.0.5",
+    "ipython>=8.12.2",
+    # Web / parsing helpers (psychopy ecosystem)
+    "arabic-reshaper>=3.0.0",
+    "astunparse>=1.6.3",
+    "beautifulsoup4>=4.12.2",
+    "html2text>=2020.1.16",
+    "markdown-it-py>=3.0.0",
+    "freetype-py>=2.4.0",
+    "python-bidi>=0.4.2",
+    "esprima>=4.0.1",
+    "javascripthon>=0.12",
+    "dukpy>=0.3.0",
+    "elementpath>=4.1.5",
+    "xmlschema>=2.5.0",
+    "semantic-version>=2.10.0",
+]
+
+[project.optional-dependencies]
+# STM machine: SR Research EyeLink eye tracker
+eyelink = [
+    "sr-research-pylink",
+]
+# ACQ machine: FLIR Spinnaker SDK is installed separately from a local wheel
+# (the wheel path is operator-local). Run after `uv sync`:
+#   uv pip install <path>\spinnaker_python-3.x.x.x-cp38-cp38-win_amd64.whl
+
+[project.scripts]
+neurobooth_os = "neurobooth_os.gui:main"
+
+[project.urls]
+Homepage = "https://github.com/neurobooth/neurobooth-os"
+Download = "https://github.com/neurobooth/neurobooth-os"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "sphinx",
+]
+
+[tool.uv]
+extra-index-url = ["https://pypi.sr-support.com"]
+# Booth machines run on Windows only; restrict the resolver to win32 so it
+# doesn't reject the lock over darwin/linux-only conflicts (e.g. psychopy's
+# pyobjc-framework-quartz pin chains).
+environments = ["sys_platform == 'win32'"]
+# neurobooth-terra requires `psycopg2` (the C-extension distribution).
+# 2.9.10 dropped cp38 Windows wheels and would force a from-source build that
+# requires MSVC Build Tools. Constrain the transitive to the last release
+# with cp38 wheels.
+constraint-dependencies = ["psycopg2<2.9.10"]
+# psychopy 2023.x transitively requires `pypi-search`, which only ever lived
+# on conda-forge (not PyPI). neurobooth doesn't exercise psychopy's
+# update-browser code path that actually uses it. Override the transitive
+# to a marker that resolves trivially.
+override-dependencies = ["pypi-search; sys_platform == 'never'"]
+
+[tool.setuptools.packages.find]
+include = ["neurobooth_os*"]
+
 [tool.pytest.ini_options]
 addopts = "--cov=neurobooth_os"
 testpaths = [
     "neurobooth_os",
+    "tests",
 ]
 
 [tool.mypy]

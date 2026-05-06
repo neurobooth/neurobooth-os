@@ -76,7 +76,7 @@ def test_second_acquire_is_refused_via_subprocess(lock_env):
         'os.write(fd, b" " + payload)\n'
         'os.ftruncate(fd, 1 + len(payload))\n'
         'os.fsync(fd)\n'
-        'print("ACQUIRED", flush=True)\n'
+        'print("ACQUIRED", os.getpid(), flush=True)\n'
         'sys.stdin.read()\n'
     )
 
@@ -94,15 +94,22 @@ def test_second_acquire_is_refused_via_subprocess(lock_env):
 
     try:
         first_line = proc.stdout.readline().strip()
-        assert first_line == "ACQUIRED", (
+        # The helper's first stdout line is "ACQUIRED <pid>", where <pid> is
+        # the helper interpreter's own os.getpid(). We can't trust proc.pid
+        # because uv's `.venv\Scripts\python.exe` is a thin launcher that
+        # re-execs to the managed interpreter, giving the child a different
+        # PID. The lockfile is (correctly) written with the re-exec'd PID.
+        parts = first_line.split()
+        assert parts and parts[0] == "ACQUIRED", (
             f"subprocess did not acquire lock (got {first_line!r}); "
             f"stderr: {proc.stderr.read()!r}"
         )
+        child_pid = int(parts[1])
 
         result = gui_mod._acquire_gui_lock()
         assert result.acquired is False
         assert result.reason == "locked"
-        assert result.holder_pid == proc.pid
+        assert result.holder_pid == child_pid
         assert result.holder_started is not None
         datetime.fromisoformat(result.holder_started)
     finally:

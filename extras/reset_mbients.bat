@@ -1,3 +1,3 @@
-call C:\Users\ACQ\anaconda3\Scripts\activate.bat C:\Users\ACQ\anaconda3\envs\neurobooth-staging
-call python C:\neurobooth-os\extras\reset_mbients.py --json=%USERPROFILE%\mbients.json
+call %NB_INSTALL%\.venv\Scripts\activate.bat
+call python %NB_INSTALL%\extras\reset_mbients.py --json=%USERPROFILE%\mbients.json
 pause

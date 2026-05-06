@@ -12,7 +12,7 @@ The neurobooth-os project is a Python-based data acquisition and stimulus presen
 
 Since the initial audit, **all critical security vulnerabilities are resolved** (SQL injection, credentials in code, dynamic-import allowlist), the **device subsystem has been redesigned** to be pluggable (#696, #708 series, #721), **resource lifecycle issues are mostly closed** (SSH tunnel cleanup #663, socket/cursor leaks in usbmux/iPhone/metadator #663, log_sensor_file race fixes #659/#678, EyeLink shutdown crash #688, iPhone listener panic #687, mbient access violation #684), and **a comprehensive hardware-mock infrastructure has landed** (#737, #738) bringing test coverage from effectively zero to 160 unit tests. The XDF stop-recording work is off the GUI thread (#604), all XDF splits are postponed to end-of-day post-processing (#680), and the device-pluggable design lets new devices be added without editing `DeviceManager`/`lsl_streamer.py`/`metadator.py`.
 
-Remaining work focuses on CI / packaging hygiene (still no GitHub Actions workflow, `setup.py` lists only pandas, no `requirements_dev.txt`), the `eval()` calls in `extras/`, two remaining bare `except:` clauses, scattered `BaseException` catches that may mask programmer errors, and the Python 3.8 EOL situation.
+Remaining work focuses on CI hygiene (still no GitHub Actions workflow), the `eval()` calls in `extras/`, two remaining bare `except:` clauses, scattered `BaseException` catches that may mask programmer errors, and the Python 3.8 EOL situation. Packaging is consolidated under uv (#632) -- single `pyproject.toml` + committed `uv.lock`.
 
 ### Overall Scores by Area
 
@@ -327,14 +327,9 @@ Multiple unresolved errors in notebook output cells:
 
 Massive repetition of identical device lists across tasks. Could be reduced ~70% using YAML anchors/aliases.
 
-### 3.5 Low: Batch Script Issues
+### 3.5 ~~Low: Batch Script Issues~~ RESOLVED
 
-**Location:** `set_conda_env.bat`
-
-- No error checking after conda commands
-- Hardcoded wheel path: `c:\spinnaker\spinnaker_python-3.1.0.79-cp38-cp38-win_amd64.whl`
-- Uses `pause` for manual intervention instead of automated error handling
-- References `environment_staging.yml` but actual file may be `environment.yml`
+**Resolved by:** uv migration (#632) -- `set_conda_env.bat` removed entirely. The new install path is documented in `README.md` and uses `uv sync` (no manual `pause`/wheel-path/yml-name issues).
 
 ### 3.6 Low: Non-Descriptive Config File Names
 
@@ -381,9 +376,9 @@ The mock infrastructure (PRs #737, #738) is the biggest lift: tests run on a har
 
 `.github/workflows/` does not exist. The 160 tests have to be run manually. Adding a workflow that runs `pytest tests/pytest/ neurobooth_os/iout/tests/ --no-cov` per file (sidestepping the segfault issue) on push/PR would significantly increase confidence in changes touching the device subsystem, where the test coverage is now substantial.
 
-### 4.5 Low: Deployment-test Batch Scripts Still Hardcoded
+### 4.5 ~~Low: Deployment-test Batch Scripts Still Hardcoded~~ RESOLVED
 
-`tests/deployment-test/run_timing_tests*.bat` still reference `C:\Users\CTR\anaconda3\Scripts\activate.bat`. These are operator-side timing scripts, not unit tests, so the impact is minor.
+**Resolved by:** uv migration (#632) -- `tests/deployment-test/run_timing_tests*.bat` now activate `%NB_INSTALL%\.venv\Scripts\activate.bat` instead of the hardcoded `C:\Users\CTR\anaconda3` path. Same fix applied to `extras/reset_mbients.bat` and `extras/serv_acq_upload - neurobooth_OS.bat`.
 
 ---
 
@@ -411,7 +406,7 @@ The mock infrastructure (PRs #737, #738) is the biggest lift: tests run on a har
 
 ## 6. eyelink_setup/
 
-**Files analyzed:** README.rst, `start_tk_new` shell script (907 lines), network diagrams.
+**Files analyzed:** README.md, `start_tk_new` shell script (907 lines), network diagrams.
 
 ### 6.1 Strengths
 
@@ -469,17 +464,18 @@ The script creates config files but doesn't set restrictive permissions (`chmod 
 
 `.github/workflows/` directory does not exist. There is no automated testing, linting, coverage reporting, or deployment automation.
 
-### 8.2 Critical: Missing `requirements_dev.txt`
+### 8.2 ~~Critical: Missing `requirements_dev.txt`~~ RESOLVED
 
-`contributing.rst` tells developers to `pip install -r requirements_dev.txt`, but the file does not exist in the repository. This blocks developer onboarding.
+**Resolved by:** uv migration (#632). Developer dependencies now live in
+`pyproject.toml` under `[dependency-groups] dev` (PEP 735) and install with
+`uv sync --group dev`. `contributing.rst` updated.
 
-### 8.3 High: `setup.py` Lists Only One Dependency
+### 8.3 ~~High: `setup.py` Lists Only One Dependency~~ RESOLVED
 
-```python
-install_requires=['pandas']
-```
-
-The project requires 160+ packages (documented in `environment_staging.yml`) but `pip install neurobooth-os` would only install pandas, leading to immediate ImportErrors.
+**Resolved by:** uv migration (#632). `setup.py` and
+`environment_staging.yml` are gone; `pyproject.toml`'s `[project.dependencies]`
+is the single source of truth, with `uv.lock` pinning exact versions for
+reproducible installs across booth machines.
 
 ### 8.4 ~~High: `github_checkout.bat` Generates Invalid Python~~ NOT REPRODUCIBLE
 
@@ -508,15 +504,15 @@ PR #741 (in flight at audit time) drops the unrelated stale `__version__ = "0.0.
 
 ### 8.6 Medium: Python 3.8 Only
 
-`environment_staging.yml` targets Python 3.8.18, which reached end-of-life in October 2024. No support for Python 3.9+.
+`pyproject.toml` pins `requires-python = ">=3.8,<3.9"`. Python 3.8 reached end-of-life in October 2024. The Python upgrade is tracked in #682 and is intentionally deferred until after the uv migration (#632) lands so the two changes don't compound.
 
 ### 8.7 Medium: `.gitignore` Missing Common Patterns
 
 Missing `.pytest_cache/` and `.mypy_cache/` patterns.
 
-### 8.8 Low: Deprecated `distutils` Import in `setup.py`
+### 8.8 ~~Low: Deprecated `distutils` Import in `setup.py`~~ RESOLVED
 
-Uses `from distutils.command.sdist import sdist` which is deprecated and removed in Python 3.12.
+**Resolved by:** uv migration (#632) -- `setup.py` removed entirely.
 
 ---
 
@@ -535,15 +531,12 @@ Uses `from distutils.command.sdist import sdist` which is deprecated and removed
 | Hardcoded MAC addresses | MEDIUM | `extras/` | OPEN |
 | Plaintext secrets in config files | ~~MEDIUM~~ | Multiple | RESOLVED (SecretStr + secrets.yaml + git-ignored db_credentials.json) |
 
-### 9.2 Dependency Management
+### 9.2 ~~Dependency Management~~ RESOLVED
 
-Dependencies are fractured across three sources with no consistency:
-
-| Source | Dependencies Listed |
-|--------|-------------------|
-| `setup.py` | 1 (pandas) |
-| `environment_staging.yml` | 160+ |
-| `requirements_dev.txt` | Missing entirely |
+**Resolved by:** uv migration (#632). All runtime dependencies live in
+`pyproject.toml` under `[project.dependencies]`; dev tooling lives in
+`[dependency-groups] dev`. `uv.lock` pins exact versions across booth
+machines. `setup.py` and `environment_staging.yml` removed.
 
 ### 9.3 Logging Inconsistency
 
@@ -566,7 +559,7 @@ Dependencies are fractured across three sources with no consistency:
 2. **Replace `eval()`** with `ast.literal_eval()` in 5 extras files — STILL OPEN
 3. ~~**Add `tunnel.stop()` calls** for SSH tunnel cleanup~~ — DONE (PR #663)
 4. ~~**Remove hardcoded credentials**~~ — DONE (PRs #584 SecretStr, #590 removed example configs, perf-credentials cleanup 2026-04-14)
-5. **Create `requirements_dev.txt`** so developers can onboard — STILL OPEN
+5. ~~**Create `requirements_dev.txt`** so developers can onboard~~ — DONE (#632 uv migration; dev deps now in `[dependency-groups] dev`)
 6. ~~**Fix `github_checkout.bat`** Python file generation syntax~~ — NOT REPRODUCIBLE on current code; `version.bat` produces valid Python (see §8.4)
 
 ### Phase 2: Testing & CI (Weeks 1-2)
@@ -575,7 +568,7 @@ Dependencies are fractured across three sources with no consistency:
 8. ~~Write unit tests for core modules~~ — LARGELY DONE: 160 tests across 14 files (was effectively 1). Mock-device infrastructure (#737, #738) lets the suite run on a hardware-less laptop. Coverage now meaningful for `Device` lifecycle, pluggable-device registry, mock substitution, mock device behaviour, log_sensor_file race regressions.
 9. ~~Fix `tox.ini` test paths to match actual file locations~~ — DONE: `tox.ini` removed (single-Python-version project with no CI workflow doesn't benefit from tox)
 10. Add database mocking to `test_metadator.py` — STILL OPEN; new `test_db_connection.py` is mostly DB-mocked but `test_metadator.py` still requires a live DB
-11. Add `setup.py` dependencies to match actual requirements — STILL OPEN
+11. ~~Add `setup.py` dependencies to match actual requirements~~ — DONE (#632 uv migration; `setup.py` removed, deps consolidated in `pyproject.toml`)
 12. Fix bare `except:` clauses — PARTIALLY DONE: down from 3 to 2 (`flir_cam.py:198` was tightened; `split_xdf.py:299` and `usbmux.py:28` remain bare)
 
 ### Phase 3: Code Quality (Weeks 3-4)
@@ -645,4 +638,5 @@ Dependencies are fractured across three sources with no consistency:
 66. ~~Single-instance gui.py guard~~ — DONE (PR #510)
 67. ~~Config normalization (machines + services)~~ — DONE (PRs #597, #662, #035f376)
 68. ~~Move crash and startup logs to local_log_dir~~ — DONE (PR #673)
-69. ~~Drop stale `__version__` from `__init__.py`; setup.py reads `current_config.py`~~ — IN PROGRESS (PR #741)
+69. ~~Drop stale `__version__` from `__init__.py`; setup.py reads `current_config.py`~~ — DONE (PR #741)
+70. ~~Migrate from conda to uv; consolidate dependencies into `pyproject.toml`~~ — DONE (#632)

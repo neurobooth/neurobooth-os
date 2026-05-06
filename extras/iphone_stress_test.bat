@@ -5,7 +5,7 @@
 : Note: foot tapping, alternating hand movements, and sit2stand do not record on the iPhone
 : Note: As is, running this test will take at least 5h 34m
 
-CALL "%NB_CONDA_INSTALL%\Scripts\activate.bat" %NB_CONDA_ENV%
+CALL "%NB_INSTALL%\.venv\Scripts\activate.bat"
 CD "%NB_INSTALL%\neurobooth_os\iout"
 SET DATA_OUT="D:\iphone_stress_test"
 

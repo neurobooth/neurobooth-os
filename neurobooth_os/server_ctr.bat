@@ -1,2 +1,2 @@
-call  %NB_CONDA_INSTALL%\Scripts\activate.bat %NB_CONDA_ENV%
+call %NB_INSTALL%\.venv\Scripts\activate.bat
 start /W python %NB_INSTALL%\neurobooth_os\gui.py

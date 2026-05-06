@@ -34,9 +34,9 @@ When suggesting commands, use Windows-compatible syntax (backslash paths, PowerS
 ## Development Stack
 
 ### Python
-- **Version management**: conda
-- **Package management**: conda with pip as fallback
-- **Python version**: 3.8.18+
+- **Version management**: uv (manages the Python interpreter via `requires-python`)
+- **Package management**: uv (`uv sync`, `uv add`, `uv run`); `pyproject.toml` is the single source of truth, `uv.lock` pins exact versions
+- **Python version**: 3.8 (pinned via `requires-python = ">=3.8,<3.9"`; upgrade tracked in #682)
 - **Type hints**: Required on new or changed function signatures
 - **Docstrings**: Google format for new or changed public functions and classes
 - **Data structures**: Prefer dataclasses or Pydantic over plain dicts for new code
