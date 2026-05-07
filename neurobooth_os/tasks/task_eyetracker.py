@@ -1,14 +1,35 @@
 from __future__ import division, absolute_import
 
 import os
+from enum import Enum
 from typing import Union
 
-import pylink
 from psychopy import visual
-from enum import Enum
 
 from neurobooth_os.tasks import Task
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix
+
+# Hardware import — guarded so this module is importable on a hardware-less
+# machine (mock-device testing per docs/single_machine_testing.md). Real
+# EyeLink code paths still require pylink and will fail loudly when called
+# without it. Mirrors the pattern in iout/eyelink_tracker.py.
+try:
+    import pylink
+    _HAS_PYLINK = True
+except ImportError:
+    pylink = None  # type: ignore[assignment]
+    _HAS_PYLINK = False
+
+
+def _require_pylink() -> None:
+    """Raise a clear error if real-EyeLink code is reached without pylink."""
+    if not _HAS_PYLINK:
+        raise RuntimeError(
+            "EyeLink hardware code path invoked but pylink is not installed. "
+            "Install the EyeLink SDK (uv sync --extra eyelink) to use a real "
+            "EyeLink, or use MockEyeTracker via NB_MOCK_DEVICES=EyeTracker "
+            "for hardware-less testing."
+        )
 
 
 class EyelinkColor(Enum):
@@ -193,7 +214,7 @@ class Eyelink_HostPC(Task_Eyetracker):
     def _render_image(self, path_to_image: Union[str, os.PathLike],
                      crop_x: int, crop_y: int, crop_width: int, crop_height: int,
                      host_x: int, host_y: int,
-                     drawing_options: any = pylink.BX_MAXCONTRAST) -> None:
+                     drawing_options: any = None) -> None:
         """
            Employs the imageBackdrop method of eyetracker to display an image on
            HostPC screen. Documentation available as comments in (and code adapted
@@ -213,7 +234,12 @@ class Eyelink_HostPC(Task_Eyetracker):
                                           the image
            :param host_x/host_y: x,y position in pixels on the HostPC screen where
                                  the image needs to be rendered
-           :param drawing_options: drawing options from SR Research's pylink package
+           :param drawing_options: drawing options from SR Research's pylink
+                                   package. ``None`` (the default) is
+                                   resolved to ``pylink.BX_MAXCONTRAST`` at
+                                   call time, which keeps this module
+                                   importable on hardware-less dev machines
+                                   that have no pylink installed.
 
            Example usage:
            If you want to render a 1920 by 1080 image on a 1920x1080 screen,
@@ -241,6 +267,9 @@ class Eyelink_HostPC(Task_Eyetracker):
         self.clear_screen()
 
         if self.eye_tracker is not None:
+            if drawing_options is None:
+                _require_pylink()
+                drawing_options = pylink.BX_MAXCONTRAST
             self.eye_tracker.tk.imageBackdrop(path_to_image,
                                            crop_x, crop_y, crop_width, crop_height,
                                            host_x, host_y,
