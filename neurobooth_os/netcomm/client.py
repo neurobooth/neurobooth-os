@@ -4,6 +4,8 @@ import re
 import os
 import subprocess
 import ast
+import csv
+import io
 import tempfile
 import xml.sax.saxutils as _saxutils
 from typing import List, Optional, Tuple
@@ -15,24 +17,17 @@ import neurobooth_os.config as cfg
 # attached by make_db_logger (log_manager.py). A privately-named logger
 # (e.g. logging.getLogger(__name__)) has no handlers attached and no
 # propagation path to the "app" logger, so its messages are silently
-# dropped — that's why SCHTASKS / WMIC failures used to vanish.
+# dropped — that's why SCHTASKS / Get-CimInstance failures used to vanish.
 logger = logging.getLogger("app")
 
 
 def _run_cmd(cmd_list: list, server_name: str = None, user: str = None, password: str = None) -> str:
     full_cmd = list(cmd_list)
     # Single-machine testing: an empty user means "run on this machine" — skip
-    # /S /U /P so tasklist/SCHTASKS/WMIC execute locally. See
+    # /S /U /P so tasklist/SCHTASKS execute locally. See
     # docs/single_machine_testing.md.
     if server_name and user:
-        executable = full_cmd[0].upper()
-        if executable == "WMIC":
-            # WMIC uses /NODE:, /USER:, /PASSWORD: instead of /S, /U, /P
-            full_cmd = full_cmd[:1] + [
-                f"/NODE:{server_name}", f"/USER:{user}", f"/PASSWORD:{password}"
-            ] + full_cmd[1:]
-        else:
-            full_cmd = full_cmd[:1] + ["/S", server_name, "/U", user, "/P", password] + full_cmd[1:]
+        full_cmd = full_cmd[:1] + ["/S", server_name, "/U", user, "/P", password] + full_cmd[1:]
 
     try:
         logger.debug(f"Running command: {' '.join(cmd_list)} (on {server_name or 'localhost'})")
@@ -83,6 +78,29 @@ def get_python_pids(server_name: str = None, user: str = None, password: str = N
     return pyth_pids
 
 
+_PS_REMOTE_GET_PYTHON_PROCESSES = r"""
+$ErrorActionPreference = 'Stop'
+$securepw = ConvertTo-SecureString $env:NB_REMOTE_PASSWORD -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential($env:NB_REMOTE_USER, $securepw)
+$opt = New-CimSessionOption -Protocol Dcom
+$sess = New-CimSession -ComputerName $env:NB_REMOTE_HOST -Credential $cred -SessionOption $opt
+try {
+    Get-CimInstance -CimSession $sess -ClassName Win32_Process -Filter "Name='python.exe'" |
+        Select-Object ProcessId, CommandLine |
+        ConvertTo-Csv -NoTypeInformation
+} finally {
+    Remove-CimSession $sess
+}
+"""
+
+_PS_LOCAL_GET_PYTHON_PROCESSES = r"""
+$ErrorActionPreference = 'Stop'
+Get-CimInstance -ClassName Win32_Process -Filter "Name='python.exe'" |
+    Select-Object ProcessId, CommandLine |
+    ConvertTo-Csv -NoTypeInformation
+"""
+
+
 def get_all_python_processes_with_cmd(server_name: str = None, user: str = None, password: str = None) -> list:
     """Gets a list of Python process IDs and their command lines from the local or remote computer.
 
@@ -100,25 +118,63 @@ def get_all_python_processes_with_cmd(server_name: str = None, user: str = None,
     list
         List of dictionaries, each with 'pid' and 'commandline' for Python processes.
     """
-    cmd_args = ["WMIC", "process", "where", "name='python.exe'", "get", "ProcessId,CommandLine", "/FORMAT:CSV"]
+    # Remote calls use a DCOM CimSession to match the wire protocol WMIC used,
+    # so the existing inter-machine WMI/firewall/registry runbook in
+    # docs/enable_WMI_instuctions.txt remains the source of truth. WSMan/WinRM
+    # is deliberately not used (different security model — see #760).
+    #
+    # Credentials are passed via env vars so the password never appears in the
+    # process command line (strictly more secure than the previous WMIC call,
+    # which exposed it via /PASSWORD:).
+    if server_name and user:
+        ps_command = _PS_REMOTE_GET_PYTHON_PROCESSES
+        ps_env = {
+            **os.environ,
+            "NB_REMOTE_HOST": server_name,
+            "NB_REMOTE_USER": user,
+            "NB_REMOTE_PASSWORD": password or "",
+        }
+    else:
+        # Single-machine testing: empty user → run locally.
+        # See docs/single_machine_testing.md.
+        ps_command = _PS_LOCAL_GET_PYTHON_PROCESSES
+        ps_env = None
+
+    cmd = ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps_command]
     try:
-        output_wmic = _run_cmd(cmd_args, server_name, user, password)
-    except Exception:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True, timeout=30, env=ps_env
+        )
+        output = result.stdout
+    except subprocess.CalledProcessError as e:
+        logger.error(
+            f"Get-CimInstance failed (on {server_name or 'localhost'}): "
+            f"stdout: {e.stdout}, stderr: {e.stderr}"
+        )
+        return []
+    except subprocess.TimeoutExpired as e:
+        logger.error(
+            f"Get-CimInstance timed out (on {server_name or 'localhost'}): "
+            f"stdout: {e.stdout}, stderr: {e.stderr}"
+        )
+        return []
+    except OSError as e:
+        logger.error(f"Failed to launch powershell.exe: {e}")
         return []
 
+    # ConvertTo-Csv -NoTypeInformation emits one header row followed by one
+    # row per object: "ProcessId","CommandLine". csv.reader handles quoted
+    # fields and embedded commas correctly (which the previous naive
+    # str.split(',') did not).
     processes = []
-    # Skip the first line (header) and the last empty line
-    lines = output_wmic.strip().split("\n")
-    if len(lines) > 1:
-        for line in lines[1:]:  # Skip header
-            parts = line.split(',')
-            if len(parts) >= 2:
-                try:
-                    pid = parts[0].strip()
-                    cmd_line = parts[1].strip()
-                    processes.append({"pid": pid, "commandline": cmd_line})
-                except ValueError:
-                    logger.warning(f"Could not parse WMIC output line: {line}")
+    rows = list(csv.reader(io.StringIO(output)))
+    if len(rows) <= 1:
+        return processes
+    for row in rows[1:]:
+        if len(row) >= 2:
+            processes.append({"pid": row[0].strip(), "commandline": row[1].strip()})
+        else:
+            logger.warning(f"Could not parse Get-CimInstance output row: {row}")
     return processes
 
 
