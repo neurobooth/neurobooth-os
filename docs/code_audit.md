@@ -251,19 +251,6 @@ mbients = {
 
 MAC addresses and 20+ hardcoded `Z:\` drive paths should be externalized to config.
 
-### 2.6 Medium: Infinite Loop Without Exit
-
-**Location:** `network_conn_check.py` (lines 24-34)
-
-```python
-while True:
-    for node in nodes:
-        out = subprocess.run(["ping", node], stdout=subprocess.PIPE)
-    # time.sleep(10)  <- commented out!
-```
-
-No exit condition and no sleep between iterations.
-
 ### 2.7 Medium: Deprecated API Usage
 
 **Location:** `plot_timing_test_sync.py` (line 6)
@@ -288,7 +275,7 @@ The vast majority of scripts have zero documentation. Only `reset_mbients.py`, `
 |--------|-------|
 | HIGH quality | `dump_iphone_video.py`, `relabel_subject_id.py`, `reset_mbients.py`, `plot_system_performance.py` |
 | MEDIUM quality | `add_subject.py`, `cleanup_bag_files.py`, `see_cam.py`, `time_clocks.py`, `time_clocks_variance.py` |
-| LOW quality | `connect.py`, `connect2.py`, `mbients_connect_rec_directly*.py`, `network_conn_check.py`, `plot_eyelink_lsl_edf.py`, `synch_frame_mean_rgb*.py`, `threding_timestamps.py`, `run_xdf_split_postproces.py` |
+| LOW quality | `connect.py`, `connect2.py`, `mbients_connect_rec_directly*.py`, `plot_eyelink_lsl_edf.py`, `synch_frame_mean_rgb*.py`, `threding_timestamps.py`, `run_xdf_split_postproces.py` |
 
 ---
 
