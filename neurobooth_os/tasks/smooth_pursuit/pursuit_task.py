@@ -2,9 +2,32 @@
 import numpy as np
 from math import sin, pi
 from psychopy import core
-import pylink
+
 from neurobooth_os.tasks.smooth_pursuit.utils import deg2pix, peak_vel2freq, deg2rad
 from neurobooth_os.tasks.task_eyetracker import Eyelink_HostPC
+
+# Hardware import — guarded so this module is importable on a hardware-less
+# machine. ACQ pulls task constructors via meta.build_tasks_for_collection's
+# dynamic import (metadator.py:727) and would otherwise fail on a booth
+# without the EyeLink SDK installed even though ACQ never executes the task.
+# Mirrors the pattern in tasks/task_eyetracker.py and iout/eyelink_tracker.py.
+try:
+    import pylink
+    _HAS_PYLINK = True
+except ImportError:
+    pylink = None  # type: ignore[assignment]
+    _HAS_PYLINK = False
+
+
+def _require_pylink() -> None:
+    """Raise a clear error if real-EyeLink code is reached without pylink."""
+    if not _HAS_PYLINK:
+        raise RuntimeError(
+            "EyeLink hardware code path invoked but pylink is not installed. "
+            "Install the EyeLink SDK (uv sync --extra eyelink) to use a real "
+            "EyeLink, or use MockEyeTracker via NB_MOCK_DEVICES=EyeTracker "
+            "for hardware-less testing."
+        )
 
 
 class Pursuit(Eyelink_HostPC):
@@ -108,7 +131,9 @@ class Pursuit(Eyelink_HostPC):
         self.sendMessage(f"!V TRIAL_VAR amp_x {amp_x:.2f}")
         self.sendMessage(f"!V TRIAL_VAR amp_y {amp_y:.2f}")
         self.sendMessage(f"!V TRIAL_VAR phase_x {phase_x:.2f}")
-        pylink.pumpDelay(1)  # give the tracker a break
+        if self.eye_tracker is not None:
+            _require_pylink()
+            pylink.pumpDelay(1)  # give the tracker a break
         self.sendMessage(f"!V TRIAL_VAR phase_y {phase_y:.2f}")
         self.sendMessage(f"!V TRIAL_VAR freq_x {freq_x:.2f}")
         self.sendMessage(f"!V TRIAL_VAR freq_y {freq_y:.2f}")
