@@ -1,13 +1,10 @@
 # Adding a Device to Neurobooth
 
-This guide walks through everything required to add a new data source to a
-neurobooth session — a camera, a wearable sensor, a mouse listener, or
-anything else that produces a stream of samples. It assumes familiarity with
-the codebase layout but not with the device subsystem itself; the relevant
+This guide walks through everything required to add a new data source to a neurobooth session — a camera, a wearable sensor, a mouse listener, or
+anything else that produces a stream of samples. It assumes familiarity with the codebase layout but not with the device subsystem itself; the relevant
 architecture is summarised inline with the step it pertains to.
 
-The device subsystem was designed so that adding a new device touches only
-new files. You should not need to edit `DeviceManager`, `lsl_streamer.py`,
+The device subsystem was designed so that adding a new device touches only new files. You should not need to edit `DeviceManager`, `lsl_streamer.py`,
 `metadator.py`, or any other central dispatcher.
 
 ## TL;DR
@@ -21,7 +18,7 @@ new files. You should not need to edit `DeviceManager`, `lsl_streamer.py`,
 4. Add the device_id to a server's `devices:` list in
    `NB_CONFIG/neurobooth_os_config.yaml`.
 
-## The four artefacts
+## The four artifacts
 
 ```
 code side (neurobooth-os repo)              config side (NB_CONFIG)
@@ -33,16 +30,13 @@ neurobooth_os/iout/stim_param_reader.py     NB_CONFIG/neurobooth_os_config.yaml
   class YourDeviceArgs(DeviceArgs)            acquisition[N].devices: [..., your_device]
 ```
 
-The Python side defines *how* the device behaves and what shape its config
-takes. The YAML side defines *which* devices exist in a given deployment and
+The Python side defines *how* the device behaves and what shape its config takes. The YAML side defines *which* devices exist in a given deployment and
 *which machine* runs each one.
 
 ## Step 1: Write the Device subclass
 
-Every device inherits from `Device` (in `neurobooth_os/iout/device.py`), which
-is an `abc.ABC` with three abstract methods: `connect`, `start`, and `stop`.
-Forgetting any of the three is a `TypeError` at construction time — which
-fails loud and early, rather than during a live session.
+Every device inherits from `Device` (in `neurobooth_os/iout/device.py`), which  is an `abc.ABC` with three abstract methods: `connect`, `start`, and `stop`.
+Forgetting any of the three is a `TypeError` at construction time — which fails loud and early, rather than during a live session.
 
 ```python
 from neurobooth_os.iout.device import Device, DeviceCapability, DeviceState
@@ -91,10 +85,8 @@ A device progresses through these stages:
 | `STOPPED`      | `stop()`               | **Abstract — must override**    |
 | `DISCONNECTED` | `disconnect()`         | No-op                           |
 
-`start(filename)` serves two device categories with one signature:
-streaming devices (mouse, mic, Mbient) ignore the filename; recording devices
-(cameras, EyeLink) use it as the output path and raise `ValueError` if called
-without one.
+`start(filename)` serves two device categories with one signature: streaming devices (mouse, mic, Mbient) ignore the filename; recording devices
+(cameras, EyeLink) use it as the output path and raise `ValueError` if called without one.
 
 `Device` tracks two external-facing state fields:
 
@@ -104,8 +96,7 @@ without one.
 
 ### Capability flags
 
-`DeviceCapability` is a `Flag` enum. Each subclass declares its capabilities
-as a bitwise OR:
+`DeviceCapability` is a `Flag` enum. Each subclass declares its capabilities as a bitwise OR:
 
 ```python
 capabilities = (
@@ -460,10 +451,10 @@ Two opt-in sources, in priority order:
    ```bash
    # Mock just the Mbients for this run; everything else uses real hardware
    NB_MOCK_DEVICES=Mbient python -m neurobooth_os.gui
-
+   
    # Multiple devices (whitespace-tolerant)
    NB_MOCK_DEVICES="Mbient, IPhone, EyeTracker" python -m neurobooth_os.gui
-
+   
    # Mock every registered device
    NB_MOCK_DEVICES=all python -m neurobooth_os.gui
    ```

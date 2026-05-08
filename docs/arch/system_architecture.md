@@ -174,10 +174,7 @@ database:
 
 ### Legacy flat format
 
-The old format (with `name`, `user`, `password`, `local_data_dir` in every
-service entry) is still accepted. It is automatically converted to the
-normalized structure at load time. See `docs/arch/config_normalization.md` for
-the design rationale.
+The old format (with `name`, `user`, `password`, `local_data_dir` in every service entry) is still accepted. It is automatically converted to the normalized structure at load time. See `docs/arch/config_normalization.md` for the design rationale.
 
 ### Internal model
 

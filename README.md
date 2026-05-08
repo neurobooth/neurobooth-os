@@ -141,18 +141,12 @@ each booth (CTR → STM → ACQ):
    (and uninstall Anaconda/Miniconda entirely if the booth has no other use
    for it.)
 
-> **Deploy chain note:** `configs/checkout_and_deploy.bat` and
-> `configs/version.bat` (in the separate `configs` repo) call
-> `conda env create --file environment_staging.yml`. They must be updated to
-> call `uv sync` instead **before** running them against this branch, or
-> staging deploy will fail. Coordinate that change with this PR's merge.
+> **Deploy chain note:** `configs/checkout_and_deploy.bat` and`configs/version.bat` (in the separate `configs` repo) call`conda env create --file environment_staging.yml`. They must be updated to
+> call `uv sync` instead **before** running them against this branch, or staging deploy will fail. Coordinate that change with this PR's merge.
 
 ## Setup
 
-Neurobooth runs on multiple Windows server machines, which communicate via
-WMI. See the [WMI setup
-instructions](https://github.com/neurobooth/neurobooth-os/blob/master/docs/enable_WMI_instuctions.txt)
-for configuration details.
+Neurobooth runs on multiple Windows server machines, which communicate via WMI. See the [WMI setup instructions](https://github.com/neurobooth/neurobooth-os/blob/master/docs/enable_WMI_instuctions.txt) for configuration details.
 
 Neurobooth requires a PostgreSQL database. Connection is established with
 `neurobooth_os.iout.metadator.get_conn()`. Per `~/.neurobooth_os_secrets`,
