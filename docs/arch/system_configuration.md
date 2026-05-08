@@ -22,7 +22,7 @@ As you can see from the examples, the environment variables include locations, i
 
 ## Secrets
 
-Credentials are stored in `secrets.yaml`, located in the config folder alongside the main config file. The file is keyed by environment name (e.g., `production`,`staging`).
+Credentials are stored in `secrets.yaml`, located in the config folder alongside the main config file. The file is keyed by environment name (e.g., `production`, `staging`).
 
 With the normalized config format, secrets are keyed by machine name. Each machine only needs the credentials it actually uses. Service passwords (used for remote process management via `SCHTASKS`, `taskkill`, etc.) are only required on the control (CTR) machine.
 

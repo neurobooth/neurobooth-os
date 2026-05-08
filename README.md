@@ -141,7 +141,7 @@ each booth (CTR → STM → ACQ):
    (and uninstall Anaconda/Miniconda entirely if the booth has no other use
    for it.)
 
-> **Deploy chain note:** `configs/checkout_and_deploy.bat` and`configs/version.bat` (in the separate `configs` repo) call`conda env create --file environment_staging.yml`. They must be updated to
+> **Deploy chain note:** `configs/checkout_and_deploy.bat` and `configs/version.bat` (in the separate `configs` repo) call `conda env create --file environment_staging.yml`. They must be updated to
 > call `uv sync` instead **before** running them against this branch, or staging deploy will fail. Coordinate that change with this PR's merge.
 
 ## Setup

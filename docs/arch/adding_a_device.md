@@ -35,7 +35,7 @@ The Python side defines *how* the device behaves and what shape its config takes
 
 ## Step 1: Write the Device subclass
 
-Every device inherits from `Device` (in `neurobooth_os/iout/device.py`), which  is an `abc.ABC` with three abstract methods: `connect`, `start`, and `stop`.
+Every device inherits from `Device` (in `neurobooth_os/iout/device.py`), which is an `abc.ABC` with three abstract methods: `connect`, `start`, and `stop`.
 Forgetting any of the three is a `TypeError` at construction time — which fails loud and early, rather than during a live session.
 
 ```python
