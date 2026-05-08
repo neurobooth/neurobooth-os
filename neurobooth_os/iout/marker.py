@@ -59,9 +59,7 @@ class MarkerStreamDevice(Device):
     def stop(self) -> None:
         self.streaming = False
         self.state = DeviceState.STOPPED
-        if self.outlet is not None:
-            self.outlet.__del__()
-            self.outlet = None
+        self.outlet = None
 
     def push_sample(self, sample: List[Any]) -> None:
         """Forward a marker sample to the underlying LSL outlet."""

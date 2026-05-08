@@ -249,17 +249,8 @@ class TestMarkerStreamDevice:
     def test_stop_releases_outlet_and_clears_state(self):
         from neurobooth_os.iout.marker import MarkerStreamDevice
 
-        class _Outlet:
-            """MagicMock doesn't auto-provide __del__, so use a real class."""
-            def __init__(self) -> None:
-                self.del_called = False
-
-            def __del__(self) -> None:
-                self.del_called = True
-
-        outlet = _Outlet()
         device = MarkerStreamDevice()
-        device.outlet = outlet
+        device.outlet = MagicMock()
         device.streaming = True
 
         device.stop()
@@ -267,7 +258,6 @@ class TestMarkerStreamDevice:
         assert not device.streaming
         assert device.state == DeviceState.STOPPED
         assert device.outlet is None
-        assert outlet.del_called
 
 
 # ---------------------------------------------------------------------------

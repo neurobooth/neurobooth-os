@@ -1032,8 +1032,6 @@ def gui(logger):
 
 def close(window):
     window.close()
-    if "-OUTPUT-" in window.AllKeysDict:
-        window["-OUTPUT-"].__del__()
     print("Session terminated")
 
 
