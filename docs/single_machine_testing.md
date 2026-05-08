@@ -95,9 +95,9 @@ The first step is to install a working copy of PostgreSQL and PGAdmin.  While PG
 When running on one machine, we do not use an SSH tunnel to connect to the database. 
 
 ## Studies and Task Collections
-Since your local device is unlikely to have the standard devices, a new task collection called "test_no_eyelink" 
-has been added to the "test_study" study config in the examples folder. 
+Since your local device is unlikely to have the standard devices, a new task collection called "test_no_eyelink" has been added to the "test_study" study config in the examples folder. 
 Several new tasks were added to this collection. These tasks: 
+
 - altern_hand_test_obs_1
 - foot_tapping_test_obs_1
 - sit_to_stand_test_obs
@@ -121,4 +121,4 @@ Given that Neurobooth itself starts ACQ and STM, only the gui process can be run
 To attach the debugger to those processes, follow the instructions at https://www.jetbrains.com/help/pycharm/attach-to-process.html. 
 Pycharm can only attach debuggers to local processes so you would need to install it on each server to perform debugging in staging, 
 but all three processes can have debuggers attached from your dev environment when running locally. 
- 
+

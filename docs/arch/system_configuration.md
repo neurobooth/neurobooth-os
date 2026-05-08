@@ -1,7 +1,6 @@
 # System Configuration
 
-As described in `docs/release process.md`, deployments should generally be made from packaged releases managed in GitHub, using git's checkout function.
-This document assumes that step has been completed.
+As described in `docs/release process.md`, deployments should generally be made from packaged releases managed in GitHub, using git's checkout function. This document assumes that step has been completed.
 
 Once the new code is checked-out, configuration data may need to be updated, and config files may need to be created or modified. Reference configs for every environment live in the companion `neurobooth/configs` repository (`environments/<env>/neurobooth_os_config.yaml`); copy and edit those rather than starting from scratch.
 
@@ -19,19 +18,13 @@ Several environment variables must be setup to run neurobooth. An example Window
 There are two files provided, one for a staging environment, and the other for a production environment. 
 It is good practice to maintain separate files for each environment that you will deploy to regularly.
 
-As you can see from the examples, the environment variables include locations, including the install folder for neurobooth, and the config folder. The config folder variable ("NB_CONFIG") states the location of the other config files. 
-Neurobooth cannot run if the required configuration file(s) are not found there.
+As you can see from the examples, the environment variables include locations, including the install folder for neurobooth, and the config folder. The config folder variable ("NB_CONFIG") states the location of the other config files. Neurobooth cannot run if the required configuration file(s) are not found there.
 
 ## Secrets
 
-Credentials are stored in `secrets.yaml`, located in the config folder alongside
-the main config file. The file is keyed by environment name (e.g., `production`,
-`staging`).
+Credentials are stored in `secrets.yaml`, located in the config folder alongside the main config file. The file is keyed by environment name (e.g., `production`, `staging`).
 
-With the normalized config format, secrets are keyed by machine name. Each machine
-only needs the credentials it actually uses. Service passwords (used for remote
-process management via `SCHTASKS`, `taskkill`, etc.) are only required on the
-control (CTR) machine.
+With the normalized config format, secrets are keyed by machine name. Each machine only needs the credentials it actually uses. Service passwords (used for remote process management via `SCHTASKS`, `taskkill`, etc.) are only required on the control (CTR) machine.
 
 ### CTR machine
 
@@ -64,8 +57,7 @@ production:
 
 ## Machine clock
 
-LSL stream alignment across machines depends on each host's clock being
-disciplined to a shared time source. On MGH/HMS-network machines:
+LSL stream alignment across machines depends on each host's clock being disciplined to a shared time source. On MGH/HMS-network machines:
 
 1. **Time server.** Control Panel → Clock and Region → Date and Time →
    Internet Time → "Change settings…" → set the server to

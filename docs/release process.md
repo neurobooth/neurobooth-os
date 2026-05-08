@@ -1,3 +1,4 @@
+# Release Process
 
 This document describes the Neurobooth release process.
 
@@ -15,7 +16,7 @@ Release numbering should generally follow [Semantic Versioning guidelines](https
 
 A release that isn't ready for production deployment should be flagged in GitHub as "pre-release" when created. The "pre-release" identifier is removed when the release is "published".  
 
-The process: 
+## The process 
 
 Development is performed on feature branches as usual. When complete, feature branches are merged into master. Frequent merges of small branches simplifies coordination between developers and makes it easier to review code. The rest of the process is as follows:
 
@@ -23,7 +24,7 @@ Development is performed on feature branches as usual. When complete, feature br
 2. Deploy the candidate release into staging and complete testing.
 3. Publish the release in GitHub (remove the "pre-release" flag).
 4. Deploy the published release into production environment(s). 
- 
+
 Checking out and deploying releases:
 
 Release `v0.0.1` is used in the examples below.
