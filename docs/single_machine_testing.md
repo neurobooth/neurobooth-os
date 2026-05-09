@@ -7,7 +7,7 @@ Note: You must be running Windows 10 or greater to run Neurobooth on your machin
 ## Configuration
 The main config file is `neurobooth_os_config.yaml`, located in the folder named by the `NB_CONFIG` environment variable. The format is the normalized machines + services layout: a top-level `machines:` dict keyed by machine name, plus `acquisition` / `presentation` / `control` sections that reference machines by name. See [system_configuration.md](arch/system_configuration.md) for the authoritative schema.
 
-For single-machine testing, define one machine in `machines:` with `user` set to `""`, and have all three service sections reference that machine by its dict key. An empty `user` triggers a local-execution shortcut in `netcomm/client.py:_run_cmd` so SCHTASKS, WMIC, and tasklist run on this machine without remote credentials — no Windows password is required, and `machines.<name>.password` should be omitted entirely.
+For single-machine testing, define one machine in `machines:` with `user` set to `""`, and have all three service sections reference that machine by its dict key. An empty `user` triggers a local-execution shortcut in `netcomm/client.py` so SCHTASKS, Get-CimInstance, and tasklist run on this machine without remote credentials — no Windows password is required, and `machines.<name>.password` should be omitted entirely.
 
 Minimal example (`neurobooth_os_config.yaml`):
 
@@ -76,9 +76,9 @@ If you're running the database on the same machine as the neurobooth code, set `
 For more information on configuration settings, see [system_configuration.md](arch/system_configuration.md).
 
 ## Servers
-ACQ and STM servers are started by the GUI through Windows `SCHTASKS`. On first launch, the GUI registers a scheduled task that runs the appropriate batch file (`server_acq.bat` or `server_stm.bat`) and then triggers it; on subsequent launches the existing task is reused. `WMIC` and `tasklist` are used alongside SCHTASKS to inventory and clean up Python processes between runs. You can view and troubleshoot the tasks in the Windows Task Scheduler.
+ACQ and STM servers are started by the GUI through Windows `SCHTASKS`. On first launch, the GUI registers a scheduled task that runs the appropriate batch file (`server_acq.bat` or `server_stm.bat`) and then triggers it; on subsequent launches the existing task is reused. PowerShell `Get-CimInstance` (over a DCOM `CimSession`) and `tasklist` are used alongside SCHTASKS to inventory and clean up Python processes between runs. You can view and troubleshoot the tasks in the Windows Task Scheduler.
 
-For single-machine testing, you do **not** need to enable remote WMI or configure a domain user — when `machines.<name>.user` is empty, `netcomm/client.py:_run_cmd` skips the remote `/S /U /P` arguments and runs SCHTASKS / WMIC / tasklist locally on the calling machine. The [WMI instructions](enable_WMI_instuctions.txt) are only relevant for multi-machine production deployments where CTR launches ACQ and STM on separate hosts.
+For single-machine testing, you do **not** need to enable remote WMI or configure a domain user — when `machines.<name>.user` is empty, `netcomm/client.py` skips the remote credentials and runs SCHTASKS / Get-CimInstance / tasklist locally on the calling machine. The [WMI instructions](enable_WMI_instuctions.txt) are only relevant for multi-machine production deployments where CTR launches ACQ and STM on separate hosts.
 
 Please Note: When the tasks are first added to the scheduler, they are created with a number of default settings, one of which causes the task to not run if the machine is not running on AC power. You should probably change that if you plan to work on a laptop and may run on battery.
 
