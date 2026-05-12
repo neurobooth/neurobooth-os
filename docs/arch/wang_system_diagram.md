@@ -16,7 +16,7 @@
 |  |  |  - Session orchestration   |  |  |  |  Process with threads:     |  ||
 |  |  |  - LSL recording -> XDF    |  |  |  |  - Main (message loop)     |  ||
 |  |  |  - Remote server launch    |  |  |  |  - DeviceManager threads   |  ||
-|  |  |    (via WMI)               |  |  |  |  - SystemResourceLogger    |  ||
+|  |  |    (via SCHTASKS)          |  |  |  |  - SystemResourceLogger    |  ||
 |  |  |  - Data transfer (robo-    |  |  |  |                             |  ||
 |  |  |    copy to Z: drive)       |  |  |  |  Devices:                   |  ||
 |  |  |                            |  |  |  |   Intel_D455_1 [037522..]   |  ||
