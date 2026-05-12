@@ -78,6 +78,7 @@ db_credentials.json
 
 # Misc
 server_pids.txt
+*.csv
 
 # AI Tools
 .gemini/
