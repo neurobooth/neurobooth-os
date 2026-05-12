@@ -84,3 +84,4 @@ server_pids.txt
 .gemini/
 GEMINI.md
 CLAUDE.local.md
+.claude/settings.local.json
