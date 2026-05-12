@@ -441,6 +441,24 @@ class SessionController:
     def start_lsl_session(self, folder: str) -> None:
         """Create an LSL recording session."""
         import liesl
+
+        # Refuse to start if the Marker inlet failed to register on CTR
+        # despite the marker being configured. Without "Marker" in
+        # state.inlets LabRecorderCLI is never told to record it and the
+        # XDF lands with no task event annotations — only visible later
+        # when postprocess_xdf_split trips an IndexError. Gate on the
+        # config so deployments that legitimately do not run a marker
+        # are not affected.
+        marker_expected = "marker" in cfg.neurobooth_config.presentation.devices
+        if marker_expected and "Marker" not in self.state.inlets:
+            msg = (
+                "Marker event stream is missing — refusing to start "
+                "recording. Without the Marker stream, session data would "
+                "have no task annotations. Restart STM and try again."
+            )
+            self.logger.critical(msg)
+            raise RuntimeError(msg)
+
         streamargs = [{"name": n} for n in list(self.state.inlets)]
         self.state.session = liesl.Session(
             prefix=folder,
