@@ -190,11 +190,24 @@ class DeviceManager:
             with register_lock:
                 self.streams[device_id] = device
 
+        # Bring up SESSION_LEVEL devices (today: marker) before anything else.
+        # Their LSL outlets need to be advertised and resolvable on CTR before
+        # any hardware-heavy device contends for the network — otherwise CTR's
+        # 1s resolve_byprop() in create_lsl_inlets can miss them, the inlet
+        # never gets registered, and LabRecorderCLI is not told to record the
+        # stream. Pre-dde7f47 the marker was hard-coded to start first; this
+        # restores that ordering under the config-driven path.
+        for device_id in self.assigned_devices:
+            if device_id in session_device_args:
+                start_and_register_device(session_device_args[device_id])
+
         with ThreadPoolExecutor(max_workers=N_ASYNC_THREADS) as executor:
             futures = []
             for device_id in self.assigned_devices:
                 if device_id not in all_device_args:
                     continue
+                if device_id in session_device_args:
+                    continue  # Already started above
                 device_args = all_device_args[device_id]
                 if device_id in ASYNC_STARTUP:
                     futures.append(executor.submit(start_and_register_device, device_args))

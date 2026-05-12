@@ -3,12 +3,19 @@
 Plots device output in realtime
 """
 
+import logging
+
 import numpy as np
 import pylsl
 import matplotlib.pyplot as plt
 import matplotlib
 import cv2
 import threading
+
+from neurobooth_os.log_manager import APP_LOG_NAME
+
+
+LSL_RESOLVE_TIMEOUT_S = 5.0
 
 
 def create_lsl_inlets(stream_ids):
@@ -22,14 +29,25 @@ def create_lsl_inlets(stream_ids):
     Returns
     -------
     dict of StreamInlet
-        The inlet streams.
+        The inlet streams. A missing entry means the corresponding outlet
+        could not be resolved within ``LSL_RESOLVE_TIMEOUT_S`` and will not
+        be recorded by LabRecorderCLI; a warning is logged in that case so
+        the silent-drop is observable in ``log_application``.
     """
+    logger = logging.getLogger(APP_LOG_NAME)
     inlets = {}
-    for id_stream in stream_ids.values():
-        stream = pylsl.resolve_byprop("source_id", id_stream, timeout=1)
+    for outlet_name, id_stream in stream_ids.items():
+        stream = pylsl.resolve_byprop("source_id", id_stream,
+                                      timeout=LSL_RESOLVE_TIMEOUT_S)
         if stream:
             inlet = pylsl.StreamInlet(stream[0])
             inlets[stream[0].name()] = inlet
+        else:
+            logger.warning(
+                f"create_lsl_inlets: outlet '{outlet_name}' (source_id={id_stream}) "
+                f"not resolvable within {LSL_RESOLVE_TIMEOUT_S}s; stream will NOT "
+                f"be recorded by LabRecorderCLI."
+            )
     return inlets
 
 
