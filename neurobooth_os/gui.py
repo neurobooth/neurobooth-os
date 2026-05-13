@@ -940,7 +940,17 @@ def gui(logger):
                     write_output(window, "\nSession complete: OK to terminate", 'blue')
 
             elif event == 'devices_connected':
-                controller.start_lsl_session(state.sess_info["subject_id_date"])
+                try:
+                    controller.start_lsl_session(state.sess_info["subject_id_date"])
+                except RuntimeError as e:
+                    # start_lsl_session refuses to proceed when an expected
+                    # stream (e.g. Marker) is missing from CTR's state.inlets.
+                    # Surface the failure to the operator as a dismissable
+                    # popup so the GUI stays alive and they can act on it
+                    # (e.g. restart STM and retry).
+                    sg.popup_error(str(e), title="Cannot start session",
+                                   location=get_popup_location(window))
+                    continue
                 enable_frame_preview(window, state.frame_preview_devices)
                 if not state.start_pressed:
                     window['Start'].update(disabled=False)
