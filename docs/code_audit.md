@@ -365,7 +365,7 @@ The mock infrastructure (PRs #737, #738) is the biggest lift: tests run on a har
 
 ### 4.5 ~~Low: Deployment-test Batch Scripts Still Hardcoded~~ RESOLVED
 
-**Resolved by:** uv migration (#632) -- `tests/deployment-test/run_timing_tests*.bat` now activate `%NB_INSTALL%\.venv\Scripts\activate.bat` instead of the hardcoded `C:\Users\CTR\anaconda3` path. Same fix applied to `extras/reset_mbients.bat` and `extras/serv_acq_upload - neurobooth_OS.bat`.
+**Resolved by:** uv migration (#632) -- `tests/deployment-test/run_timing_tests*.bat` now activate `%NB_INSTALL%\.venv\Scripts\activate.bat` instead of the hardcoded `C:\Users\CTR\anaconda3` path. Same fix applied to `extras/reset_mbients.bat`.
 
 ---
 
