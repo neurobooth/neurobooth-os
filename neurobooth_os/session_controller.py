@@ -441,6 +441,24 @@ class SessionController:
     def start_lsl_session(self, folder: str) -> None:
         """Create an LSL recording session."""
         import liesl
+        import pylsl
+
+        # Diagnostic snapshot: log everything CTR's pylsl can see on the
+        # LSL network at session-start time, alongside the inlets we have
+        # registered via DeviceInitialization messages. Tracking #791 — if
+        # an expected stream is missing from state.inlets but visible to
+        # resolve_streams, the failure is in DeviceInitialization routing;
+        # if it's missing from BOTH, the failure is in LSL transmission
+        # itself (the bundled-liblsl theory).
+        try:
+            visible = pylsl.resolve_streams(wait_time=2)
+            visible_summary = sorted(f"{s.name()}@{s.hostname()}" for s in visible)
+        except Exception as e:
+            visible_summary = [f"<resolve_streams failed: {type(e).__name__}: {e}>"]
+        self.logger.info(
+            f"LSL streams visible to CTR: {visible_summary}; "
+            f"inlets registered: {sorted(self.state.inlets.keys())}"
+        )
 
         # Refuse to start if the Marker inlet failed to register on CTR
         # despite the marker being configured. Without "Marker" in
