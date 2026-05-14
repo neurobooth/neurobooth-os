@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "schema_name": "win11_readiness",
+  "captured_at": "2026-05-14T16:08:37.722188+00:00",
+  "machine": {
+    "hostname": "ctr",
+    "role": "CTR",
+    "os_caption": "Microsoft Windows 10 Home",
+    "os_version": "10.0.19043",
+    "os_build": "19043",
+    "os_arch": "64-bit"
+  },
+  "win11_floor": {
+    "tpm": {
+      "present": true,
+      "ready": true,
+      "enabled": true,
+      "activated": true,
+      "owned": true,
+      "spec_version": "2.0, 0, 1.38",
+      "manufacturer_version": "500.16.0.0",
+      "manufacturer_id": "INTC"
+    },
+    "secure_boot": {
+      "supported": true,
+      "enabled": true
+    },
+    "bios_mode": "UEFI",
+    "cpu": {
+      "name": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+      "manufacturer": "GenuineIntel",
+      "cores": 8,
+      "threads": 16,
+      "max_clock_mhz": 2904,
+      "description": "Intel64 Family 6 Model 165 Stepping 5",
+      "processor_id": "BFEBFBFF000A0655"
+    },
+    "ram_bytes": 17102606336,
+    "disks": [
+      {
+        "drive": "C:",
+        "free_bytes": 316864712704,
+        "size_bytes": 511030849536
+      },
+      {
+        "drive": "D:",
+        "free_bytes": 972393619456,
+        "size_bytes": 972634976256
+      }
+    ],
+    "gpus": [
+      {
+        "name": "Citrix Indirect Display Adapter",
+        "driver_version": "12.40.44.247",
+        "driver_date": "2019-01-23T00:00:00+00:00",
+        "video_ram_bytes": 0,
+        "video_processor": null,
+        "video_mode": null
+      },
+      {
+        "name": "NVIDIA GeForce RTX 2060",
+        "driver_version": "27.21.14.5751",
+        "driver_date": "2020-11-22T00:00:00+00:00",
+        "video_ram_bytes": 4293918720,
+        "video_processor": "GeForce RTX 2060",
+        "video_mode": "1920 x 1080 x 4294967296 colors"
+      }
+    ]
+  },
+  "neurobooth_extras": {
+    "bluetooth": [
+      {
+        "name": "Bluetooth LE Generic Attribute Service",
+        "instance_id": "BTHLEDEVICE\\{0000180F-0000-1000-8000-00805F9B34FB}_DEV_VID&02046D_PID&B015_REV&0013_E738F6461D16\\8&27D4CEDD&0&001B",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.488",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Microsoft Bluetooth LE Enumerator",
+        "instance_id": "BTH\\MS_BTHLE\\6&392675EB&0&3",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.488",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "M720 Triathlon",
+        "instance_id": "BTHLE\\DEV_E738F6461D16\\7&CDD7037&0&E738F6461D16",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.488",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Device Identification Service",
+        "instance_id": "BTHENUM\\{00001200-0000-1000-8000-00805F9B34FB}_VID&0002046D_PID&B342\\7&2392B99F&0&F473353CD397_C00000000",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.2364",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "WH-1000XM3",
+        "instance_id": "BTHENUM\\DEV_CC988BB6B685\\7&2392B99F&0&BLUETOOTHDEVICE_CC988BB6B685",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.2364",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Generic Access Profile",
+        "instance_id": "BTHLEDEVICE\\{00001800-0000-1000-8000-00805F9B34FB}_DEV_VID&02046D_PID&B015_REV&0013_E738F6461D16\\8&27D4CEDD&0&0001",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.488",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Bluetooth LE Generic Attribute Service",
+        "instance_id": "BTHLEDEVICE\\{00010000-0000-1000-8000-011F2000046D}_DEV_VID&02046D_PID&B015_REV&0013_E738F6461D16\\8&27D4CEDD&0&003E",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.488",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Spark 06 Avrcp Transport",
+        "instance_id": "BTHENUM\\{0000110C-0000-1000-8000-00805F9B34FB}_VID&000105D6_PID&000A\\7&2392B99F&0&8B42D18618DE_C00000000",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.1",
+        "driver_date": "2019-12-06T00:00:00+00:00"
+      },
+      {
+        "name": "Service Discovery Service",
+        "instance_id": "BTHENUM\\{00001000-0000-1000-8000-00805F9B34FB}_VID&0002046D_PID&B342\\7&2392B99F&0&F473353CD397_C00000000",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.2364",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Spark 06",
+        "instance_id": "BTHENUM\\DEV_8B42D18618DE\\7&2392B99F&0&BLUETOOTHDEVICE_8B42D18618DE",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.2364",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Spark 06 Avrcp Transport",
+        "instance_id": "BTHENUM\\{0000110E-0000-1000-8000-00805F9B34FB}_VID&000105D6_PID&000A\\7&2392B99F&0&8B42D18618DE_C00000000",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.1",
+        "driver_date": "2019-12-06T00:00:00+00:00"
+      },
+      {
+        "name": "Microsoft Bluetooth Enumerator",
+        "instance_id": "BTH\\MS_BTHBRB\\6&392675EB&0&1",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.2364",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Generic Attribute Profile",
+        "instance_id": "BTHLEDEVICE\\{00001801-0000-1000-8000-00805F9B34FB}_DEV_VID&02046D_PID&B015_REV&0013_E738F6461D16\\8&27D4CEDD&0&0008",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.488",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Intel(R) Wireless Bluetooth(R)",
+        "instance_id": "USB\\VID_8087&PID_0029\\5&1006EDDF&0&9",
+        "manufacturer": "Intel Corporation",
+        "driver_version": "22.40.0.2",
+        "driver_date": "2021-02-16T00:00:00+00:00"
+      },
+      {
+        "name": "Bluetooth Device (RFCOMM Protocol TDI)",
+        "instance_id": "BTH\\MS_RFCOMM\\6&392675EB&0&0",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.1",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "WH-1000XM3 Avrcp Transport",
+        "instance_id": "BTHENUM\\{0000110C-0000-1000-8000-00805F9B34FB}_VID&0002054C_PID&0CD3\\7&2392B99F&0&CC988BB6B685_C00000000",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.1",
+        "driver_date": "2019-12-06T00:00:00+00:00"
+      },
+      {
+        "name": "WH-1000XM3 Avrcp Transport",
+        "instance_id": "BTHENUM\\{0000110E-0000-1000-8000-00805F9B34FB}_VID&0002054C_PID&0CD3\\7&2392B99F&0&CC988BB6B685_C00000000",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.1",
+        "driver_date": "2019-12-06T00:00:00+00:00"
+      },
+      {
+        "name": "Device Information Service",
+        "instance_id": "BTHLEDEVICE\\{0000180A-0000-1000-8000-00805F9B34FB}_DEV_VID&02046D_PID&B015_REV&0013_E738F6461D16\\8&27D4CEDD&0&000C",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.488",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Keyboard K380",
+        "instance_id": "BTHENUM\\DEV_F473353CD397\\7&2392B99F&0&BLUETOOTHDEVICE_F473353CD397",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.2364",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      }
+    ],
+    "vendor_software": []
+  },
+  "verdict": {
+    "category": "PASS",
+    "reasons": [
+      "CPU not auto-classified -- compare CPU name to Microsoft's Win11 supported list"
+    ],
+    "remediation_hints": []
+  },
+  "collection_errors": []
+}

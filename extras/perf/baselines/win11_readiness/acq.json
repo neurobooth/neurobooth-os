@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "schema_name": "win11_readiness",
+  "captured_at": "2026-05-14T16:09:09.894469+00:00",
+  "machine": {
+    "hostname": "acq",
+    "role": "ACQ",
+    "os_caption": "Microsoft Windows 10 Home",
+    "os_version": "10.0.19045",
+    "os_build": "19045",
+    "os_arch": "64-bit"
+  },
+  "win11_floor": {
+    "tpm": {
+      "present": true,
+      "ready": true,
+      "enabled": true,
+      "activated": true,
+      "owned": true,
+      "spec_version": "2.0, 0, 1.38",
+      "manufacturer_version": "500.14.0.0",
+      "manufacturer_id": "INTC"
+    },
+    "secure_boot": {
+      "supported": true,
+      "enabled": true
+    },
+    "bios_mode": "UEFI",
+    "cpu": {
+      "name": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
+      "manufacturer": "GenuineIntel",
+      "cores": 8,
+      "threads": 16,
+      "max_clock_mhz": 3792,
+      "description": "Intel64 Family 6 Model 165 Stepping 5",
+      "processor_id": "BFEBFBFF000A0655"
+    },
+    "ram_bytes": 68544954368,
+    "disks": [
+      {
+        "drive": "C:",
+        "free_bytes": 372427051008,
+        "size_bytes": 614521106432
+      },
+      {
+        "drive": "D:",
+        "free_bytes": 7440341102592,
+        "size_bytes": 7993333641216
+      },
+      {
+        "drive": "E:",
+        "free_bytes": 167015837696,
+        "size_bytes": 379691462656
+      }
+    ],
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 3070",
+        "driver_version": "32.0.15.6094",
+        "driver_date": "2024-08-14T00:00:00+00:00",
+        "video_ram_bytes": 4293918720,
+        "video_processor": "NVIDIA GeForce RTX 3070",
+        "video_mode": "1920 x 1080 x 4294967296 colors"
+      },
+      {
+        "name": "Intel(R) UHD Graphics 630",
+        "driver_version": "27.20.100.9127",
+        "driver_date": "2021-01-04T00:00:00+00:00",
+        "video_ram_bytes": 1073741824,
+        "video_processor": "Intel(R) UHD Graphics Family",
+        "video_mode": null
+      }
+    ]
+  },
+  "neurobooth_extras": {
+    "bluetooth": [
+      {
+        "name": "Device Information Service",
+        "instance_id": "BTHLEDEVICE\\{0000180A-0000-1000-8000-00805F9B34FB}_DEV_VID&02046D_PID&B015_REV&0013_E738F6461D1A\\8&119FB612&0&000C",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.3636",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Bluetooth LE Generic Attribute Service",
+        "instance_id": "BTHLEDEVICE\\{0000180F-0000-1000-8000-00805F9B34FB}_DEV_VID&02046D_PID&B015_REV&0013_E738F6461D1A\\8&119FB612&0&001B",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.3636",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Microsoft Bluetooth Enumerator",
+        "instance_id": "BTH\\MS_BTHBRB\\6&DD6F3D2&0&1",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.5848",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Device Identification Service",
+        "instance_id": "BTHENUM\\{00001200-0000-1000-8000-00805F9B34FB}_VID&0002046D_PID&B342\\7&1FD99FD9&0&F473353CD397_C00000000",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.5848",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Microsoft Bluetooth LE Enumerator",
+        "instance_id": "BTH\\MS_BTHLE\\6&DD6F3D2&0&3",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.3636",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Generic Access Profile",
+        "instance_id": "BTHLEDEVICE\\{00001800-0000-1000-8000-00805F9B34FB}_DEV_VID&02046D_PID&B015_REV&0013_E738F6461D1A\\8&119FB612&0&0001",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.3636",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Bluetooth LE Generic Attribute Service",
+        "instance_id": "BTHLEDEVICE\\{00010000-0000-1000-8000-011F2000046D}_DEV_VID&02046D_PID&B015_REV&0013_E738F6461D1A\\8&119FB612&0&003E",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.3636",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Service Discovery Service",
+        "instance_id": "BTHENUM\\{00001000-0000-1000-8000-00805F9B34FB}_VID&0002046D_PID&B342\\7&1FD99FD9&0&F473353CD397_C00000000",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.5848",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Generic Attribute Profile",
+        "instance_id": "BTHLEDEVICE\\{00001801-0000-1000-8000-00805F9B34FB}_DEV_VID&02046D_PID&B015_REV&0013_E738F6461D1A\\8&119FB612&0&0008",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.3636",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Bluetooth Device (RFCOMM Protocol TDI)",
+        "instance_id": "BTH\\MS_RFCOMM\\6&DD6F3D2&0&0",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.5848",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "ASUS USB-BT500",
+        "instance_id": "USB\\VID_0B05&PID_190E\\00E04C239987",
+        "manufacturer": "Realtek Semiconductor Corp.",
+        "driver_version": "1.6.1015.3018",
+        "driver_date": "2021-04-01T00:00:00+00:00"
+      },
+      {
+        "name": "Keyboard K380",
+        "instance_id": "BTHENUM\\DEV_F473353CD397\\7&1FD99FD9&0&BLUETOOTHDEVICE_F473353CD397",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.5848",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "M720 Triathlon",
+        "instance_id": "BTHLE\\DEV_E738F6461D1A\\7&21EEB9F5&0&E738F6461D1A",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.3636",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      }
+    ],
+    "vendor_software": [
+      {
+        "name": "Apple Mobile Device Support",
+        "version": "16.0.0.25",
+        "publisher": "Apple Inc.",
+        "install_date": "20220923"
+      },
+      {
+        "name": "Intel RealSense SDK 2.0 version 2.50.0.3785",
+        "version": "2.50.0.3785",
+        "publisher": "Intel",
+        "install_date": "20220801"
+      },
+      {
+        "name": "Spinnaker Binaries 4.3.0.190 (x64)",
+        "version": "4.3.0.190",
+        "publisher": "Teledyne",
+        "install_date": "20260509"
+      },
+      {
+        "name": "Spinnaker Documentation 4.3.0.190 (x64)",
+        "version": "4.3.0.190",
+        "publisher": "Teledyne",
+        "install_date": "20260509"
+      },
+      {
+        "name": "Spinnaker Drivers 4.3.0.190 (x64)",
+        "version": "4.3.0.190",
+        "publisher": "Teledyne",
+        "install_date": "20260509"
+      },
+      {
+        "name": "Spinnaker GenICam 4.3.0.190 (x64)",
+        "version": "4.3.0.190",
+        "publisher": "Teledyne",
+        "install_date": "20260509"
+      },
+      {
+        "name": "Spinnaker GenTL 4.3.0.190 (x64)",
+        "version": "4.3.0.190",
+        "publisher": "Teledyne",
+        "install_date": "20260509"
+      },
+      {
+        "name": "Spinnaker SourceCode 4.3.0.190 (x64)",
+        "version": "4.3.0.190",
+        "publisher": "Teledyne",
+        "install_date": "20260509"
+      },
+      {
+        "name": "Teledyne Common Components 1.02.01.1030",
+        "version": "1.02.01.1030",
+        "publisher": "Teledyne",
+        "install_date": "20260509"
+      },
+      {
+        "name": "Teledyne DALSA GenICam 3.20",
+        "version": "3.20",
+        "publisher": "Teledyne DALSA",
+        "install_date": "20240301"
+      },
+      {
+        "name": "Teledyne GigE Vision Interface 7.00.01.1702",
+        "version": "7.00.01.1702",
+        "publisher": "Teledyne",
+        "install_date": "20260509"
+      },
+      {
+        "name": "Teledyne Spinnaker SDK 4.3.0.190 (x64)",
+        "version": "4.3.0.190",
+        "publisher": "Teledyne",
+        "install_date": null
+      }
+    ]
+  },
+  "verdict": {
+    "category": "PASS",
+    "reasons": [
+      "CPU not auto-classified -- compare CPU name to Microsoft's Win11 supported list"
+    ],
+    "remediation_hints": []
+  },
+  "collection_errors": []
+}

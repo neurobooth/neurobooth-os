@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "schema_name": "win11_readiness",
+  "captured_at": "2026-05-14T16:09:48.725062+00:00",
+  "machine": {
+    "hostname": "stm",
+    "role": "STM",
+    "os_caption": "Microsoft Windows 10 Home",
+    "os_version": "10.0.19045",
+    "os_build": "19045",
+    "os_arch": "64-bit"
+  },
+  "win11_floor": {
+    "tpm": {
+      "present": true,
+      "ready": true,
+      "enabled": true,
+      "activated": true,
+      "owned": true,
+      "spec_version": "2.0, 0, 1.38",
+      "manufacturer_version": "500.14.0.0",
+      "manufacturer_id": "INTC"
+    },
+    "secure_boot": {
+      "supported": true,
+      "enabled": true
+    },
+    "bios_mode": "UEFI",
+    "cpu": {
+      "name": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
+      "manufacturer": "GenuineIntel",
+      "cores": 8,
+      "threads": 16,
+      "max_clock_mhz": 3792,
+      "description": "Intel64 Family 6 Model 165 Stepping 5",
+      "processor_id": "BFEBFBFF000A0655"
+    },
+    "ram_bytes": 68544954368,
+    "disks": [
+      {
+        "drive": "C:",
+        "free_bytes": 362084970496,
+        "size_bytes": 614521106432
+      },
+      {
+        "drive": "D:",
+        "free_bytes": 379468546048,
+        "size_bytes": 379692511232
+      }
+    ],
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 3070",
+        "driver_version": "32.0.15.6094",
+        "driver_date": "2024-08-14T00:00:00+00:00",
+        "video_ram_bytes": 4293918720,
+        "video_processor": "NVIDIA GeForce RTX 3070",
+        "video_mode": "1920 x 1080 x 4294967296 colors"
+      },
+      {
+        "name": "Intel(R) UHD Graphics 630",
+        "driver_version": "27.20.100.9127",
+        "driver_date": "2021-01-04T00:00:00+00:00",
+        "video_ram_bytes": 1073741824,
+        "video_processor": "Intel(R) UHD Graphics Family",
+        "video_mode": null
+      }
+    ]
+  },
+  "neurobooth_extras": {
+    "bluetooth": [
+      {
+        "name": "Microsoft Bluetooth Enumerator",
+        "instance_id": "BTH\\MS_BTHBRB\\6&DD6F3D2&0&1",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.5848",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Device Identification Service",
+        "instance_id": "BTHENUM\\{00001200-0000-1000-8000-00805F9B34FB}_VID&0002046D_PID&B342\\7&1FD99FD9&0&F473353CD397_C00000000",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.5848",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Microsoft Bluetooth LE Enumerator",
+        "instance_id": "BTH\\MS_BTHLE\\6&DD6F3D2&0&3",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.3636",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Service Discovery Service",
+        "instance_id": "BTHENUM\\{00001000-0000-1000-8000-00805F9B34FB}_VID&0002046D_PID&B342\\7&1FD99FD9&0&F473353CD397_C00000000",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.5848",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "Bluetooth Device (RFCOMM Protocol TDI)",
+        "instance_id": "BTH\\MS_RFCOMM\\6&DD6F3D2&0&0",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.5848",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      },
+      {
+        "name": "ASUS USB-BT500",
+        "instance_id": "USB\\VID_0B05&PID_190E\\00E04C239987",
+        "manufacturer": "Realtek Semiconductor Corp.",
+        "driver_version": "1.9.1038.3001",
+        "driver_date": "2021-09-29T00:00:00+00:00"
+      },
+      {
+        "name": "Keyboard K380",
+        "instance_id": "BTHENUM\\DEV_F473353CD397\\7&1FD99FD9&0&BLUETOOTHDEVICE_F473353CD397",
+        "manufacturer": "Microsoft",
+        "driver_version": "10.0.19041.5848",
+        "driver_date": "2006-06-21T00:00:00+00:00"
+      }
+    ],
+    "vendor_software": [
+      {
+        "name": "Apple Mobile Device Support",
+        "version": "14.5.0.7",
+        "publisher": "Apple Inc.",
+        "install_date": "20220401"
+      },
+      {
+        "name": "EyeLink DataViewer 64bit 4.2.1",
+        "version": "4.2.1",
+        "publisher": "SR Research Ltd.",
+        "install_date": "20210727"
+      },
+      {
+        "name": "EyeLink DataViewer 64bit 4.2.1",
+        "version": "",
+        "publisher": "",
+        "install_date": ""
+      },
+      {
+        "name": "EyeLink Developer's Kit 2.1.1.0",
+        "version": "2.1.1.0",
+        "publisher": "SR Research Ltd.",
+        "install_date": "20210723"
+      },
+      {
+        "name": "EyeLink Developer's Kit 2.1.1.0",
+        "version": "2.1.1.0",
+        "publisher": "SR Research Ltd.",
+        "install_date": "20210723"
+      }
+    ]
+  },
+  "verdict": {
+    "category": "PASS",
+    "reasons": [
+      "CPU not auto-classified -- compare CPU name to Microsoft's Win11 supported list"
+    ],
+    "remediation_hints": []
+  },
+  "collection_errors": []
+}

@@ -6,14 +6,16 @@ The source of truth is the per-booth JSON in [`extras/perf/baselines/win11_readi
 
 ## How to populate this doc
 
-1. On each booth (CTR, STM, ACQ, plus any spare/staging hardware), run:
+1. On each booth (CTR, STM, ACQ, plus any spare/staging hardware), open an **elevated** PowerShell (right-click → Run as Administrator) and run:
 
    ```
-   python extras/perf/win11_readiness.py --role <CTR|STM|ACQ|spare>
+   uv run python extras/perf/win11_readiness.py --role <CTR|STM|ACQ|spare>
    ```
+
+   Admin is required because `Confirm-SecureBootUEFI` and the `root\CIMV2\Security\MicrosoftTpm` namespace are ACL'd to Administrators. A non-elevated run returns a false `UPGRADEABLE` verdict with a misleading remediation hint, even on a booth that is genuinely `PASS`.
 
 2. Commit the resulting `extras/perf/baselines/win11_readiness/<hostname>.json`.
-3. Add a row to the table below; copy the `verdict.category` and `verdict.reasons` from the JSON.
+3. Add a row to the table below; copy the `verdict.category` from the JSON.
 4. For `UPGRADEABLE` booths, fill in the firmware-toggle notes section.
 5. For `HARDWARE_FAIL` booths, fill in the escalation-log section.
 
@@ -31,17 +33,25 @@ CPU classification is not done by the script because Microsoft's supported-CPU l
 
 | Booth role | Hostname | Verdict | Reasons (short) | JSON | Date captured |
 |---|---|---|---|---|---|
-| _CTR_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| _STM_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| _ACQ_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| CTR | ctr | PASS | None (see CPU note below) | [ctr.json](../extras/perf/baselines/win11_readiness/ctr.json) | 2026-05-14 |
+| STM | stm | PASS | None (see CPU note below) | [stm.json](../extras/perf/baselines/win11_readiness/stm.json) | 2026-05-14 |
+| ACQ | acq | PASS | None (see CPU note below) | [acq.json](../extras/perf/baselines/win11_readiness/acq.json) | 2026-05-14 |
+
+**CPU compatibility (manual check):** the script appends `"CPU not auto-classified -- compare CPU name to Microsoft's Win11 supported list"` to every verdict's `reasons` array by design (Microsoft's list moves and is not hard-coded). All three booth CPUs were verified against Microsoft's published Win11 supported-CPU list:
+
+- CTR: `Intel(R) Core(TM) i7-10700` (10th-gen Comet Lake) — supported
+- STM: `Intel(R) Core(TM) i7-10700K` (10th-gen Comet Lake) — supported
+- ACQ: `Intel(R) Core(TM) i7-10700K` (10th-gen Comet Lake) — supported
+
+All other floor items (TPM 2.0 present + enabled + activated, Secure Boot supported + enabled, BIOS in UEFI mode, RAM ≥ 4 GiB, system disk ≥ 64 GiB free) are verified in the per-booth JSONs above. None of the booths required firmware toggles or hardware replacement.
 
 ## Firmware toggles for UPGRADEABLE booths
 
-_Empty until first UPGRADEABLE booth is recorded. Format suggestion: one subsection per booth, listing the BIOS menu paths the operator used to enable TPM / Secure Boot / UEFI mode._
+All booths passed at first elevated run; no firmware-toggle work needed.
 
 ## Escalation log for HARDWARE_FAIL booths
 
-_Empty until first HARDWARE_FAIL booth is recorded. Format suggestion: one subsection per booth, listing the failing requirement, the inferred replacement need (motherboard / CPU / whole machine), and the date the budget conversation started._
+All booths passed; no escalation needed.
 
 ## Out of scope
 
