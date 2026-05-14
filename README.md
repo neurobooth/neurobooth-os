@@ -146,7 +146,7 @@ each booth (CTR → STM → ACQ):
 
 ## Setup
 
-Neurobooth runs on multiple Windows server machines, which communicate via WMI. See the [WMI setup instructions](https://github.com/neurobooth/neurobooth-os/blob/master/docs/enable_WMI_instuctions.txt) for configuration details.
+Neurobooth runs on multiple Windows server machines, which communicate via WMI. See the [inter-machine setup runbook](https://github.com/neurobooth/neurobooth-os/blob/master/docs/inter_machine_setup.md) for configuration details.
 
 Neurobooth requires a PostgreSQL database. Connection is established with
 `neurobooth_os.iout.metadator.get_conn()`. Per `~/.neurobooth_os_secrets`,

@@ -78,7 +78,7 @@ For more information on configuration settings, see [system_configuration.md](ar
 ## Servers
 ACQ and STM servers are started by the GUI through Windows `SCHTASKS`. On first launch, the GUI registers a scheduled task that runs the appropriate batch file (`server_acq.bat` or `server_stm.bat`) and then triggers it; on subsequent launches the existing task is reused. PowerShell `Get-CimInstance` (over a DCOM `CimSession`) and `tasklist` are used alongside SCHTASKS to inventory and clean up Python processes between runs. You can view and troubleshoot the tasks in the Windows Task Scheduler.
 
-For single-machine testing, you do **not** need to enable remote WMI or configure a domain user — when `machines.<name>.user` is empty, `netcomm/client.py` skips the remote credentials and runs SCHTASKS / Get-CimInstance / tasklist locally on the calling machine. The [WMI instructions](enable_WMI_instuctions.txt) are only relevant for multi-machine production deployments where CTR launches ACQ and STM on separate hosts.
+For single-machine testing, you do **not** need to enable remote WMI or configure a domain user — when `machines.<name>.user` is empty, `netcomm/client.py` skips the remote credentials and runs SCHTASKS / Get-CimInstance / tasklist locally on the calling machine. The [inter-machine setup runbook](inter_machine_setup.md) is only relevant for multi-machine production deployments where CTR launches ACQ and STM on separate hosts.
 
 Please Note: When the tasks are first added to the scheduler, they are created with a number of default settings, one of which causes the task to not run if the machine is not running on AC power. You should probably change that if you plan to work on a laptop and may run on battery.
 
