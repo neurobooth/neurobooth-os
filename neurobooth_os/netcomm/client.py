@@ -120,7 +120,7 @@ def get_all_python_processes_with_cmd(server_name: str = None, user: str = None,
     """
     # Remote calls use a DCOM CimSession to match the wire protocol WMIC used,
     # so the existing inter-machine WMI/firewall/registry runbook in
-    # docs/enable_WMI_instuctions.txt remains the source of truth. WSMan/WinRM
+    # docs/inter_machine_setup.md remains the source of truth. WSMan/WinRM
     # is deliberately not used (different security model — see #760).
     #
     # Credentials are passed via env vars so the password never appears in the
