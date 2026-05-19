@@ -94,12 +94,12 @@ dependencies = [
     "soundfile>=0.12.1",
     # Hardware: cameras, wearables, input
     "pyrealsense2>=2.54.2.5684",
-    "pyserial>=3.5",
-    "pyparallel>=0.2.2",
     "metawear>=1.0.8",
     "warble>=1.2.9",
     "pynput>=1.7.6",
-    "pywinhook>=1.6.2",
+    # pyserial / pyparallel / pywinhook removed (#763): no direct import
+    # anywhere in neurobooth_os/ or extras/. See docs/win11_vendor_compat.md
+    # for the audit and the parallel-port-trigger caveat.
     # Windows interop
     "pywin32>=306",
     "pypiwin32>=223",
