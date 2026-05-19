@@ -43,14 +43,13 @@ from _baseline_common import (
     CollectionError,
     build_envelope,
     collect_os_identity,
+    os_segment,
+    percentile,
     resolved_log_dir,
 )
 
 SCHEMA_VERSION = 1
 SCHEMA_NAME = "timing_baseline"
-
-# Win11's first build is 22000; anything below is Win10 for our booths.
-WIN11_MIN_BUILD = 22000
 
 # Sanity bounds for the single-run verdict. These are NOT pass/fail
 # thresholds for the OS question -- that is compare_timing.py's job against a
@@ -60,56 +59,14 @@ WIN11_MIN_BUILD = 22000
 SANITY_MEAN_ERROR_FACTOR = 5.0  # mean abs error > 5x requested interval
 SANITY_MAX_ERROR_FACTOR = 50.0  # worst single wait > 50x requested interval
 
-
-def os_segment(machine: Dict[str, Any]) -> str:
-    """Derive the ``win10`` / ``win11`` / ``unknown`` path segment.
-
-    Prefers the OS build number (unambiguous: Win11 >= 22000); falls back to
-    the caption string; returns ``"unknown"`` if neither is conclusive so a
-    misfiled artefact is obvious rather than silently mislabeled.
-
-    Args:
-        machine: The ``machine`` identity block.
-
-    Returns:
-        One of ``"win10"``, ``"win11"``, ``"unknown"``.
-    """
-    build_raw = machine.get("os_build")
-    try:
-        build = int(str(build_raw).strip())
-    except (TypeError, ValueError):
-        build = None
-    if build is not None:
-        return "win11" if build >= WIN11_MIN_BUILD else "win10"
-
-    caption = (machine.get("os_caption") or "").lower()
-    if "windows 11" in caption:
-        return "win11"
-    if "windows 10" in caption:
-        return "win10"
-    return "unknown"
+# os_segment / WIN11_MIN_BUILD now live in _baseline_common (shared with
+# mbient_soak); imported above so timing_baseline.os_segment still resolves.
 
 
-def _percentile(sorted_vals: List[float], pct: float) -> float:
-    """Linear-interpolated percentile (numpy 'linear' method), pure-Python.
-
-    Kept dependency-free so the summary layer is unit-testable without the
-    scientific stack and gives bit-stable expected values in tests.
-
-    Args:
-        sorted_vals: Ascending-sorted samples (non-empty).
-        pct: Percentile in [0, 100].
-
-    Returns:
-        The interpolated percentile value.
-    """
-    if len(sorted_vals) == 1:
-        return float(sorted_vals[0])
-    rank = (pct / 100.0) * (len(sorted_vals) - 1)
-    low = int(rank)
-    high = min(low + 1, len(sorted_vals) - 1)
-    frac = rank - low
-    return float(sorted_vals[low] * (1.0 - frac) + sorted_vals[high] * frac)
+# Percentile lives in _baseline_common now (shared with mbient_soak and the
+# comparators — single source of truth). Thin module alias so the existing
+# call sites and tests that reference ``_percentile`` are unaffected.
+_percentile = percentile
 
 
 def summarize_errors(

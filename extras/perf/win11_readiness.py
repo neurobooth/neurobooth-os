@@ -30,6 +30,7 @@ from typing import Any, Optional
 from _baseline_common import (
     CollectionError,
     build_envelope,
+    collect_bluetooth_radios,
     collect_os_identity,
     parse_ps_date,
     ps_json,
@@ -253,40 +254,15 @@ def collect_gpu(snap: Snapshot) -> None:
 
 
 def collect_bluetooth(snap: Snapshot) -> None:
-    """Populate ``neurobooth_extras.bluetooth`` with radio and driver versions."""
-    try:
-        info = ps_json(
-            "Get-PnpDevice -Class Bluetooth -Status OK -ErrorAction SilentlyContinue | "
-            "ForEach-Object { "
-            "  $id = $_.InstanceId; "
-            "  $drv = (Get-PnpDeviceProperty -InstanceId $id "
-            "    -KeyName 'DEVPKEY_Device_DriverVersion' -ErrorAction SilentlyContinue).Data; "
-            "  $date = (Get-PnpDeviceProperty -InstanceId $id "
-            "    -KeyName 'DEVPKEY_Device_DriverDate' -ErrorAction SilentlyContinue).Data; "
-            "  $mfg = (Get-PnpDeviceProperty -InstanceId $id "
-            "    -KeyName 'DEVPKEY_Device_Manufacturer' -ErrorAction SilentlyContinue).Data; "
-            "  [pscustomobject]@{ "
-            "    Name = $_.FriendlyName; InstanceId = $id; "
-            "    Manufacturer = $mfg; DriverVersion = $drv; DriverDate = $date "
-            "  } "
-            "} | ConvertTo-Json -Depth 3"
-        )
-        if isinstance(info, dict):
-            info = [info]
-        radios = []
-        for entry in info or []:
-            radios.append(
-                {
-                    "name": entry.get("Name"),
-                    "instance_id": entry.get("InstanceId"),
-                    "manufacturer": entry.get("Manufacturer"),
-                    "driver_version": entry.get("DriverVersion"),
-                    "driver_date": parse_ps_date(entry.get("DriverDate")),
-                }
-            )
-        snap.neurobooth_extras["bluetooth"] = radios
-    except Exception as exc:  # noqa: BLE001
-        snap.record_error("neurobooth_extras.bluetooth", exc)
+    """Populate ``neurobooth_extras.bluetooth`` with radio and driver versions.
+
+    Delegates to the shared :func:`collect_bluetooth_radios` (single source of
+    truth, also used by ``mbient_soak.py``); the hardware-floor inventory does
+    not need the power-management add-on.
+    """
+    radios, errors = collect_bluetooth_radios()
+    snap.neurobooth_extras["bluetooth"] = radios
+    snap.errors.extend(errors)
 
 
 def collect_vendor_software(snap: Snapshot) -> None:
