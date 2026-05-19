@@ -9,9 +9,19 @@ Usage:
     python extras/check_usb_topology.py
 """
 
+import argparse
+import json
 import subprocess
 import sys
 from collections import defaultdict
+from pathlib import Path
+
+from _baseline_common import (
+    build_envelope,
+    collect_os_identity,
+    os_segment,
+    resolved_log_dir,
+)
 
 
 def get_all_usb_devices():
@@ -42,7 +52,9 @@ def get_all_usb_devices():
     try:
         result = subprocess.run(
             ["powershell", "-Command", ps_cmd],
-            capture_output=True, text=True, timeout=60
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
     except subprocess.TimeoutExpired:
         print("Error: PowerShell timed out enumerating devices.", file=sys.stderr)
@@ -59,13 +71,15 @@ def get_all_usb_devices():
         parts = line.split("|")
         if len(parts) < 4:
             continue
-        devices.append({
-            "instance_id": parts[0].strip(),
-            "name": parts[1].strip() or parts[0].strip(),
-            "class_name": parts[2].strip(),
-            "parent_id": parts[3].strip(),
-            "bus_desc": parts[4].strip() if len(parts) > 4 else "",
-        })
+        devices.append(
+            {
+                "instance_id": parts[0].strip(),
+                "name": parts[1].strip() or parts[0].strip(),
+                "class_name": parts[2].strip(),
+                "parent_id": parts[3].strip(),
+                "bus_desc": parts[4].strip() if len(parts) > 4 else "",
+            }
+        )
     return devices
 
 
@@ -93,7 +107,11 @@ def print_tree(node_id, by_id, children, prefix="", is_last=True):
 
     connector = "└─ " if is_last else "├─ "
     name = dev["name"]
-    bus = f"  ({dev['bus_desc']})" if dev["bus_desc"] and dev["bus_desc"] != dev["name"] else ""
+    bus = (
+        f"  ({dev['bus_desc']})"
+        if dev["bus_desc"] and dev["bus_desc"] != dev["name"]
+        else ""
+    )
     cls = dev["class_name"]
     cls_str = f"  [{cls}]" if cls and cls != "USB" else ""
 
@@ -102,28 +120,20 @@ def print_tree(node_id, by_id, children, prefix="", is_last=True):
     child_prefix = prefix + ("   " if is_last else "│  ")
     child_ids = children.get(node_id, [])
     # Sort children: hubs first, then by name
-    child_ids = sorted(child_ids, key=lambda c: (
-        0 if "hub" in by_id.get(c, {}).get("name", "").lower() else 1,
-        by_id.get(c, {}).get("name", ""),
-    ))
+    child_ids = sorted(
+        child_ids,
+        key=lambda c: (
+            0 if "hub" in by_id.get(c, {}).get("name", "").lower() else 1,
+            by_id.get(c, {}).get("name", ""),
+        ),
+    )
 
     for i, child_id in enumerate(child_ids):
         print_tree(child_id, by_id, children, child_prefix, i == len(child_ids) - 1)
 
 
-def main():
-    print("=" * 70)
-    print("USB Topology Report")
-    print("=" * 70)
-
-    print("\nEnumerating devices...", end="", flush=True)
-    devices = get_all_usb_devices()
-    print(f" found {len(devices)} USB-related devices.\n")
-
-    if not devices:
-        print("No USB devices found. Ensure you have permission to query PnP devices.")
-        return
-
+def print_topology_report(devices):
+    """The original human tree report (unchanged behaviour)."""
     by_id, children, controllers = build_tree(devices)
 
     if not controllers:
@@ -147,10 +157,13 @@ def main():
         print(f"  {ctrl_id}")
 
         child_ids = children.get(ctrl_id, [])
-        child_ids = sorted(child_ids, key=lambda c: (
-            0 if "hub" in by_id.get(c, {}).get("name", "").lower() else 1,
-            by_id.get(c, {}).get("name", ""),
-        ))
+        child_ids = sorted(
+            child_ids,
+            key=lambda c: (
+                0 if "hub" in by_id.get(c, {}).get("name", "").lower() else 1,
+                by_id.get(c, {}).get("name", ""),
+            ),
+        )
         for j, child_id in enumerate(child_ids):
             print_tree(child_id, by_id, children, "  ", j == len(child_ids) - 1)
         print()
@@ -170,9 +183,13 @@ def main():
     total_devices = 0
     for ctrl_id in sorted(controllers):
         ctrl = by_id.get(ctrl_id, {})
-        leaves = [by_id[lid] for lid in count_leaves(ctrl_id) if lid in by_id and lid != ctrl_id]
+        leaves = [
+            by_id[lid]
+            for lid in count_leaves(ctrl_id)
+            if lid in by_id and lid != ctrl_id
+        ]
         # Filter out hubs from leaf count
-        endpoints = [l for l in leaves if "hub" not in l["name"].lower()]
+        endpoints = [leaf for leaf in leaves if "hub" not in leaf["name"].lower()]
         total_devices += len(endpoints)
         print(f"{ctrl.get('name', ctrl_id)}:")
         print(f"  {len(endpoints)} endpoint device(s)")
@@ -180,8 +197,88 @@ def main():
             print(f"    {ep['name']:50s}  [{ep['class_name']}]")
         print()
 
-    print(f"Total: {total_devices} endpoint device(s) across {len(controllers)} controller(s)")
+    print(
+        f"Total: {total_devices} endpoint device(s) across {len(controllers)} controller(s)"
+    )
+
+
+def main(argv=None):
+    """Print the USB tree and/or emit an OS-tagged JSON envelope.
+
+    #763 extends (does not rewrite) this script: the human tree report is
+    unchanged and still the default; ``--json`` additionally emits the shared
+    ``_baseline_common`` envelope so a Win10 USB-topology baseline can be
+    diffed against a Win11 run (``sdk_compare.py``).
+    """
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--json",
+        nargs="?",
+        const="__default__",
+        default=None,
+        help="Also emit a JSON envelope. Optional PATH; default "
+        "<log_dir>/usb_topology/<os>/<hostname>.json.",
+    )
+    parser.add_argument(
+        "--no-tree",
+        action="store_true",
+        help="Skip the human tree report (use with --json).",
+    )
+    args = parser.parse_args(argv)
+
+    devices = get_all_usb_devices()
+
+    if not args.no_tree:
+        print("=" * 70)
+        print("USB Topology Report")
+        print("=" * 70)
+        print(f"\nFound {len(devices)} USB-related devices.\n")
+        if devices:
+            print_topology_report(devices)
+        else:
+            print(
+                "No USB devices found. Ensure you have permission to query "
+                "PnP devices."
+            )
+
+    if args.json is not None:
+        machine, errors = collect_os_identity(None)
+        _, _, controllers = build_tree(devices) if devices else ({}, {}, [])
+        payload = build_envelope(
+            schema_name="usb_topology",
+            schema_version=1,
+            machine=machine,
+            blocks={
+                "devices": devices,
+                "controller_ids": controllers,
+                "n_devices": len(devices),
+            },
+            verdict={
+                "category": "CAPTURED" if devices else "NO_DEVICES",
+                "reasons": [
+                    "USB-topology capture. Regression is a comparison: diff "
+                    "against the locked Win10 baseline (sdk_compare.py)."
+                ],
+                "remediation_hints": [],
+            },
+            errors=errors,
+        )
+        if args.json == "__default__":
+            out_path = (
+                resolved_log_dir("usb_topology")
+                / os_segment(machine)
+                / f"{machine.get('hostname', 'unknown')}.json"
+            )
+        else:
+            out_path = Path(args.json)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(
+            json.dumps(payload, indent=2, default=str), encoding="utf-8"
+        )
+        print(f"Wrote: {out_path}", file=sys.stderr)
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
