@@ -155,11 +155,11 @@ These are stated plainly because the strategy doc requires it, not buried:
 
 ## Deferred / out of scope (intentionally not built)
 
-- **The heavyweight bag-file post-processing rebuild** (#761 step 2 / audit
-  §4 step 1: de-hardcode the 2022 `Z:\` scripts, fix the two
-  `plot_timing_test_sync.py` bugs). The strategy demotes the
+- **The heavyweight bag-file post-processing rebuild** (audit §4 step 1:
+  de-hardcode the 2022 `Z:\` scripts, fix the two `plot_timing_test_sync.py`
+  bugs) — **won't-do**, decided on #761. The strategy demotes the
   saccades/clapping tests to a **one-time confirmatory run per OS baseline**,
-  so rebuilding that pipeline is deliberately not part of the routine loop.
+  so rebuilding that pipeline is out of scope by decision, not omission.
 - **The documented recording fixture** — tracked in **#805**; defined in
   [`timing_test_recording_audit.md`](timing_test_recording_audit.md) **§4
   item 5** and **§1.4** (which study/collection, duration, scene, lighting,
