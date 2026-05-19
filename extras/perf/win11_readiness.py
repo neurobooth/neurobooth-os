@@ -21,14 +21,20 @@ read-only queries used below.
 from __future__ import annotations
 
 import argparse
-import datetime as dt
 import json
-import socket
-import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
+
+from _baseline_common import (
+    CollectionError,
+    build_envelope,
+    collect_os_identity,
+    parse_ps_date,
+    ps_json,
+    run_powershell,
+)
 
 
 SCHEMA_VERSION = 1
@@ -51,14 +57,6 @@ VENDOR_SOFTWARE_KEYWORDS = (
 
 
 @dataclass
-class CollectionError:
-    """A single non-fatal failure during data collection."""
-
-    field: str
-    message: str
-
-
-@dataclass
 class Snapshot:
     """Accumulator for the JSON payload."""
 
@@ -69,75 +67,14 @@ class Snapshot:
     errors: list[CollectionError] = field(default_factory=list)
 
     def record_error(self, where: str, exc: BaseException) -> None:
-        self.errors.append(CollectionError(field=where, message=f"{type(exc).__name__}: {exc}"))
-
-
-def run_powershell(script: str, timeout: int = 60) -> str:
-    """Execute a PowerShell snippet and return its stdout.
-
-    Args:
-        script: PowerShell source to run via ``powershell -Command``.
-        timeout: Seconds before the call is killed.
-
-    Returns:
-        Captured stdout, stripped of trailing whitespace.
-
-    Raises:
-        subprocess.CalledProcessError: PowerShell exited non-zero.
-        subprocess.TimeoutExpired: ``timeout`` elapsed.
-    """
-    completed = subprocess.run(
-        ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
-    if completed.returncode != 0:
-        raise subprocess.CalledProcessError(
-            completed.returncode,
-            "powershell",
-            output=completed.stdout,
-            stderr=completed.stderr,
-        )
-    return completed.stdout.strip()
-
-
-def ps_json(script: str, timeout: int = 60) -> Any:
-    """Run a PowerShell snippet that pipes through ``ConvertTo-Json`` and parse it.
-
-    Args:
-        script: PowerShell source. The caller is responsible for the
-            ``ConvertTo-Json`` pipe; ``-Depth 5`` is recommended.
-        timeout: Forwarded to :func:`run_powershell`.
-
-    Returns:
-        Parsed JSON value, or ``None`` if PowerShell produced empty output.
-    """
-    raw = run_powershell(script, timeout=timeout)
-    if not raw:
-        return None
-    return json.loads(raw)
+        self.errors.append(CollectionError.from_exception(where, exc))
 
 
 def collect_machine(snap: Snapshot, role: Optional[str]) -> None:
     """Populate :attr:`Snapshot.machine` with hostname, role, and OS identity."""
-    snap.machine["hostname"] = socket.gethostname()
-    if role:
-        snap.machine["role"] = role
-    try:
-        info = ps_json(
-            "Get-CimInstance Win32_OperatingSystem | "
-            "Select-Object Caption, Version, BuildNumber, OSArchitecture | "
-            "ConvertTo-Json -Depth 3"
-        )
-        if isinstance(info, dict):
-            snap.machine["os_caption"] = info.get("Caption")
-            snap.machine["os_version"] = info.get("Version")
-            snap.machine["os_build"] = info.get("BuildNumber")
-            snap.machine["os_arch"] = info.get("OSArchitecture")
-    except Exception as exc:  # noqa: BLE001
-        snap.record_error("machine.os", exc)
+    machine, errors = collect_os_identity(role)
+    snap.machine.update(machine)
+    snap.errors.extend(errors)
 
 
 def collect_tpm(snap: Snapshot) -> None:
@@ -304,7 +241,7 @@ def collect_gpu(snap: Snapshot) -> None:
                 {
                     "name": entry.get("Name"),
                     "driver_version": entry.get("DriverVersion"),
-                    "driver_date": _parse_ps_date(entry.get("DriverDate")),
+                    "driver_date": parse_ps_date(entry.get("DriverDate")),
                     "video_ram_bytes": int(entry.get("AdapterRAM") or 0),
                     "video_processor": entry.get("VideoProcessor"),
                     "video_mode": entry.get("VideoModeDescription"),
@@ -313,21 +250,6 @@ def collect_gpu(snap: Snapshot) -> None:
         snap.win11_floor["gpus"] = gpus
     except Exception as exc:  # noqa: BLE001
         snap.record_error("win11_floor.gpus", exc)
-
-
-def _parse_ps_date(value: Any) -> Any:
-    """Convert PowerShell's ``/Date(ms)/`` JSON representation to ISO-8601.
-
-    Returns the input unchanged if it isn't a ``/Date(...)/`` string.
-    """
-    if not isinstance(value, str) or not value.startswith("/Date("):
-        return value
-    try:
-        ms_token = value.split("(")[1].split(")")[0]
-        ms = int(ms_token.split("+")[0].split("-")[0])
-        return dt.datetime.fromtimestamp(ms / 1000, tz=dt.timezone.utc).isoformat()
-    except Exception:  # noqa: BLE001
-        return value
 
 
 def collect_bluetooth(snap: Snapshot) -> None:
@@ -359,7 +281,7 @@ def collect_bluetooth(snap: Snapshot) -> None:
                     "instance_id": entry.get("InstanceId"),
                     "manufacturer": entry.get("Manufacturer"),
                     "driver_version": entry.get("DriverVersion"),
-                    "driver_date": _parse_ps_date(entry.get("DriverDate")),
+                    "driver_date": parse_ps_date(entry.get("DriverDate")),
                 }
             )
         snap.neurobooth_extras["bluetooth"] = radios
@@ -479,18 +401,17 @@ def derive_verdict(snap: Snapshot) -> None:
 
 def to_payload(snap: Snapshot) -> dict[str, Any]:
     """Assemble the final JSON-serializable payload."""
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "schema_name": SCHEMA_NAME,
-        "captured_at": dt.datetime.now(tz=dt.timezone.utc).isoformat(),
-        "machine": snap.machine,
-        "win11_floor": snap.win11_floor,
-        "neurobooth_extras": snap.neurobooth_extras,
-        "verdict": snap.verdict,
-        "collection_errors": [
-            {"field": e.field, "message": e.message} for e in snap.errors
-        ],
-    }
+    return build_envelope(
+        schema_name=SCHEMA_NAME,
+        schema_version=SCHEMA_VERSION,
+        machine=snap.machine,
+        blocks={
+            "win11_floor": snap.win11_floor,
+            "neurobooth_extras": snap.neurobooth_extras,
+        },
+        verdict=snap.verdict,
+        errors=snap.errors,
+    )
 
 
 def default_output_path(hostname: str) -> Path:
