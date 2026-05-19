@@ -138,7 +138,18 @@ def test_thresholds_block_records_proposal_note():
     assert "not measured facts" in cmp["thresholds"]["_note"]
 
 
-def test_main_strict_exit_code(tmp_path, capsys):
+@pytest.fixture
+def _isolated_log_dir(tmp_path, monkeypatch):
+    """Pin resolved_log_dir to tmp so default-path writes never touch $HOME."""
+    import neurobooth_os.config as nb_config
+
+    monkeypatch.setattr(nb_config, "neurobooth_config", None, raising=False)
+    monkeypatch.delenv("NB_CONFIG", raising=False)
+    monkeypatch.setenv("NB_INSTALL", str(tmp_path))
+    return tmp_path
+
+
+def test_main_strict_exit_code(tmp_path, _isolated_log_dir):
     base = _baseline()
     pilot = copy.deepcopy(base)
     pilot["metrics"]["microbench"]["pylsl"]["p99"] = 9e-6  # flagged
@@ -149,7 +160,7 @@ def test_main_strict_exit_code(tmp_path, capsys):
     bp.write_text(json.dumps(base), encoding="utf-8")
     pp.write_text(json.dumps(pilot), encoding="utf-8")
 
-    # Default: a flag is REVIEW, exit 0.
+    # Default: a flag is REVIEW, exit 0; explicit --json honored.
     rc = ct.main([str(bp), str(pp), "--json", str(outp)])
     assert rc == 0
     assert outp.exists()
@@ -157,10 +168,35 @@ def test_main_strict_exit_code(tmp_path, capsys):
     assert payload["schema_name"] == "timing_comparison"
     assert payload["verdict"]["category"] == "REVIEW"
 
-    # --strict: same flag now a hard gate.
-    rc_strict = ct.main([str(bp), str(pp), "--strict"])
-    assert rc_strict == 1
+    # --strict: same flag now a hard gate (--no-json: no file side effect).
+    assert ct.main([str(bp), str(pp), "--strict", "--no-json"]) == 1
 
     # Clean comparison is exit 0 even with --strict.
     pp.write_text(json.dumps(base), encoding="utf-8")
-    assert ct.main([str(bp), str(pp), "--strict"]) == 0
+    assert ct.main([str(bp), str(pp), "--strict", "--no-json"]) == 0
+
+
+def test_main_defaults_json_into_log_dir(tmp_path, _isolated_log_dir):
+    base = _baseline()  # machine.hostname == "stm"
+    bp = tmp_path / "win10.json"
+    pp = tmp_path / "win11.json"
+    bp.write_text(json.dumps(base), encoding="utf-8")
+    pp.write_text(json.dumps(copy.deepcopy(base)), encoding="utf-8")
+
+    rc = ct.main([str(bp), str(pp)])  # no --json, no --no-json
+    assert rc == 0
+    expected = _isolated_log_dir / "timing" / "compare_stm.json"
+    assert expected.exists()
+    payload = json.loads(expected.read_text(encoding="utf-8"))
+    assert payload["schema_name"] == "timing_comparison"
+
+
+def test_main_no_json_suppresses_file(tmp_path, _isolated_log_dir):
+    base = _baseline()
+    bp = tmp_path / "win10.json"
+    pp = tmp_path / "win11.json"
+    bp.write_text(json.dumps(base), encoding="utf-8")
+    pp.write_text(json.dumps(copy.deepcopy(base)), encoding="utf-8")
+
+    assert ct.main([str(bp), str(pp), "--no-json"]) == 0
+    assert not (_isolated_log_dir / "timing").exists()

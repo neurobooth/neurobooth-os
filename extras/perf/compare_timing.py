@@ -25,7 +25,12 @@ Usage::
         extras/perf/baselines/timing/win10/stm.json \\
         extras/perf/baselines/timing/win11/stm.json \\
         [--sd-regression-ratio 1.25] [--p99-ratio 2.0] \\
-        [--json delta.json] [--strict]
+        [--json PATH] [--no-json] [--strict]
+
+The comparison JSON defaults to ``<log_dir>/timing/compare_<hostname>.json``
+(log_dir from the neurobooth config local_log_dir; NB_INSTALL/home
+fallback). ``--json`` overrides the path; ``--no-json`` prints the table
+only.
 """
 
 from __future__ import annotations
@@ -37,7 +42,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from _baseline_common import build_envelope
+from _baseline_common import build_envelope, resolved_log_dir
 
 SCHEMA_VERSION = 1
 SCHEMA_NAME = "timing_comparison"
@@ -436,7 +441,15 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         f"flagged (default {DEFAULT_MAX_NEW_DROPPED}).",
     )
     p.add_argument(
-        "--json", type=Path, help="Also write the comparison as an envelope JSON."
+        "--json",
+        type=Path,
+        help="Comparison-JSON output path. Default: "
+        "<log_dir>/timing/compare_<hostname>.json.",
+    )
+    p.add_argument(
+        "--no-json",
+        action="store_true",
+        help="Do not write the JSON file (print the delta table only).",
     )
     p.add_argument(
         "--strict",
@@ -461,7 +474,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     print(render(comparison))
 
-    if args.json:
+    if not args.no_json:
         verdict = to_verdict(comparison)
         payload = build_envelope(
             schema_name=SCHEMA_NAME,
@@ -471,11 +484,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             verdict=verdict,
             errors=[],
         )
-        args.json.parent.mkdir(parents=True, exist_ok=True)
-        args.json.write_text(
+        host = comparison.get("pilot_machine", {}).get("hostname", "unknown")
+        out_path = args.json or (resolved_log_dir("timing") / f"compare_{host}.json")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(
             json.dumps(payload, indent=2, default=str), encoding="utf-8"
         )
-        print(f"Wrote: {args.json}", file=sys.stderr)
+        print(f"Wrote: {out_path}", file=sys.stderr)
 
     if args.strict and comparison["flags"]:
         return 1

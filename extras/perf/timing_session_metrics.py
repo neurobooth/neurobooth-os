@@ -41,7 +41,13 @@ Usage::
         --baseline-from 2025-09-20 --baseline-to 2026-03-03 \\
         --pilot-from 2026-03-15 --pilot-to 2026-05-15 \\
         [--study study1] [--collection mvp_030] [--min-subject 100001] \\
-        [--json extras/perf/baselines/timing/session_ab.json] [--stdout]
+        [--json PATH] [--no-json] [--stdout]
+
+By default the envelope JSON is written to
+``<log_dir>/timing/session_ab_<baseline_from>_<pilot_to>.json`` (log_dir
+from the neurobooth config local_log_dir; NB_INSTALL/home fallback) so run
+output stays out of the repo working tree. ``--json`` overrides the path,
+``--no-json`` suppresses the file.
 """
 
 from __future__ import annotations
@@ -54,7 +60,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
-from _baseline_common import CollectionError, build_envelope, collect_os_identity
+from _baseline_common import (
+    CollectionError,
+    build_envelope,
+    collect_os_identity,
+    resolved_log_dir,
+)
 
 SCHEMA_VERSION = 1
 SCHEMA_NAME = "timing_session_metrics"
@@ -472,7 +483,13 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument(
         "--json",
         type=Path,
-        help="Also write the metric block as a baseline-envelope JSON.",
+        help="Envelope-JSON output path. Default: "
+        "<log_dir>/timing/session_ab_<baseline_from>_<pilot_to>.json.",
+    )
+    p.add_argument(
+        "--no-json",
+        action="store_true",
+        help="Do not write the JSON file (stdout/report only).",
     )
     p.add_argument(
         "--stdout", action="store_true", help="Print the JSON envelope to stdout."
@@ -518,34 +535,38 @@ def main(argv: Optional[List[str]] = None) -> int:
     metrics = compute_metrics(df, baseline, pilot)
     print_report(metrics)
 
-    if args.json or args.stdout:
-        verdict = {
-            "category": "CAPTURED",
-            "reasons": [
-                "Tier-1 DB-derived A/B. Sample-level jitter/drift/drops are "
-                "deferred (see metrics.sample_level).",
-                "Calendar-window A/B confounds OS with subjects/room/drivers/"
-                "release (strategy §6.1.2); treat as the representative "
-                "corroborator, not the causal instrument.",
-            ],
-            "remediation_hints": [],
-        }
-        payload = build_envelope(
-            schema_name=SCHEMA_NAME,
-            schema_version=SCHEMA_VERSION,
-            machine=machine,
-            blocks={"metrics": metrics},
-            verdict=verdict,
-            errors=errors,
+    verdict = {
+        "category": "CAPTURED",
+        "reasons": [
+            "Tier-1 DB-derived A/B. Sample-level jitter/drift/drops are "
+            "deferred (see metrics.sample_level).",
+            "Calendar-window A/B confounds OS with subjects/room/drivers/"
+            "release (strategy §6.1.2); treat as the representative "
+            "corroborator, not the causal instrument.",
+        ],
+        "remediation_hints": [],
+    }
+    payload = build_envelope(
+        schema_name=SCHEMA_NAME,
+        schema_version=SCHEMA_VERSION,
+        machine=machine,
+        blocks={"metrics": metrics},
+        verdict=verdict,
+        errors=errors,
+    )
+
+    if not args.no_json:
+        out_path = args.json or (
+            resolved_log_dir("timing")
+            / f"session_ab_{args.baseline_from}_{args.pilot_to}.json"
         )
-        if args.json:
-            args.json.parent.mkdir(parents=True, exist_ok=True)
-            args.json.write_text(
-                json.dumps(payload, indent=2, default=str), encoding="utf-8"
-            )
-            print(f"Wrote: {args.json}", file=sys.stderr)
-        if args.stdout:
-            print(json.dumps(payload, indent=2, default=str))
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(
+            json.dumps(payload, indent=2, default=str), encoding="utf-8"
+        )
+        print(f"Wrote: {out_path}", file=sys.stderr)
+    if args.stdout:
+        print(json.dumps(payload, indent=2, default=str))
 
     return 0
 

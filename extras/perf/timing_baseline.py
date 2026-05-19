@@ -21,10 +21,14 @@ Usage::
         [--reps N] [--interval SECONDS] [--with-flip-stats]
         [--flip-frames N] [--out PATH] [--stdout]
 
-By default writes ``extras/perf/baselines/timing/<os>/<hostname>.json``,
-where ``<os>`` is ``win10`` / ``win11`` / ``unknown`` derived from the OS
-build, so the Win10 baseline and the Win11 pilot land in sibling trees ready
-for the comparator.
+By default writes ``<log_dir>/timing/<os>/<hostname>.json`` -- ``<log_dir>``
+is the neurobooth ``local_log_dir`` from the loaded config (the same place
+the crash/startup logs go), falling back to ``NB_INSTALL`` then the user
+home. ``<os>`` is ``win10`` / ``win11`` / ``unknown`` from the OS build, so
+the Win10 baseline and Win11 pilot land in sibling trees for the comparator.
+Runtime artefacts stay out of the repo working tree; a locked baseline is a
+deliberate copy into ``extras/perf/baselines/timing/`` (see
+``docs/timing_summary.md``).
 """
 
 from __future__ import annotations
@@ -39,6 +43,7 @@ from _baseline_common import (
     CollectionError,
     build_envelope,
     collect_os_identity,
+    resolved_log_dir,
 )
 
 SCHEMA_VERSION = 1
@@ -317,10 +322,18 @@ def derive_verdict(metrics: Dict[str, Any], interval: float) -> Dict[str, Any]:
     }
 
 
-def default_output_path(os_seg: str, hostname: str) -> Path:
-    """Return ``extras/perf/baselines/timing/<os>/<hostname>.json``."""
-    here = Path(__file__).resolve().parent
-    return here / "baselines" / "timing" / os_seg / f"{hostname}.json"
+def default_output_path(base: Path, os_seg: str, hostname: str) -> Path:
+    """Return ``<base>/<os_seg>/<hostname>.json``.
+
+    Pure (the resolved ``base`` directory is passed in, not discovered here)
+    so it stays unit-testable without touching the real log directory.
+
+    Args:
+        base: Resolved output root (e.g. ``resolved_log_dir("timing")``).
+        os_seg: ``win10`` / ``win11`` / ``unknown``.
+        hostname: Machine hostname.
+    """
+    return Path(base) / os_seg / f"{hostname}.json"
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -358,7 +371,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--out",
         type=Path,
         help="Output path. Defaults to "
-        "extras/perf/baselines/timing/<os>/<hostname>.json.",
+        "<log_dir>/timing/<os>/<hostname>.json (log_dir from the neurobooth "
+        "config local_log_dir; NB_INSTALL/home fallback).",
     )
     parser.add_argument(
         "--stdout",
@@ -376,6 +390,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     machine, os_errors = collect_os_identity(args.role)
     errors.extend(os_errors)
+
+    out_base = resolved_log_dir("timing")
 
     metrics: Dict[str, Any] = {
         "requested_interval_s": args.interval,
@@ -400,7 +416,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             errors=errors,
         )
         out_path = args.out or default_output_path(
-            os_segment(machine), machine.get("hostname", "unknown")
+            out_base, os_segment(machine), machine.get("hostname", "unknown")
         )
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(
@@ -434,7 +450,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
 
     out_path = args.out or default_output_path(
-        os_segment(machine), machine.get("hostname", "unknown")
+        out_base, os_segment(machine), machine.get("hostname", "unknown")
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")

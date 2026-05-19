@@ -65,3 +65,30 @@ def test_parse_ps_date_passthrough_and_convert():
     assert bc.parse_ps_date(None) is None
     out = bc.parse_ps_date("/Date(1600000000000)/")
     assert out.startswith("2020-")  # 2020-09-13T...
+
+
+def test_resolved_log_dir_falls_back_to_nb_install(tmp_path, monkeypatch):
+    """With no neurobooth config loaded and NB_CONFIG unset, the resolver
+    must fall back to NB_INSTALL (the same fallback the crash logs use),
+    and never raise."""
+    import neurobooth_os.config as nb_config
+
+    monkeypatch.setattr(nb_config, "neurobooth_config", None, raising=False)
+    monkeypatch.delenv("NB_CONFIG", raising=False)
+    monkeypatch.setenv("NB_INSTALL", str(tmp_path))
+
+    assert bc.resolved_log_dir() == tmp_path
+    assert bc.resolved_log_dir("timing") == tmp_path / "timing"
+
+
+def test_resolved_log_dir_never_raises(monkeypatch):
+    """Even with NB_INSTALL unset and no config, it returns a usable Path."""
+    import neurobooth_os.config as nb_config
+
+    monkeypatch.setattr(nb_config, "neurobooth_config", None, raising=False)
+    monkeypatch.delenv("NB_CONFIG", raising=False)
+    monkeypatch.delenv("NB_INSTALL", raising=False)
+
+    result = bc.resolved_log_dir("timing")
+    assert result.name == "timing"
+    assert result.parent.is_absolute()

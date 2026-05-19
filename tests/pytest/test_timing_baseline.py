@@ -70,9 +70,11 @@ def test_os_segment(machine, expected):
     assert tb.os_segment(machine) == expected
 
 
-def test_default_output_path():
-    p = tb.default_output_path("win10", "stm").as_posix()
-    assert p.endswith("extras/perf/baselines/timing/win10/stm.json")
+def test_default_output_path_is_pure_under_given_base():
+    from pathlib import Path
+
+    p = tb.default_output_path(Path("/var/log/nb/timing"), "win10", "stm")
+    assert p.as_posix() == "/var/log/nb/timing/win10/stm.json"
 
 
 def test_derive_verdict_clean_run_is_captured():

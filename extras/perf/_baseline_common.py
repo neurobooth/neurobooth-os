@@ -21,9 +21,11 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 import socket
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Optional
 
 
@@ -187,3 +189,50 @@ def build_envelope(
         {"field": e.field, "message": e.message} for e in errors
     ]
     return payload
+
+
+def resolved_log_dir(subfolder: Optional[str] = None) -> Path:
+    """Return the configured neurobooth log directory (optionally a subfolder).
+
+    Runtime artefacts the timing tools produce belong in the booth's log
+    directory, not in the repo working tree. This reuses the project's one
+    canonical resolver, ``neurobooth_os.log_manager._get_log_dir`` -- the
+    same function the crash/startup logs use -- so the location follows
+    ``local_log_dir`` from the loaded neurobooth config, with the project's
+    own ``NB_INSTALL`` / home fallback when no config is present.
+
+    Everything is best-effort and import-light: ``neurobooth_os`` is imported
+    lazily inside the function so dependency-light tools that only need the
+    JSON envelope (``win11_readiness``) never pull the neurobooth stack, and
+    a dev box / CI without the package still gets a sane directory. The
+    config is loaded (without path validation) only if it has not been
+    loaded already, matching the pattern in ``intertask_report.py``; if
+    ``NB_CONFIG`` is unset the load is skipped and the fallback applies.
+
+    Args:
+        subfolder: Optional child directory appended to the resolved root
+            (e.g. ``"timing"``). Not created here; the caller's
+            ``mkdir(parents=True)`` does that.
+
+    Returns:
+        The resolved directory as a :class:`pathlib.Path`.
+    """
+    base: Optional[str] = None
+    try:
+        import neurobooth_os.config as _cfg
+        from neurobooth_os.log_manager import _get_log_dir
+
+        if _cfg.neurobooth_config is None:
+            try:
+                _cfg.load_config(validate_paths=False)
+            except Exception:  # noqa: BLE001
+                pass  # NB_CONFIG unset / no config file -> use the fallback
+        base = _get_log_dir()
+    except Exception:  # noqa: BLE001
+        base = None  # neurobooth_os not importable (dev box / CI)
+
+    if not base:
+        base = os.environ.get("NB_INSTALL") or os.path.expanduser("~")
+
+    root = Path(base)
+    return root / subfolder if subfolder else root
