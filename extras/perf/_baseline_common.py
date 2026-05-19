@@ -236,3 +236,149 @@ def resolved_log_dir(subfolder: Optional[str] = None) -> Path:
 
     root = Path(base)
     return root / subfolder if subfolder else root
+
+
+def percentile(sorted_vals: "list[float]", pct: float) -> float:
+    """Linear-interpolated percentile (numpy 'linear' method), pure-Python.
+
+    Single source of truth for the perf tools' percentile (timing baseline,
+    Mbient soak, and the comparators) so the number is computed identically
+    everywhere and stays unit-test-stable without the scientific stack.
+
+    Args:
+        sorted_vals: Ascending-sorted samples (must be non-empty; callers
+            guard the empty case, matching the original timing-baseline use).
+        pct: Percentile in [0, 100].
+
+    Returns:
+        The interpolated percentile value.
+    """
+    if len(sorted_vals) == 1:
+        return float(sorted_vals[0])
+    rank = (pct / 100.0) * (len(sorted_vals) - 1)
+    low = int(rank)
+    high = min(low + 1, len(sorted_vals) - 1)
+    frac = rank - low
+    return float(sorted_vals[low] * (1.0 - frac) + sorted_vals[high] * frac)
+
+
+# Win11's first build is 22000; anything below is Win10 for our booths.
+WIN11_MIN_BUILD = 22000
+
+
+def os_segment(machine: "dict") -> str:
+    """Derive the ``win10`` / ``win11`` / ``unknown`` path segment.
+
+    Prefers the OS build number (unambiguous: Win11 >= 22000); falls back to
+    the caption string; returns ``"unknown"`` if neither is conclusive so a
+    misfiled artefact is obvious rather than silently mislabeled. Shared by
+    the timing-baseline and Mbient-soak artefact paths.
+
+    Args:
+        machine: The ``machine`` identity block.
+
+    Returns:
+        One of ``"win10"``, ``"win11"``, ``"unknown"``.
+    """
+    build_raw = machine.get("os_build")
+    try:
+        build = int(str(build_raw).strip())
+    except (TypeError, ValueError):
+        build = None
+    if build is not None:
+        return "win11" if build >= WIN11_MIN_BUILD else "win10"
+
+    caption = (machine.get("os_caption") or "").lower()
+    if "windows 11" in caption:
+        return "win11"
+    if "windows 10" in caption:
+        return "win10"
+    return "unknown"
+
+
+_BT_RADIO_PS = (
+    "Get-PnpDevice -Class Bluetooth -Status OK -ErrorAction SilentlyContinue | "
+    "ForEach-Object { "
+    "  $id = $_.InstanceId; "
+    "  $drv = (Get-PnpDeviceProperty -InstanceId $id "
+    "    -KeyName 'DEVPKEY_Device_DriverVersion' -ErrorAction SilentlyContinue).Data; "
+    "  $date = (Get-PnpDeviceProperty -InstanceId $id "
+    "    -KeyName 'DEVPKEY_Device_DriverDate' -ErrorAction SilentlyContinue).Data; "
+    "  $mfg = (Get-PnpDeviceProperty -InstanceId $id "
+    "    -KeyName 'DEVPKEY_Device_Manufacturer' -ErrorAction SilentlyContinue).Data; "
+    "  [pscustomobject]@{ "
+    "    Name = $_.FriendlyName; InstanceId = $id; "
+    "    Manufacturer = $mfg; DriverVersion = $drv; DriverDate = $date "
+    "  } "
+    "} | ConvertTo-Json -Depth 3"
+)
+
+_BT_POWER_PS = (
+    "Get-CimInstance -Namespace root/WMI -ClassName MSPower_DeviceEnable "
+    "-ErrorAction SilentlyContinue | "
+    "Where-Object { $_.InstanceName -match 'BTH|Bluetooth' } | "
+    "Select-Object InstanceName, Enable | ConvertTo-Json -Depth 3"
+)
+
+
+def collect_bluetooth_radios(
+    include_power: bool = False,
+) -> "tuple[list, list[CollectionError]]":
+    """Enumerate Bluetooth radios (name / driver / date) and, optionally, the
+    radio power-management ("allow the computer to turn off this device")
+    state — which #759 concern #4 flags as a Win11 default change.
+
+    Single source of truth shared by ``win11_readiness.py`` (hardware floor)
+    and ``mbient_soak.py`` (BLE soak run context). PowerShell failures are
+    returned as :class:`CollectionError` rather than raised so the caller can
+    still emit a useful artefact.
+
+    Args:
+        include_power: Also query ``MSPower_DeviceEnable`` and attach a
+            best-effort ``power_mgmt`` list (each ``{instance_name, enable}``;
+            ``enable=False`` means power-saving will NOT turn the radio off).
+
+    Returns:
+        ``(radios, errors)``. ``radios`` is a list of dicts; when
+        ``include_power`` and the query succeeds, a final element
+        ``{"power_mgmt": [...]}`` is appended so the shape stays a plain list.
+    """
+    radios: list = []
+    errors: list = []
+    try:
+        info = ps_json(_BT_RADIO_PS)
+        if isinstance(info, dict):
+            info = [info]
+        for entry in info or []:
+            radios.append(
+                {
+                    "name": entry.get("Name"),
+                    "instance_id": entry.get("InstanceId"),
+                    "manufacturer": entry.get("Manufacturer"),
+                    "driver_version": entry.get("DriverVersion"),
+                    "driver_date": parse_ps_date(entry.get("DriverDate")),
+                }
+            )
+    except Exception as exc:  # noqa: BLE001
+        errors.append(CollectionError.from_exception("bluetooth.radios", exc))
+
+    if include_power:
+        try:
+            pw = ps_json(_BT_POWER_PS)
+            if isinstance(pw, dict):
+                pw = [pw]
+            radios.append(
+                {
+                    "power_mgmt": [
+                        {
+                            "instance_name": e.get("InstanceName"),
+                            "enable": e.get("Enable"),
+                        }
+                        for e in (pw or [])
+                    ]
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            errors.append(CollectionError.from_exception("bluetooth.power_mgmt", exc))
+
+    return radios, errors
