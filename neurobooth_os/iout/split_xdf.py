@@ -1,4 +1,6 @@
+import logging
 import os
+import struct
 import pyxdf
 import pylsl
 import liesl
@@ -8,8 +10,13 @@ import os.path as op
 from datetime import datetime
 from pathlib import Path
 from typing import NamedTuple, Optional, Any, List
+from xml.etree.ElementTree import ParseError
 import h5io
 import json
+
+from neurobooth_os.log_manager import APP_LOG_NAME
+
+logger = logging.getLogger(APP_LOG_NAME)
 
 
 def compute_clocks_diff() -> float:
@@ -65,14 +72,27 @@ def parse_xdf(
     """
     Split an XDF file into device/stream-specific HDF5 files.
 
+    Uses a transparent per-stream salvage fallback when the file's
+    fast-path load raises ``xml.etree.ElementTree.ParseError`` -- typical
+    of XDFs from a crashed LabRecorderCLI where one StreamHeader chunk's
+    XML is truncated (#812). See ``_load_xdf_with_salvage``.
+
     :param xdf_path: The path to the XDF file to parse.
     :param device_ids: If provided, only parse files corresponding to the specified devices.
     :returns: A structured representation of information extracted from the XDF file for each device.
     """
-    data, _ = pyxdf.load_xdf(xdf_path, dejitter_timestamps=False)
+    data = _load_xdf_with_salvage(xdf_path)
 
-    # Find marker stream to associate with each device
-    marker = [d for d in data if d["info"]["name"] == ["Marker"]][0]
+    # Find marker stream to associate with each device. In salvage mode the
+    # Marker may be the broken stream and absent from ``data``; carry on
+    # without it -- the resulting HDF5 will lack task annotations but the
+    # device sample data is still recoverable.
+    marker_candidates = [d for d in data if d["info"]["name"] == ["Marker"]]
+    marker = marker_candidates[0] if marker_candidates else None
+    if marker is None:
+        logger.warning(
+            f"parse_xdf: no Marker stream in {xdf_path}; HDF5 files will lack task annotations"
+        )
 
     results = []
     for device_data in data:
@@ -98,6 +118,125 @@ def parse_xdf(
         ))
 
     return results
+
+
+def _read_xdf_varlen_int(f) -> Optional[int]:
+    """Read an XDF varlen-int prefix. Returns the integer, or None on EOF or
+    truncation. The XDF spec encodes the length-prefix as a single byte
+    indicating the field width (1, 4, or 8), followed by that many bytes."""
+    nbytes_byte = f.read(1)
+    if not nbytes_byte:
+        return None
+    nbytes = nbytes_byte[0]
+    raw = f.read(nbytes)
+    if len(raw) < nbytes:
+        return None
+    if nbytes == 1:
+        return raw[0]
+    elif nbytes == 4:
+        return struct.unpack('<I', raw)[0]
+    elif nbytes == 8:
+        return struct.unpack('<Q', raw)[0]
+    raise ValueError(f"unexpected XDF varlen int width: {nbytes}")
+
+
+def enumerate_stream_ids(xdf_path: str) -> List[int]:
+    """Walk an XDF file's chunk structure to find all StreamId values in
+    tag-2 (StreamHeader) chunks, **without** parsing the XML inside them.
+
+    Used by ``_load_xdf_with_salvage`` to discover what streams exist in a
+    file whose pyxdf full-load would fail at the XML-parse step. Reads
+    chunk lengths and StreamId fields only; everything else is skipped via
+    ``f.seek``. Tolerant of truncation -- stops cleanly when it can't read
+    another chunk.
+
+    :param xdf_path: Path to an XDF file.
+    :returns: StreamIds in the order their StreamHeader chunks appear.
+    :raises ValueError: if the file doesn't start with the XDF magic bytes.
+    """
+    stream_ids: List[int] = []
+    with open(xdf_path, 'rb') as f:
+        magic = f.read(4)
+        if magic != b'XDF:':
+            raise ValueError(f"not an XDF file (bad magic {magic!r}): {xdf_path}")
+        while True:
+            chunklen = _read_xdf_varlen_int(f)
+            if chunklen is None:
+                break
+            tag_bytes = f.read(2)
+            if len(tag_bytes) < 2:
+                break
+            tag = struct.unpack('<H', tag_bytes)[0]
+            if tag in (2, 3, 4, 6):
+                sid_bytes = f.read(4)
+                if len(sid_bytes) < 4:
+                    break
+                stream_id = struct.unpack('<I', sid_bytes)[0]
+                if tag == 2:
+                    stream_ids.append(stream_id)
+                remaining = chunklen - 2 - 4
+                if remaining > 0:
+                    f.seek(remaining, 1)
+            else:
+                # FileHeader (1), Boundary (5), unknown tags: skip body
+                remaining = chunklen - 2
+                if remaining > 0:
+                    f.seek(remaining, 1)
+    return stream_ids
+
+
+def _load_xdf_with_salvage(xdf_path: str) -> List[dict]:
+    """Load an XDF file robustly. Tries pyxdf's fast path first; on
+    ``ParseError`` (typical of LabRecorderCLI crashes that leave a
+    StreamHeader chunk with truncated XML, #812), falls back to loading
+    each stream individually via ``select_streams=[id]`` so a single
+    broken header doesn't take down the whole load.
+
+    :param xdf_path: Path to the XDF file.
+    :returns: List of stream dicts in the shape pyxdf.load_xdf returns.
+        May be a strict subset of the file's streams if the salvage path
+        skipped corrupted headers; logs WARN/ERROR for each skip.
+    :raises RuntimeError: if salvage recovers zero streams.
+    """
+    try:
+        data, _ = pyxdf.load_xdf(xdf_path, dejitter_timestamps=False)
+        return data
+    except ParseError as e:
+        logger.warning(
+            f"pyxdf.load_xdf raised ParseError ({e}) on {xdf_path}; "
+            f"falling back to per-stream salvage."
+        )
+
+    stream_ids = enumerate_stream_ids(xdf_path)
+    logger.info(f"salvage: found {len(stream_ids)} StreamHeader chunks in {xdf_path}")
+
+    salvaged: List[dict] = []
+    skipped: List[tuple] = []
+    for sid in stream_ids:
+        try:
+            data, _ = pyxdf.load_xdf(
+                xdf_path, select_streams=[sid], dejitter_timestamps=False
+            )
+            salvaged.extend(data)
+        except ParseError as e:
+            skipped.append((sid, f"ParseError: {e}"))
+        except Exception as e:
+            skipped.append((sid, f"{type(e).__name__}: {e}"))
+
+    if skipped:
+        for sid, reason in skipped:
+            logger.error(f"salvage: skipped stream id={sid} ({reason})")
+
+    if not salvaged:
+        raise RuntimeError(
+            f"salvage failed: no streams recoverable from {xdf_path} "
+            f"(walked {len(stream_ids)} StreamHeaders, all unloadable)"
+        )
+
+    logger.warning(
+        f"salvage recovered {len(salvaged)}/{len(stream_ids)} streams from {xdf_path}"
+    )
+    return salvaged
 
 
 def _make_hdf5_path(xdf_path: str, device_id: str, sensor_ids: List[str]) -> str:
