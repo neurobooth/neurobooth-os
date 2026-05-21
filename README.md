@@ -65,6 +65,27 @@ manual installer:
 uv pip install spinnaker_python-3.x.x.x-cp38-cp38-win_amd64.whl
 ```
 
+**CTR** — LabRecorder v1.17.1 swap (workaround for [#812][i812] / [#813][i813]):
+
+`liesl` ships a LabRecorderCLI built against `liblsl 1.13-b4` (2019), but
+the producers on STM/ACQ produce LSL traffic with `pylsl 1.16.2` (2022).
+The 3-year wire-protocol gap segfaults the recorder at XDF finalize and
+truncates the resulting files. We override the bundled binaries with
+upstream v1.17.1 (`liblsl 1.17.5`). The vendored binaries live in
+`vendor/labrecorder-v1.17.1/`. Apply (or re-apply, after every `uv sync`):
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass `
+    -File "%NB_INSTALL%\extras\perf\upgrade_labrecorder_v1.17.1.ps1"
+```
+
+The script is idempotent: it detects pristine / half-applied / already-applied
+states, SHA-256 verifies at every hop, and only modifies the venv when needed.
+Add `-DryRun` to preview without changes.
+
+[i812]: https://github.com/neurobooth/neurobooth-os/issues/812
+[i813]: https://github.com/neurobooth/neurobooth-os/issues/813
+
 ### Operator environment variables
 
 The runtime batch scripts (`server_*.bat`, `transfer_data.bat`, etc.) expect
@@ -116,6 +137,16 @@ each booth (CTR → STM → ACQ):
    ```powershell
    uv pip install <path>\spinnaker_python-3.x.x.x-cp38-cp38-win_amd64.whl
    ```
+
+   On CTR also re-apply the LabRecorder v1.17.1 swap (#812, #813):
+
+   ```powershell
+   powershell.exe -ExecutionPolicy Bypass `
+       -File "%NB_INSTALL%\extras\perf\upgrade_labrecorder_v1.17.1.ps1"
+   ```
+
+   This is required after every `uv sync` until #813 is closed. The script
+   is idempotent.
 
 5. **Update operator environment variables** (Settings → Environment
    Variables → System):

@@ -20,11 +20,15 @@
 #   - Stop the neurobooth GUI on the booth (close the GUI window so no
 #     LabRecorderCLI subprocess is in flight).
 #
-# Run (downloads the zip from GitHub by default):
+# Run (uses vendored binaries from %NB_INSTALL%\vendor\labrecorder-v1.17.1\
+# when present, otherwise downloads from GitHub):
 #   powershell.exe -ExecutionPolicy Bypass -File .\upgrade_labrecorder_v1.17.1.ps1
 #
-# To use a pre-staged zip instead of downloading, pass -ZipPath <path>.
-# Add -DryRun to see what would happen without modifying anything.
+# Other options:
+#   -ZipPath <path>   use a pre-staged upstream zip instead of downloading
+#   -NoVendor         skip the vendored binaries even if present (forces
+#                     download or -ZipPath path)
+#   -DryRun           show what would happen without modifying anything
 #
 # Expected SHA-256 of the upstream zip (verified before extraction):
 #   LabRecorder-1.17.0-Win_amd64.zip  01BDE1D9AF07D29DE1A8363C967CC1EEAF524915F2DB76552484F7BECDB161ED
@@ -40,6 +44,8 @@
 [CmdletBinding()]
 param(
     [string]$ZipPath,
+
+    [switch]$NoVendor,
 
     [switch]$DryRun
 )
@@ -176,8 +182,28 @@ if (-not $statePristine) {
 }
 Write-Ok "current binaries match pristine v1.13-b4 state -- proceeding with full swap"
 
-# ---- step 4: get the zip (download or use staged) ----
-if (-not $ZipPath) {
+# ---- step 4: source the new binaries (vendor dir or zip) ----
+$vendorDir = Join-Path $env:NB_INSTALL 'vendor\labrecorder-v1.17.1'
+$vendorCli = Join-Path $vendorDir 'LabRecorderCLI.exe'
+$vendorDll = Join-Path $vendorDir 'lsl.dll'
+$useVendor = (-not $NoVendor) -and (Test-Path $vendorCli) -and (Test-Path $vendorDll)
+
+if ($useVendor) {
+    Write-Step "Using vendored v1.17.1 binaries"
+    Write-Host "    $vendorCli"
+    Write-Host "    $vendorDll"
+    $srcCli = $vendorCli
+    $srcDll = $vendorDll
+    $tempDir = $null  # nothing to clean up
+} else {
+    if ($NoVendor) {
+        Write-Step "Skipping vendored binaries (-NoVendor passed); using zip path"
+    } elseif (Test-Path $vendorDir) {
+        Write-Step "Vendor dir present but incomplete; falling back to zip path"
+    } else {
+        Write-Step "No vendored binaries found; using zip path"
+    }
+    if (-not $ZipPath) {
     Write-Step "Downloading upstream LabRecorder v1.17.1 zip"
     $ZipPath = Join-Path $env:TEMP 'LabRecorder-1.17.0-Win_amd64.zip'
     if (Test-Path $ZipPath) {
@@ -204,24 +230,22 @@ if (-not $ZipPath) {
         Write-Ok "downloaded: $ZipPath"
     }
 }
-if (-not (Test-Path $ZipPath)) { Write-Err "zip not found: $ZipPath"; exit 1 }
-Write-Step "Verifying zip SHA-256"
-$zipHash = (Get-FileHash -Path $ZipPath -Algorithm SHA256).Hash.ToUpper()
-Write-Host "    zip SHA-256: $zipHash"
-if ($zipHash -ne $EXPECTED_ZIP) {
-    Write-Err "zip hash mismatch."
-    Write-Err "  expected: $EXPECTED_ZIP"
-    Write-Err "  got:      $zipHash"
-    Write-Err "Refusing to proceed -- the zip is corrupt or tampered with."
-    exit 1
-}
-Write-Ok "zip hash matches expected v1.17.1"
+    if (-not (Test-Path $ZipPath)) { Write-Err "zip not found: $ZipPath"; exit 1 }
+    Write-Step "Verifying zip SHA-256"
+    $zipHash = (Get-FileHash -Path $ZipPath -Algorithm SHA256).Hash.ToUpper()
+    Write-Host "    zip SHA-256: $zipHash"
+    if ($zipHash -ne $EXPECTED_ZIP) {
+        Write-Err "zip hash mismatch."
+        Write-Err "  expected: $EXPECTED_ZIP"
+        Write-Err "  got:      $zipHash"
+        Write-Err "Refusing to proceed -- the zip is corrupt or tampered with."
+        exit 1
+    }
+    Write-Ok "zip hash matches expected v1.17.1"
 
-# ---- step 5: extract upstream binaries from zip ----
-Write-Step "Extracting LabRecorderCLI.exe and lsl.dll from the upstream zip"
-$tempDir = Join-Path $env:TEMP "lr_swap_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-New-Item -ItemType Directory -Path $tempDir | Out-Null
-try {
+    Write-Step "Extracting LabRecorderCLI.exe and lsl.dll from the upstream zip"
+    $tempDir = Join-Path $env:TEMP "lr_swap_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+    New-Item -ItemType Directory -Path $tempDir | Out-Null
     Expand-Archive -Path $ZipPath -DestinationPath $tempDir -Force
     # Use Where-Object instead of -Filter: the latter goes through the
     # Win32 FindFirstFile filter syntax which has quirks across PS 5.1
@@ -233,27 +257,32 @@ try {
         Write-Err "did not find both LabRecorderCLI.exe and lsl.dll in the zip"
         Write-Err "extracted tree under $tempDir`:"
         foreach ($f in $extracted) { Write-Host "    $($f.FullName)" }
+        Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
         exit 1
     }
+    $srcCli = $newCli.FullName
+    $srcDll = $newDll.FullName
+}
 
-    Write-Step "Verifying SHA-256 of extracted binaries against expected v1.17.1 values"
-    $extCli = Get-Sha256 $newCli.FullName
-    $extDll = Get-Sha256 $newDll.FullName
-    Write-Host "    extracted LabRecorderCLI.exe: $extCli"
-    Write-Host "    extracted lsl.dll:             $extDll"
+try {
+    Write-Step "Verifying SHA-256 of source binaries against expected v1.17.1 values"
+    $extCli = Get-Sha256 $srcCli
+    $extDll = Get-Sha256 $srcDll
+    Write-Host "    LabRecorderCLI.exe: $extCli"
+    Write-Host "    lsl.dll:             $extDll"
     if ($extCli -ne $EXPECTED_NEW_CLI) {
-        Write-Err "extracted LabRecorderCLI.exe hash mismatch."
+        Write-Err "LabRecorderCLI.exe hash mismatch."
         Write-Err "  expected: $EXPECTED_NEW_CLI"
         Write-Err "  got:      $extCli"
         exit 1
     }
     if ($extDll -ne $EXPECTED_NEW_DLL) {
-        Write-Err "extracted lsl.dll hash mismatch."
+        Write-Err "lsl.dll hash mismatch."
         Write-Err "  expected: $EXPECTED_NEW_DLL"
         Write-Err "  got:      $extDll"
         exit 1
     }
-    Write-Ok "both extracted binaries hash-match the documented v1.17.1 values"
+    Write-Ok "both source binaries hash-match the documented v1.17.1 values"
 
     $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
     $cliBackup    = "${cliPath}.v1.13-b4.bak.$stamp"
@@ -264,12 +293,12 @@ try {
         Write-Host "==> DRY RUN: would back up and swap the binaries here."
         Write-Host "    backup target:  $cliBackup"
         Write-Host "    rename-aside:   $liblslPath -> $liblslBackup"
-        Write-Host "    new CLI:        $($newCli.FullName) -> $cliPath"
-        Write-Host "    new DLL:        $($newDll.FullName) -> $lslPath"
+        Write-Host "    new CLI:        $srcCli -> $cliPath"
+        Write-Host "    new DLL:        $srcDll -> $lslPath"
         exit 0
     }
 
-    # ---- step 6: back up + swap ----
+    # ---- step 5: back up + swap ----
     Write-Step "Backing up current binaries"
     Copy-Item -Path $cliPath    -Destination $cliBackup
     # Move the old liblsl64.dll out of the way completely (not just copy):
@@ -282,10 +311,10 @@ try {
     Write-Host "        $liblslBackup    (renamed aside from $liblslPath)"
 
     Write-Step "Swapping in v1.17.1 binaries"
-    Copy-Item -Path $newCli.FullName -Destination $cliPath -Force
-    Copy-Item -Path $newDll.FullName -Destination $lslPath -Force
+    Copy-Item -Path $srcCli -Destination $cliPath -Force
+    Copy-Item -Path $srcDll -Destination $lslPath -Force
 
-    # ---- step 7: post-swap verification ----
+    # ---- step 6: post-swap verification ----
     Write-Step "Verifying post-swap hashes"
     $postCli = Get-Sha256 $cliPath
     $postLsl = Get-Sha256 $lslPath
@@ -324,5 +353,7 @@ try {
     Write-Host "================================================================"
     Write-Host ""
 } finally {
-    Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+    if ($tempDir -and (Test-Path $tempDir)) {
+        Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
