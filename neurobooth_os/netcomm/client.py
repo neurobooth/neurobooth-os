@@ -21,7 +21,18 @@ import neurobooth_os.config as cfg
 logger = logging.getLogger("app")
 
 
-def _run_cmd(cmd_list: list, server_name: str = None, user: str = None, password: str = None) -> str:
+def _run_cmd(cmd_list: list, server_name: str = None, user: str = None, password: str = None,
+             error_level: int = logging.ERROR) -> str:
+    """Run a subprocess command and return its stdout.
+
+    Args:
+        cmd_list: The command and arguments to run.
+        server_name, user, password: For remote execution via /S /U /P.
+        error_level: Log level used when the command fails or times out.
+            Defaults to ERROR. Callers wrapping benign-failure operations
+            (e.g. taskkill where the target PID may already be gone) can
+            pass ``logging.WARNING`` to keep log_application uncluttered.
+    """
     full_cmd = list(cmd_list)
     # Single-machine testing: an empty user means "run on this machine" — skip
     # /S /U /P so tasklist/SCHTASKS execute locally. See
@@ -34,12 +45,14 @@ def _run_cmd(cmd_list: list, server_name: str = None, user: str = None, password
         result = subprocess.run(full_cmd, capture_output=True, text=True, check=True, timeout=30)
         return result.stdout
     except subprocess.CalledProcessError as e:
-        logger.error(f"Command failed (on {server_name or 'localhost'}): {' '.join(cmd_list)}, "
-                     f"stdout: {e.stdout}, stderr: {e.stderr}")
+        logger.log(error_level,
+                   f"Command failed (on {server_name or 'localhost'}): {' '.join(cmd_list)}, "
+                   f"stdout: {e.stdout}, stderr: {e.stderr}")
         raise
     except subprocess.TimeoutExpired as e:
-        logger.error(f"Command timed out (on {server_name or 'localhost'}): {' '.join(cmd_list)}, "
-                     f"stdout: {e.stdout}, stderr: {e.stderr}")
+        logger.log(error_level,
+                   f"Command timed out (on {server_name or 'localhost'}): {' '.join(cmd_list)}, "
+                   f"stdout: {e.stdout}, stderr: {e.stderr}")
         raise
 
 
@@ -429,9 +442,13 @@ def kill_remote_pid(pids, node_name):
 
     for pid in pids:
         cmd_args = ["taskkill", "/PID", str(pid), "/F"]
-        # _run_cmd handles adding remote credentials if s.name is not None
+        # _run_cmd handles adding remote credentials if s.name is not None.
+        # taskkill commonly "fails" because the PID has already exited (the
+        # normal teardown race); downgrade the subprocess-level log to
+        # WARNING so log_application isn't filled with ERROR rows for the
+        # benign case. The caller-level WARN below carries the per-PID context.
         try:
-            _run_cmd(cmd_args, s.name, s.user, pwd)
+            _run_cmd(cmd_args, s.name, s.user, pwd, error_level=logging.WARNING)
             logger.info(f"Killed PID {pid} on {node_name} server.")
         except Exception as e:
             logger.warning(f"Failed to kill PID {pid} on {node_name} server: {e}")
