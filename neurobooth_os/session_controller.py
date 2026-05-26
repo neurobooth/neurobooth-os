@@ -9,10 +9,13 @@ no GUI dependency.
 
 import os
 import os.path as op
+import queue
+import re
+import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 import numpy as np
 import cv2
@@ -282,6 +285,165 @@ class SessionState:
 
 
 # ---------------------------------------------------------------------------
+# LabRecorderCLI subscription handshake (#812 / #814)
+# ---------------------------------------------------------------------------
+
+# LabRecorderCLI prints one of these per stream once it has actually
+# opened the inlet and started recording samples. The full expected
+# string is e.g. "Started data collection for stream EyeLink.".
+#
+# The CLI's worker threads write stdout without synchronization, and
+# production traces show interleaved output like
+#   "Started data collection for stream Started data collection for
+#    stream mbient_LH.IntelFrameIndex_cam2."
+# where a single chunk contains two confirmations and the second one
+# carries no prefix of its own -- it's just NAME. appended after the
+# first NAME.. A strict full-prefix regex catches only the first of
+# those names. We use a two-phase parse instead:
+#
+#   1. Gate on the marker substring appearing anywhere in the line.
+#   2. Then extract every (\S+?)\. and filter by the expected name set.
+#
+# Step 1 prevents false positives from "Opened the stream EyeLink." and
+# "Received header for stream EyeLink." lines (which also end NAME.).
+# Step 2's filter ensures stray periods from quoted source_ids or
+# other output don't get mistaken for confirmations.
+_LRCLI_STARTED_MARKER = "Started data collection for stream"
+_LRCLI_NAME_RE = re.compile(r"(\S+?)\.")
+
+
+class SubscriptionHandshakeTimeout(TimeoutError):
+    """Raised when LabRecorderCLI doesn't confirm all subscriptions in time.
+
+    Attributes:
+        missing: Names of streams that never produced a
+            ``Started data collection for stream <name>`` line.
+        confirmed: Names that did confirm before the timeout.
+        elapsed_seconds: How long we waited.
+    """
+
+    def __init__(self, missing: Set[str], confirmed: Set[str], elapsed: float, timeout: float):
+        self.missing = missing
+        self.confirmed = confirmed
+        self.elapsed_seconds = elapsed
+        super().__init__(
+            f"LabRecorderCLI did not confirm subscription to "
+            f"{len(missing)} stream(s) within {timeout:.0f}s "
+            f"(confirmed {len(confirmed)}, missing {sorted(missing)})"
+        )
+
+
+def wait_for_lrcli_subscriptions(
+    process,
+    expected_names: List[str],
+    timeout_seconds: float,
+    logger: logging.Logger,
+) -> Set[str]:
+    """Block until LabRecorderCLI has confirmed subscription to every
+    name in ``expected_names``, or raise ``SubscriptionHandshakeTimeout``.
+
+    The handshake closes the race documented in #812 / #814 where
+    LabRecorderCLI's per-stream subscription on slow paths (Wang's STM
+    streams under post-#791 firewall latency, in particular) could still
+    be in progress when a very short task (progress_bar / coord_pause)
+    ended and the stop signal arrived, leading to a native segfault and
+    a truncated XDF. By draining stdout for ``Started data collection
+    for stream <name>`` lines we ensure ``start_lsl_recording`` only
+    returns once recording is genuinely live.
+
+    Args:
+        process: A live ``subprocess.Popen`` running ``LabRecorderCLI.exe``,
+            with ``stdout=PIPE`` so we can read its line output.
+        expected_names: Stream names we expect LabRecorderCLI to subscribe
+            to (typically ``list(state.inlets.keys())`` captured at
+            session start).
+        timeout_seconds: How long to wait for the last confirmation
+            before raising.
+        logger: Logger to emit progress + timing messages on.
+
+    Returns:
+        The set of confirmed stream names (== ``set(expected_names)`` on
+        success).
+
+    Raises:
+        SubscriptionHandshakeTimeout: At least one expected stream never
+            produced a ``Started data collection`` line within the
+            timeout. Caller is expected to log CRITICAL and end the
+            session (see #815).
+        RuntimeError: The subprocess exited before all confirmations
+            were seen; recording is unrecoverable for this task.
+    """
+    expected = set(expected_names)
+    confirmed: Set[str] = set()
+    if not expected:
+        return confirmed
+
+    line_q: "queue.Queue[bytes]" = queue.Queue()
+    stop_event = threading.Event()
+
+    def _reader():
+        try:
+            while not stop_event.is_set():
+                raw = process.stdout.readline()
+                if not raw:
+                    return  # EOF
+                line_q.put(raw)
+        except Exception:
+            return
+
+    reader = threading.Thread(
+        target=_reader, daemon=True, name="lrcli-handshake-reader"
+    )
+    reader.start()
+
+    t_start = time_mod.time()
+    deadline = t_start + timeout_seconds
+    try:
+        while not expected.issubset(confirmed):
+            if process.poll() is not None:
+                raise RuntimeError(
+                    f"LabRecorderCLI exited prematurely (code {process.poll()}) "
+                    f"before all stream subscriptions were confirmed. "
+                    f"Confirmed: {sorted(confirmed)}; "
+                    f"missing: {sorted(expected - confirmed)}"
+                )
+            remaining = deadline - time_mod.time()
+            if remaining <= 0:
+                raise SubscriptionHandshakeTimeout(
+                    missing=expected - confirmed,
+                    confirmed=confirmed,
+                    elapsed=time_mod.time() - t_start,
+                    timeout=timeout_seconds,
+                )
+            try:
+                raw = line_q.get(timeout=min(remaining, 1.0))
+            except queue.Empty:
+                continue
+            text = raw.decode("utf-8", "replace")
+            if _LRCLI_STARTED_MARKER not in text:
+                continue
+            for name in _LRCLI_NAME_RE.findall(text):
+                if name in expected and name not in confirmed:
+                    confirmed.add(name)
+                    logger.debug(
+                        f"lrcli subscribed to {name!r} "
+                        f"({len(confirmed)}/{len(expected)})"
+                    )
+    finally:
+        # Signal the reader to stop on its next readline iteration.
+        # We don't join — the daemon thread will exit when LabRecorderCLI
+        # next writes a line or closes stdout, neither of which blocks us.
+        stop_event.set()
+
+    elapsed = time_mod.time() - t_start
+    logger.info(
+        f"lrcli confirmed subscription to all {len(expected)} streams "
+        f"in {elapsed:.2f}s"
+    )
+    return confirmed
+
+
+# ---------------------------------------------------------------------------
 # Session Controller
 # ---------------------------------------------------------------------------
 
@@ -483,15 +645,39 @@ class SessionController:
             streamargs=streamargs,
             mainfolder=cfg.neurobooth_config.control.local_data_dir,
         )
+        # Snapshot the stream names liesl is bound to, for use in the
+        # per-task subscription handshake (#812 / #814). New inlets that
+        # arrive later via DeviceInitialization aren't bound to the recorder,
+        # so they aren't part of the expected confirmation set.
+        self._expected_stream_names: List[str] = list(self.state.inlets.keys())
 
     def start_lsl_recording(self, subject_id: str, task_id: str,
                             t_obs_id: str, obs_log_id: str,
                             tsk_strt_time: str) -> str:
-        """Start recording LSL data for a task and notify STM."""
+        """Start recording LSL data for a task and notify STM.
+
+        Returns only after LabRecorderCLI has confirmed subscription to
+        every expected stream (#812 / #814 deterministic-handshake fix).
+        Previously this returned the moment the LabRecorderCLI subprocess
+        spawned, which left subscription racing against task end on short
+        tasks (progress_bar, coord_pause) when STM stream discovery was
+        slow. Now we block until LabRecorderCLI prints
+        ``Started data collection for stream <name>`` for every name in
+        ``self._expected_stream_names``.
+        """
         rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
         t0 = time_mod.time()
         self.state.session.start_recording(rec_fname)
-        self.logger.info(f"liesl start_recording took: {time_mod.time() - t0:.2f}")
+        wait_for_lrcli_subscriptions(
+            self.state.session.recorder.process,
+            self._expected_stream_names,
+            timeout_seconds=60.0,
+            logger=self.logger,
+        )
+        self.logger.info(
+            f"liesl start_recording + subscription handshake took: "
+            f"{time_mod.time() - t0:.2f}s"
+        )
 
         msg = Request(source="CTR", destination='STM', body=LslRecording())
         meta.post_message(msg)
