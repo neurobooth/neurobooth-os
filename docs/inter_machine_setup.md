@@ -178,7 +178,7 @@ Section 2 covers this. Re-walk Section 2 after any Win10→Win11 in-place upgrad
 
 ## 8. Expected state (harness checklist)
 
-The harness portion of #764 (deferred to Phase 1) will validate the state below from CTR. Capture this as the booth-side acceptance criterion:
+The harness portion of #764 (`extras/perf/booth_security_snapshot.py`, run on the booth) captures and validates the state below; Section 10 documents how to run it. Capture this as the booth-side acceptance criterion:
 
 | Property | Expected value | How to check on booth |
 |---|---|---|
@@ -221,10 +221,41 @@ net use \\<booth>\admin$ /DELETE
 
 If all four return without an `Access denied` / RPC / SMB error, the booth is ready. If any one fails, work back through Sections 2–7; the failing primitive's transport identifies which.
 
+## 10. Automated validation harness
+
+The harness portion of #764 wraps Section 9's manual round-trips and Section 8's expected-state checklist into two scripts. Run both to capture a Win10 baseline before the Win11 pilot; the JSON artefacts both emit are diff-friendly for #768.
+
+### From CTR — `extras/perf/intermachine_check.py`
+
+Exercises each of the four remote primitives plus `admin$` SMB against every configured booth (`presentation` and each `acquisition_*` in `cfg.neurobooth_config`). Reads credentials from `secrets.yaml` so no passwords appear on the command line. Includes a SCHTASKS `/Create /XML /F` + `/Delete` round-trip with a disabled no-op task — exercises the SMB-via-`admin$` dependency the other primitives mask, and cleans up in a `finally` so nothing remains registered.
+
+```powershell
+uv run python extras/perf/intermachine_check.py
+# or restrict to a single booth:
+uv run python extras/perf/intermachine_check.py --targets presentation
+```
+
+Per-target verdict: `PASS` (all probes ok), `DEGRADED` (read primitives ok, write primitive failed — usually SMB), or `FAIL` (a read primitive failed — usually firewall or NTLM). Output: `<log_dir>/intermachine_check/<os>/<hostname>.json`.
+
+### On each booth — `extras/perf/booth_security_snapshot.py`
+
+Captures the Section 8 expected-state items into JSON for drift detection between Win10 baseline and Win11 candidate. The DCOM Launch/Activation and WMI CIMV2 ACL bytes are not decoded — captured as length + SHA-256 so any change is visible without the snapshot inspecting policy bytes. SDDL decoding is a follow-up; the contract here is "detect drift," not "interpret."
+
+```powershell
+uv run python extras/perf/booth_security_snapshot.py --role STM
+```
+
+Verdict: `PASS` if every Section 8 item matches; `WARN` with per-field reasons if any drift. The snapshot does not decide whether a drift is intentional — record any exception in the operator log alongside the JSON.
+
+Output: `<log_dir>/booth_security_snapshot/<os>/<hostname>.json`. Re-run after any Windows servicing update so a silent default change does not regress the booth without anyone noticing.
+
 ## References
 
 - `neurobooth_os/netcomm/client.py` — the four remote primitives and the SCHTASKS XML schema
+- `extras/perf/intermachine_check.py` — CTR-side harness (Section 10)
+- `extras/perf/booth_security_snapshot.py` — per-booth posture snapshot (Section 10)
 - `docs/single_machine_testing.md` — how to skip this entire runbook for local dev
 - #759 — Win11 upgrade evaluation umbrella (concern #2)
-- #764 — parent issue; harness portion still ahead
+- #764 — parent issue
 - #760 / PR #770 — the WMIC → `Get-CimInstance` code change this runbook backs
+- #768 — Win10 baseline lockdown; this runbook's harness produces two of the per-booth artefacts it indexes
