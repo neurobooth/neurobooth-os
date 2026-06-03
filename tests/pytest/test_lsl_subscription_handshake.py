@@ -364,6 +364,132 @@ def test_handshake_handles_merrimac_v928_dump(proc, logger):
     assert confirmed == set(_MERRIMAC_V928_EXPECTED)
 
 
+# ---- Merrimac v0.92.9 staging dump (shape (e) regression fixture) -----------
+#
+# Second-round failure captured 2026-06-03 after v0.92.9 deploy. The
+# parser now confirms 10 of 11 streams; mbient_LF still misses because
+# its confirmation message arrived as THREE separate lines:
+#
+#     line 36: ...Started data collection for stream mbient_RF.Started data collection for stream
+#     line 37: mbient_LF
+#     line 38: .
+#
+# i.e. the literal space between "stream" and "mbient_LF" was replaced
+# by a newline (interleaving from another thread), and the trailing
+# period landed on its own line below. The v0.92.9 patterns required
+# either a single space between prefix and name (Pattern A) or the
+# period immediately adjacent to the name (Pattern B). The v0.92.10
+# patch widens Pattern A's separator to ``\s+`` and Pattern B's trail
+# to ``.|\n.``, covering this new shape (e) while staying tight enough
+# to not false-confirm on "Opened/Received/Subscribing" lines.
+
+_MERRIMAC_V929_EXPECTED = [
+    "IntelFrameIndex_cam1",
+    "Mouse",
+    "IntelFrameIndex_cam2",
+    "mbient_RF",
+    "mbient_LF",
+    "EyeLink",
+    "Marker",
+    "Audio",
+    "IPhoneFrameIndex",
+    "IntelFrameIndex_cam3",
+    "FlirFrameIndex",
+]
+
+_MERRIMAC_V929_STDOUT = [
+    "Found mbient_LF@stm-staging matching 'source_id='96648ed0-ec60-4865-a4d7-4fe957225cc7''",
+    "Found FlirFrameIndex@acq-staging matching 'source_id='069a82f3-c2be-46db-8267-e5ff7b47f4e9''",
+    "Found IPhoneFrameIndex@acq-staging matching 'source_id='1ee2e267-2be4-4218-9426-ab90a2127f38''",
+    "Found mbient_RF@stm-staging matching 'source_id='7c1b424f-b5fe-49e7-acdf-70aeb2693dfb''",
+    "Found Audio@acq-staging matching 'source_id='c80c2841-37e0-4308-9ab2-c9872b075921''",
+    "Starting the recording, press Enter to quit",
+    "Opened the stream EyeLink.Opened the stream Marker.",
+    "",
+    "Opened the stream Mouse.",
+    "Opened the stream IntelFrameIndex_cam1.",
+    "Opened the stream IntelFrameIndex_cam2.",
+    "Received header for stream Marker.",
+    "Opened the stream IntelFrameIndex_cam3.",
+    "Received header for stream Mouse.",
+    "Opened the stream mbient_LF.",
+    "Opened the stream FlirFrameIndex.",
+    "Received header for stream IntelFrameIndex_cam1.",
+    "Opened the stream IPhoneFrameIndex.",
+    "Opened the stream mbient_RF.",
+    "Received header for stream IntelFrameIndex_cam2.",
+    "Received header for stream IntelFrameIndex_cam3.",
+    "Received header for stream FlirFrameIndex.",
+    "Received header for stream EyeLink.",
+    "Received header for stream mbient_LF.",
+    "Opened the stream Audio.",
+    "Received header for stream IPhoneFrameIndex.",
+    "Received header for stream mbient_RF.",
+    "Received header for stream Audio.",
+    # Confirmation phase begins. Lines 34-44 contain shape (a), (e),
+    # and (c) interleavings:
+    "Started data collection for stream IntelFrameIndex_cam1.Started data collection for stream Mouse.Started data collection for stream IntelFrameIndex_cam2.Started data collection for stream",
+    "",
+    # Shape (e) splits the next mbient_LF confirmation across three lines:
+    "Started data collection for stream mbient_RF.Started data collection for stream",
+    "mbient_LF",
+    ".",
+    "Started data collection for stream EyeLink.",
+    "Started data collection for stream Marker.",
+    # Shape (c): bare "Audio." on its own line, lost its prefix entirely:
+    "Audio.",
+    "Started data collection for stream IPhoneFrameIndex.",
+    "Started data collection for stream IntelFrameIndex_cam3.",
+    "Started data collection for stream FlirFrameIndex.",
+]
+
+
+def test_handshake_handles_merrimac_v929_dump(proc, logger):
+    """Regression: feed the exact v0.92.9 Merrimac stdout that left
+    mbient_LF unconfirmed at 60s, and assert the v0.92.10 parser now
+    recognizes all 11 subscriptions.
+
+    Before the v0.92.10 patch this test fails with confirmed=10,
+    missing={'mbient_LF'} -- the confirmation arrived split across
+    three lines (prefix / name / period) because two newlines from
+    other writer threads landed inside LRCLI's printf for that one
+    message.
+    """
+
+    def feed():
+        time.sleep(0.05)
+        for line in _MERRIMAC_V929_STDOUT:
+            proc.write_line(line)
+
+    threading.Thread(target=feed, daemon=True).start()
+    confirmed = wait_for_lrcli_subscriptions(
+        proc, _MERRIMAC_V929_EXPECTED, timeout_seconds=5.0, logger=logger
+    )
+    assert confirmed == set(_MERRIMAC_V929_EXPECTED)
+
+
+def test_handshake_handles_three_line_split(proc, logger):
+    """Minimal isolation of shape (e): the confirmation for a single
+    stream arrives as prefix / name / period on three consecutive
+    lines, with nothing else in between. The parser must still confirm.
+    """
+    expected = ["mbient_LF"]
+
+    def feed():
+        time.sleep(0.05)
+        # Note write_line appends a "\n", so the three writes here
+        # produce: "Started data collection for stream\nmbient_LF\n.\n"
+        proc.write_line("Started data collection for stream")
+        proc.write_line("mbient_LF")
+        proc.write_line(".")
+
+    threading.Thread(target=feed, daemon=True).start()
+    confirmed = wait_for_lrcli_subscriptions(
+        proc, expected, timeout_seconds=5.0, logger=logger
+    )
+    assert confirmed == {"mbient_LF"}
+
+
 def test_handshake_does_not_confirm_on_opened_stream_lines(proc, logger):
     """Pattern 2 of the v0.92.9 parser (bare ``NAME.`` preceded by
     newline or period) must not false-match on ``Opened the stream

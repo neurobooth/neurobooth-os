@@ -285,7 +285,7 @@ class SessionState:
 
 
 # ---------------------------------------------------------------------------
-# LabRecorderCLI subscription handshake (#812 / #814 / v0.92.9 reparse)
+# LabRecorderCLI subscription handshake (#812 / #814 / v0.92.9-10 reparse)
 # ---------------------------------------------------------------------------
 
 # LabRecorderCLI prints one of these per stream once it has actually
@@ -294,55 +294,66 @@ class SessionState:
 #
 # LRCLI's worker threads write stdout without locking the FILE*, so on
 # multi-stream sessions the per-thread writes interleave at arbitrary
-# byte boundaries. The Merrimac v0.92.8 staging dump showed three
-# distinct failure shapes from a single 11-stream session:
+# byte boundaries. Each thread's printf for the confirmation line is
+# emitted in pieces (prefix string, name string, ".\n"), and another
+# thread's newline can land between any two of those pieces. Across
+# successive Merrimac staging dumps we've now catalogued five shapes:
 #
 #   (a) Two confirmations concatenated, second one keeps its prefix:
 #         "...stream Audio.Started data collection for stream mbient_RF."
-#       -- catchable by a per-line "Started... <name>." regex.
 #
 #   (b) Two confirmations concatenated, second one loses its prefix:
 #         "...stream mbient_LH.IntelFrameIndex_cam2."
-#       -- the second name has no prefix, only a leading ".".
 #
-#   (c) Prefix and name split across a newline, name lands alone on
-#       the next line:
+#   (c) Prefix and name split across a newline:
 #         "...for stream\n"
 #         "IPhoneFrameIndex.\n"
-#       -- the line-by-line parser sees a marker-less line and skips it.
 #
 #   (d) Name written but trailing "." landed elsewhere in the interleave:
 #         "Started data collection for stream IntelFrameIndex_cam1\n"
-#       -- the period (and so the name boundary) is missing on that line.
 #
-# A per-line marker-gated regex catches (a) only, which on Merrimac
-# left 3 of 11 streams unconfirmed even at a 180s timeout. The fix is
-# to accumulate the full stdout into a buffer and run a per-name match
-# over it that accepts either:
+#   (e) Prefix, name, and trailing period all on separate lines:
+#         "Started data collection for stream\n"
+#         "mbient_LF\n"
+#         ".\n"
 #
-#   1. "Started data collection for stream <name>" followed by a
-#      non-word character (period, whitespace, "S" of the next
-#      interleaved prefix, EOF). Catches (a) and (d).
-#   2. <name> preceded by newline or "." and followed by ".". Catches
-#      the lost-prefix forms (b) and (c).
+# The parser accumulates stdout into a single buffer and runs a
+# per-name match that accepts either:
 #
-# Pattern 2 needs the trailing "." so it doesn't false-match earlier
-# "Opened the stream <name>." (preceded by space, not newline/period)
-# or "Found <name>@..." (no trailing period adjacent to name).
+#   Pattern A. "Started data collection for stream<\s+><name>"
+#      followed by a non-word character (period, whitespace, "S" of the
+#      next interleaved prefix, EOF). \s+ between the prefix and the
+#      name catches (c) and (e) where a newline replaces the literal
+#      space; the trailing non-word boundary catches (d) where the
+#      period was lost.
+#
+#   Pattern B. <name> preceded by newline or "." and followed by "."
+#      or "\n." . Catches the lost-prefix forms (b) and (the bare-name
+#      sub-case of) (c) where Pattern A can't reach across intervening
+#      non-whitespace text. The "\n." trailing alternative also catches
+#      the bare-name half of (e) when the prefix landed far enough away
+#      that the gap contains other names.
+#
+# Pattern B needs the trailing period (possibly across a newline) so
+# it doesn't false-match earlier "Opened the stream <name>." or
+# "Found <name>@..." chatter (where <name> is preceded by a space, not
+# newline/period) or hypothetical "Subscribing to the stream\n<name>\n
+# is taking..." (no period directly or one-newline-away after).
 _LRCLI_STARTED_MARKER = "Started data collection for stream"
 
 
 def _build_confirm_pattern(name: str) -> "re.Pattern[str]":
     """Compile the per-name regex used by ``wait_for_lrcli_subscriptions``.
 
-    Two alternatives covering the four interleaving shapes observed in
-    Merrimac v0.92.8 staging stdout. See the module-level comment above
-    for the full rationale and shape catalogue.
+    Two alternatives covering the five interleaving shapes (a)-(e)
+    observed across Merrimac v0.92.8 / v0.92.9 staging stdout. See the
+    module-level comment above for the full rationale and shape
+    catalogue.
     """
     escaped = re.escape(name)
     return re.compile(
-        rf"(?:{_LRCLI_STARTED_MARKER} {escaped}(?!\w)"
-        rf"|(?:\n|\.){escaped}\.)"
+        rf"(?:{_LRCLI_STARTED_MARKER}\s+{escaped}(?!\w)"
+        rf"|(?:\n|\.){escaped}(?:\.|\n\.))"
     )
 
 
