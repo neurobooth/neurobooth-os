@@ -285,7 +285,7 @@ class SessionState:
 
 
 # ---------------------------------------------------------------------------
-# LabRecorderCLI subscription handshake (#812 / #814 / v0.92.9-10 reparse)
+# LabRecorderCLI subscription handshake (#812 / #814 / v0.92.11 count gate)
 # ---------------------------------------------------------------------------
 
 # LabRecorderCLI prints one of these per stream once it has actually
@@ -295,50 +295,53 @@ class SessionState:
 # LRCLI's worker threads write stdout without locking the FILE*, so on
 # multi-stream sessions the per-thread writes interleave at arbitrary
 # byte boundaries. Each thread's printf for the confirmation line is
-# emitted in pieces (prefix string, name string, ".\n"), and another
-# thread's newline can land between any two of those pieces. Across
-# successive Merrimac staging dumps we've now catalogued five shapes:
+# emitted in pieces (prefix string, name string, ".\n"), and other
+# threads' bytes can land between any two pieces. Across successive
+# Merrimac staging dumps we catalogued six shapes:
 #
 #   (a) Two confirmations concatenated, second one keeps its prefix:
 #         "...stream Audio.Started data collection for stream mbient_RF."
-#
-#   (b) Two confirmations concatenated, second one loses its prefix:
+#   (b) Two confirmations concatenated, second loses its prefix:
 #         "...stream mbient_LH.IntelFrameIndex_cam2."
-#
 #   (c) Prefix and name split across a newline:
-#         "...for stream\n"
-#         "IPhoneFrameIndex.\n"
-#
-#   (d) Name written but trailing "." landed elsewhere in the interleave:
+#         "...for stream\n" / "IPhoneFrameIndex.\n"
+#   (d) Name written but trailing "." landed elsewhere:
 #         "Started data collection for stream IntelFrameIndex_cam1\n"
+#   (e) Prefix, name, period all on separate lines:
+#         "Started data collection for stream\n" / "mbient_LF\n" / ".\n"
+#   (f) Two names jammed together with NO separator at all:
+#         "Mousembient_LF."
 #
-#   (e) Prefix, name, and trailing period all on separate lines:
-#         "Started data collection for stream\n"
-#         "mbient_LF\n"
-#         ".\n"
+# Shape (f) is the one that finally retired the per-name regex
+# strategy. No regex over the buffer can identify "Mouse" and
+# "mbient_LF" inside "Mousembient_LF" without either positional
+# anchoring (which the byte-level interleaving destroys) or naive
+# substring containment (which false-matches "Found X@..." chatter).
 #
-# The parser accumulates stdout into a single buffer and runs a
-# per-name match that accepts either:
+# The v0.92.11 design instead gates success on a count: the substring
+# "Started data collection for stream" is unique to LRCLI's
+# subscription-confirmation printf -- it does not appear in Found /
+# Opened / Received header / Subscribing messages -- and is emitted
+# exactly once per completed subscription regardless of what happens
+# to the trailing name and period bytes. So::
 #
-#   Pattern A. "Started data collection for stream<\s+><name>"
-#      followed by a non-word character (period, whitespace, "S" of the
-#      next interleaved prefix, EOF). \s+ between the prefix and the
-#      name catches (c) and (e) where a newline replaces the literal
-#      space; the trailing non-word boundary catches (d) where the
-#      period was lost.
+#     buffer.count("Started data collection for stream") >= len(expected)
 #
-#   Pattern B. <name> preceded by newline or "." and followed by "."
-#      or "\n." . Catches the lost-prefix forms (b) and (the bare-name
-#      sub-case of) (c) where Pattern A can't reach across intervening
-#      non-whitespace text. The "\n." trailing alternative also catches
-#      the bare-name half of (e) when the prefix landed far enough away
-#      that the gap contains other names.
+# is a direct, interleaving-immune measurement of "all expected
+# subscriptions have completed". Per-name patterns A and B are still
+# computed and surfaced in the SubscriptionHandshakeTimeout exception
+# for operator diagnosis, but they no longer gate success.
 #
-# Pattern B needs the trailing period (possibly across a newline) so
-# it doesn't false-match earlier "Opened the stream <name>." or
-# "Found <name>@..." chatter (where <name> is preceded by a space, not
-# newline/period) or hypothetical "Subscribing to the stream\n<name>\n
-# is taking..." (no period directly or one-newline-away after).
+# Pattern A. "Started data collection for stream\s+<name>" followed
+#    by a non-word character. \s+ between prefix and name catches the
+#    clean form plus shapes (c) and (e); the trailing non-word boundary
+#    catches shape (d).
+#
+# Pattern B. <name> preceded by newline or "." and followed by "."
+#    or "\n.". Catches the lost-prefix forms (b) and bare-name halves
+#    of (c)/(e). The trailing period (possibly across a newline) keeps
+#    it from false-matching "Opened/Received/Found <name>" chatter,
+#    where <name> is preceded by a space.
 _LRCLI_STARTED_MARKER = "Started data collection for stream"
 
 
@@ -385,16 +388,28 @@ def wait_for_lrcli_subscriptions(
     logger: logging.Logger,
 ) -> Set[str]:
     """Block until LabRecorderCLI has confirmed subscription to every
-    name in ``expected_names``, or raise ``SubscriptionHandshakeTimeout``.
+    expected stream, or raise ``SubscriptionHandshakeTimeout``.
 
     The handshake closes the race documented in #812 / #814 where
-    LabRecorderCLI's per-stream subscription on slow paths (Wang's STM
-    streams under post-#791 firewall latency, in particular) could still
+    LabRecorderCLI's per-stream subscription on slow paths could still
     be in progress when a very short task (progress_bar / coord_pause)
     ended and the stop signal arrived, leading to a native segfault and
-    a truncated XDF. By draining stdout for ``Started data collection
-    for stream <name>`` lines we ensure ``start_lsl_recording`` only
-    returns once recording is genuinely live.
+    a truncated XDF.
+
+    Success is gated on the *count* of ``Started data collection for
+    stream`` substring occurrences in the accumulated stdout buffer.
+    LabRecorderCLI emits that phrase exactly once per completed
+    subscription (and never in any other message type), so the count is
+    a direct measurement of "subscriptions completed" -- robust against
+    the worker-thread stdout interleaving that progressively defeated
+    per-name regex matching across v0.92.8 / v0.92.9 / v0.92.10. See
+    the module-level comment for the catalogue of interleaving shapes
+    (a)-(f) that motivated this design.
+
+    Per-name patterns are still computed and the matching names are
+    surfaced to the operator in the ``SubscriptionHandshakeTimeout``
+    exception (so the dump in ``log_application`` is easier to triage),
+    but they do not gate success on their own.
 
     Args:
         process: A live ``subprocess.Popen`` running ``LabRecorderCLI.exe``,
@@ -407,24 +422,24 @@ def wait_for_lrcli_subscriptions(
         logger: Logger to emit progress + timing messages on.
 
     Returns:
-        The set of confirmed stream names (== ``set(expected_names)`` on
-        success).
+        The set of expected stream names on success.
 
     Raises:
-        SubscriptionHandshakeTimeout: At least one expected stream never
-            produced a ``Started data collection`` line within the
-            timeout. Caller is expected to log CRITICAL and end the
-            session (see #815).
-        RuntimeError: The subprocess exited before all confirmations
-            were seen; recording is unrecoverable for this task.
+        SubscriptionHandshakeTimeout: Fewer than ``len(expected_names)``
+            ``Started data collection for stream`` markers appeared in
+            stdout within the timeout. Caller is expected to log
+            CRITICAL and end the session (see #815).
+        RuntimeError: The subprocess exited before enough markers were
+            seen; recording is unrecoverable for this task.
     """
     expected = set(expected_names)
-    confirmed: Set[str] = set()
-    if not expected:
-        return confirmed
+    expected_count = len(expected)
+    confirmed_by_name: Set[str] = set()
+    if expected_count == 0:
+        return confirmed_by_name
 
-    # Per-name confirmation regex compiled once; matched against the
-    # full accumulated buffer each iteration (see module-level comment).
+    # Per-name regex still computed for diagnostic logging only -- the
+    # marker count below is what actually gates success.
     patterns = {name: _build_confirm_pattern(name) for name in expected}
 
     line_q: "queue.Queue[bytes]" = queue.Queue()
@@ -432,11 +447,9 @@ def wait_for_lrcli_subscriptions(
 
     # All lines we processed, decoded. Logged at WARNING level on timeout
     # or premature exit so we can post-hoc inspect what LabRecorderCLI
-    # actually printed -- whether streams it didn't confirm hit
-    # "Subscribing to ... is taking relatively long" (latency), never
-    # appeared at all (discovery failure), or printed something the
-    # regex missed (parser issue).
+    # actually printed.
     received_lines: List[str] = []
+    marker_count = 0
 
     def _reader():
         try:
@@ -455,12 +468,15 @@ def wait_for_lrcli_subscriptions(
 
     def _log_captured_stdout(label: str) -> None:
         """Dump the raw LabRecorderCLI stdout we saw to the logger, with
-        expected/confirmed/missing summaries, when the handshake fails."""
-        missing = sorted(expected - confirmed)
-        confirmed_sorted = sorted(confirmed)
+        marker-count + per-name-confirmed summaries, when the handshake
+        fails."""
+        missing = sorted(expected - confirmed_by_name)
+        confirmed_sorted = sorted(confirmed_by_name)
         logger.warning(
-            f"lrcli handshake {label}: confirmed {confirmed_sorted}, "
-            f"missing {missing}, captured {len(received_lines)} stdout lines"
+            f"lrcli handshake {label}: marker_count={marker_count} of "
+            f"{expected_count} expected; per-name confirmed "
+            f"{confirmed_sorted}, missing {missing}; captured "
+            f"{len(received_lines)} stdout lines"
         )
         for i, line in enumerate(received_lines):
             logger.warning(f"  lrcli stdout[{i}]: {line.rstrip()}")
@@ -468,21 +484,22 @@ def wait_for_lrcli_subscriptions(
     t_start = time_mod.time()
     deadline = t_start + timeout_seconds
     try:
-        while not expected.issubset(confirmed):
+        while marker_count < expected_count:
             if process.poll() is not None:
                 _log_captured_stdout("premature exit")
                 raise RuntimeError(
                     f"LabRecorderCLI exited prematurely (code {process.poll()}) "
                     f"before all stream subscriptions were confirmed. "
-                    f"Confirmed: {sorted(confirmed)}; "
-                    f"missing: {sorted(expected - confirmed)}"
+                    f"Markers seen: {marker_count}/{expected_count}; "
+                    f"per-name confirmed: {sorted(confirmed_by_name)}; "
+                    f"per-name missing: {sorted(expected - confirmed_by_name)}"
                 )
             remaining = deadline - time_mod.time()
             if remaining <= 0:
                 _log_captured_stdout("timeout")
                 raise SubscriptionHandshakeTimeout(
-                    missing=expected - confirmed,
-                    confirmed=confirmed,
+                    missing=expected - confirmed_by_name,
+                    confirmed=confirmed_by_name,
                     elapsed=time_mod.time() - t_start,
                     timeout=timeout_seconds,
                 )
@@ -493,25 +510,27 @@ def wait_for_lrcli_subscriptions(
             text = raw.decode("utf-8", "replace")
             received_lines.append(text)
             buffer = "".join(received_lines)
-            for name in list(expected - confirmed):
+            marker_count = buffer.count(_LRCLI_STARTED_MARKER)
+            for name in list(expected - confirmed_by_name):
                 if patterns[name].search(buffer):
-                    confirmed.add(name)
+                    confirmed_by_name.add(name)
                     logger.debug(
                         f"lrcli subscribed to {name!r} "
-                        f"({len(confirmed)}/{len(expected)})"
+                        f"({len(confirmed_by_name)}/{expected_count})"
                     )
     finally:
         # Signal the reader to stop on its next readline iteration.
-        # We don't join — the daemon thread will exit when LabRecorderCLI
+        # We don't join -- the daemon thread will exit when LabRecorderCLI
         # next writes a line or closes stdout, neither of which blocks us.
         stop_event.set()
 
     elapsed = time_mod.time() - t_start
     logger.info(
-        f"lrcli confirmed subscription to all {len(expected)} streams "
-        f"in {elapsed:.2f}s"
+        f"lrcli confirmed subscription to all {expected_count} streams "
+        f"in {elapsed:.2f}s (marker_count={marker_count}, per-name parse "
+        f"identified {len(confirmed_by_name)}/{expected_count})"
     )
-    return confirmed
+    return expected
 
 
 # ---------------------------------------------------------------------------
