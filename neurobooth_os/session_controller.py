@@ -285,31 +285,65 @@ class SessionState:
 
 
 # ---------------------------------------------------------------------------
-# LabRecorderCLI subscription handshake (#812 / #814)
+# LabRecorderCLI subscription handshake (#812 / #814 / v0.92.9 reparse)
 # ---------------------------------------------------------------------------
 
 # LabRecorderCLI prints one of these per stream once it has actually
 # opened the inlet and started recording samples. The full expected
 # string is e.g. "Started data collection for stream EyeLink.".
 #
-# The CLI's worker threads write stdout without synchronization, and
-# production traces show interleaved output like
-#   "Started data collection for stream Started data collection for
-#    stream mbient_LH.IntelFrameIndex_cam2."
-# where a single chunk contains two confirmations and the second one
-# carries no prefix of its own -- it's just NAME. appended after the
-# first NAME.. A strict full-prefix regex catches only the first of
-# those names. We use a two-phase parse instead:
+# LRCLI's worker threads write stdout without locking the FILE*, so on
+# multi-stream sessions the per-thread writes interleave at arbitrary
+# byte boundaries. The Merrimac v0.92.8 staging dump showed three
+# distinct failure shapes from a single 11-stream session:
 #
-#   1. Gate on the marker substring appearing anywhere in the line.
-#   2. Then extract every (\S+?)\. and filter by the expected name set.
+#   (a) Two confirmations concatenated, second one keeps its prefix:
+#         "...stream Audio.Started data collection for stream mbient_RF."
+#       -- catchable by a per-line "Started... <name>." regex.
 #
-# Step 1 prevents false positives from "Opened the stream EyeLink." and
-# "Received header for stream EyeLink." lines (which also end NAME.).
-# Step 2's filter ensures stray periods from quoted source_ids or
-# other output don't get mistaken for confirmations.
+#   (b) Two confirmations concatenated, second one loses its prefix:
+#         "...stream mbient_LH.IntelFrameIndex_cam2."
+#       -- the second name has no prefix, only a leading ".".
+#
+#   (c) Prefix and name split across a newline, name lands alone on
+#       the next line:
+#         "...for stream\n"
+#         "IPhoneFrameIndex.\n"
+#       -- the line-by-line parser sees a marker-less line and skips it.
+#
+#   (d) Name written but trailing "." landed elsewhere in the interleave:
+#         "Started data collection for stream IntelFrameIndex_cam1\n"
+#       -- the period (and so the name boundary) is missing on that line.
+#
+# A per-line marker-gated regex catches (a) only, which on Merrimac
+# left 3 of 11 streams unconfirmed even at a 180s timeout. The fix is
+# to accumulate the full stdout into a buffer and run a per-name match
+# over it that accepts either:
+#
+#   1. "Started data collection for stream <name>" followed by a
+#      non-word character (period, whitespace, "S" of the next
+#      interleaved prefix, EOF). Catches (a) and (d).
+#   2. <name> preceded by newline or "." and followed by ".". Catches
+#      the lost-prefix forms (b) and (c).
+#
+# Pattern 2 needs the trailing "." so it doesn't false-match earlier
+# "Opened the stream <name>." (preceded by space, not newline/period)
+# or "Found <name>@..." (no trailing period adjacent to name).
 _LRCLI_STARTED_MARKER = "Started data collection for stream"
-_LRCLI_NAME_RE = re.compile(r"(\S+?)\.")
+
+
+def _build_confirm_pattern(name: str) -> "re.Pattern[str]":
+    """Compile the per-name regex used by ``wait_for_lrcli_subscriptions``.
+
+    Two alternatives covering the four interleaving shapes observed in
+    Merrimac v0.92.8 staging stdout. See the module-level comment above
+    for the full rationale and shape catalogue.
+    """
+    escaped = re.escape(name)
+    return re.compile(
+        rf"(?:{_LRCLI_STARTED_MARKER} {escaped}(?!\w)"
+        rf"|(?:\n|\.){escaped}\.)"
+    )
 
 
 class SubscriptionHandshakeTimeout(TimeoutError):
@@ -378,12 +412,16 @@ def wait_for_lrcli_subscriptions(
     if not expected:
         return confirmed
 
+    # Per-name confirmation regex compiled once; matched against the
+    # full accumulated buffer each iteration (see module-level comment).
+    patterns = {name: _build_confirm_pattern(name) for name in expected}
+
     line_q: "queue.Queue[bytes]" = queue.Queue()
     stop_event = threading.Event()
 
     # All lines we processed, decoded. Logged at WARNING level on timeout
     # or premature exit so we can post-hoc inspect what LabRecorderCLI
-    # actually printed — whether streams it didn't confirm hit
+    # actually printed -- whether streams it didn't confirm hit
     # "Subscribing to ... is taking relatively long" (latency), never
     # appeared at all (discovery failure), or printed something the
     # regex missed (parser issue).
@@ -443,10 +481,9 @@ def wait_for_lrcli_subscriptions(
                 continue
             text = raw.decode("utf-8", "replace")
             received_lines.append(text)
-            if _LRCLI_STARTED_MARKER not in text:
-                continue
-            for name in _LRCLI_NAME_RE.findall(text):
-                if name in expected and name not in confirmed:
+            buffer = "".join(received_lines)
+            for name in list(expected - confirmed):
+                if patterns[name].search(buffer):
                     confirmed.add(name)
                     logger.debug(
                         f"lrcli subscribed to {name!r} "
@@ -695,14 +732,14 @@ class SessionController:
             wait_for_lrcli_subscriptions(
                 self.state.session.recorder.process,
                 self._expected_stream_names,
-                # 180s default chosen pragmatically after v0.92.7 staging
-                # validation on Merrimac showed 5-7 of 11 streams
-                # confirming within 60s. Raising to 180s lets us validate
-                # whether subscription is genuinely slow there (and how
-                # slow) vs. capped by the timeout. Diagnostic stdout is
-                # logged at WARNING on timeout for tuning. Bump again or
-                # make configurable if needed.
-                timeout_seconds=180.0,
+                # 60s default; restored from v0.92.7/v0.92.8's speculative
+                # 180s after the Merrimac stdout dump revealed all 11
+                # streams actually subscribed within seconds. The earlier
+                # "5-7 of 11" / "8 of 11" deficits were a parser bug, not
+                # slow subscription -- see v0.92.9 patch to the parser
+                # and the regression fixture in
+                # tests/pytest/test_lsl_subscription_handshake.py.
+                timeout_seconds=60.0,
                 logger=self.logger,
             )
         except Exception:
