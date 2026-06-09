@@ -1,23 +1,36 @@
-"""Cross-session verification for #819: does the empty-Mouse hypothesis
-predict the user-reported failure list for all affected Wang sessions on
-2026-06-02 / 2026-06-03?
+"""Cross-session verification for #819: does an empty-stream-anywhere
+hypothesis predict the user-reported failure list?
 
 Hypothesis under test:
-    split_xdf.log_to_database raises IndexError on any task whose Mouse
-    stream has zero samples, rolling back the transaction and leaving
-    zero log_sensor_file rows for that task.
+    split_xdf.log_to_database raises IndexError on any task whose XDF
+    contains at least one stream with zero samples, rolling back the
+    transaction and leaving zero log_sensor_file rows for that task.
+
+    (The original Mouse-only formulation was a special case: Mouse is
+    the most common empty stream because subjects often don't move the
+    mouse. But the code path -- `timestamps[0]` in the per-device loop --
+    fires on any empty stream that is in the task's device config.)
 
 Prediction:
-    For every affected session, the set of tasks with Mouse=0 should
-    EXACTLY MATCH the set of tasks reported as missing rows in the
-    nightly dataflow warnings.
+    For every session in the reported window, the set of tasks with ANY
+    empty stream should match the reported failure list, after allowing
+    for the per-task device-config filter in split_xdf.parse_xdf (which
+    drops streams not configured for the task -- those don't reach
+    log_to_database and can't trigger the bug regardless of emptiness).
 
-If the prediction holds across all sessions, #819 is the sole cause.
-Any mismatch flags either an incomplete failure list (false positive
-in prediction) or a SECOND distinct bug (false negative in prediction).
+Mismatch interpretation:
+    * predicted FAIL, reported pass: a stream is empty in the XDF but
+      isn't in the task's configured device list, so parse_xdf filters
+      it out before log_to_database. The script can't see the device
+      config, so it over-predicts FAIL. Cross-check by reading the
+      empty-stream column the script prints.
+    * predicted pass, reported FAIL: no streams empty in the XDF, but
+      the task still failed registration. Points to a cause other than
+      #819 for that specific task.
 
-Run on a machine with Z:\\data mounted. Uses pyxdf.select_streams to
-fetch only the Mouse stream from each XDF, so the scan is fast.
+Run on a machine with Z:\\data mounted. Loads all streams from each XDF
+(slower than the original Mouse-only scan -- expect ~tens of minutes
+for May+June together, vs minutes for Mouse-only).
 
 Usage:
     python _verify_819_empty_mouse.py                       # default dates
@@ -26,8 +39,8 @@ Usage:
 
 The script discovers session directories under Z:\\data whose names
 contain any of the given dates. Z:\\data holds every session ever, so
-DATE FILTERING IS REQUIRED — otherwise the script scans thousands of
-unrelated sessions. The defaults match the user-reported window.
+DATE FILTERING IS REQUIRED -- otherwise the script scans thousands of
+unrelated sessions. The defaults match the originally reported window.
 """
 from __future__ import annotations
 
@@ -71,19 +84,29 @@ FAILURES = {
 }
 
 
-def mouse_sample_count(xdf_path: Path) -> Tuple[int, str]:
-    """Return (n_samples_in_Mouse, status). status is 'ok' or an error string."""
+def empty_streams_in_xdf(xdf_path: Path) -> Tuple[List[str], str]:
+    """Return (sorted_list_of_empty_stream_names, status).
+
+    Loads every stream and reports any whose ``time_stamps`` has length 0.
+    The bug being verified (#819) fires on ANY empty stream that survives
+    parse_xdf's device-config filter, not just Mouse.
+    """
     try:
         streams, _ = pyxdf.load_xdf(
             str(xdf_path),
-            select_streams=[{"name": "Mouse"}],
             verbose=False,
+            dejitter_timestamps=False,  # skip an unneeded post-processing pass
         )
     except Exception as e:
-        return -1, f"{type(e).__name__}: {e}"
-    if not streams:
-        return -1, "no Mouse stream in file"
-    return len(streams[0]["time_stamps"]), "ok"
+        return [], f"{type(e).__name__}: {e}"
+    empty: List[str] = []
+    for s in streams:
+        info = s["info"]
+        raw_name = info.get("name", ["?"])
+        name = raw_name[0] if isinstance(raw_name, list) and raw_name else "?"
+        if len(s["time_stamps"]) == 0:
+            empty.append(name)
+    return sorted(empty), "ok"
 
 
 def extract_task_id(filename: str) -> str:
@@ -113,8 +136,8 @@ def verify_session(session: str, reported_failures: List[str]) -> dict:
     xdfs = sorted(sdir.glob("*.xdf"))
     print(f"\n=== {session} ({len(xdfs)} XDFs) ===")
     print(f"reported-fail substrings: {reported_failures}")
-    print(f"{'task':<34s} {'Mouse_n':>10s}  {'predict':<8s} {'reported':<9s} verdict")
-    print("-" * 78)
+    print(f"{'task':<34s} {'predict':<8s} {'reported':<9s} {'verdict':<10s} empty_streams")
+    print("-" * 90)
 
     mismatches: List[tuple] = []
     n_pred_fail = 0
@@ -122,12 +145,12 @@ def verify_session(session: str, reported_failures: List[str]) -> dict:
 
     for x in xdfs:
         task = extract_task_id(x.name)
-        n, status = mouse_sample_count(x)
+        empty, status = empty_streams_in_xdf(x)
         if status != "ok":
-            print(f"{task:<34s} {'?':>10s}  {'?':<8s} {'?':<9s} LOAD-ERROR: {status}")
+            print(f"{task:<34s} {'?':<8s} {'?':<9s} {'LOAD-ERROR':<10s} {status}")
             continue
 
-        predicted_fail = (n == 0)
+        predicted_fail = bool(empty)
         reported_fail = task_in_reported_failures(task, reported_failures)
         if predicted_fail:
             n_pred_fail += 1
@@ -136,11 +159,12 @@ def verify_session(session: str, reported_failures: List[str]) -> dict:
         ok = (predicted_fail == reported_fail)
         verdict = "OK" if ok else "MISMATCH"
         if not ok:
-            mismatches.append((task, n, predicted_fail, reported_fail))
+            mismatches.append((task, empty, predicted_fail, reported_fail))
 
         pred_label = "FAIL" if predicted_fail else "pass"
         rep_label = "FAIL" if reported_fail else "pass"
-        print(f"{task:<34s} {n:>10d}  {pred_label:<8s} {rep_label:<9s} {verdict}")
+        empty_label = ",".join(empty) if empty else "(none)"
+        print(f"{task:<34s} {pred_label:<8s} {rep_label:<9s} {verdict:<10s} {empty_label}")
 
     print(f"  -> predicted_fail={n_pred_fail}, reported_fail={n_rep_fail}, "
           f"mismatches={len(mismatches)}")
@@ -178,7 +202,7 @@ def main() -> int:
     args = parser.parse_args()
     dates: List[str] = args.dates
 
-    print(f"verifying #819 empty-Mouse hypothesis under {DATA_ROOT}")
+    print(f"verifying #819 empty-stream hypothesis under {DATA_ROOT}")
     print(f"date filter: {dates}")
 
     discovered = discover_sessions(dates)
@@ -221,23 +245,30 @@ def main() -> int:
             all_ok = False
             print(f"  {session}: MISMATCH "
                   f"(predicted_fail={r['n_pred_fail']}, reported_fail={r['n_rep_fail']})")
-            for task, n, pred, rep in r["mismatches"]:
+            for task, empty, pred, rep in r["mismatches"]:
                 p_str = "FAIL" if pred else "pass"
                 r_str = "FAIL" if rep else "pass"
-                print(f"      {task:<34s} Mouse={n}  predicted={p_str}  reported={r_str}")
+                empty_label = ",".join(empty) if empty else "(none)"
+                print(f"      {task:<34s} empty=[{empty_label}]  "
+                      f"predicted={p_str}  reported={r_str}")
 
     print()
     if all_ok:
         print("RESULT: #819 hypothesis CONFIRMED across all sessions.")
-        print("Every reported failure has Mouse=0; every other task has Mouse>0.")
+        print("Every reported failure has at least one empty stream; every other")
+        print("task has no empty streams.")
         return 0
-    print("RESULT: #819 hypothesis NOT FULLY CONFIRMED — see mismatches above.")
+    print("RESULT: #819 hypothesis NOT FULLY CONFIRMED -- see mismatches above.")
     print("Each mismatch is one of:")
-    print("  * predicted FAIL, reported pass: a task with empty Mouse is NOT in")
-    print("    your warning list. Possible: warning list was incomplete, or that")
-    print("    task succeeded via a path that bypassed the bug.")
-    print("  * predicted pass, reported FAIL: a task with non-empty Mouse DID fail.")
-    print("    Possible: a second, independent bug. Investigate that task separately.")
+    print("  * predicted FAIL, reported pass: at least one stream is empty in the")
+    print("    XDF but that stream isn't in the task's device config, so")
+    print("    parse_xdf filters it out before log_to_database. The script can't")
+    print("    see the device config; cross-check by reading the empty_streams")
+    print("    column. If the empty stream(s) aren't ones the task uses, this is")
+    print("    a script over-prediction, not a real second bug.")
+    print("  * predicted pass, reported FAIL: no streams are empty in the XDF but")
+    print("    the task still failed. Points to a cause other than #819 for that")
+    print("    specific task. Investigate separately.")
     return 1
 
 
