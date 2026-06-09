@@ -304,6 +304,18 @@ def log_to_database(
         # Calculate timing characteristics of the data stream
         time_offset = compute_clocks_diff()
         timestamps = dev.device_data["time_stamps"]
+        if len(timestamps) == 0:
+            # #819: a stream with zero samples is legitimate data — Mouse only
+            # emits samples on movement, and during tasks where the subject
+            # doesn't touch the mouse the stream is empty. Skipping here keeps
+            # the open transaction intact so the other devices' rows commit;
+            # before this guard, the next line raised IndexError and rolled
+            # back the entire task's log_sensor_file rows.
+            logger.warning(
+                f"skipping {dev.device_id}: 0 samples in stream "
+                f"(hdf5: {dev.hdf5_path})"
+            )
+            continue
         start_time = datetime.fromtimestamp(timestamps[0] + time_offset).strftime("%Y-%m-%d %H:%M:%S")
         end_time = datetime.fromtimestamp(timestamps[-1] + time_offset).strftime("%Y-%m-%d %H:%M:%S")
         temporal_resolution = 1 / np.median(np.diff(timestamps))
