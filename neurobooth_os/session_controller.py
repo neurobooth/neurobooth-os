@@ -695,14 +695,7 @@ class SessionController:
             wait_for_lrcli_subscriptions(
                 self.state.session.recorder.process,
                 self._expected_stream_names,
-                # 180s default chosen pragmatically after v0.92.7 staging
-                # validation on Merrimac showed 5-7 of 11 streams
-                # confirming within 60s. Raising to 180s lets us validate
-                # whether subscription is genuinely slow there (and how
-                # slow) vs. capped by the timeout. Diagnostic stdout is
-                # logged at WARNING on timeout for tuning. Bump again or
-                # make configurable if needed.
-                timeout_seconds=180.0,
+                timeout_seconds=60.0,
                 logger=self.logger,
             )
         except Exception:

@@ -600,48 +600,6 @@ def report_version_error_and_close(logger, version_error: VersionMismatchError, 
         logger.critical(f"An uncaught exception occurred. Exiting: {repr(version_error)}")
 
 
-def report_recording_start_failure_and_close(logger, error, task_id: str, window):
-    """Surface an LSL-recording start failure to the operator before shutting
-    down the booth GUI. Mirrors ``report_version_error_and_close``: an
-    informational popup (the operator presses OK to acknowledge before the
-    process exits), followed by a CRITICAL log of the underlying error.
-
-    The caller is responsible for terminating servers and breaking out of
-    the GUI event loop after this returns -- same shape as the version-error
-    handler at the top of ``gui()``.
-    """
-    if isinstance(error, SubscriptionHandshakeTimeout):
-        missing_block = "\n  ".join(sorted(error.missing)) or "(none)"
-        total = len(error.missing) + len(error.confirmed)
-        detail = (
-            f"LabRecorderCLI did not confirm subscription to "
-            f"{len(error.missing)} stream(s) within "
-            f"{error.elapsed_seconds:.0f}s.\n\n"
-            f"Confirmed: {len(error.confirmed)} / {total}\n"
-            f"Missing:\n  {missing_block}\n\n"
-            f"Full LabRecorderCLI stdout for this attempt is logged at "
-            f"WARNING in log_application -- review it before re-running."
-        )
-    else:  # ConnectionError -- "matched no stream" from cli_wrapper
-        detail = (
-            f"LabRecorderCLI could not find one of the streams it was told to record:\n\n"
-            f"{error}"
-        )
-    msg = (
-        f"Recording could not start for task '{task_id}'.\n\n"
-        f"{detail}\n\n"
-        f"The system will shutdown when you press OK. "
-        f"Address the cause and start a new session."
-    )
-    heading = "Critical Error: Recording could not start"
-    result = sg.popup_ok(msg, title=heading, location=get_popup_location(window))
-    if result == "OK":
-        logger.critical(
-            f"An uncaught exception occurred. Exiting: {repr(error)}",
-            exc_info=(type(error), error, error.__traceback__),
-        )
-
-
 ######### Visualization ############
 
 def _plot_realtime(window, plttr, inlets):
@@ -958,18 +916,51 @@ def gui(logger):
                         task_id, t_obs_id, state.obs_log_id, tsk_strt_time,
                     )
                 except (SubscriptionHandshakeTimeout, ConnectionError) as e:
-                    # #815: A recording-start failure is terminal for the
-                    # booth — there is no useful state to continue from.
-                    # Match the version_error shutdown pattern above: stop
-                    # plotting, disable controls, terminate STM/ACQ servers,
-                    # then a popup_ok that explains the failure to the
-                    # operator before exiting cleanly (no more os._exit
-                    # mid-crash via main()'s top-level catch).
-                    plttr.stop()
+                    # #815: don't let an LSL-side recording failure crash
+                    # the GUI via main()'s os._exit. Surface to the operator
+                    # as a dismissable popup naming the cause and end the
+                    # session via the normal cancel flow so the booth can be
+                    # re-prepared without restarting the whole GUI process.
+                    if isinstance(e, SubscriptionHandshakeTimeout):
+                        missing_block = "\n  ".join(sorted(e.missing)) or "(none)"
+                        total = len(e.missing) + len(e.confirmed)
+                        detail = (
+                            f"LabRecorderCLI did not confirm subscription to "
+                            f"{len(e.missing)} stream(s) within "
+                            f"{e.elapsed_seconds:.0f}s.\n\n"
+                            f"Confirmed: {len(e.confirmed)} / {total}\n"
+                            f"Missing:\n  {missing_block}\n\n"
+                            f"Likely causes:\n"
+                            f"  - Cross-host stream subscription is slow "
+                            f"(check STM firewall state per #791/#814)\n"
+                            f"  - A device or its host process is not "
+                            f"actually advertising the stream\n"
+                            f"  - 60s timeout was not enough on this booth\n\n"
+                            f"The session has been cancelled. Address the "
+                            f"cause and start a new session.\n\n"
+                            f"Full LabRecorderCLI stdout for this attempt is "
+                            f"in log_application at WARNING."
+                        )
+                    else:  # ConnectionError — "matched no stream" from cli_wrapper
+                        detail = (
+                            f"LabRecorderCLI could not find one of the streams "
+                            f"it was told to record:\n\n{e}\n\n"
+                            f"The session has been cancelled. Address the missing "
+                            f"stream and start a new session."
+                        )
+                    logger.critical(
+                        f"Recording start failed for task {task_id}: {e!r}",
+                        exc_info=sys.exc_info(),
+                    )
+                    sg.popup_error(
+                        detail,
+                        title=f"Recording could not start ({task_id})",
+                        location=get_popup_location(window),
+                    )
+                    state.session_stopping = True
+                    controller.send_cancel()
                     _session_button_state(window, disabled=True)
-                    controller.terminate_servers(conn)
-                    report_recording_start_failure_and_close(logger, e, task_id, window)
-                    break
+                    continue
                 logger.info(f"CTR task_initiated handler took: {time_mod.time() - t_evt:.2f}")
                 window["task_title"].update("Running Task:")
                 window["task_running"].update(task_id, background_color="red")
