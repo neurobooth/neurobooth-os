@@ -36,7 +36,6 @@ from neurobooth_os.msg.messages import FramePreviewReply
 from neurobooth_os.util.nb_types import Subject
 from neurobooth_os.session_controller import (
     SessionState, SessionController, SessionEventListener, VersionMismatchError,
-    SubscriptionHandshakeTimeout,
     get_nodes, resize_frame_preview,
     create_session_dict, request_frame_preview,
 )
@@ -910,57 +909,10 @@ def gui(logger):
                 write_output(window, f"\nTask initiated: {task_id}")
 
                 logger.debug(f"Starting LSL for task: {t_obs_id}")
-                try:
-                    controller.start_lsl_recording(
-                        state.sess_info["subject_id_date"],
-                        task_id, t_obs_id, state.obs_log_id, tsk_strt_time,
-                    )
-                except (SubscriptionHandshakeTimeout, ConnectionError) as e:
-                    # #815: don't let an LSL-side recording failure crash
-                    # the GUI via main()'s os._exit. Surface to the operator
-                    # as a dismissable popup naming the cause and end the
-                    # session via the normal cancel flow so the booth can be
-                    # re-prepared without restarting the whole GUI process.
-                    if isinstance(e, SubscriptionHandshakeTimeout):
-                        missing_block = "\n  ".join(sorted(e.missing)) or "(none)"
-                        total = len(e.missing) + len(e.confirmed)
-                        detail = (
-                            f"LabRecorderCLI did not confirm subscription to "
-                            f"{len(e.missing)} stream(s) within "
-                            f"{e.elapsed_seconds:.0f}s.\n\n"
-                            f"Confirmed: {len(e.confirmed)} / {total}\n"
-                            f"Missing:\n  {missing_block}\n\n"
-                            f"Likely causes:\n"
-                            f"  - Cross-host stream subscription is slow "
-                            f"(check STM firewall state per #791/#814)\n"
-                            f"  - A device or its host process is not "
-                            f"actually advertising the stream\n"
-                            f"  - 60s timeout was not enough on this booth\n\n"
-                            f"The session has been cancelled. Address the "
-                            f"cause and start a new session.\n\n"
-                            f"Full LabRecorderCLI stdout for this attempt is "
-                            f"in log_application at WARNING."
-                        )
-                    else:  # ConnectionError — "matched no stream" from cli_wrapper
-                        detail = (
-                            f"LabRecorderCLI could not find one of the streams "
-                            f"it was told to record:\n\n{e}\n\n"
-                            f"The session has been cancelled. Address the missing "
-                            f"stream and start a new session."
-                        )
-                    logger.critical(
-                        f"Recording start failed for task {task_id}: {e!r}",
-                        exc_info=sys.exc_info(),
-                    )
-                    sg.popup_error(
-                        detail,
-                        title=f"Recording could not start ({task_id})",
-                        location=get_popup_location(window),
-                    )
-                    state.session_stopping = True
-                    controller.send_cancel()
-                    _session_button_state(window, disabled=True)
-                    continue
+                controller.start_lsl_recording(
+                    state.sess_info["subject_id_date"],
+                    task_id, t_obs_id, state.obs_log_id, tsk_strt_time,
+                )
                 logger.info(f"CTR task_initiated handler took: {time_mod.time() - t_evt:.2f}")
                 window["task_title"].update("Running Task:")
                 window["task_running"].update(task_id, background_color="red")

@@ -381,14 +381,6 @@ def wait_for_lrcli_subscriptions(
     line_q: "queue.Queue[bytes]" = queue.Queue()
     stop_event = threading.Event()
 
-    # All lines we processed, decoded. Logged at WARNING level on timeout
-    # or premature exit so we can post-hoc inspect what LabRecorderCLI
-    # actually printed — whether streams it didn't confirm hit
-    # "Subscribing to ... is taking relatively long" (latency), never
-    # appeared at all (discovery failure), or printed something the
-    # regex missed (parser issue).
-    received_lines: List[str] = []
-
     def _reader():
         try:
             while not stop_event.is_set():
@@ -404,24 +396,11 @@ def wait_for_lrcli_subscriptions(
     )
     reader.start()
 
-    def _log_captured_stdout(label: str) -> None:
-        """Dump the raw LabRecorderCLI stdout we saw to the logger, with
-        expected/confirmed/missing summaries, when the handshake fails."""
-        missing = sorted(expected - confirmed)
-        confirmed_sorted = sorted(confirmed)
-        logger.warning(
-            f"lrcli handshake {label}: confirmed {confirmed_sorted}, "
-            f"missing {missing}, captured {len(received_lines)} stdout lines"
-        )
-        for i, line in enumerate(received_lines):
-            logger.warning(f"  lrcli stdout[{i}]: {line.rstrip()}")
-
     t_start = time_mod.time()
     deadline = t_start + timeout_seconds
     try:
         while not expected.issubset(confirmed):
             if process.poll() is not None:
-                _log_captured_stdout("premature exit")
                 raise RuntimeError(
                     f"LabRecorderCLI exited prematurely (code {process.poll()}) "
                     f"before all stream subscriptions were confirmed. "
@@ -430,7 +409,6 @@ def wait_for_lrcli_subscriptions(
                 )
             remaining = deadline - time_mod.time()
             if remaining <= 0:
-                _log_captured_stdout("timeout")
                 raise SubscriptionHandshakeTimeout(
                     missing=expected - confirmed,
                     confirmed=confirmed,
@@ -442,7 +420,6 @@ def wait_for_lrcli_subscriptions(
             except queue.Empty:
                 continue
             text = raw.decode("utf-8", "replace")
-            received_lines.append(text)
             if _LRCLI_STARTED_MARKER not in text:
                 continue
             for name in _LRCLI_NAME_RE.findall(text):
@@ -690,28 +667,13 @@ class SessionController:
         """
         rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
         t0 = time_mod.time()
-        try:
-            self.state.session.start_recording(rec_fname)
-            wait_for_lrcli_subscriptions(
-                self.state.session.recorder.process,
-                self._expected_stream_names,
-                timeout_seconds=60.0,
-                logger=self.logger,
-            )
-        except Exception:
-            # liesl.Session.start_recording() spawned LabRecorderCLI and
-            # set _is_recording = True before we got here. The handshake
-            # then failed (timeout / premature exit / etc.). Without
-            # cleanup we'd leak: the subprocess keeps running with nothing
-            # reading its stdout (eventually filling the pipe buffer and
-            # blocking it), self.state.session._is_recording stays True
-            # so the next start_recording call would refuse with
-            # FileExistsError, and stop_lsl_recording later would try to
-            # finalize a recording that wasn't ack'd to STM. Tear down
-            # cleanly before re-raising so the GUI can surface a popup
-            # and the operator can retry. See #815.
-            self._cleanup_failed_recording_start()
-            raise
+        self.state.session.start_recording(rec_fname)
+        wait_for_lrcli_subscriptions(
+            self.state.session.recorder.process,
+            self._expected_stream_names,
+            timeout_seconds=60.0,
+            logger=self.logger,
+        )
         self.logger.info(
             f"liesl start_recording + subscription handshake took: "
             f"{time_mod.time() - t0:.2f}s"
@@ -723,48 +685,6 @@ class SessionController:
         self.state.rec_fname = rec_fname
         self.state.obs_log_id = obs_log_id
         return rec_fname
-
-    def _cleanup_failed_recording_start(self) -> None:
-        """Tear down a partially-started LabRecorderCLI after handshake failure.
-
-        Terminates the subprocess (so it does not keep running with its
-        stdout pipe unread, eventually blocking on a full buffer) and
-        clears ``liesl.Session._is_recording`` so a retried task or a
-        clean stop later sees consistent state. Safe to call when no
-        recorder exists / no subprocess is running.
-        """
-        session = getattr(self.state, "session", None)
-        if session is None:
-            return
-        recorder = getattr(session, "recorder", None)
-        if recorder is not None:
-            process = getattr(recorder, "process", None)
-            if process is not None and process.poll() is None:
-                try:
-                    process.terminate()
-                    try:
-                        process.wait(timeout=2)
-                    except Exception:
-                        try:
-                            process.kill()
-                        except Exception:
-                            pass
-                except Exception as exc:
-                    self.logger.warning(
-                        f"LabRecorderCLI cleanup after handshake failure "
-                        f"did not exit cleanly: {exc}"
-                    )
-            try:
-                # liesl reads `recorder.process` directly; make absolutely
-                # sure no stale handle is left behind so a retry starts clean.
-                if hasattr(recorder, "process"):
-                    del recorder.process
-            except Exception:
-                pass
-        try:
-            session._is_recording = False
-        except Exception:
-            pass
 
     def stop_lsl_recording(self, task_id: str, t_obs_id: str,
                            obs_log_id: str, folder: str) -> None:
