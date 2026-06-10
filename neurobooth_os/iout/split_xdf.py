@@ -305,20 +305,19 @@ def log_to_database(
         time_offset = compute_clocks_diff()
         timestamps = dev.device_data["time_stamps"]
         if len(timestamps) == 0:
-            # #819: a stream with zero samples is legitimate data — Mouse only
-            # emits samples on movement, and during tasks where the subject
-            # doesn't touch the mouse the stream is empty. Skipping here keeps
-            # the open transaction intact so the other devices' rows commit;
-            # before this guard, the next line raised IndexError and rolled
-            # back the entire task's log_sensor_file rows.
+            # #819: a zero-sample stream is legitimate (e.g. idle Mouse). The
+            # HDF5 is still written by write_device_hdf5, so register it with
+            # NULL timing — skipping it (the original guard) orphans the file
+            # and trips the copy script's "log_sensor_file_id not found" warning.
             logger.warning(
-                f"skipping {dev.device_id}: 0 samples in stream "
-                f"(hdf5: {dev.hdf5_path})"
+                f"{dev.device_id}: 0 samples in stream; registering "
+                f"{dev.hdf5_path} with NULL timing"
             )
-            continue
-        start_time = datetime.fromtimestamp(timestamps[0] + time_offset).strftime("%Y-%m-%d %H:%M:%S")
-        end_time = datetime.fromtimestamp(timestamps[-1] + time_offset).strftime("%Y-%m-%d %H:%M:%S")
-        temporal_resolution = 1 / np.median(np.diff(timestamps))
+            start_time = end_time = temporal_resolution = None
+        else:
+            start_time = datetime.fromtimestamp(timestamps[0] + time_offset).strftime("%Y-%m-%d %H:%M:%S")
+            end_time = datetime.fromtimestamp(timestamps[-1] + time_offset).strftime("%Y-%m-%d %H:%M:%S")
+            temporal_resolution = 1 / np.median(np.diff(timestamps))
 
         # Build the session-relative HDF5 path (to prepend or INSERT with)
         hdf5_folder, hdf5_file = os.path.split(dev.hdf5_path)
