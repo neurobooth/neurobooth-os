@@ -31,7 +31,7 @@ def handler(monkeypatch, tmp_path):
 
     conns = []
 
-    def fake_get_conn():
+    def fake_get_conn(*args, **kwargs):
         conn = MagicMock(name=f"conn{len(conns)}")
         conn.cursor.return_value = MagicMock(name="cursor")
         conns.append(conn)
@@ -79,3 +79,22 @@ def test_emit_never_raises(handler, monkeypatch):
     monkeypatch.setattr(
         handler, "_build_args", MagicMock(side_effect=Exception("kaboom")))
     handler.emit(_record())  # must not raise
+
+
+def test_connect_uses_bounded_timeout(monkeypatch):
+    # The (re)connect must pass a bounded connect_timeout so a dead DB can't
+    # block the logging thread for the OS default.
+    captured = {}
+
+    def fake(*args, **kwargs):
+        captured.update(kwargs)
+        conn = MagicMock()
+        conn.cursor.return_value = MagicMock()
+        return conn
+
+    monkeypatch.setattr(lm.config, "get_server_name_from_env", lambda: "ACQ")
+    monkeypatch.setattr(lm.metadator, "get_database_connection", fake)
+
+    h = lm.PostgreSQLHandler(logging.DEBUG)
+
+    assert captured.get("connect_timeout") == h._connect_timeout_sec

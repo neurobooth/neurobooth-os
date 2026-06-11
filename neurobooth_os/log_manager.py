@@ -341,6 +341,7 @@ class PostgreSQLHandler(logging.Handler):
         self._fallback_file: Optional[IO] = None
         self._last_reconnect_attempt = 0.0
         self._reconnect_interval_sec = 30.0
+        self._connect_timeout_sec = 3
 
         try:
             self._get_logger_connection()
@@ -452,6 +453,10 @@ class PostgreSQLHandler(logging.Handler):
             print(f"Failed to log to DB and to the fallback file: {e}")
 
     def _get_logger_connection(self):
-        self.connection = metadator.get_database_connection()
+        # Short connect_timeout so a reconnect to a dead DB can't block the
+        # logging call -- and, via the handler lock, every other thread that
+        # logs -- for the OS default TCP timeout.
+        self.connection = metadator.get_database_connection(
+            connect_timeout=self._connect_timeout_sec)
         self.connection.autocommit = True
         self.cursor = self.connection.cursor()
