@@ -336,6 +336,12 @@ class PostgreSQLHandler(logging.Handler):
         super(PostgreSQLHandler, self).__init__()
         self.setLevel(log_level)
         self.name = "db_handler"
+        self.connection = None
+        self.cursor = None
+        self._fallback_file: Optional[IO] = None
+        self._last_reconnect_attempt = 0.0
+        self._reconnect_interval_sec = 30.0
+        self._connect_timeout_sec = 3
 
         try:
             self._get_logger_connection()
@@ -353,38 +359,104 @@ class PostgreSQLHandler(logging.Handler):
         APP_LOGGER = None
 
     def emit(self, record):
+        # Logging contract: never raise out of emit. Try the DB; on failure,
+        # attempt a rate-limited reconnect + retry; if the DB is still
+        # unreachable, fall back to a local file so the record is never
+        # silently lost. (The old behaviour print()'d to stdout, which is the
+        # hidden console on the booth machines.)
         try:
-            level = record.levelname.lower()
-            if level not in self._levels:
-                level = "debug"
-
-            if record.exc_info:
-                lines = traceback.format_exception(*record.exc_info)
-                traceback_text = ''.join(lines)
-            else:
-                traceback_text = None
-
-            args = {
-                "log_level": level,
-                "message": record.getMessage(),
-                "function": record.funcName,
-                "filename": record.filename,
-                "line_no": record.lineno,
-                "traceback": traceback_text,
-                "server_type": config.get_server_name_from_env(),
-                "server_id": platform.uname().node,
-                "subject_id": SUBJECT_ID,
-                "session_id": SESSION_ID,
-                "server_time": datetime.fromtimestamp(record.created),
-                "device": getattr(record, "device", None),
-            }
-
-            self.cursor.execute(self._query, args)
-
+            args = self._build_args(record)
         except Exception as e:
-            print(f"An exception occurred attempting to log to DB: {e}")
+            self._fallback_to_file(record, f"log-record build failed: {e}")
+            return
+
+        try:
+            self.cursor.execute(self._query, args)
+            return
+        except Exception as e:
+            db_error = e
+
+        # The held connection is most likely stale/broken. Rebuild it (at most
+        # once per interval, so a hard-down DB doesn't block every log call)
+        # and retry once.
+        if self._try_reconnect():
+            try:
+                self.cursor.execute(self._query, args)
+                return
+            except Exception as e:
+                db_error = e
+
+        self._fallback_to_file(record, f"DB log write failed: {db_error}")
+
+    def _build_args(self, record) -> Dict[str, Any]:
+        level = record.levelname.lower()
+        if level not in self._levels:
+            level = "debug"
+
+        if record.exc_info:
+            traceback_text = ''.join(traceback.format_exception(*record.exc_info))
+        else:
+            traceback_text = None
+
+        return {
+            "log_level": level,
+            "message": record.getMessage(),
+            "function": record.funcName,
+            "filename": record.filename,
+            "line_no": record.lineno,
+            "traceback": traceback_text,
+            "server_type": config.get_server_name_from_env(),
+            "server_id": platform.uname().node,
+            "subject_id": SUBJECT_ID,
+            "session_id": SESSION_ID,
+            "server_time": datetime.fromtimestamp(record.created),
+            "device": getattr(record, "device", None),
+        }
+
+    def _try_reconnect(self) -> bool:
+        """Rebuild the DB connection, at most once per
+        ``_reconnect_interval_sec``. Returns True if a live cursor is ready."""
+        now = datetime.now().timestamp()
+        if now - self._last_reconnect_attempt < self._reconnect_interval_sec:
+            return False
+        self._last_reconnect_attempt = now
+        try:
+            if self.connection is not None:
+                self.connection.close()
+        except Exception:
+            pass
+        try:
+            self._get_logger_connection()
+            return True
+        except Exception as e:
+            print(f"PostgreSQLHandler reconnect failed: {e}")
+            return False
+
+    def _fallback_to_file(self, record, reason: str) -> None:
+        """Append a record to a local file when the DB is unreachable, so it is
+        never silently lost. Best-effort; never raises."""
+        try:
+            if self._fallback_file is None:
+                path = os.path.join(_get_log_dir(), "neurobooth_db_log_fallback.log")
+                self._fallback_file = open(path, "a")
+            self._fallback_file.write(
+                f"[{datetime.fromtimestamp(record.created).isoformat()}] "
+                f"{record.levelname} {record.filename}:{record.lineno} "
+                f"{record.funcName}> {record.getMessage()}  ({reason})\n"
+            )
+            if record.exc_info:
+                self._fallback_file.write(
+                    ''.join(traceback.format_exception(*record.exc_info))
+                )
+            self._fallback_file.flush()
+        except Exception as e:
+            print(f"Failed to log to DB and to the fallback file: {e}")
 
     def _get_logger_connection(self):
-        self.connection = metadator.get_database_connection()
+        # Short connect_timeout so a reconnect to a dead DB can't block the
+        # logging call -- and, via the handler lock, every other thread that
+        # logs -- for the OS default TCP timeout.
+        self.connection = metadator.get_database_connection(
+            connect_timeout=self._connect_timeout_sec)
         self.connection.autocommit = True
         self.cursor = self.connection.cursor()

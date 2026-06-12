@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 from collections import OrderedDict
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable, Dict, Any, Optional, List
 from neurobooth_os.util.nb_types import Subject
@@ -100,12 +101,18 @@ def str_fileid_to_eval(
     return task_func
 
 
-def get_database_connection(database: Optional[str] = None) -> ManagedConnection:
+def get_database_connection(
+    database: Optional[str] = None,
+    connect_timeout: Optional[int] = None,
+) -> ManagedConnection:
     """Open a database connection, optionally through an SSH tunnel.
 
     Returns a :class:`ManagedConnection` that behaves like a plain
     ``psycopg2.extensions.connection`` but also stops the SSH tunnel
     (if any) when :meth:`close` is called or the context manager exits.
+
+    :param connect_timeout: If set, bound the (non-tunnel) TCP connect to this
+        many seconds so an unreachable DB can't block the caller indefinitely.
     """
     database_info = cfg.neurobooth_config.database
     tunnel = None
@@ -128,14 +135,20 @@ def get_database_connection(database: Optional[str] = None) -> ManagedConnection
 
     db = database_info.dbname if database is None else database
 
+    connect_kwargs = dict(
+        database=db,
+        user=database_info.user,
+        password=database_info.password.get_secret_value(),
+        host=host,
+        port=port,
+    )
+    if connect_timeout is not None:
+        # Bound the TCP connect so an unreachable DB can't block the caller for
+        # the OS default (the app logger's reconnect runs inside logging.emit).
+        connect_kwargs["connect_timeout"] = connect_timeout
+
     try:
-        conn = psycopg2.connect(
-            database=db,
-            user=database_info.user,
-            password=database_info.password.get_secret_value(),
-            host=host,
-            port=port,
-        )
+        conn = psycopg2.connect(**connect_kwargs)
     except Exception:
         if tunnel is not None:
             tunnel.stop()
@@ -143,19 +156,172 @@ def get_database_connection(database: Optional[str] = None) -> ManagedConnection
     return ManagedConnection(conn, tunnel)
 
 
-def clear_msg_queue(conn):
-    """
-    Clears message_queue table. Intended for use at the start of a session so errors in prior session don't leave
-    unhandled messages.
-    TODO: Copy messages to log before clearing
-    Parameters
-    ----------
-    conn: connection    A database connection
+@dataclass(frozen=True)
+class MessageQueueRow:
+    """A single ``message_queue`` row captured by a read-only forensic snapshot.
 
-    Returns
-    -------
-    None
+    Attributes:
+        age_seconds: Seconds between ``time_created`` and the moment the snapshot was
+            taken, measured against the database clock.
+        unread: True when the message has never been consumed (``time_read IS NULL``)
+            -- a candidate for a stuck / never-picked-up condition.
+        body: The JSON message body, serialized to a string for logging.
     """
+
+    id: int
+    uuid: str
+    msg_type: str
+    priority: int
+    source: str
+    destination: str
+    time_created: datetime
+    time_read: Optional[datetime]
+    age_seconds: float
+    unread: bool
+    body: str
+
+
+# now() is evaluated by Postgres so age is measured against the DB clock rather than a
+# (possibly skewed) client clock. Unread rows are ordered first within each destination.
+_QUEUE_SNAPSHOT_SQL = """
+    SELECT id, uuid, msg_type, priority, source, destination,
+           time_created, time_read,
+           EXTRACT(EPOCH FROM (now() - time_created)) AS age_seconds,
+           (time_read IS NULL) AS unread,
+           body
+    FROM message_queue
+    ORDER BY destination, (time_read IS NULL) DESC, priority DESC, id ASC
+"""
+
+
+def snapshot_message_queue(conn: connection) -> List[MessageQueueRow]:
+    """Capture the current contents of ``message_queue`` without consuming anything.
+
+    Unlike :func:`read_next_message`, this is a read-only SELECT: it never sets
+    ``time_read``. Used to capture the prior session's leftover messages before
+    :func:`clear_msg_queue` wipes them at session start, so a session that halted with
+    messages still pending leaves evidence behind (issue #706).
+
+    Args:
+        conn: A database connection. When reading concurrently with live servers, use
+            an autocommit connection -- like the application log table, the queue is
+            safe to read under autocommit, where SELECTs do not block concurrent
+            INSERT/UPDATE.
+
+    Returns:
+        One :class:`MessageQueueRow` per row in the table, unread rows first within
+        each destination, oldest-first.
+    """
+    curs = conn.cursor()
+    try:
+        curs.execute(_QUEUE_SNAPSHOT_SQL)
+        field_names = [d[0] for d in curs.description]
+        raw_rows = [dict(zip(field_names, r)) for r in curs.fetchall()]
+    finally:
+        curs.close()
+
+    rows: List[MessageQueueRow] = []
+    for r in raw_rows:
+        body = r["body"]
+        if not isinstance(body, str):  # JSONB comes back from psycopg2 as a dict
+            body = json.dumps(body)
+        rows.append(
+            MessageQueueRow(
+                id=r["id"],
+                uuid=str(r["uuid"]),
+                msg_type=r["msg_type"],
+                priority=r["priority"],
+                source=r["source"],
+                destination=r["destination"],
+                time_created=r["time_created"],
+                time_read=r["time_read"],
+                age_seconds=float(r["age_seconds"]),
+                unread=bool(r["unread"]),
+                body=body,
+            )
+        )
+    return rows
+
+
+def format_message_queue_rows(
+    rows: List[MessageQueueRow], body_max_len: int = 500
+) -> str:
+    """Render a queue snapshot as human-readable text for a log or forensic file.
+
+    Args:
+        rows: Rows from :func:`snapshot_message_queue`.
+        body_max_len: Truncate each message body to this many characters. Bodies can
+            contain subject identifiers, so dumps stay in the same trust boundary as
+            the other booth logs.
+
+    Returns:
+        A multi-line string: a one-line summary followed by one line per row. An empty
+        queue returns a single ``"<message_queue empty>"`` line.
+    """
+    if not rows:
+        return "<message_queue empty>"
+
+    unread = sum(1 for r in rows if r.unread)
+    lines = [f"message_queue snapshot: {len(rows)} row(s), {unread} unread"]
+    for r in rows:
+        state = "UNREAD" if r.unread else "read"
+        body = r.body if len(r.body) <= body_max_len else f"{r.body[:body_max_len]}...(truncated)"
+        lines.append(
+            f"  [{state}] id={r.id} dest={r.destination} src={r.source} "
+            f"type={r.msg_type} prio={r.priority} age={r.age_seconds:.1f}s "
+            f"created={r.time_created.isoformat()} uuid={r.uuid} body={body}"
+        )
+    return "\n".join(lines)
+
+
+def clear_msg_queue(conn):
+    """Clear ``message_queue``, capturing its contents to the log first.
+
+    Intended for use at the start of a session so unhandled messages from a prior
+    session don't leak into the new one. Before deleting, the current contents are
+    snapshotted and logged: a session that starts with a non-empty queue is a signal
+    that the previous session halted with messages still pending, and we want that
+    evidence preserved rather than silently dropped. Implements the on-startup half of
+    issue #706 (and closes the long-standing "copy messages to log before clearing"
+    TODO).
+
+    Args:
+        conn: A database connection.
+    """
+    # Use the application logger when one has been initialised so the capture lands in
+    # log_application; fall back to the module logger otherwise. Imported lazily to
+    # avoid a circular import (log_manager imports this module).
+    import neurobooth_os.log_manager as log_man
+
+    app_log = log_man.APP_LOGGER if log_man.APP_LOGGER is not None else logger
+
+    # Forensic capture is best-effort: clearing the queue is the essential operation at
+    # session start, so a failure to snapshot/log must never prevent it. A failed SELECT
+    # can also leave a (non-autocommit) connection in an aborted transaction, so roll
+    # back before the delete.
+    try:
+        rows = snapshot_message_queue(conn)
+        if rows:
+            unread = sum(1 for r in rows if r.unread)
+            app_log.warning(
+                "Clearing message_queue at session start with %d row(s) still present "
+                "(%d unread); prior session may have halted with messages pending.",
+                len(rows),
+                unread,
+            )
+            app_log.warning(
+                "message_queue contents before clear:\n%s",
+                format_message_queue_rows(rows),
+            )
+        else:
+            app_log.debug("message_queue empty at session start; nothing to clear.")
+    except Exception:
+        app_log.exception("Failed to capture message_queue before clearing; clearing anyway.")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
     table = Table("message_queue", conn=conn)
     table.delete_row()
 
