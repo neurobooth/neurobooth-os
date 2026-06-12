@@ -198,14 +198,15 @@ def snapshot_message_queue(conn: connection) -> List[MessageQueueRow]:
     """Capture the current contents of ``message_queue`` without consuming anything.
 
     Unlike :func:`read_next_message`, this is a read-only SELECT: it never sets
-    ``time_read``, so it is safe to call from a background monitor while servers poll
-    the queue. Intended for forensic dumps when the system hangs or on session
-    teardown (issue #706).
+    ``time_read``. Used to capture the prior session's leftover messages before
+    :func:`clear_msg_queue` wipes them at session start, so a session that halted with
+    messages still pending leaves evidence behind (issue #706).
 
     Args:
-        conn: A database connection. Use an autocommit connection on a dedicated
-            thread -- like the application log table, the queue should be touched in
-            autocommit mode only, where SELECTs do not block concurrent INSERT/UPDATE.
+        conn: A database connection. When reading concurrently with live servers, use
+            an autocommit connection -- like the application log table, the queue is
+            safe to read under autocommit, where SELECTs do not block concurrent
+            INSERT/UPDATE.
 
     Returns:
         One :class:`MessageQueueRow` per row in the table, unread rows first within
@@ -294,20 +295,32 @@ def clear_msg_queue(conn):
 
     app_log = log_man.APP_LOGGER if log_man.APP_LOGGER is not None else logger
 
-    rows = snapshot_message_queue(conn)
-    if rows:
-        unread = sum(1 for r in rows if r.unread)
-        app_log.warning(
-            "Clearing message_queue at session start with %d row(s) still present "
-            "(%d unread); prior session may have halted with messages pending.",
-            len(rows),
-            unread,
-        )
-        app_log.warning(
-            "message_queue contents before clear:\n%s", format_message_queue_rows(rows)
-        )
-    else:
-        app_log.debug("message_queue empty at session start; nothing to clear.")
+    # Forensic capture is best-effort: clearing the queue is the essential operation at
+    # session start, so a failure to snapshot/log must never prevent it. A failed SELECT
+    # can also leave a (non-autocommit) connection in an aborted transaction, so roll
+    # back before the delete.
+    try:
+        rows = snapshot_message_queue(conn)
+        if rows:
+            unread = sum(1 for r in rows if r.unread)
+            app_log.warning(
+                "Clearing message_queue at session start with %d row(s) still present "
+                "(%d unread); prior session may have halted with messages pending.",
+                len(rows),
+                unread,
+            )
+            app_log.warning(
+                "message_queue contents before clear:\n%s",
+                format_message_queue_rows(rows),
+            )
+        else:
+            app_log.debug("message_queue empty at session start; nothing to clear.")
+    except Exception:
+        app_log.exception("Failed to capture message_queue before clearing; clearing anyway.")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
     table = Table("message_queue", conn=conn)
     table.delete_row()
