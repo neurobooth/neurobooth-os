@@ -1,10 +1,11 @@
 """Tests for capturing message_queue contents before the GUI clears it (issue #706).
 
-``clear_msg_queue`` wipes the table at the start of each session. A session that starts
-with rows still present means the *prior* session halted with messages pending -- the
-forensic signal we want preserved. These tests confirm the contents are snapshotted and
-logged *before* the delete, with no database (the connection, ``Table``, and the
-snapshot SELECT are stubbed).
+``clear_msg_queue`` wipes the table at the start of each session. Because the queue is
+only cleared here, a normal prior session leaves hundreds of already-read rows behind --
+so the forensic signal is the *unread* rows (messages never consumed), not mere presence.
+These tests confirm unread messages are logged at WARNING (and only the unread ones are
+dumped) before the delete, while all-consumed leftovers stay quiet -- with no database
+(the connection, ``Table``, and the snapshot SELECT are stubbed).
 """
 from __future__ import annotations
 
@@ -135,3 +136,41 @@ def test_clear_still_deletes_when_snapshot_fails(monkeypatch, fake_table):
     fake_table.delete_row.assert_called_once()  # essential op still ran
     conn.rollback.assert_called_once()
     app_log.exception.assert_called_once()
+
+
+def test_clear_all_read_rows_is_quiet_no_halt_warning(monkeypatch, fake_table):
+    # Normal end-of-session leftovers: rows present but all consumed. Must NOT warn --
+    # the calibration bug was crying "may have halted" on every session's read leftovers.
+    monkeypatch.setattr(
+        meta, "snapshot_message_queue",
+        lambda conn: [_row("a", age=300.0, unread=False),
+                      _row("b", age=250.0, unread=False)],
+    )
+    app_log = MagicMock()
+    monkeypatch.setattr(lm, "APP_LOGGER", app_log)
+
+    meta.clear_msg_queue(MagicMock())
+
+    app_log.warning.assert_not_called()   # no false halt/unconsumed warning
+    app_log.debug.assert_called_once()    # logged quietly at DEBUG instead
+    fake_table.delete_row.assert_called_once()
+
+
+def test_clear_warns_and_dumps_only_unread_rows(monkeypatch, fake_table):
+    # When the prior session left messages unconsumed, warn and dump *only* the unread
+    # rows -- the consumed rows are normal accumulation and would just be noise.
+    monkeypatch.setattr(
+        meta, "snapshot_message_queue",
+        lambda conn: [_row("read1", age=300.0, unread=False, msg_type="FramePreviewRequest"),
+                      _row("stuck", age=250.0, unread=True, msg_type="CreateTasksRequest")],
+    )
+    app_log = MagicMock()
+    monkeypatch.setattr(lm, "APP_LOGGER", app_log)
+
+    meta.clear_msg_queue(MagicMock())
+
+    app_log.warning.assert_called()
+    logged = " ".join(str(c) for c in app_log.warning.call_args_list)
+    assert "CreateTasksRequest" in logged       # the unread message is surfaced
+    assert "FramePreviewRequest" not in logged  # the consumed one is not dumped
+    fake_table.delete_row.assert_called_once()

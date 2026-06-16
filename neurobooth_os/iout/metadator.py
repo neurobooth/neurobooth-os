@@ -275,15 +275,17 @@ def format_message_queue_rows(
 
 
 def clear_msg_queue(conn):
-    """Clear ``message_queue``, capturing its contents to the log first.
+    """Clear ``message_queue``, logging any *unconsumed* messages first.
 
-    Intended for use at the start of a session so unhandled messages from a prior
-    session don't leak into the new one. Before deleting, the current contents are
-    snapshotted and logged: a session that starts with a non-empty queue is a signal
-    that the previous session halted with messages still pending, and we want that
-    evidence preserved rather than silently dropped. Implements the on-startup half of
-    issue #706 (and closes the long-standing "copy messages to log before clearing"
-    TODO).
+    Called at the start of a session so leftovers from the prior session don't leak
+    into the new one. The queue is only wiped here (never mid-session), so a normal
+    prior session leaves its whole accumulated -- and mostly already-read -- history
+    for this clear; that is routine, not a halt. The signal worth surfacing is the
+    **unread** rows: messages the prior session never consumed (e.g. a Start click
+    whose ``CreateTasksRequest`` sat unread). Those are logged at WARNING before the
+    delete so the evidence survives; an all-consumed leftover is logged quietly at
+    DEBUG. Implements the on-startup half of issue #706 (and closes the long-standing
+    "copy messages to log before clearing" TODO).
 
     Args:
         conn: A database connection.
@@ -301,17 +303,25 @@ def clear_msg_queue(conn):
     # back before the delete.
     try:
         rows = snapshot_message_queue(conn)
-        if rows:
-            unread = sum(1 for r in rows if r.unread)
+        unread = [r for r in rows if r.unread]
+        if unread:
+            # The meaningful signal: the prior session left messages unconsumed. Warn,
+            # and dump only the unread rows -- the read ones are normal accumulation.
             app_log.warning(
-                "Clearing message_queue at session start with %d row(s) still present "
-                "(%d unread); prior session may have halted with messages pending.",
+                "Clearing message_queue at session start: %d of %d row(s) were never "
+                "consumed by the prior session.",
+                len(unread),
                 len(rows),
-                unread,
             )
             app_log.warning(
-                "message_queue contents before clear:\n%s",
-                format_message_queue_rows(rows),
+                "Unconsumed message_queue rows before clear:\n%s",
+                format_message_queue_rows(unread),
+            )
+        elif rows:
+            # Normal end-of-session leftovers (all consumed) -- routine, not a halt.
+            app_log.debug(
+                "Clearing %d fully-consumed leftover row(s) from the prior session.",
+                len(rows),
             )
         else:
             app_log.debug("message_queue empty at session start; nothing to clear.")
