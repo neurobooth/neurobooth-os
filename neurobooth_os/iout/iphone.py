@@ -955,7 +955,11 @@ class IPhoneListeningThread(threading.Thread):
         self._iphone = iphone
         self._running = True
         self.logger = logging.getLogger(APP_LOG_NAME)
-        threading.Thread.__init__(self)
+        # daemon=True: a listener that outlives an abrupt or forced disconnect (e.g. the
+        # #DISCONNECTED guard path, where disconnect() early-returns without joining it)
+        # must not block interpreter shutdown. A lingering non-daemon listener parked in
+        # the blocking recv() was intermittently hanging the test suite at exit.
+        threading.Thread.__init__(self, daemon=True)
 
     def run(self):
         try:

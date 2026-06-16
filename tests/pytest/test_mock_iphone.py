@@ -79,6 +79,9 @@ class TestMockIPhoneLifecycle:
             assert device.connected is True
             assert device.state == DeviceState.CONNECTED
             assert device._state == "#READY"
+            # The listener must be a daemon so a forced/abrupt disconnect that leaves
+            # it parked in recv() can't hang interpreter shutdown (flaky-hang regression).
+            assert device._listen_thread.daemon is True
         finally:
             device.close()
 
