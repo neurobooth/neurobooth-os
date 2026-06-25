@@ -459,7 +459,11 @@ class IPhone(Device):
             payload = IPhone.recvall(self.transport, payload_size)
             return payload, version, type_, tag
         elif tag == MessageTag.NORMAL_MESSAGE:
-            payload = self.transport.recv(payload_size)
+            # Reassemble across recv() calls: a NORMAL_MESSAGE can exceed what a
+            # single socket.recv() returns (~32 KB), e.g. a large @DUMPALL file
+            # list. A bare recv() truncated the JSON and left the overflow bytes
+            # in the socket, desyncing the next packet read.
+            payload = IPhone.recvall(self.transport, payload_size)
             msg = IPhone._json_unwrap(payload)
             self._validate_message(msg)
             return msg, version, type_, tag
