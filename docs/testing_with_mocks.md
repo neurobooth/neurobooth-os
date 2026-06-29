@@ -91,6 +91,16 @@ one-off real-hardware run without touching the YAML.
 A laptop dev environment typically sets `mock_devices` in the file;
 production environments leave it unset.
 
+In the `neurobooth/configs` repo this is concrete: the `local_test`
+environment sets `mock_devices: ["all"]` (every device mocked except
+Mouse and Marker, which have no mocks), while the `dod_laptop`
+environment omits the field so its real microphone, EyeLink, iPhone,
+and Mbient run for real. Drive mocking from this field, **not** from a
+machine-wide `NB_MOCK_DEVICES` variable: because the env var wins over
+the file, a stray `NB_MOCK_DEVICES=all` left set on a machine will
+silently mock an intended real-device run. Keep the variable unset and
+use it only for deliberate one-off per-run overrides.
+
 ## What gets mocked
 
 | Device                 | Mock class           | Activation key in `NB_MOCK_DEVICES` | Hardware bypassed                       |
