@@ -13,6 +13,7 @@ Minimal example (`neurobooth_os_config.yaml`):
 
 ```yaml
 environment: local
+mock_devices: ["all"]   # mock all hardware; Mouse + Marker still run for real
 remote_data_dir: C:/data/
 video_task_dir: C:/path/to/videos
 split_xdf_backlog: C:/neurobooth/split_xdf_backlog.csv
@@ -61,6 +62,8 @@ database:
   remote_host: 127.0.0.1
 ```
 
+The `mock_devices` field controls which devices are swapped for synthetic stand-ins so a machine without that hardware can still run a full session. `["all"]` mocks every device that has a mock; Mouse and Marker have none and always run for real. See [testing_with_mocks.md](testing_with_mocks.md) for the device list and per-device options. A machine-wide `NB_MOCK_DEVICES` environment variable, if set, **overrides** this field — keep it unset and rely on the config file.
+
 The top-level `environment:` value (here, `local`) selects which section is loaded from `secrets.yaml`. Passwords live in `secrets.yaml` (in the same folder as `neurobooth_os_config.yaml`, or pointed to by the `NB_SECRETS` env var) and are merged into the config at load time. For local testing the only password you need is the database password:
 
 ```yaml
@@ -102,7 +105,7 @@ Several new tasks were added to this collection. These tasks:
 - foot_tapping_test_obs_1
 - sit_to_stand_test_obs
 are variations on real tasks, but have fewer device requirements. 
-This collection is currently the only one that will work without real devices being attached to the machine used for the test environment.
+This collection predates the mock-device support. With `mock_devices` set (see the configuration example above and [testing_with_mocks.md](testing_with_mocks.md)), any task collection now runs without real hardware attached, so this reduced collection is no longer the only option.
 
 ## Testing your code in PyCharm
 The easiest way to run the system on a single machine is to create a Run Configuration in PyCharm that executes gui.py. WIth this 
