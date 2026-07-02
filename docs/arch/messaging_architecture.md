@@ -3,6 +3,9 @@
 This document provides an in-depth reference for the database-mediated messaging
 system that connects the CTR, STM, and ACQ services. For the broader system
 architecture (services, devices, configuration), see `system_architecture.md`.
+For the specific choreography of a task-to-task transition — the pipelined
+`TransitionRecording` handoff, its timing, and the blocking dependencies — see
+`inter_task_message_flow.md`.
 
 ## Overview
 
@@ -76,9 +79,9 @@ Five constants defined in `messages.py`:
 | Constant | Value | Used By |
 |----------|-------|---------|
 | `HIGHEST_PRIORITY` | 100 | `TerminateServerRequest`, `StopSessionRequest` |
-| `HIGH_PRIORITY` | 75 | `TaskInitialization`, `TaskCompletion`, `LslRecording`, `RecordingStarted`, `RecordingStopped`, `NoEyetracker`, `NewVideoFile`, `FramePreviewRequest`, `FramePreviewReply` |
+| `HIGH_PRIORITY` | 75 | `TaskInitialization`, `TaskCompletion`, `LslRecording`, `RecordingStarted`, `RecordingStopped`, `NoEyetracker`, `FramePreviewRequest`, `FramePreviewReply` |
 | `MEDIUM_HIGH_PRIORITY` | 65 | `PauseSessionRequest`, `ResumeSessionRequest`, `CancelSessionRequest`, `CalibrationRequest`, `MbientResetResults` |
-| `MEDIUM_PRIORITY` | 50 | `PrepareRequest`, `SessionPrepared`, `CreateTasksRequest`, `TasksCreated`, `StartRecording`, `StopRecording`, `DeviceInitialization`, `MbientDisconnected`, `ResetMbients`, `StatusMessage`, `ErrorMessage` |
+| `MEDIUM_PRIORITY` | 50 | `PrepareRequest`, `SessionPrepared`, `CreateTasksRequest`, `TasksCreated`, `StartRecording`, `TransitionRecording`, `StopRecording`, `DeviceInitialization`, `MbientDisconnected`, `ResetMbients`, `StatusMessage`, `ErrorMessage` |
 | `LOW_PRIORITY` | 25 | (currently unused) |
 
 The priority system ensures that shutdown and stop commands preempt all other
@@ -108,8 +111,9 @@ All message body classes extend `MsgBody` and are defined in
 | `PerformTaskRequest` | CTR → STM | 50 | Execute a specific task |
 | `TaskInitialization` | STM → CTR | 75 | Task starting — begin LSL recording |
 | `LslRecording` | CTR → STM | 75 | LSL recording is active |
-| `StartRecording` | STM → ACQ | 50 | Start device acquisition |
-| `RecordingStarted` | ACQ → STM | 75 | Confirm devices are recording |
+| `StartRecording` | STM → ACQ | 50 | Start device acquisition (first task, or after a non-recording task) |
+| `TransitionRecording` | STM → ACQ | 50 | Atomically stop the current recording and start the next; ACQ replies `RecordingStarted` |
+| `RecordingStarted` | ACQ → STM | 75 | Confirm devices are recording (reply to `StartRecording` or `TransitionRecording`) |
 | `StopRecording` | STM → ACQ | 50 | Stop device acquisition |
 | `RecordingStopped` | ACQ → STM | 75 | Confirm devices have stopped |
 | `TaskCompletion` | STM → CTR | 75 | Task finished — stop LSL recording |
@@ -133,7 +137,6 @@ All message body classes extend `MsgBody` and are defined in
 | `MbientDisconnected` | Device → CTR | 50 | Mbient wearable lost connection |
 | `ResetMbients` | STM → ACQ | 50 | Request Mbient reset |
 | `MbientResetResults` | ACQ → STM | 65 | Report reset success/failure per device |
-| `NewVideoFile` | Device → CTR | 75 | Camera/marker produced a new file |
 
 ### Diagnostics
 
@@ -143,6 +146,14 @@ All message body classes extend `MsgBody` and are defined in
 | `FramePreviewReply` | ACQ → CTR | 75 | Return encoded frame bytes |
 | `StatusMessage` | Any → CTR | 50 | Informational status text |
 | `ErrorMessage` | Any → CTR | 50 | Error notification |
+
+> **File registration is no longer a message.** Earlier designs routed
+> created-file paths over the bus (a `videofiles` LSL marker, then a short-lived
+> `NewVideoFile` / `RecordingFiles` pipeline, issue #659). Today ACQ writes
+> `log_sensor_file` rows directly to the database at device-start time, keyed by
+> the `log_task_id` STM passes in `StartRecording` / `TransitionRecording`
+> (`iout/lsl_streamer.py:266-343`). No message type is involved; the
+> `RecordingFiles` class remains in `messages.py` but is never posted.
 
 ## Message Filtering
 
@@ -191,17 +202,18 @@ STM waits for `'RecordingStarted'` / `'RecordingStopped'` from each ACQ.
 
 | Source | File | Message Types |
 |--------|------|---------------|
-| CTR (GUI) | `gui.py` | `PrepareRequest`, `CreateTasksRequest`, `PerformTaskRequest`, `PauseSessionRequest`, `ResumeSessionRequest`, `CancelSessionRequest`, `TasksFinished`, `LslRecording`, `FramePreviewRequest`, `TerminateServerRequest`, `CalibrationRequest` |
-| STM | `server_stm.py` | `ServerStarted`, `SessionPrepared`, `TasksCreated`, `TaskInitialization`, `TaskCompletion`, `StartRecording`, `StopRecording`, `StatusMessage`, `ErrorMessage` |
+| CTR (GUI) | `gui.py` | `PrepareRequest`, `CreateTasksRequest`, `PerformTaskRequest`, `PauseSessionRequest`, `ResumeSessionRequest`, `CancelSessionRequest`, `TasksFinished`, `FramePreviewRequest`, `TerminateServerRequest`, `CalibrationRequest` |
+| CTR (controller) | `session_controller.py` | `LslRecording` (after starting the LabRecorderCLI recording) |
+| STM | `server_stm.py` | `ServerStarted`, `SessionPrepared`, `TasksCreated`, `TaskInitialization`, `TaskCompletion`, `StartRecording`, `TransitionRecording`, `StopRecording`, `StatusMessage`, `ErrorMessage` |
 | ACQ | `server_acq.py` | `ServerStarted`, `SessionPrepared`, `RecordingStarted`, `RecordingStopped`, `MbientResetResults`, `FramePreviewReply`, `ErrorMessage` |
-| Devices | various `iout/*.py` | `DeviceInitialization`, `NoEyetracker`, `MbientDisconnected`, `NewVideoFile`, `StatusMessage` |
+| Devices | various `iout/*.py` | `DeviceInitialization`, `NoEyetracker`, `MbientDisconnected`, `StatusMessage` |
 | Tasks | `task_basic.py`, `mbient_reset.py` | `StatusMessage`, `ResetMbients` |
 
 ### Who Reads Messages
 
 | Destination | File | Polling Mode |
 |-------------|------|-------------|
-| CTR | `gui.py` (`_start_ctr_msg_reader`) | Default filter (general loop) |
+| CTR | `session_controller.py` (`start_message_reader` → `_message_reader_loop`) | Default filter (general loop) |
 | STM | `server_stm.py` (`run_stm`) | Default filter (main loop), `'paused_msg_types'` (paused), `'LslRecording'` / `'RecordingStarted'` / `'RecordingStopped'` (wait loops) |
 | ACQ_N | `server_acq.py` (`run_acq`) | Default filter (main loop) |
 | STM | `mbient_reset.py` | `'MbientResetResults'` (task-specific wait) |
@@ -275,6 +287,7 @@ reply appears.
 **Examples:**
 - STM sends `TaskInitialization` → polls for `LslRecording`
 - STM sends `StartRecording` → polls for `RecordingStarted` (one per ACQ)
+- STM sends `TransitionRecording` → polls for `RecordingStarted` (one per ACQ)
 - STM sends `StopRecording` → polls for `RecordingStopped` (one per ACQ)
 - STM sends `ResetMbients` → polls for `MbientResetResults`
 
@@ -301,4 +314,5 @@ have terminated abnormally.
 | `neurobooth_os/iout/metadator.py` | `post_message`, `read_next_message`, `str_fileid_to_eval`, allowlists |
 | `neurobooth_os/server_stm.py` | STM message handler and synchronization loops |
 | `neurobooth_os/server_acq.py` | ACQ message handler |
-| `neurobooth_os/gui.py` | CTR message reader and all outbound control messages |
+| `neurobooth_os/gui.py` | CTR GUI event loop and outbound control messages |
+| `neurobooth_os/session_controller.py` | CTR message-reader loop and LSL recording (liesl → LabRecorderCLI) |
