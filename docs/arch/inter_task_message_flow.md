@@ -6,7 +6,9 @@ coordinate the handoff between task *N* and task *N+1* during a session.
 All inter-service messages travel through a **Postgres-backed message queue**:
 a sender writes a row; the receiver polls for it on a fixed interval. There is
 no direct socket path between services on the recording hot path, so every hop
-carries a poll latency of roughly `interval / 2`.
+carries a poll latency of roughly `interval / 2`. For the general mechanics of
+that queue — message envelope, priorities, filtering, and dynamic dispatch — see
+[`messaging_architecture.md`](messaging_architecture.md).
 
 > **Accuracy note.** This document was re-verified against `master` in July 2026
 > and every claim carries a `file:line` reference. The code is the source of
@@ -36,10 +38,17 @@ Every message is a `MsgBody` subclass in `neurobooth_os/msg/messages.py`.
 | `StopRecording` | STM → each ACQ | Stop recording, no follow-on. ACQ replies `RecordingStopped`. (`messages.py:366`) |
 | `RecordingStarted` | ACQ → STM | Confirms devices started. (`messages.py:376`) |
 | `RecordingStopped` | ACQ → STM | Confirms devices stopped. (`messages.py:386`) |
-| `RecordingFiles` | ACQ (and STM for EyeTracker) → CTR | Batch list of files each device created; CTR buckets by `fname` and writes `log_sensor_file` during XDF post-processing. Replaced the fragile `videofiles` LSL marker. (`messages.py:467`) |
 | `TaskInitialization` | STM → CTR | Tells CTR to start LSL for the next task. (`messages.py:263`) |
 | `LslRecording` | CTR → STM | Confirms LSL recording started. (`messages.py:276`) |
 | `TaskCompletion` | STM → CTR | Tells CTR to stop LSL for the finished task (carries `fname`, `has_lsl_stream`). (`messages.py:286`) |
+
+> **File registration is not a message.** When ACQ starts devices it writes
+> `log_sensor_file` rows directly to the database (paths only, NULL timing),
+> keyed by the `log_task_id` carried in `StartRecording` / `TransitionRecording`;
+> XDF post-processing fills in the timing later
+> (`iout/lsl_streamer.py:266-343`). This superseded an earlier `videofiles` LSL
+> marker stream and a short-lived `RecordingFiles` message (issue #659); the
+> `RecordingFiles` class still exists in `messages.py` but is no longer posted.
 
 ## The pipelined transition (dominant path)
 
