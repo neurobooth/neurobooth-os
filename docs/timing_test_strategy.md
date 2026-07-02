@@ -311,11 +311,10 @@ works in this codebase, which is why it is low-risk:
 4. **`docs/timing_summary.md`** — a human roll-up in the exact style of
    `docs/win11_readiness_summary.md`: it points at the authoritative JSONs and
    states "if the doc and the JSON disagree, the JSON wins." The
-   change-over-time table format is already demonstrated by
-   `docs/perf/inter-task times [2026-04-03].md` (grouped ranges, summary
-   mean/median/SD/min/max, per-transition deltas, observations) — that document
-   was produced from DB data, remotely, automatically, and is the template for
-   what a timing summary should look like.
+   change-over-time table format — grouped date ranges with summary
+   mean/median/SD/min/max, per-transition deltas, and observations, produced
+   from DB data remotely and automatically — is the template for what a timing
+   summary should look like.
 
 Pieces 2 and 4 are runnable **today, remotely, with zero lab effort**, against
 historical Win10 sessions, to lock the baseline now (Phase 2 of the #759 plan).
@@ -514,8 +513,6 @@ should be spent only on the part that does not.
 - `extras/perf/baselines/win11_readiness/{ctr,stm,acq}.json` — baseline-JSON
   convention
 - `docs/win11_readiness_summary.md` — summary-doc convention (JSON authoritative)
-- `docs/perf/inter-task times [2026-04-03].md` — change-over-time summary
-  format, produced remotely from DB data
 - `docs/timing_test_recording_audit.md` — code-state audit; §1.3 inferred
   production path, §1.4 undocumented fixture, §3 gap list, §4 rebuild steps
 - Issue #759 (umbrella, concern #3), #761 (timing subtask); Phase 2 = lock

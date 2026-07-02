@@ -178,8 +178,6 @@ These are stated plainly because the strategy doc requires it, not buried:
 - Strategy: [`timing_test_strategy.md`](timing_test_strategy.md)
 - Audit: [`timing_test_recording_audit.md`](timing_test_recording_audit.md)
 - Convention mirrored: [`win11_readiness_summary.md`](win11_readiness_summary.md)
-- Change-over-time table format precedent:
-  [`perf/inter-task times [2026-04-03].md`](perf/inter-task%20times%20%5B2026-04-03%5D.md)
 - Issues: #759 (umbrella, concern #3), #761 (this harness), #805 (recording
   fixture, non-code), #801 (Win10 baseline execution → #802 Merrimack, #803
   Wang, #804 CTRU), #769 (Win11 pilot)
