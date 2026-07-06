@@ -45,10 +45,12 @@ Every message is a `MsgBody` subclass in `neurobooth_os/msg/messages.py`.
 > **File registration is not a message.** When ACQ starts devices it writes
 > `log_sensor_file` rows directly to the database (paths only, NULL timing),
 > keyed by the `log_task_id` carried in `StartRecording` / `TransitionRecording`;
-> XDF post-processing fills in the timing later
-> (`iout/lsl_streamer.py:266-343`). This superseded an earlier `videofiles` LSL
-> marker stream and a short-lived `RecordingFiles` message (issue #659); the
+> XDF post-processing fills in the timing later (`iout/lsl_streamer.py:266-343`).
+> STM does the same for the EyeTracker's `.edf`. This superseded an earlier
+> `videofiles` LSL marker and a `RecordingFiles` message pipeline; the
 > `RecordingFiles` class still exists in `messages.py` but is no longer posted.
+> See [`video_filename_tracking.md`](video_filename_tracking.md) for the full
+> mechanism.
 
 ## The pipelined transition (dominant path)
 

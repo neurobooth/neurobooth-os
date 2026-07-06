@@ -17,6 +17,31 @@ hardware devices during timed clinical data collection sessions. The system must
 All control-plane messaging flows through a single PostgreSQL `message_queue`
 table. Services poll for messages, process them, and post replies.
 
+> **Status update (July 2026).** This is a point-in-time design review; several
+> of the weaknesses below have since been addressed. See
+> [`messaging_architecture.md`](messaging_architecture.md) and
+> [`inter_task_message_flow.md`](inter_task_message_flow.md) for the current
+> protocol. In particular:
+> - **#1 polling latency** — the STM main loop now polls at 250 ms (not 1 s) and
+>   confirm-waits at 100 ms; the `LslRecording` and `RecordingStarted` waits run
+>   concurrently, and task-to-task recording is pipelined via the atomic
+>   `TransitionRecording` message (`server_stm.py:131,302-305,529`).
+> - **#3 synchronous LSL stop** — now runs on a background daemon thread instead
+>   of the GUI main thread (`session_controller.py:503-549`).
+> - **#4 `_start_acq` "infinite wait"** — bounded by a 45 s timeout, with the
+>   startup pair under a 60 s executor timeout (`server_stm.py:673-685,302-305`).
+>   The *silent partial-failure on timeout* concern still stands.
+> - **#8 queue cleanup** — `clear_msg_queue` now logs unread rows before deleting,
+>   preserving post-mortem evidence (issue #706).
+> - **DB-error handling** — the app-log handler reconnects and falls back to a
+>   local file rather than silently dropping records (`log_manager.py`).
+>
+> The CTR message reader also moved from `gui.py` to `session_controller.py`, and
+> file registration is no longer a message (`NewVideoFile` was removed), so
+> `gui.py:NNN` and `NewVideoFile` citations below are stale. The structural
+> observations (single-threaded STM during a task, string-based dispatch,
+> unbounded frame queues, no heartbeat) remain valid.
+
 ---
 
 ## Strengths
@@ -272,8 +297,9 @@ periodic heartbeat. If STM or ACQ crashes silently (e.g., `os._exit(1)` in the
 the failure except by observing that expected reply messages never arrive.
 
 The operator sees no error message, no status update — just a session that stops
-progressing. Combined with the infinite-wait bug in `_start_acq`, this means a
-crashed ACQ can leave the system in an undiagnosable hung state.
+progressing. Combined with the silent-timeout behavior in `_start_acq` (#4, now
+bounded at 45 s), a crashed ACQ yields a partial recording detectable only
+post-hoc.
 
 **Impact**: No fault detection; operator must manually diagnose and restart
 failed services.
@@ -358,8 +384,9 @@ application-level protocol built on top of it:
    loop cannot process inbound messages or user input. Events accumulate
    silently and are processed in a burst when the popup closes, which can cause
    out-of-order reactions and operator confusion.
-3. **The infinite-wait bug in `_start_acq` (#4)** can deadlock a session with no
-   recovery path.
+3. **A timed-out `_start_acq` wait (#4)** no longer hangs (it is bounded by a
+   45 s timeout) but still proceeds into the task without the missing ACQs and
+   with no operator-facing notification — a silent partial-failure.
 4. **The absence of heartbeats (#10)** means service failures are invisible
    until they cause a downstream timeout — or an infinite hang.
 5. **Polling latency compounds across the task-start handshake (#1)**, adding
