@@ -75,7 +75,7 @@ rather than at load time:
 ```python
 # neurobooth_os/netcomm/client.py
 s = cfg.neurobooth_config.server_by_name(node_name)
-if s.password is None:
+if s.user and s.password is None:
     raise cfg.ConfigException(
         f"Cannot start remote server '{node_name}': no password configured. "
         f"Service passwords are required in secrets.yaml on the control machine."

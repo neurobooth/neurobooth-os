@@ -148,12 +148,14 @@ All message body classes extend `MsgBody` and are defined in
 | `ErrorMessage` | Any → CTR | 50 | Error notification |
 
 > **File registration is no longer a message.** Earlier designs routed
-> created-file paths over the bus (a `videofiles` LSL marker, then a short-lived
-> `NewVideoFile` / `RecordingFiles` pipeline, issue #659). Today ACQ writes
-> `log_sensor_file` rows directly to the database at device-start time, keyed by
-> the `log_task_id` STM passes in `StartRecording` / `TransitionRecording`
-> (`iout/lsl_streamer.py:266-343`). No message type is involved; the
-> `RecordingFiles` class remains in `messages.py` but is never posted.
+> created-file paths over the bus (a `videofiles` LSL marker, then a
+> `RecordingFiles` message pipeline). Today ACQ (cameras) and STM (the
+> EyeTracker) each write `log_sensor_file` rows directly to the database at
+> device-start time, keyed by the `log_task_id` STM passes in `StartRecording` /
+> `TransitionRecording` (`iout/lsl_streamer.py:266-343`). No message type is
+> involved; the `RecordingFiles` class remains in `messages.py` but is never
+> posted. See [`video_filename_tracking.md`](video_filename_tracking.md) for the
+> full mechanism.
 
 ## Message Filtering
 

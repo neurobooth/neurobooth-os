@@ -65,13 +65,20 @@ STM --TasksCreated--> CTR
 CTR --PerformTaskRequest--> STM
 STM --TaskInitialization--> CTR          # "start LSL recording"
 CTR --LslRecording--> STM               # "LSL is recording"
-STM --StartRecording--> ACQ_0, ACQ_1    # "start device streams"
+STM --StartRecording--> ACQ_0, ACQ_1    # first task / after a non-recording task
 ACQ --RecordingStarted--> STM           # (one per ACQ)
     ... task runs on STM ...
-STM --StopRecording--> ACQ_0, ACQ_1
+STM --TransitionRecording--> ACQ_0, ACQ_1  # task boundary: atomic stop + start
+ACQ --RecordingStarted--> STM              # (one per ACQ; reply to the transition)
+STM --StopRecording--> ACQ_0, ACQ_1        # only when no next task records
 ACQ --RecordingStopped--> STM
 STM --TaskCompletion--> CTR
 ```
+
+At a task boundary STM sends `TransitionRecording` (atomic stop-of-current +
+start-of-next; ACQ replies `RecordingStarted`) instead of a separate
+`StopRecording`/`StartRecording` pair, so ACQ never idles between tasks. See
+[`inter_task_message_flow.md`](inter_task_message_flow.md).
 
 **Mbient reset (during MbientResetPause task):**
 
@@ -99,7 +106,7 @@ priority level:
 | 100 (highest) | TerminateServerRequest, StopSessionRequest |
 | 75 | TaskInitialization, LslRecording, TaskCompletion, FramePreviewRequest |
 | 65 | PauseSessionRequest, CancelSessionRequest, ResumeSessionRequest |
-| 50 (default) | PrepareRequest, SessionPrepared, CreateTasksRequest, StartRecording, etc. |
+| 50 (default) | PrepareRequest, SessionPrepared, CreateTasksRequest, StartRecording, TransitionRecording, StopRecording, etc. |
 
 ## Co-located ACQ_1
 
@@ -172,9 +179,9 @@ database:
   remote_host: "..."
 ```
 
-### Legacy flat format
+### Legacy flat format (no longer supported)
 
-The old format (with `name`, `user`, `password`, `local_data_dir` in every service entry) is still accepted. It is automatically converted to the normalized structure at load time. See `docs/arch/config_normalization.md` for the design rationale.
+The old flat format (with `name`, `user`, `password`, `local_data_dir` in every service entry) is **no longer accepted**. `NeuroboothConfig.__init__` raises a `ConfigException` if the top-level `machines` key is absent, so every config must use the normalized structure above (`neurobooth_os/config.py:120-125`). See [`system_configuration.md`](system_configuration.md) for the configuration system.
 
 ### Internal model
 
