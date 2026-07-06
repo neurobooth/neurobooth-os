@@ -121,7 +121,7 @@ class NeuroboothConfig(BaseModel):
         if 'machines' not in data:
             raise ConfigException(
                 "Config file uses the legacy flat format (no 'machines' key). "
-                "Please migrate to the normalized format. See docs/arch/config_normalization.md."
+                "Please migrate to the normalized format. See docs/arch/system_configuration.md."
             )
         # Pull service specs out before Pydantic validation (they're private fields)
         acq_specs = [ServiceSpec(**s) for s in data.pop('acquisition', [])]
