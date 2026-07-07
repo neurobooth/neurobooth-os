@@ -8,7 +8,7 @@ from os import environ, makedirs, path, getenv
 from typing import Dict, Optional, List
 
 import yaml
-from pydantic import BaseModel, PrivateAttr, SecretStr, conlist
+from pydantic import BaseModel, PrivateAttr, SecretStr, conlist, ValidationError
 
 
 class ConfigException(Exception):
@@ -127,7 +127,12 @@ class NeuroboothConfig(BaseModel):
         acq_specs = [ServiceSpec(**s) for s in data.pop('acquisition', [])]
         pres_spec = ServiceSpec(**data.pop('presentation', {}))
         ctrl_spec = ServiceSpec(**data.pop('control', {}))
-        super().__init__(**data)
+        try:
+            super().__init__(**data)
+        except ValidationError as error:
+            print("Errors detected in Neurobooth configuration files.")
+            print(error)
+            raise error
         self._acquisition_specs = acq_specs
         self._presentation_spec = pres_spec
         self._control_spec = ctrl_spec
