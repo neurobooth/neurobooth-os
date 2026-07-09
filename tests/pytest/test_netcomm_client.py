@@ -84,6 +84,19 @@ def test_build_task_xml_qualifies_bare_user_with_machine() -> None:
     assert actions.attrib.get("Context") == "Author"
 
 
+def test_build_task_xml_unqualified_user_emits_bare_user() -> None:
+    """When unqualified_user is set (IP-addressed host), the bare user is
+    emitted instead of the 'machine\\user' qualified form."""
+    xml = client._build_task_xml(
+        r"C:\nb\server_acq.bat", acq_index=None, user="ACQ",
+        machine="192.0.2.10", unqualified_user=True,
+    )
+    root = _parse(xml)
+    user_id = root.find(".//t:Principals/t:Principal/t:UserId", TASK_NS)
+    assert user_id is not None
+    assert user_id.text == "ACQ"
+
+
 def test_build_task_xml_preserves_already_qualified_user() -> None:
     """A user that already contains a backslash is used as-is (machine
     prefix is not re-applied)."""

@@ -69,6 +69,7 @@ class MachineSpec(BaseModel):
     password: Optional[SecretStr] = None
     local_data_dir: str
     local_log_dir: Optional[str] = None
+    unqualified_user: bool = False
 
 
 class ServiceSpec(BaseModel):
@@ -89,6 +90,7 @@ class ResolvedService(BaseModel):
     password: Optional[SecretStr] = None
     local_data_dir: str
     local_log_dir: Optional[str] = None
+    unqualified_user: bool = False
     bat: Optional[str] = None
     task_name: Optional[str] = None
     devices: List[str] = []
@@ -222,6 +224,7 @@ def _resolve_service(machines: Dict[str, MachineSpec], service: ServiceSpec,
         password=m.password,
         local_data_dir=m.local_data_dir,
         local_log_dir=m.local_log_dir,
+        unqualified_user=m.unqualified_user,
         bat=service.bat,
         task_name=service.task_name,
         devices=service.devices,
