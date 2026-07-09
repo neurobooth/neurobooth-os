@@ -123,16 +123,18 @@ class NeuroboothConfig(BaseModel):
                 "Config file uses the legacy flat format (no 'machines' key). "
                 "Please migrate to the normalized format. See docs/arch/system_configuration.md."
             )
-        # Pull service specs out before Pydantic validation (they're private fields)
-        acq_specs = [ServiceSpec(**s) for s in data.pop('acquisition', [])]
-        pres_spec = ServiceSpec(**data.pop('presentation', {}))
-        ctrl_spec = ServiceSpec(**data.pop('control', {}))
+
         try:
+            # Pull service specs out before Pydantic validation (they're private fields)
+            acq_specs = [ServiceSpec(**s) for s in data.pop('acquisition', [])]
+            pres_spec = ServiceSpec(**data.pop('presentation', {}))
+            ctrl_spec = ServiceSpec(**data.pop('control', {}))
             super().__init__(**data)
         except ValidationError as error:
             print("Errors detected in Neurobooth configuration files.")
             print(error)
             raise error
+
         self._acquisition_specs = acq_specs
         self._presentation_spec = pres_spec
         self._control_spec = ctrl_spec
