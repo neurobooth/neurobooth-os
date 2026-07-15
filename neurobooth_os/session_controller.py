@@ -478,11 +478,33 @@ class SessionController:
             raise RuntimeError(msg)
 
         streamargs = [{"name": n} for n in list(self.state.inlets)]
-        self.state.session = liesl.Session(
-            prefix=folder,
-            streamargs=streamargs,
-            mainfolder=cfg.neurobooth_config.control.local_data_dir,
-        )
+        try:
+            self.state.session = liesl.Session(
+                prefix=folder,
+                streamargs=streamargs,
+                mainfolder=cfg.neurobooth_config.control.local_data_dir,
+            )
+        except ConnectionError as e:
+            # liesl/LabRecorder raises ConnectionError("Not all streams were
+            # found") when one of the requested inlet streams is not resolvable
+            # on the LSL network at bind time -- e.g. a device that failed to
+            # come up or dropped its stream after its inlet was registered
+            # (a Mbient that won't connect is the usual culprit). ConnectionError
+            # is an OSError, not a RuntimeError, so without this it escapes the
+            # GUI's start-session guard and crashes the whole GUI with no
+            # operator-facing message. Re-raise as the RuntimeError the GUI
+            # already surfaces as a dismissable "Cannot start session" popup, so
+            # the operator can fix the device and retry instead of the window
+            # vanishing. See #847.
+            expected = sorted(self.state.inlets)
+            msg = (
+                "Could not start recording: LabRecorder could not find all "
+                f"expected LSL streams {expected}. A device likely failed to "
+                "start or dropped its stream -- check ACQ/STM device status "
+                "(e.g. a Mbient that won't connect), then retry."
+            )
+            self.logger.critical(f"{msg} (liesl: {e!r})")
+            raise RuntimeError(msg) from e
 
     def start_lsl_recording(self, subject_id: str, task_id: str,
                             t_obs_id: str, obs_log_id: str,
