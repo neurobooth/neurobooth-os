@@ -26,8 +26,12 @@ Affected if:
 - `pyvenv.cfg` `home` (and `sys.base_prefix`) point into `anaconda3` (or `miniconda3`), and/or
 - `python.exe` is ~500 KB (a copy of the conda interpreter) rather than ~47 KB (the uv launcher).
 
-At runtime an affected ACQ also shows a parent→child `python.exe` pair — the venv
-launcher and a child `…\anaconda3\python.exe`, both running `server_acq.py`:
+At runtime a Windows venv always shows a **parent→child `python.exe` pair** — the ~47 KB
+venv launcher (parent) spawns the base interpreter (child) as the real worker. This pair is
+**normal venv-trampoline behavior, not a defect** (it is "not a dup launch" — the two entries
+are one logical process). What distinguishes an *affected* machine is **which interpreter the
+child is**: on an affected machine the child runs `…\anaconda3\python.exe`; on a rebuilt
+machine it runs `…\AppData\Roaming\uv\python\cpython-3.8-…\python.exe`. Inspect it with:
 
 ```powershell
 Get-CimInstance Win32_Process -Filter "name='python.exe'" |
@@ -141,8 +145,11 @@ Get-CimInstance Win32_Process -Filter "name='python.exe'" |
   Select-Object ProcessId, ParentProcessId, CommandLine | Format-List
 ```
 
-Success = exactly one `server_acq.py` process, image = the `.venv` python, no child
-`anaconda3\python.exe`. Then watch the unclean-exit rate
+Success = the `server_acq.py` **child** interpreter is the uv standalone
+(`…\AppData\Roaming\uv\python\cpython-3.8-…\python.exe`) with **no `anaconda3\python.exe`
+anywhere** in the list. Do **not** expect a single process — the parent→child launcher/base
+pair is normal (see "How to confirm a machine is affected"); the criterion is the child's
+image, not the process count. Then watch the unclean-exit rate
 (`extras\perf\_investigate_silent_exit.py --audit`, needs the Wang DB / VPN); if it falls
 toward the STM box's, the environment was the root cause.
 
