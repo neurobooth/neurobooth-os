@@ -26,8 +26,12 @@ Affected if:
 - `pyvenv.cfg` `home` (and `sys.base_prefix`) point into `anaconda3` (or `miniconda3`), and/or
 - `python.exe` is ~500 KB (a copy of the conda interpreter) rather than ~47 KB (the uv launcher).
 
-At runtime an affected ACQ also shows a parent→child `python.exe` pair — the venv
-launcher and a child `…\anaconda3\python.exe`, both running `server_acq.py`:
+At runtime a Windows venv always shows a **parent→child `python.exe` pair** — the ~47 KB
+venv launcher (parent) spawns the base interpreter (child) as the real worker. This pair is
+**normal venv-trampoline behavior, not a defect** (it is "not a dup launch" — the two entries
+are one logical process). What distinguishes an *affected* machine is **which interpreter the
+child is**: on an affected machine the child runs `…\anaconda3\python.exe`; on a rebuilt
+machine it runs `…\AppData\Roaming\uv\python\cpython-3.8-…\python.exe`. Inspect it with:
 
 ```powershell
 Get-CimInstance Win32_Process -Filter "name='python.exe'" |
@@ -141,8 +145,11 @@ Get-CimInstance Win32_Process -Filter "name='python.exe'" |
   Select-Object ProcessId, ParentProcessId, CommandLine | Format-List
 ```
 
-Success = exactly one `server_acq.py` process, image = the `.venv` python, no child
-`anaconda3\python.exe`. Then watch the unclean-exit rate
+Success = the `server_acq.py` **child** interpreter is the uv standalone
+(`…\AppData\Roaming\uv\python\cpython-3.8-…\python.exe`) with **no `anaconda3\python.exe`
+anywhere** in the list. Do **not** expect a single process — the parent→child launcher/base
+pair is normal (see "How to confirm a machine is affected"); the criterion is the child's
+image, not the process count. Then watch the unclean-exit rate
 (`extras\perf\_investigate_silent_exit.py --audit`, needs the Wang DB / VPN); if it falls
 toward the STM box's, the environment was the root cause.
 
@@ -173,38 +180,103 @@ extras).
 
 ## Appendix B — safely removing Anaconda
 
-Per machine, **only after** its `.venv` is rebuilt off Anaconda and verified. Order
-matters — never leave a booth without a working interpreter. Do CTR → STM → ACQ one at a
-time.
+Per machine, **only after** its `.venv` is rebuilt off Anaconda and verified (`pyvenv.cfg`
+`home` is the uv path, not `anaconda3`). Order matters — never leave a booth without a
+working interpreter. Do CTR → STM → ACQ one at a time.
+
+This procedure is the one **tested on the staging booths (TEST_CTR / TEST_STM / TEST_ACQ)
+on 2026-07-16**, where the venvs were already uv-standalone and only the leftover Anaconda
+installs needed removing. It replaces the earlier draft that assumed `conda` was on PATH.
+
+### B.0 — Safety gate: is the install per-user or all-users? (do this first)
+
+Booth machines host **two Windows accounts** — a **staging** account and an **FA Study
+(production)** account — that share the physical box. This matters because:
+
+- A **per-user** Anaconda (under `%USERPROFILE%\anaconda3`) belongs to one account only.
+  Removing it from the staging account cannot affect FA Study. **Safe to proceed.**
+- An **all-users** Anaconda (under `C:\ProgramData\Anaconda3`) is shared. Uninstalling it
+  also pulls the base interpreter out from under the **other** account's venv. If FA Study's
+  venv has not yet been verified uv-standalone, this can **brick production.** **Stop** and
+  verify (and rebuild if needed) the other account's `.venv` first.
 
 ```powershell
-# 1. precondition: home must be the uv path, not anaconda3
-Get-Content "$env:NB_INSTALL\.venv\pyvenv.cfg"
-conda env list
-
-# 2. remove the old neurobooth conda env
-conda env remove -n neurobooth-staging
-
-# 3. stop conda auto-activating in future shells
-conda init --reverse cmd.exe powershell
-
-# 4. drop the stale env vars (and remove them from configs\deploy.bat so they don't return)
-[Environment]::SetEnvironmentVariable('NB_CONDA_INSTALL', $null, 'Machine')
-[Environment]::SetEnvironmentVariable('NB_CONDA_ENV',     $null, 'Machine')
-
-# 5. reboot, then confirm anaconda is no longer the default python and the launch still works
-where.exe python      # should NOT list …\anaconda3\…
-
-# 6. uninstall Anaconda and clear residue
-& "$env:USERPROFILE\anaconda3\Uninstall-Anaconda3.exe"
-Remove-Item "$env:USERPROFILE\anaconda3","$env:USERPROFILE\.conda","$env:USERPROFILE\.condarc","$env:USERPROFILE\.anaconda" -Recurse -Force -ErrorAction SilentlyContinue
-
-# 7. scrub remaining anaconda entries from System + User PATH
-#    (…\anaconda3, …\anaconda3\Scripts, …\anaconda3\Library\bin, …\anaconda3\condabin),
-#    then reboot and re-verify the launch.
+"anaconda3 (per-user):  " + (Test-Path "$env:USERPROFILE\anaconda3")     # True = per-user
+"ProgramData Anaconda:  " + (Test-Path "C:\ProgramData\Anaconda3")       # True = ALL-USERS -> STOP
+Get-ChildItem HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall,
+              HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall -EA SilentlyContinue |
+  ForEach-Object { $_.GetValue('DisplayName') } | Where-Object { $_ -match 'Anaconda|Miniconda' }
 ```
 
-Safety notes: keep `.venv.condabak` until the machine runs clean for several sessions;
-on ACQ, re-confirm `PySpin` / `pyrealsense2` / `pylsl` / `pyaudio` import from the new
-venv before removing Anaconda (in case any were installed into the conda env rather than
-the venv).
+Registry match under **HKCU** = per-user (safe); under **HKLM** / a `ProgramData` path =
+all-users (gate on the other account). The rest of this appendix assumes **per-user**.
+
+### B.1 — Precondition
+
+```powershell
+# home must already be the uv path, not anaconda3 (from the rebuild verify step)
+Get-Content "$env:NB_INSTALL\.venv\pyvenv.cfg" | Select-String '^home'
+```
+
+### B.2 — Remove Anaconda (run the whole block in ONE shell)
+
+`conda` is usually **not on PATH** in the service account, so call `conda.exe` by full path.
+Set `$conda` and run the block together — if you set `$conda` in a different window it will
+be empty here and the paths collapse to `\Scripts\conda.exe` (a "term not recognized" error).
+
+```powershell
+$conda = "$env:USERPROFILE\anaconda3"          # <- adjust if step B.0 showed miniconda3
+$conda; Test-Path "$conda\Uninstall-Anaconda3.exe"   # sanity: prints the path, then True
+
+# 1. Undo conda's shell/PATH hooks. Offline. Harmless if it errors (means no active hook).
+& "$conda\Scripts\conda.exe" init --reverse --all
+
+# 2. Official uninstaller. Local exe, no network. Drop '/S' for the GUI.
+Start-Process "$conda\Uninstall-Anaconda3.exe" -ArgumentList '/S' -Wait
+
+# 3. Delete leftovers (this does by hand what `anaconda-clean` would — see note below).
+Remove-Item -Recurse -Force $conda -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "$env:USERPROFILE\.conda","$env:USERPROFILE\.anaconda" -ErrorAction SilentlyContinue
+Remove-Item -Force "$env:USERPROFILE\.condarc" -ErrorAction SilentlyContinue
+
+# 4. Strip Anaconda entries from THIS account's User PATH.
+$userPath = [Environment]::GetEnvironmentVariable('Path','User')
+$cleaned  = ($userPath -split ';' | Where-Object { $_ -and $_ -notmatch 'anaconda|miniconda|conda' }) -join ';'
+[Environment]::SetEnvironmentVariable('Path',$cleaned,'User')
+```
+
+> **Do not** run `conda install anaconda-clean`. It fetches from `repo.anaconda.com`, which
+> the MGH network blocks (licensing). Step 3's manual deletes cover the same dotfiles.
+
+### B.3 — Drop stale conda env vars (if present)
+
+If this machine was set up with the old conda-based deploy, clear the vestigial variables so
+they don't reintroduce a conda assumption (and remove them from `configs\deploy.bat`). These
+are typically **Machine**-scope; needs an elevated shell:
+
+```powershell
+[Environment]::SetEnvironmentVariable('NB_CONDA_INSTALL', $null, 'Machine')
+[Environment]::SetEnvironmentVariable('NB_CONDA_ENV',     $null, 'Machine')
+```
+
+### B.4 — Verify (open a FRESH PowerShell first)
+
+PATH and hook changes only take effect in a new shell.
+
+```powershell
+where.exe conda        # expect: nothing found
+where.exe python       # expect: NO …\anaconda3\… entry
+& "$env:NB_INSTALL\.venv\Scripts\python.exe" -c "import sys; print(sys.base_prefix)"
+# expect unchanged: …\AppData\Roaming\uv\python\cpython-3.8-…
+```
+
+**`where python` will not list the uv interpreter — that is correct, not a problem.** The
+uv-managed standalone Python lives under `%APPDATA%\uv\python\…` and is intentionally not on
+PATH; the venv references it directly. `where python` will only show unrelated system Pythons
+(e.g. `C:\Python310`, `C:\Python27amd64`) and the Windows Store stub
+(`…\WindowsApps\python.exe`). None of those is neurobooth's interpreter — the only one that
+matters is the `.venv` python checked above, whose `base_prefix` must still be the uv path.
+
+Safety notes: keep `.venv.condabak` until the machine runs clean for several sessions; on
+ACQ, re-confirm `PySpin` / `pyrealsense2` / `pylsl` / `pyaudio` import from the new venv
+before removing Anaconda (in case any were installed into the conda env rather than the venv).
