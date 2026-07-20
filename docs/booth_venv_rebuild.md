@@ -149,9 +149,24 @@ Success = the `server_acq.py` **child** interpreter is the uv standalone
 (`…\AppData\Roaming\uv\python\cpython-3.8-…\python.exe`) with **no `anaconda3\python.exe`
 anywhere** in the list. Do **not** expect a single process — the parent→child launcher/base
 pair is normal (see "How to confirm a machine is affected"); the criterion is the child's
-image, not the process count. Then watch the unclean-exit rate
-(`extras\perf\_investigate_silent_exit.py --audit`, needs the Wang DB / VPN); if it falls
-toward the STM box's, the environment was the root cause.
+image, not the process count.
+
+Then watch the unclean-exit rate (`extras\perf\_investigate_silent_exit.py --audit`, needs
+the Wang DB / VPN). Compare ACQ against the **GUI (`control`) box**, not STM: STM logs two
+restart markers per launch, so `audit_shutdowns` deliberately excludes it and any rate you
+compute for it reads 95–100% UNCLEAN regardless of health. If the ACQ rate falls toward the
+GUI's, the environment was the root cause.
+
+Pre-rebuild reference (Wang, Apr–Jul 2026, captured on #818): ACQ_0 ran **39–57% unclean**
+in June–July at ~20–25 restarts/week, against a GUI control of **0–12%**. At n ≈ 22
+restarts/week a real fix should show ~2 unclean per week instead of ~10 — readable after one
+week, comfortable after two.
+
+Two limits to keep in mind. `--audit` counts unclean *exits*, not aborts: it also catches
+external kills, hang-and-forcequit, power loss, and logging blackouts, so a drop supports the
+environment theory without proving the SIGABRT class is gone — confirm that with
+`Fatal Python error: Aborted` disappearing from `neurobooth_crash.log`. And the audit targets
+`Starting ACQ (index=0)` only, so ACQ_1 is not covered.
 
 ### Rollback
 
