@@ -92,88 +92,16 @@ The runtime batch scripts (`server_*.bat`, `transfer_data.bat`, etc.) expect
 `NB_INSTALL` to point at the repo root, and use `%NB_INSTALL%\.venv\Scripts\activate.bat`
 to activate the uv-managed environment.
 
-Set `NB_INSTALL` system-wide (Settings → Environment Variables) to e.g.
-`C:\neurobooth-os`. The legacy `NB_CONDA_INSTALL` and `NB_CONDA_ENV` variables
-are no longer used and can be removed.
+Set `NB_INSTALL` system-wide (Settings → Environment Variables) to the repo root —
+on the booths that is `%USERPROFILE%\nb_os_env\neurobooth-os`. The legacy
+`NB_CONDA_INSTALL` and `NB_CONDA_ENV` variables are no longer set or read by
+anything; delete them if they are still present on a machine.
 
-## Upgrading from a conda-based booth
-
-For machines that were running the conda-based environment
-(`environment_staging.yml`, `neurobooth-staging`), follow this runbook on
-each booth (CTR → STM → ACQ):
-
-1. **Stop running services** — close the GUI, stop any running
-   `server_acq.py` / `server_stm.py` processes, ensure no XDF jobs are mid-run.
-
-2. **Pull the new code** from master once this PR is merged:
-
-   ```powershell
-   cd %NB_INSTALL%
-   git pull
-   ```
-
-3. **Install uv** if not already on PATH:
-
-   ```powershell
-   winget install astral-sh.uv
-   ```
-
-   Open a new shell so PATH picks up `uv.exe`.
-
-4. **Build the new venv:**
-
-   ```powershell
-   uv sync
-   ```
-
-   On STM also run:
-
-   ```powershell
-   uv sync --extra eyelink
-   ```
-
-   On ACQ also run:
-
-   ```powershell
-   uv pip install <path>\spinnaker_python-3.x.x.x-cp38-cp38-win_amd64.whl
-   ```
-
-   On CTR also re-apply the LabRecorder v1.17.1 swap (#812, #813):
-
-   ```powershell
-   powershell.exe -ExecutionPolicy Bypass `
-       -File "%NB_INSTALL%\extras\perf\upgrade_labrecorder_v1.17.1.ps1"
-   ```
-
-   This is required after every `uv sync` until #813 is closed. The script
-   is idempotent.
-
-5. **Update operator environment variables** (Settings → Environment
-   Variables → System):
-   * Remove `NB_CONDA_INSTALL` and `NB_CONDA_ENV` — no longer used.
-   * Confirm `NB_INSTALL` is set and points at the repo root.
-
-6. **Smoke-test:** open a new shell and run
-
-   ```powershell
-   %NB_INSTALL%\.venv\Scripts\activate.bat
-   python -c "import neurobooth_os"
-   ```
-
-   It should exit cleanly with no output.
-
-7. **Optional cleanup** — once you're confident the uv env works, the old
-   conda environment can be removed:
-
-   ```powershell
-   conda env remove -n neurobooth-staging
-   ```
-
-   (and uninstall Anaconda/Miniconda entirely if the booth has no other use
-   for it.)
-
-> **Deploy chain note:** `configs/checkout_and_deploy.bat` and `configs/version.bat` (in the separate `configs` repo) call `conda env create --file environment_staging.yml`. They must be updated to
-> call `uv sync` instead **before** running them against this branch, or staging deploy will fail. Coordinate that change with this PR's merge.
+> **Deploy chain note:** the `configs` repo deploy chain
+> (`checkout_and_deploy.bat` → `github_checkout.bat` → `deploy.bat` → `version.bat`)
+> checks out the release tag and copies config files. It does **not** create,
+> activate, or sync the virtual environment — run `uv sync` yourself after a deploy
+> if dependencies changed.
 
 ## Setup
 
