@@ -33,6 +33,20 @@ def countdown(period):
         t2 = local_clock()
 
 
+def _flush_and_hard_exit(exit_code: int) -> None:
+    """Flush logging and terminate via ``os._exit`` without running finalizers.
+
+    The acquisition process must not let Python GC-finalize its device objects
+    on the way out. ``DeviceManager.close_streams()`` already frees their native
+    handles; re-running native teardown on freed handles (LSL outlets,
+    MetaWear/warble, camera SDKs) aborts the process (#710). ``os._exit`` skips
+    finalizers and ``atexit`` entirely, so we flush logging explicitly first,
+    then exit, rather than returning and unwinding the frame.
+    """
+    logging.shutdown()
+    os._exit(exit_code)
+
+
 def main():
     acq_index = int(sys.argv[1]) if len(sys.argv) > 1 else 0
     logger = None
@@ -52,8 +66,7 @@ def main():
                         exc_info=sys.exc_info())
         exit_code = 1
     finally:
-        logging.shutdown()
-        os._exit(exit_code)
+        _flush_and_hard_exit(exit_code)
 
 
 def run_acq(logger, acq_index: int = 0):
@@ -207,7 +220,14 @@ def run_acq(logger, acq_index: int = 0):
 
                 if device_manager is not None:
                     device_manager.close_streams()
-                break
+
+                # #710: do not fall through to run_acq's return here. Unwinding
+                # the frame GC-finalizes `device_manager`, whose device objects
+                # re-run native teardown (LSL outlets, MetaWear/warble, camera
+                # SDKs) on handles close_streams() already freed -> SIGABRT before
+                # the process can exit. Hard-exit instead, so no finalizer runs.
+                logger.debug("Stopping ACQ")
+                _flush_and_hard_exit(0)
             else:
                 logger.error(f'Unexpected message received: {message.model_dump_json()}')
     except Exception as argument:
