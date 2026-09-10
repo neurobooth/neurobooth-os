@@ -22,7 +22,7 @@ classifiers = [
     "Operating System :: Unix",
     "Operating System :: MacOS",
 ]
-requires-python = ">=3.8,<3.9"
+requires-python = ">=3.11"
 # Decoupled from runtime version metadata. neurobooth_os/current_release.py
 # is for cross-service consistency checks and DB session-version logging;
 # neurobooth_os/current_config.py is for the configs repo's version. Neither
@@ -30,16 +30,22 @@ requires-python = ">=3.8,<3.9"
 version = "0.0.0+dev"
 dependencies = [
     # Scientific stack
-    "numpy>=1.23.5",
+    # numpy is held below 2.0 so the psychopy upgrade below is the only library
+    # crossing a major version in one change. Lift with a test run behind it.
+    "numpy>=1.23.5,<2",
     "scipy>=1.10.1",
     "pandas>=2.0.3",
     "matplotlib>=3.7.3",
     "xarray>=2023.1.0",
     "numexpr>=2.8.4",
     # Stimulus / psychophysics
-    # 2024.1.0 removed MovieStim3 (used in tasks/utils.py); stay on the 2023
-    # series to match the conda env behavior. Upgrade tracked separately.
-    "psychopy>=2023.1.2,<2024",
+    # 2025.2 is a hard floor, not a preference: every earlier series pins
+    # pyobjc-framework-quartz<8.0 on darwin, which collides with pynput's
+    # >=8.0 and makes the whole set unresolvable on macOS. Removing pynput
+    # does not help -- the resolver then reaches back to pyobjc 2.2, which
+    # fails to build. 2024.1.0 removed MovieStim3; call sites in
+    # tasks/utils.py and tasks/smooth_pursuit/ were moved to MovieStim.
+    "psychopy>=2025.2",
     "psychtoolbox>=3.0.19.0",
     "pyglet>=1.4.11",
     "questplus>=2023.1",
@@ -56,11 +62,9 @@ dependencies = [
     "pyyaml>=6.0.1",
     "ujson>=5.8.0",
     "json-tricks>=3.17.3",
-    # 2.0.1+ dropped cp38 Windows wheels.
-    "blosc2>=2.0.0,<2.0.1",
+    "blosc2>=2.0.0",
     # Database / API
-    # 2.9.10 dropped cp38 wheels; pin to last-cp38-wheel release.
-    "psycopg2-binary>=2.9.9,<2.9.10",
+    "psycopg2-binary>=2.9.9",
     "pycap>=2.6.0",
     "pydantic>=2.5.2",
     "neurobooth-terra @ git+https://github.com/neurobooth/neurobooth-terra.git",
@@ -73,36 +77,42 @@ dependencies = [
     "python-gitlab>=4.1.1",
     "gitpython>=3.1.40",
     # GUI
-    "pyqt5>=5.15.10",
-    "pyqt5-qt5>=5.15.2",
-    "pyqt5-sip>=12.13.0",
+    # FreeSimpleGUI (tkinter) is the only toolkit the code imports. pyqt5,
+    # pyqt5-qt5, pyqt5-sip and wxpython had no import site anywhere in the
+    # repo; they are psychopy's business, not ours, and declaring them
+    # directly forced a wxpython source build on macOS. Let psychopy pull
+    # what it needs.
     "FreeSimpleGUI>=5.2.0.post1",
-    "wxpython>=4.2.1",
     # Image / video
     "pillow>=10.0.1",
-    "opencv-python>=4.8.1.78",
+    # opencv and moviepy held below their next major for the same reason as
+    # numpy above: one major-version crossing per change.
+    "opencv-python>=4.8.1.78,<5",
     "imageio>=2.32.0",
     "imageio-ffmpeg>=0.4.9",
-    "moviepy>=1.0.3",
-    # 4.5.2+ dropped cp38 wheels on Windows.
-    "ffpyplayer>=4.5.1,<4.5.2",
+    "moviepy>=1.0.3,<2",
+    "ffpyplayer>=4.5.1",
     "sk-video>=1.1.10",
-    "python-vlc>=3.0.11115",
     # Audio
-    "pyaudio>=0.2.13",
-    "sounddevice>=0.4.6",
+    # pyaudio has no macOS wheel and needs PortAudio headers to build from
+    # source. microphone.py already imports it lazily behind _require_pyaudio(),
+    # and MockMicStream never touches it, so a mock session does not need it.
+    "pyaudio>=0.2.13; sys_platform != 'darwin'",
     "soundfile>=0.12.1",
     # Hardware: cameras, wearables, input
-    "pyrealsense2>=2.54.2.5684",
-    "metawear>=1.0.8",
-    "warble>=1.2.9",
+    # The vendor SDKs below cannot be installed on macOS at all -- pyrealsense2
+    # publishes no darwin wheel, and metawear/warble raise "not supported for
+    # 'Darwin'" from their build backends. Every one of them is imported lazily
+    # behind a _require_<sdk>() guard and has a registered mock, so a
+    # hardware-less macOS session runs without them. See the extras below.
     "pynput>=1.7.6",
     # pyserial / pyparallel / pywinhook removed (#763): no direct import
     # anywhere in neurobooth_os/ or extras/. See docs/win11_vendor_compat.md
     # for the audit and the parallel-port-trigger caveat.
-    # Windows interop
-    "pywin32>=306",
-    "pypiwin32>=223",
+    # pywin32 / pypiwin32 / sounddevice / python-vlc removed on the same
+    # grounds: no import site anywhere in the repo. The only Windows-API
+    # import is stdlib winreg in extras/perf/mbient_soak.py, and gui.py's
+    # Win32 calls go through stdlib ctypes.windll.
     # Crypto / security
     "cryptography>=41.0.5",
     "bcrypt>=3.2.0",
@@ -113,6 +123,15 @@ dependencies = [
     "zope-event>=5.0",
     "zope-interface>=6.1",
     # Utility
+    # setuptools is a runtime requirement here, not a build-time one: liesl's
+    # cli_wrapper imports pkg_resources, which Python 3.12+ venvs no longer
+    # provide by default. Without it `import liesl` fails, and with it
+    # iphone.py, split_xdf.py and session_controller.py.
+    # The upper bound is not cosmetic: setuptools 81 removed pkg_resources
+    # outright (84.0.0 confirmed missing it), so liesl cannot import against a
+    # current setuptools at all. This pin buys time; it is a standing argument
+    # for retiring liesl rather than a stable position.
+    "setuptools>=68,<81",
     "psutil>=5.9.6",
     "tqdm>=4.66.1",
     "py-cpuinfo>=9.0.0",
@@ -141,9 +160,26 @@ dependencies = [
 eyelink = [
     "sr-research-pylink",
 ]
+# ACQ machine: Mbient wearables. The SDK's build backend refuses to run on
+# macOS ("MetaWear Python SDK not supported for 'Darwin'"), so the markers make
+# this extra a no-op there rather than an error -- `uv sync --extra mbient` is
+# then the same command on every machine. Use MockMbient on macOS.
+mbient = [
+    "metawear>=1.0.8; sys_platform != 'darwin'",
+    "warble>=1.2.9; sys_platform != 'darwin'",
+]
+# ACQ machine: Intel RealSense depth camera. No macOS wheel is published at
+# any version; same no-op-on-darwin treatment. Use MockVidRec_Intel on macOS.
+realsense = [
+    "pyrealsense2>=2.54.2.5684; sys_platform != 'darwin'",
+]
+# Everything a real booth needs, in one name.
+booth = [
+    "neurobooth-os[eyelink,mbient,realsense]",
+]
 # ACQ machine: FLIR Spinnaker SDK is installed separately from a local wheel
 # (the wheel path is operator-local). Run after `uv sync`:
-#   uv pip install <path>\spinnaker_python-3.x.x.x-cp38-cp38-win_amd64.whl
+#   uv pip install <path>\spinnaker_python-3.x.x.x-cp311-cp311-win_amd64.whl
 
 [project.scripts]
 neurobooth_os = "neurobooth_os.gui:main"
@@ -163,20 +199,22 @@ dev = [
 
 [tool.uv]
 extra-index-url = ["https://pypi.sr-support.com"]
-# Booth machines run on Windows only; restrict the resolver to win32 so it
-# doesn't reject the lock over darwin/linux-only conflicts (e.g. psychopy's
-# pyobjc-framework-quartz pin chains).
-environments = ["sys_platform == 'win32'"]
-# neurobooth-terra requires `psycopg2` (the C-extension distribution).
-# 2.9.10 dropped cp38 Windows wheels and would force a from-source build that
-# requires MSVC Build Tools. Constrain the transitive to the last release
-# with cp38 wheels.
-constraint-dependencies = ["psycopg2<2.9.10"]
-# psychopy 2023.x transitively requires `pypi-search`, which only ever lived
-# on conda-forge (not PyPI). neurobooth doesn't exercise psychopy's
-# update-browser code path that actually uses it. Override the transitive
-# to a marker that resolves trivially.
-override-dependencies = ["pypi-search; sys_platform == 'never'"]
+# Booth machines run Windows; development and mock sessions also run on macOS
+# and Linux. All three must resolve. The darwin conflicts that forced the old
+# win32-only restriction are gone: psychopy's pyobjc-framework-quartz<8.0 pin
+# was dropped in 2025.2, and the vendor SDKs that have no darwin build moved
+# into extras above.
+environments = [
+    "sys_platform == 'win32'",
+    "sys_platform == 'darwin'",
+    "sys_platform == 'linux'",
+]
+# neurobooth-terra requires `psycopg2`, the C-extension distribution, which is
+# sdist-only and needs libpq headers plus pg_config to build. We already depend
+# directly on `psycopg2-binary`, which installs the very same `psycopg2` module
+# from a prebuilt wheel. Drop terra's transitive on darwin so a Mac dev install
+# needs no Postgres client toolchain; Windows and Linux keep the real build.
+override-dependencies = ["psycopg2; sys_platform != 'darwin'"]
 
 [tool.setuptools.packages.find]
 include = ["neurobooth_os*"]

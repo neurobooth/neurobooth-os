@@ -163,7 +163,7 @@ def load_slide(win: visual.Window, name: Union[str, os.PathLike]) -> visual.Imag
     return load_image(win, slide_path)
 
 
-def load_video(win: visual.Window, path: Union[str, os.PathLike]) -> visual.MovieStim3:
+def load_video(win: visual.Window, path: Union[str, os.PathLike]) -> visual.MovieStim:
     """
     Load the specified video and create a movie stimulus.
     :param win: The PsychoPy window object the task will be displayed on.
@@ -173,14 +173,18 @@ def load_video(win: visual.Window, path: Union[str, os.PathLike]) -> visual.Movi
     if not op.isfile(path):
         raise IOError(f'Required video file {path} does not exist')
 
-    return visual.MovieStim3(
+    # autoStart=False keeps MovieStim3's semantics: playback begins when
+    # play_video() calls play(), not on the first draw(). MovieStim defaults
+    # autoStart to True, which would start the clip during any incidental draw.
+    return visual.MovieStim(
         win=win,
         filename=path,
         noAudio=False,
+        autoStart=False,
     )
 
 
-def load_countdown(win: visual.Window, name: Union[str, os.PathLike]) -> visual.MovieStim3:
+def load_countdown(win: visual.Window, name: Union[str, os.PathLike]) -> visual.MovieStim:
     """
     Locate the specified countdown movie  and create a movie stimulus.
     :param win: The PsychoPy window object the task will be displayed on.
@@ -306,7 +310,7 @@ def _percentile(sorted_values: List[float], p: float) -> float:
 
 def _log_video_timing(
     log_path: str,
-    mov: visual.MovieStim3,
+    mov: visual.MovieStim,
     play_call_clock: float,
     first_flip_clock: float,
     last_flip_clock: float,
@@ -315,8 +319,11 @@ def _log_video_timing(
 ) -> None:
     """Append one summary row to the video timing CSV. Never raises."""
     try:
+        # frameRate is MovieStim's public property; the leading two are
+        # MovieStim3-era private names, kept so an older clip object still logs.
         video_fps = (
-            getattr(mov, "_videoFPS", None)
+            getattr(mov, "frameRate", None)
+            or getattr(mov, "_videoFPS", None)
             or getattr(mov, "videoFPS", None)
             or getattr(mov, "fps", None)
         )
@@ -383,13 +390,16 @@ def play_video(win, mov, wait_time=1, stop=True, keyList=None):
     exited_via = "finished"
 
     clock = core.Clock()
-    if mov.status == visual.FINISHED:
+    # MovieStim replaced MovieStim3's `status`/visual.FINISHED pairing with
+    # explicit isFinished / isPlaying / isPaused / isStopped properties backed
+    # by a private _playbackStatus. There is no public `status` to compare.
+    if mov.isFinished:
         win.flip()
         mov.seek(0)
 
     play_call_clock = local_clock()
     mov.play()
-    while mov.status != visual.FINISHED:
+    while not mov.isFinished:
         mov.draw()
         win.flip()
         now = local_clock()
@@ -402,8 +412,10 @@ def play_video(win, mov, wait_time=1, stop=True, keyList=None):
         if clock.getTime() >= wait_time and event.getKeys(keyList=keyList):
             exited_via = "keypress"
             if stop:
+                # MovieStim.stop() already rewinds to the start, and it unloads
+                # the player as it goes -- seeking afterwards would act on a
+                # torn-down player. MovieStim3 needed the explicit rewind.
                 mov.stop()
-                mov.seek(0)
             else:
                 mov.pause()
                 mov.seek(0)

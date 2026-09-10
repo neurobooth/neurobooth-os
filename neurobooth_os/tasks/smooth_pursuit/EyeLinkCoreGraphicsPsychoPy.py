@@ -320,7 +320,7 @@ class EyeLinkCoreGraphicsPsychoPy(pylink.EyeLinkCustomDisplay):
                 core.quit()
             else:
                 if os.path.exists(self._movieTarget):
-                    self._calibTar = visual.MovieStim3(
+                    self._calibTar = visual.MovieStim(
                         self._display, self._movieTarget, noAudio=False, loop=True
                     )
                 else:
