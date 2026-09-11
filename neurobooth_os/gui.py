@@ -6,7 +6,6 @@ import base64
 import ctypes
 import json
 import logging
-import msvcrt
 import os
 import os.path as op
 import sys
@@ -34,6 +33,7 @@ import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
 from neurobooth_os.msg.messages import FramePreviewReply
 from neurobooth_os.util.nb_types import Subject
+from neurobooth_os.util import file_lock
 from neurobooth_os.session_controller import (
     SessionState, SessionController, SessionEventListener, VersionMismatchError,
     get_nodes, resize_frame_preview,
@@ -90,10 +90,7 @@ def _acquire_gui_lock() -> GuiLockResult:
 
     holder_pid, holder_started = _read_lock_holder_info(path)
 
-    try:
-        os.lseek(fd, 0, os.SEEK_SET)
-        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-    except OSError:
+    if not file_lock.try_lock(fd):
         try:
             os.close(fd)
         except OSError:
@@ -141,11 +138,7 @@ def _release_gui_lock(lock_state: Optional[GuiLockResult]) -> None:
     _GUI_LOCK_PATH = None
 
     if fd is not None:
-        try:
-            os.lseek(fd, 0, os.SEEK_SET)
-            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
-        except OSError:
-            pass
+        file_lock.unlock(fd)
         try:
             os.close(fd)
         except OSError:
@@ -162,7 +155,13 @@ def _minimize_own_console() -> None:
     """Minimize this process's attached cmd.exe console so it doesn't briefly
     dominate the Z-order after a refused second-launch. No-op if we have no
     attached console (e.g., launched under pythonw.exe).
+
+    No-op off Windows: a terminal there belongs to the user's shell, not to
+    this process, and minimising it would be rude as well as impossible.
     """
+    if sys.platform != "win32":
+        return
+
     kernel32 = ctypes.windll.kernel32
     user32 = ctypes.windll.user32
     HWND = ctypes.c_void_p
@@ -178,12 +177,23 @@ def _minimize_own_console() -> None:
 
 
 def _show_already_running_popup() -> None:
-    """Native Windows MessageBox; fallback only when the running GUI's window cannot be found."""
+    """Tell the operator a GUI is already running.
+
+    Uses a native Windows MessageBox where one is available, because this is
+    shown when the running GUI's own window could not be raised and a Tk dialog
+    from a process that is losing the foreground race is unreliable. Elsewhere
+    the FreeSimpleGUI popup is the portable equivalent.
+    """
+    message = "Neurobooth is already running. Please use the existing window."
+    if sys.platform != "win32":
+        sg.popup_error(message, title="Neurobooth", keep_on_top=True)
+        return
+
     MB_ICONERROR = 0x10
     MB_TOPMOST = 0x40000
     ctypes.windll.user32.MessageBoxW(
         0,
-        "Neurobooth is already running. Please use the existing window.",
+        message,
         "Neurobooth",
         MB_ICONERROR | MB_TOPMOST,
     )
@@ -202,7 +212,15 @@ _GUI_ACTIVATE_EVENT_HANDLE: Optional[int] = None
 
 
 def _open_or_create_activation_event() -> Optional[int]:
-    """Create (or open) the named auto-reset event used for cross-process activation."""
+    """Create (or open) the named auto-reset event used for cross-process activation.
+
+    Named kernel events are a Windows primitive. Off Windows there is no
+    activation IPC, so the second launch is refused with a popup and does not
+    try to wake the first -- see :func:`_show_already_running_popup`.
+    """
+    if sys.platform != "win32":
+        return None
+
     kernel32 = ctypes.windll.kernel32
     kernel32.CreateEventW.argtypes = [
         ctypes.c_void_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_wchar_p,
@@ -215,8 +233,12 @@ def _open_or_create_activation_event() -> Optional[int]:
 
 def _signal_gui_to_activate(holder_pid: Optional[int],
                             logger: Optional[logging.Logger] = None) -> bool:
-    """From GUI-B: grant foreground authority to GUI-A and signal it to raise itself."""
-    if holder_pid is None:
+    """From GUI-B: grant foreground authority to GUI-A and signal it to raise itself.
+
+    Returns ``False`` off Windows, where there is no named event to signal and
+    no foreground lock to grant past. The caller falls back to the popup.
+    """
+    if holder_pid is None or sys.platform != "win32":
         return False
 
     user32 = ctypes.windll.user32
@@ -265,6 +287,10 @@ def _start_activation_listener(window,
     main thread can restore and raise the window from within this process.
     """
     global _GUI_ACTIVATE_EVENT_HANDLE
+
+    if sys.platform != "win32":
+        # Nothing can signal us, so a listener would block forever on nothing.
+        return None
 
     kernel32 = ctypes.windll.kernel32
     kernel32.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
@@ -348,6 +374,14 @@ def _raise_self_window(window, logger: Optional[logging.Logger] = None) -> None:
     except Exception as e:
         if logger:
             logger.info("Raise self: tk path failed: %s", e)
+
+    if sys.platform != "win32":
+        # The tk path above is the whole story elsewhere. The Win32 calls that
+        # follow exist only to defeat Windows foreground-lock, which has no
+        # counterpart on macOS or Linux -- lift plus -topmost is honoured there.
+        if logger:
+            logger.info("Raise self: tk-only path (tk_ok=%s)", tk_ok)
+        return
 
     try:
         frame_str = window.TKroot.wm_frame()
