@@ -97,7 +97,13 @@ class TestRegister:
 # ---------------------------------------------------------------------------
 
 class TestActiveMockTargets:
-    def test_unset_returns_empty(self):
+    def test_unset_returns_empty(self, monkeypatch):
+        from neurobooth_os import config as cfg
+        # Both sources must be explicitly cleared: an earlier test that imports
+        # lsl_streamer loads the real config into cfg.neurobooth_config, and a
+        # deployment that sets mock_devices would otherwise leak in here.
+        monkeypatch.delenv(ms.ENV_VAR, raising=False)
+        monkeypatch.setattr(cfg, "neurobooth_config", None)
         assert ms.active_mock_targets() == set()
 
     def test_env_var_single(self, monkeypatch):

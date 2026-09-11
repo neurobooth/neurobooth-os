@@ -72,10 +72,12 @@ def enable_crash_handler(server_name: str) -> None:
 
 
 def make_fallback_logger() -> logging.Logger:
-    """Create a file-based logger for use when the database logger is unavailable.
+    """Create a logger for use when the database logger is unavailable.
 
     Writes to ``neurobooth_startup.log`` in the NB_INSTALL directory (or the
-    user's home directory if NB_INSTALL is not set). This is intended as a
+    user's home directory if NB_INSTALL is not set), and mirrors records to
+    stderr so a startup failure is visible to an operator watching the
+    console instead of only landing in a file. This is intended as a
     last-resort logger for capturing errors that occur before the database
     connection is established.
     """
@@ -87,6 +89,15 @@ def make_fallback_logger() -> logging.Logger:
         handler.setLevel(logging.DEBUG)
         handler.setFormatter(LOG_FORMAT)
         logger.addHandler(handler)
+
+        # Under pythonw.exe there is no stderr; a StreamHandler wrapping None
+        # would silently drop every record it is asked to emit.
+        if sys.stderr is not None:
+            console_handler = logging.StreamHandler(sys.stderr)
+            console_handler.setLevel(logging.DEBUG)
+            console_handler.setFormatter(LOG_FORMAT)
+            logger.addHandler(console_handler)
+
         logger.setLevel(logging.DEBUG)
     logger.info(f"Fallback logger initialized. Writing to {log_path}")
     return logger
