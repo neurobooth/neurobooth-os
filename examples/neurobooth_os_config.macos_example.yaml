@@ -1,0 +1,72 @@
+# Single-machine macOS / Linux development environment.
+#
+# Point NB_CONFIG at the directory holding this file (renamed to
+# neurobooth_os_config.yaml) alongside a secrets.yaml and the shared
+# assets/collections/devices/sensors/stimuli/studies/tasks directories from
+# the configs repo.
+#
+# Differences from the Windows local_test environment, all deliberate:
+#
+#   * POSIX paths. No drive letters, no backslashes.
+#   * No `bat:` fields. Off Windows the launcher starts each node with
+#     `python -m neurobooth_os.server_acq`, so the batch indirection and
+#     %NB_INSTALL% expansion are not used.
+#   * `user: ""` keeps everything local. A non-empty user means "reach this
+#     machine over the network", which is implemented for Windows only and
+#     raises RemoteLaunchUnsupported here.
+#
+# Set NB_NODE to the role this process runs when the machine is not named
+# after it -- e.g. `export NB_NODE=control` before starting the GUI. Without
+# it the role is guessed from your login name and hostname.
+
+environment: local
+mock_devices: ["all"]   # mock all hardware; Mouse + Marker still run for real
+remote_data_dir: ~/neurobooth/remote_data/
+video_task_dir: ~/neurobooth/Videos_to_present
+split_xdf_backlog: ~/neurobooth/split_xdf_backlog.csv
+cam_inx_lowfeed: 0
+default_preview_stream: IPhoneFrameIndex
+
+screen:
+  fullscreen: false
+  width_cm: 55
+  subject_distance_to_screen_cm: 60
+  min_refresh_rate_hz: 50
+  max_refresh_rate_hz: 250
+  screen_resolution: [1920, 1080]
+
+machines:
+  localhost:
+    user: ""
+    local_data_dir: ~/neurobooth/neurobooth_data/
+    local_log_dir: ~/neurobooth/neurobooth_logs/
+
+acquisition:
+  - machine: localhost
+    task_name: acquisition
+    devices:
+      - Intel_D455_1
+      - FLIR_blackfly_1
+      - IPhone_dev_1
+      - Mbient_BK_1
+      - Mic_Yeti_dev_1
+      - Mouse
+
+presentation:
+  machine: localhost
+  task_name: presentation
+  devices:
+    - Eyelink_1
+    - marker
+
+control:
+  machine: localhost
+
+database:
+  ssh_tunnel: false
+  dbname: mock_neurobooth
+  user: postgres
+  host: 127.0.0.1
+  port: 5432
+  remote_user: dev
+  remote_host: 127.0.0.1
