@@ -13,7 +13,6 @@ shape and cadence, not realistic audio.
 from __future__ import annotations
 
 import threading
-import time
 from typing import List, Optional
 
 import numpy as np
@@ -21,6 +20,7 @@ from pylsl import local_clock
 
 from neurobooth_os.iout.device import DeviceState
 from neurobooth_os.iout.microphone import MicStream
+from neurobooth_os.iout.mock._pacing import Pacer
 
 
 class MockMicStream(MicStream):
@@ -36,7 +36,7 @@ class MockMicStream(MicStream):
 
     def stream(self) -> None:
         """Emit zero-filled int16 chunks at the configured chunk rate."""
-        chunk_period = float(self.CHUNK) / float(self.fps)
+        pacer = Pacer(float(self.fps) / float(self.CHUNK))
         zero_chunk = np.zeros(self.CHUNK, dtype="int16")
         self.last_time = int(local_clock() * 10e3)
         self.logger.debug("MockMicStream: entering synthetic stream loop")
@@ -57,7 +57,9 @@ class MockMicStream(MicStream):
                     self.outlet_audio.push_sample(payload)
                 # Wait a chunk's worth of wall-clock time before the next
                 # synthetic chunk so the LSL cadence matches the real path.
-                time.sleep(chunk_period)
+                # Pacer absorbs the push cost so the cadence is the configured
+                # one rather than the configured one plus the work.
+                pacer.wait()
         finally:
             self.stream_on = False
             self.logger.debug("MockMicStream: exiting synthetic stream loop")

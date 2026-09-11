@@ -21,6 +21,7 @@ from typing import Any, List, Optional
 
 from neurobooth_os.iout.device import DeviceState
 from neurobooth_os.iout.mbient import BatteryState, Mbient
+from neurobooth_os.iout.mock._pacing import Pacer
 
 
 class _MockSample:
@@ -179,7 +180,7 @@ class MockMbient(Mbient):
 
     def _synthetic_loop(self, rate_hz: int) -> None:
         """Emit acc+gyro samples until ``_mock_stop_event`` is set."""
-        period = 1.0 / float(rate_hz)
+        pacer = Pacer(rate_hz, self._mock_stop_event)
         # Constant values: 1g down at rest, zero rotation.  Downstream
         # consumers only need the LSL stream shape and cadence, not
         # realistic motion.
@@ -194,4 +195,5 @@ class MockMbient(Mbient):
                 except Exception:  # pragma: no cover — defensive
                     self.logger.exception(self.format_message(
                         "MockMbient: data handler raised"))
-            self._mock_stop_event.wait(period)
+            if not pacer.wait():
+                break

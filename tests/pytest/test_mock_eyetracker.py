@@ -15,6 +15,22 @@ installed and without a configured PsychoPy monitor center.  Coverage:
   ``stim_param_reader``.
 """
 
+import pytest
+
+from conftest import display_available
+
+pytestmark = pytest.mark.skipif(
+    not display_available(),
+    reason=(
+        "PsychoPy's pyglet import builds a shadow window at import time, so "
+        "this module needs a reachable display. Absent on CI runners, over "
+        "ssh, and while a Mac is locked or its display asleep."
+    ),
+)
+if not display_available():
+    pytest.skip("no display available", allow_module_level=True)
+
+
 import os
 import time
 from unittest.mock import MagicMock

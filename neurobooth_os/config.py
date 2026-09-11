@@ -9,7 +9,7 @@ from os import environ, makedirs, path, getenv
 from typing import Dict, Optional, List
 
 import yaml
-from pydantic import BaseModel, PrivateAttr, SecretStr, conlist, ValidationError
+from pydantic import BaseModel, PrivateAttr, SecretStr, conlist, ValidationError, field_validator
 
 
 class ConfigException(Exception):
@@ -107,6 +107,38 @@ def get_server_name_from_env() -> Optional[str]:
     return get_server_name(local_identity())
 
 
+def expand_path(value: Optional[str]) -> Optional[str]:
+    """Expand ``~`` and environment variables in a configured path.
+
+    Config files are written by hand, so they carry the shorthand people
+    actually type. ``~/neurobooth/data`` is not a path any OS call resolves --
+    ``os.path.exists`` returns False for the literal string -- so without this
+    every folder check fails with a message naming a directory that plainly
+    exists.
+
+    Both ``$VAR``/``${VAR}`` and ``%VAR%`` are expanded, the latter because the
+    booth configs use ``cmd.exe`` syntax for ``%NB_INSTALL%``.
+
+    Args:
+        value: A configured path, or ``None`` for an unset optional field.
+
+    Returns:
+        The expanded path, or ``None`` if ``value`` was ``None``.
+    """
+    if value is None:
+        return None
+    expanded = path.expanduser(path.expandvars(value))
+    if "%" in expanded:
+        for name, setting in environ.items():
+            expanded = expanded.replace(f"%{name}%", setting)
+    return expanded
+
+
+def _expanded_path_validator(cls, value):
+    """Shared pydantic ``before`` validator applying :func:`expand_path`."""
+    return expand_path(value) if isinstance(value, str) or value is None else value
+
+
 def validate_folder(value: str) -> None:
     if not path.exists(value):
         raise FileNotFoundError(f"The folder '{value}' does not exist.")
@@ -142,6 +174,10 @@ class MachineSpec(BaseModel):
     local_log_dir: Optional[str] = None
     unqualified_user: bool = False
 
+    _expand = field_validator("local_data_dir", "local_log_dir", mode="before")(
+        _expanded_path_validator
+    )
+
 
 class ServiceSpec(BaseModel):
     """A neurobooth service running on a machine."""
@@ -149,6 +185,8 @@ class ServiceSpec(BaseModel):
     bat: Optional[str] = None
     task_name: Optional[str] = None
     devices: List[str] = []
+
+    _expand = field_validator("bat", mode="before")(_expanded_path_validator)
 
 
 class ResolvedService(BaseModel):
@@ -166,6 +204,10 @@ class ResolvedService(BaseModel):
     task_name: Optional[str] = None
     devices: List[str] = []
 
+    _expand = field_validator("local_data_dir", "local_log_dir", "bat", mode="before")(
+        _expanded_path_validator
+    )
+
 
 class NeuroboothConfig(BaseModel):
     environment: str
@@ -177,6 +219,10 @@ class NeuroboothConfig(BaseModel):
     machines: Dict[str, MachineSpec]
     database: DatabaseSpec
     screen: ScreenSpec
+
+    _expand = field_validator(
+        "remote_data_dir", "video_task_dir", "split_xdf_backlog", mode="before"
+    )(_expanded_path_validator)
     # Persistent mock-device opt-in. Comma-separated device-class names
     # (e.g. ["Mbient", "IPhone"]) or the special value ["all"]. Overridden
     # by the NB_MOCK_DEVICES environment variable when set. Devices listed

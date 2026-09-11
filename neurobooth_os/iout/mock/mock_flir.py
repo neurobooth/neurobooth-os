@@ -32,6 +32,7 @@ import numpy as np
 
 from neurobooth_os.iout.device import DeviceState
 from neurobooth_os.iout.flir_cam import VidRec_Flir
+from neurobooth_os.iout.mock._pacing import Pacer
 
 
 # Synthetic frame size: small enough that the mock video file stays
@@ -113,7 +114,7 @@ class MockVidRec_Flir(VidRec_Flir):  # noqa: N801 — match real class casing
         self.save_thread = threading.Thread(target=self.camCaptureVid)
         self.save_thread.start()
 
-        period = 1.0 / float(self.device_args.sample_rate())
+        pacer = Pacer(self.device_args.sample_rate())
         self.stamp: List[int] = []
         try:
             while self.recording:
@@ -128,7 +129,7 @@ class MockVidRec_Flir(VidRec_Flir):  # noqa: N801 — match real class casing
                     self._create_outlet()
                     self.outlet.push_sample([self.frame_counter, tsmp])
                 self.frame_counter += 1
-                time.sleep(period)
+                pacer.wait()
         except Exception:
             self.logger.exception(
                 "MockVidRec_Flir: synthetic record loop error")

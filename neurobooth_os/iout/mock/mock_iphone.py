@@ -34,6 +34,7 @@ from neurobooth_os.iout.iphone import (
     IPhonePanic,
     MessageTag,
 )
+from neurobooth_os.iout.mock._pacing import Pacer
 
 
 _PREVIEW_WIDTH = 320
@@ -225,14 +226,15 @@ class _MockIPhoneTransport:
             self._stream_thread = None
 
     def _stream_loop(self) -> None:
-        period = 1.0 / float(self._fps)
+        pacer = Pacer(self._fps, self._stop_streaming)
         while not self._stop_streaming.is_set():
             self._frame_counter += 1
             self._inject_message(
                 "@INPROGRESSTIMESTAMP",
                 timestamp=self._frame_timestamp(),
             )
-            self._stop_streaming.wait(period)
+            if not pacer.wait():
+                break
 
     def _frame_timestamp(self) -> str:
         # IPhone._lsl_push_sample uses ``eval`` to parse this back into a

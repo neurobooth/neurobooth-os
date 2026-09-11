@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import os.path as op
 import threading
-import time
 from time import time as wall_time
 from typing import List, Optional
 
@@ -29,6 +28,7 @@ from pylsl import local_clock
 
 from neurobooth_os.iout.camera_intel import VidRec_Intel
 from neurobooth_os.iout.device import DeviceState
+from neurobooth_os.iout.mock._pacing import Pacer
 
 
 # Placeholder bytes written to the .bag path on stop(). Real bag files
@@ -64,7 +64,7 @@ class MockVidRec_Intel(VidRec_Intel):  # noqa: N801 — match real class casing
         self.toffset = wall_time() - local_clock()
 
         rate_hz = float(self.device_args.sample_rate()[0])
-        period = 1.0 / max(rate_hz, 1.0)
+        pacer = Pacer(max(rate_hz, 1.0))
 
         try:
             while self.recording.is_set():
@@ -83,7 +83,7 @@ class MockVidRec_Intel(VidRec_Intel):  # noqa: N801 — match real class casing
                     self.outlet.push_sample(
                         [self.frame_counter, self.n, self.tsmp, wall_time()])
                 self.frame_counter += 1
-                time.sleep(period)
+                pacer.wait()
         except Exception:
             self.logger.exception(
                 f"MockVidRec_Intel [{self.device_index}]: synthetic record "

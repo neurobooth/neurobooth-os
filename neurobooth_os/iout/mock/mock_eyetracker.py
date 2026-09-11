@@ -26,7 +26,6 @@ gates its drawing on ``isinstance(self.win, visual.Window)`` so a
 from __future__ import annotations
 
 import threading
-import time
 from typing import Any, List, Optional, Tuple
 
 from psychopy import core, event, visual
@@ -36,6 +35,7 @@ from neurobooth_os.iout.device import DeviceState
 from neurobooth_os.iout.eyelink_tracker import EyeTracker
 from neurobooth_os.iout.metadator import post_message
 from neurobooth_os.msg.messages import DeviceInitialization, Request
+from neurobooth_os.iout.mock._pacing import Pacer
 
 
 # Minimal stub bytes for the mock EDF file. Real EDF is a binary EyeLink
@@ -155,7 +155,7 @@ class MockEyeTracker(EyeTracker):
         R/L gaze (x,y,pupil), target (x,y,distance), resolution (x,y),
         time_edf, time_local.
         """
-        period = 1.0 / float(self.sample_rate)
+        pacer = Pacer(self.sample_rate)
         # Constants for canned samples; the values aren't realistic but
         # downstream code only needs the LSL stream shape and cadence.
         gaze_x = float(self.MOCK_MONITOR_WIDTH) / 2.0
@@ -169,7 +169,7 @@ class MockEyeTracker(EyeTracker):
         try:
             while self.recording:
                 if self.paused:
-                    time.sleep(period)
+                    pacer.wait()
                     continue
                 t_local = local_clock()
                 t_edf = t_local * 1000.0  # match real EyeLink ms timestamp
@@ -183,7 +183,7 @@ class MockEyeTracker(EyeTracker):
                 self.outlet.push_sample(sample)
                 self.timestamps_et.append(t_edf)
                 self.timestamps_local.append(t_local)
-                time.sleep(period)
+                pacer.wait()
         except Exception:
             self.logger.exception("MockEyeTracker: synthetic record loop error")
         finally:
