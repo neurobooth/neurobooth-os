@@ -183,6 +183,12 @@ booth = [
 
 [project.scripts]
 neurobooth_os = "neurobooth_os.gui:main"
+# The server_*.bat launchers activate a venv and invoke these two modules by
+# path. `python -m neurobooth_os.server_acq` does the same job with no shell
+# script, which is what the POSIX launcher backend uses; these console scripts
+# give operators the same entry points by name on every platform.
+neurobooth_acq = "neurobooth_os.server_acq:main"
+neurobooth_stm = "neurobooth_os.server_stm:main"
 
 [project.urls]
 Homepage = "https://github.com/neurobooth/neurobooth-os"

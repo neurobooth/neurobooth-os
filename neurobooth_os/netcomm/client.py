@@ -1,17 +1,24 @@
-import logging
-from time import time, sleep
-import re
-import os
-import subprocess
+# -*- coding: utf-8 -*-
+"""Server lifecycle orchestration: start a node, track its PIDs, kill it later.
+
+The OS-level primitives live in :mod:`neurobooth_os.netcomm.launcher`, which
+picks a Windows or POSIX backend. Everything here -- the before/after process
+diff, the ``server_pids.txt`` bookkeeping, the proactive kill of a stale server
+-- is platform-neutral and runs identically on both.
+"""
+
 import ast
-import csv
-import io
-import tempfile
-import xml.sax.saxutils as _saxutils
+import logging
+import os
+from time import time, sleep
 from typing import List, Optional, Tuple
 
 import neurobooth_os.config as cfg
-
+from neurobooth_os.netcomm.launcher import (
+    ProcessInfo,
+    get_launcher,
+    node_process_token,
+)
 
 # Route through the "app" logger so messages reach the PostgreSQLHandler
 # attached by make_db_logger (log_manager.py). A privately-named logger
@@ -20,266 +27,49 @@ import neurobooth_os.config as cfg
 # dropped — that's why SCHTASKS / Get-CimInstance failures used to vanish.
 logger = logging.getLogger("app")
 
+PID_FILE = "server_pids.txt"
 
-def _run_cmd(cmd_list: list, server_name: str = None, user: str = None, password: str = None,
-             error_level: int = logging.ERROR) -> str:
-    """Run a subprocess command and return its stdout.
+
+def _known_node(node_name: str) -> bool:
+    return node_name.startswith("acquisition") or node_name == "presentation"
+
+
+def _service_for(node_name: str, operation: str):
+    """Resolve a node to its service, rejecting a missing remote password.
 
     Args:
-        cmd_list: The command and arguments to run.
-        server_name, user, password: For remote execution via /S /U /P.
-        error_level: Log level used when the command fails or times out.
-            Defaults to ERROR. Callers wrapping benign-failure operations
-            (e.g. taskkill where the target PID may already be gone) can
-            pass ``logging.WARNING`` to keep log_application uncluttered.
+        node_name: e.g. ``'acquisition_0'``.
+        operation: Phrase used in the error message, e.g. ``'start remote server'``.
+
+    Raises:
+        ConfigException: If the service names a remote user but has no password.
     """
-    full_cmd = list(cmd_list)
-    # Single-machine testing: an empty user means "run on this machine" — skip
-    # /S /U /P so tasklist/SCHTASKS execute locally. See
-    # docs/single_machine_testing.md.
-    if server_name and user:
-        full_cmd = full_cmd[:1] + ["/S", server_name, "/U", user, "/P", password] + full_cmd[1:]
-
-    try:
-        logger.debug(f"Running command: {' '.join(cmd_list)} (on {server_name or 'localhost'})")
-        result = subprocess.run(full_cmd, capture_output=True, text=True, check=True, timeout=30)
-        return result.stdout
-    except subprocess.CalledProcessError as e:
-        logger.log(error_level,
-                   f"Command failed (on {server_name or 'localhost'}): {' '.join(cmd_list)}, "
-                   f"stdout: {e.stdout}, stderr: {e.stderr}")
-        raise
-    except subprocess.TimeoutExpired as e:
-        logger.log(error_level,
-                   f"Command timed out (on {server_name or 'localhost'}): {' '.join(cmd_list)}, "
-                   f"stdout: {e.stdout}, stderr: {e.stderr}")
-        raise
-
-
-def get_python_pids(server_name: str = None, user: str = None, password: str = None) -> list:
-    """Gets a list of Python process IDs from the local or remote computer.
-
-    Parameters
-    ----------
-    server_name : str, optional
-        Name of the remote server. If None, gets local PIDs.
-    user : str, optional
-        Username for remote server.
-    password : str, optional
-        Password for remote server.
-
-    Returns
-    -------
-    list
-        List of Python process identifiers.
-    """
-    cmd_args = ["tasklist.exe"]
-    # _run_cmd handles adding remote credentials if server_name is not None
-    try:
-        output_tasklist = _run_cmd(cmd_args, server_name, user, password)
-    except Exception:
-        return []
-
-    procs = output_tasklist.split("\n")
-    re_pyth = re.compile("python.exe[\\s]*([0-9]*)")
-
-    pyth_pids = []
-    for prc in procs:
-        srch = re_pyth.search(prc)
-        if srch is not None:
-            pyth_pids.append(srch.groups()[0])
-    return pyth_pids
-
-
-_PS_REMOTE_GET_PYTHON_PROCESSES = r"""
-$ErrorActionPreference = 'Stop'
-$securepw = ConvertTo-SecureString $env:NB_REMOTE_PASSWORD -AsPlainText -Force
-$cred = New-Object System.Management.Automation.PSCredential($env:NB_REMOTE_USER, $securepw)
-$opt = New-CimSessionOption -Protocol Dcom
-$sess = New-CimSession -ComputerName $env:NB_REMOTE_HOST -Credential $cred -SessionOption $opt
-try {
-    Get-CimInstance -CimSession $sess -ClassName Win32_Process -Filter "Name='python.exe'" |
-        Select-Object ProcessId, CommandLine |
-        ConvertTo-Csv -NoTypeInformation
-} finally {
-    Remove-CimSession $sess
-}
-"""
-
-_PS_LOCAL_GET_PYTHON_PROCESSES = r"""
-$ErrorActionPreference = 'Stop'
-Get-CimInstance -ClassName Win32_Process -Filter "Name='python.exe'" |
-    Select-Object ProcessId, CommandLine |
-    ConvertTo-Csv -NoTypeInformation
-"""
-
-
-def get_all_python_processes_with_cmd(server_name: str = None, user: str = None, password: str = None) -> list:
-    """Gets a list of Python process IDs and their command lines from the local or remote computer.
-
-    Parameters
-    ----------
-    server_name : str, optional
-        Name of the remote server. If None, gets local PIDs.
-    user : str, optional
-        Username for remote server.
-    password : str, optional
-        Password for remote server.
-
-    Returns
-    -------
-    list
-        List of dictionaries, each with 'pid' and 'commandline' for Python processes.
-    """
-    # Remote calls use a DCOM CimSession to match the wire protocol WMIC used,
-    # so the existing inter-machine WMI/firewall/registry runbook in
-    # docs/inter_machine_setup.md remains the source of truth. WSMan/WinRM
-    # is deliberately not used (different security model — see #760).
-    #
-    # Credentials are passed via env vars so the password never appears in the
-    # process command line (strictly more secure than the previous WMIC call,
-    # which exposed it via /PASSWORD:).
-    if server_name and user:
-        ps_command = _PS_REMOTE_GET_PYTHON_PROCESSES
-        ps_env = {
-            **os.environ,
-            "NB_REMOTE_HOST": server_name,
-            "NB_REMOTE_USER": user,
-            "NB_REMOTE_PASSWORD": password or "",
-        }
-    else:
-        # Single-machine testing: empty user → run locally.
-        # See docs/single_machine_testing.md.
-        ps_command = _PS_LOCAL_GET_PYTHON_PROCESSES
-        ps_env = None
-
-    cmd = ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps_command]
-    try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, check=True, timeout=30, env=ps_env
+    service = cfg.neurobooth_config.server_by_name(node_name)
+    if service.user and service.password is None:
+        raise cfg.ConfigException(
+            f"Cannot {operation} '{node_name}': no password configured. "
+            f"Service passwords are required in secrets.yaml on the control machine."
         )
-        output = result.stdout
-    except subprocess.CalledProcessError as e:
-        logger.error(
-            f"Get-CimInstance failed (on {server_name or 'localhost'}): "
-            f"stdout: {e.stdout}, stderr: {e.stderr}"
-        )
-        return []
-    except subprocess.TimeoutExpired as e:
-        logger.error(
-            f"Get-CimInstance timed out (on {server_name or 'localhost'}): "
-            f"stdout: {e.stdout}, stderr: {e.stderr}"
-        )
-        return []
-    except OSError as e:
-        logger.error(f"Failed to launch powershell.exe: {e}")
-        return []
-
-    # ConvertTo-Csv -NoTypeInformation emits one header row followed by one
-    # row per object: "ProcessId","CommandLine". csv.reader handles quoted
-    # fields and embedded commas correctly (which the previous naive
-    # str.split(',') did not).
-    processes = []
-    rows = list(csv.reader(io.StringIO(output)))
-    if len(rows) <= 1:
-        return processes
-    for row in rows[1:]:
-        if len(row) >= 2:
-            processes.append({"pid": row[0].strip(), "commandline": row[1].strip()})
-        else:
-            logger.warning(f"Could not parse Get-CimInstance output row: {row}")
-    return processes
+    return service
 
 
-def _build_task_xml(bat_path: str, acq_index: Optional[int],
-                    user: Optional[str] = None,
-                    machine: Optional[str] = None,
-                    unqualified_user: bool = False) -> str:
-    """Build a Task Scheduler XML for an event-triggered server task.
+def get_python_pids(node_name: str) -> List[str]:
+    """Python process IDs on the machine hosting ``node_name``."""
+    return get_launcher().list_python_pids(_service_for(node_name, "list processes on"))
 
-    SCHTASKS /Create has no CLI flag for the battery-condition setting, so a
-    CLI-created task inherits the Windows default DisallowStartIfOnBatteries=true
-    and silently sits in "Queued" on a laptop running on battery (the .bat
-    never launches). /Create /XML lets us write that setting explicitly.
 
-    The trigger keys off Application Event ID 777 — nothing emits that event;
-    it exists only so /Run can launch the task on demand.
-
-    When ``user`` is provided, a <Principals> block is included so SCHTASKS
-    /S /XML accepts the file: remote task creation requires an explicit
-    UserId, and the /TR flow that this code replaced got it from /U
-    automatically. The UserId is qualified as ``machine\\user`` unless
-    ``user`` already contains a backslash or ``unqualified_user`` is set
-    (IP-addressed host), in which case the bare ``user`` is used. Local
-    creation (no /S) auto-fills Principals, so we omit the block when
-    ``user`` is empty/None.
-    """
-    command = _saxutils.escape(bat_path)
-    args_block = ""
-    if acq_index is not None:
-        args_block = f"      <Arguments>{_saxutils.escape(str(acq_index))}</Arguments>\n"
-
-    principals_block = ""
-    actions_open = "  <Actions>\n"
-    if user:
-        # Qualify with the target machine name when not already domain-qualified.
-        # Bare "ACQ" is rejected by Task Scheduler XML validation as ambiguous;
-        # "ACQ\\ACQ" (which is what /Query shows for the existing task) is not.
-        if unqualified_user:
-            # IP-addressed host: emit the bare user, unqualified.
-            qualified_user = user
-        elif "\\" not in user and machine:
-            qualified_user = f"{machine}\\{user}"
-        else:
-            qualified_user = user
-        user_escaped = _saxutils.escape(qualified_user)
-        principals_block = (
-            '  <Principals>\n'
-            '    <Principal id="Author">\n'
-            f'      <UserId>{user_escaped}</UserId>\n'
-            '      <LogonType>InteractiveToken</LogonType>\n'
-            '      <RunLevel>LeastPrivilege</RunLevel>\n'
-            '    </Principal>\n'
-            '  </Principals>\n'
-        )
-        actions_open = '  <Actions Context="Author">\n'
-
-    return (
-        '<?xml version="1.0" encoding="UTF-16"?>\n'
-        '<Task version="1.3" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">\n'
-        '  <Triggers>\n'
-        '    <EventTrigger>\n'
-        '      <Enabled>true</Enabled>\n'
-        "      <Subscription>&lt;QueryList&gt;&lt;Query&gt;&lt;Select Path='Application'&gt;"
-        "*[System/EventID=777]&lt;/Select&gt;&lt;/Query&gt;&lt;/QueryList&gt;</Subscription>\n"
-        '    </EventTrigger>\n'
-        '  </Triggers>\n'
-        f'{principals_block}'
-        '  <Settings>\n'
-        '    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>\n'
-        '    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n'
-        '    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>\n'
-        '    <AllowStartOnDemand>true</AllowStartOnDemand>\n'
-        '    <Enabled>true</Enabled>\n'
-        '    <ExecutionTimeLimit>PT72H</ExecutionTimeLimit>\n'
-        '  </Settings>\n'
-        f'{actions_open}'
-        '    <Exec>\n'
-        f'      <Command>{command}</Command>\n'
-        f'{args_block}'
-        '    </Exec>\n'
-        '  </Actions>\n'
-        '</Task>\n'
-    )
+def get_all_python_processes_with_cmd(node_name: str) -> List[ProcessInfo]:
+    """Python processes, with command lines, on the machine hosting ``node_name``."""
+    launcher = get_launcher()
+    return launcher.list_python_processes(_service_for(node_name, "list processes on"))
 
 
 def start_server(node_name, acq_index=None, save_pid_txt=True):
-    """Makes a network call to run script serv_{node_name}.bat
+    """Start the server process for a node and record its PIDs.
 
-    First remote processes are logged, then a scheduled task is created to run
-    the remote batch file, then task runs, and new python PIDs are captured with
-    the option to save to save_pid_txt. If saved, when the function is called it
-    will kill the PIDs in the file.
+    Any process already running this node's server is killed first, then the
+    node is launched and the new Python PIDs are captured by diffing the
+    process list before against after.
 
     Parameters
     ----------
@@ -293,106 +83,39 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
     Returns
     -------
     pid : list
-        Python process identifiers found in remote computer after server started.
+        Python process identifiers that appeared after the server started.
     """
-
-    if not (node_name.startswith("acquisition") or node_name == "presentation"):
-        print("Not a known node name")
+    if not _known_node(node_name):
+        logger.error(f"Not a known node name: {node_name}")
         return None
-    s = cfg.neurobooth_config.server_by_name(node_name)
-    if s.user and s.password is None:
-        raise cfg.ConfigException(
-            f"Cannot start remote server '{node_name}': no password configured. "
-            f"Service passwords are required in secrets.yaml on the control machine."
-        )
-    pwd = s.password.get_secret_value() if s.password else None
 
-    # Identify and kill any existing Python processes for this node
-    expected_script = None
-    if node_name.startswith("acquisition"):
-        expected_script = "server_acq.py"
-    elif node_name == "presentation":
-        expected_script = "server_stm.py"
+    service = _service_for(node_name, "start server on")
+    launcher = get_launcher()
 
-    if expected_script:
-        logger.info(f"Proactively checking for and killing existing '{expected_script}' processes on {node_name}.")
-        running_python_procs = get_all_python_processes_with_cmd(s.name, s.user, pwd)
-        for proc in running_python_procs:
-            if expected_script in proc.get('commandline', ''):
-                logger.warning(f"Found existing '{expected_script}' process (PID: {proc['pid']}). Attempting to kill.")
-                kill_remote_pid([proc['pid']], node_name)
+    # Identify and kill any existing server process for this node.
+    token = node_process_token(node_name)
+    if token:
+        logger.info(f"Checking for and killing existing '{token}' processes on {node_name}.")
+        for proc in launcher.list_python_processes(service):
+            if token in proc.commandline:
+                logger.warning(
+                    f"Found existing '{token}' process (PID: {proc.pid}). Attempting to kill."
+                )
+                kill_remote_pid([proc.pid], node_name)
 
-    # Kill any previous server that were recorded
+    # Kill any previous server that was recorded.
     kill_pid_txt(node_name=node_name)
 
-    # Get list of python processes before starting new one
-    pids_old = get_python_pids(s.name, s.user, pwd)
+    pids_old = launcher.list_python_pids(service)
     logger.debug(f"Python processes found before: {pids_old}")
 
-    # Get list of scheduled tasks and run TaskOnEvent if not running
-    try:
-        schtasks_query_output = _run_cmd(["SCHTASKS", "/query", "/fo", "CSV", "/nh"], s.name, s.user, pwd)
-    except Exception:
-        schtasks_query_output = "" # No scheduled tasks or command failed
-
-    # Manual parsing of CSV output
-    scheduled_tasks = {}
-    for line in schtasks_query_output.strip().split("\n"):
-        parts = line.strip().split(",")
-        if len(parts) >= 2:
-            task_name = parts[0].strip('"').lstrip('\\')
-            status = parts[1].strip('"')
-            scheduled_tasks[task_name] = {"status": status}
-
-    # task_name is the name of the task to create & run in the remote server's Windows Task Scheduler
-    task_name = s.task_name + "0"
-    print(f"Preparing to run windows task: {task_name}")
-    while True:
-        if task_name in scheduled_tasks:
-            print(f"{task_name} was found")
-            # if task already running add n+1 to task name
-            if scheduled_tasks[task_name]["status"] == "Running":
-                try:
-                    tsk_inx = int(task_name[-1]) + 1
-                    task_name = task_name[:-1] + str(tsk_inx)
-                    print(f"Creating new scheduled task: {task_name} in server {node_name}")
-                except ValueError: # Handle cases where task_name doesn't end with a number
-                    task_name += "_1"
-                    print(f"Creating new scheduled task: {task_name} in server {node_name}")
-                continue
-        break
-
-    cmd_schtasks_base = ["SCHTASKS"]
-
-    # Always (re)create via /XML /F. /F overwrites stale tasks left by older
-    # versions of this code that used /TR — those were created with the
-    # default DisallowStartIfOnBatteries=true and would queue forever on a
-    # laptop on battery. See _build_task_xml for the schema we apply.
-    print(f"Creating Windows task: {task_name}")
-    xml_content = _build_task_xml(s.bat, acq_index, user=s.user, machine=s.name,
-                                  unqualified_user=s.unqualified_user)
-    fd, xml_path = tempfile.mkstemp(suffix='.xml')
-    try:
-        with os.fdopen(fd, 'wb') as f:
-            f.write(b'\xff\xfe')  # SCHTASKS /XML expects UTF-16 LE with BOM
-            f.write(xml_content.encode('utf-16-le'))
-        cmd_1 = cmd_schtasks_base + ["/Create", "/TN", task_name, "/XML", xml_path, "/F"]
-        _run_cmd(cmd_1, s.name, s.user, pwd)
-    finally:
-        try:
-            os.remove(xml_path)
-        except OSError:
-            pass
-
-    cmd_2 = cmd_schtasks_base + ["/Run", "/TN", task_name]
-    _run_cmd(cmd_2, s.name, s.user, pwd)
+    launcher.launch(service, node_name, acq_index)
 
     sleep(0.3)
-    pids_new = get_python_pids(s.name, s.user, pwd)
+    pids_new = launcher.list_python_pids(service)
     logger.debug(f"Python processes found after: {pids_new}")
 
     pid = [p for p in pids_new if p not in pids_old]
-    print(f"{node_name.upper()} server initiated with pid {pid}")
     logger.info(f"{node_name.upper()} server initiated with pid {pid}")
 
     if save_pid_txt:
@@ -402,7 +125,7 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
     return pid
 
 
-def _read_pid_file(txt_name: str = "server_pids.txt") -> List[Tuple[str, str, str]]:
+def _read_pid_file(txt_name: str = PID_FILE) -> List[Tuple[str, str, str]]:
     """Read and validate server_pids.txt, skipping malformed lines."""
     if not os.path.exists(txt_name):
         return []
@@ -418,7 +141,7 @@ def _read_pid_file(txt_name: str = "server_pids.txt") -> List[Tuple[str, str, st
     return entries
 
 
-def _write_pid_file(lines: List[str], txt_name: str = "server_pids.txt") -> None:
+def _write_pid_file(lines: List[str], txt_name: str = PID_FILE) -> None:
     """Write server_pids.txt atomically via temp file + rename."""
     tmp_name = txt_name + ".tmp"
     with open(tmp_name, "w") as f:
@@ -428,44 +151,30 @@ def _write_pid_file(lines: List[str], txt_name: str = "server_pids.txt") -> None
     os.replace(tmp_name, txt_name)
 
 
-def kill_remote_pid(pids, node_name):
+def kill_remote_pid(pids, node_name) -> None:
+    """Kill the given PIDs on the machine hosting ``node_name``.
 
-    if not (node_name.startswith("acquisition") or node_name == "presentation"):
-        print("Not a known node name")
+    Named for the multi-machine case, but it covers the local one too: the
+    launcher backend decides whether the node is reachable in-process or over
+    the network.
+    """
+    if not _known_node(node_name):
+        logger.error(f"Not a known node name: {node_name}")
         return None
 
-    s = cfg.neurobooth_config.server_by_name(node_name)
-    if s.user and s.password is None:
-        raise cfg.ConfigException(
-            f"Cannot kill remote process on '{node_name}': no password configured. "
-            f"Service passwords are required in secrets.yaml on the control machine."
-        )
-    pwd = s.password.get_secret_value() if s.password else None
-
+    service = _service_for(node_name, "kill remote process on")
     if isinstance(pids, str):
         pids = [pids]
-
-    for pid in pids:
-        cmd_args = ["taskkill", "/PID", str(pid), "/F"]
-        # _run_cmd handles adding remote credentials if s.name is not None.
-        # taskkill commonly "fails" because the PID has already exited (the
-        # normal teardown race); downgrade the subprocess-level log to
-        # WARNING so log_application isn't filled with ERROR rows for the
-        # benign case. The caller-level WARN below carries the per-PID context.
-        try:
-            _run_cmd(cmd_args, s.name, s.user, pwd, error_level=logging.WARNING)
-            logger.info(f"Killed PID {pid} on {node_name} server.")
-        except Exception as e:
-            logger.warning(f"Failed to kill PID {pid} on {node_name} server: {e}")
-    return
+    get_launcher().kill(service, [str(p) for p in pids])
 
 
-def kill_pid_txt(txt_name="server_pids.txt", node_name=None):
+def kill_pid_txt(txt_name: str = PID_FILE, node_name: Optional[str] = None) -> None:
+    """Kill every PID recorded in the PID file, optionally for one node only."""
     entries = _read_pid_file(txt_name)
     if not entries:
         return
 
-    print(f"Closing {len(entries)} remote processes")
+    logger.info(f"Closing {len(entries)} recorded server processes")
 
     remaining = []
     for pid, node, tsmp in entries:
@@ -474,7 +183,7 @@ def kill_pid_txt(txt_name="server_pids.txt", node_name=None):
             continue
         try:
             kill_remote_pid(ast.literal_eval(pid), node)
-        except (IndexError, cfg.ConfigException) as e:
+        except (IndexError, ValueError, SyntaxError, cfg.ConfigException) as e:
             logger.warning(f"Skipping stale pid entry {pid} for {node}: {e}")
 
     if remaining:

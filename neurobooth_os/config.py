@@ -4,6 +4,7 @@ Ensures that the base neurobooth-os config file exists and makes config file ava
 """
 
 import logging
+import socket
 from os import environ, makedirs, path, getenv
 from typing import Dict, Optional, List
 
@@ -15,7 +16,32 @@ class ConfigException(Exception):
     pass
 
 
-def get_server_name(abbreviation: str) -> Optional[str]:
+#: Environment variable naming this machine's role explicitly. Set it to a
+#: canonical server name ('presentation', 'control', 'acquisition',
+#: 'acquisition_0', ...) or to any string containing one of the abbreviations
+#: below. It takes precedence over the OS-derived guess, and it is the only
+#: mechanism that works identically on Windows, macOS and Linux.
+NODE_ENV_VAR = "NB_NODE"
+
+#: Canonical server names accepted verbatim in NODE_ENV_VAR.
+CANONICAL_SERVER_NAMES = frozenset({'presentation', 'control', 'acquisition'})
+
+
+def get_server_name(abbreviation: Optional[str]) -> Optional[str]:
+    """Map a free-text machine identifier onto a server role.
+
+    Args:
+        abbreviation: Any string that may contain a role abbreviation, such as
+            a Windows user-profile path or a POSIX username and hostname. An
+            empty value or ``None`` yields ``None`` rather than raising, since
+            the identifier is absent on platforms without ``USERPROFILE``.
+
+    Returns:
+        ``'presentation'``, ``'acquisition'``, ``'control'``, or ``None`` when
+        no abbreviation is recognised.
+    """
+    if not abbreviation:
+        return None
     abbr = abbreviation.upper()
     if "STM" in abbr or "PARTICIPANT" in abbr:
         return 'presentation'
@@ -26,14 +52,59 @@ def get_server_name(abbreviation: str) -> Optional[str]:
     return None
 
 
+def local_identity() -> str:
+    """Describe this machine in a string that may carry a role abbreviation.
+
+    On Windows this is ``USERPROFILE`` verbatim -- on the booths that is
+    ``C:\\Users\\ACQ`` and friends, so the profile directory name is the role.
+    Booth behaviour is therefore unchanged.
+
+    ``USERPROFILE`` does not exist on macOS or Linux. There the login name and
+    the hostname are combined, so a machine named ``stm-dev`` or an account
+    named ``acq`` is recognised the same way the profile path was.
+
+    Returns:
+        A possibly-empty identifier string. Never ``None``.
+    """
+    profile = getenv("USERPROFILE")
+    if profile:
+        return profile
+    user = getenv("USER") or getenv("LOGNAME") or ""
+    return f"{user} {socket.gethostname()}"
+
+
 def get_server_name_from_env() -> Optional[str]:
+    """Determine the role of the machine this code is executing on.
+
+    ``NB_NODE`` is consulted first and wins outright. It accepts a canonical
+    server name, an indexed acquisition name such as ``acquisition_1``, or any
+    string containing a recognised abbreviation.
+
+    Without it, the role is guessed from :func:`local_identity` -- the Windows
+    user-profile path on the booths, the login name plus hostname elsewhere.
+    The guess is a convenience for machines that are named after their role;
+    it returns ``None`` rather than raising when nothing matches.
+
+    Returns:
+        A server name, or ``None`` when the role cannot be determined.
+
+    Raises:
+        ConfigException: If ``NB_NODE`` is set to something unrecognisable.
+            An explicit wrong answer is worth failing on; an absent one is not.
     """
-    This is a hack to get the role of the machine that this code is being executed on. It's based on the
-    assumption that the Windows User Profile in use matches one of the servers defined in the config file
-    :returns: a server name, or None.
-    """
-    user = getenv("USERPROFILE")
-    return get_server_name(user)
+    node = getenv(NODE_ENV_VAR)
+    if node:
+        if node in CANONICAL_SERVER_NAMES or node.startswith('acquisition_'):
+            return node
+        resolved = get_server_name(node)
+        if resolved is None:
+            raise ConfigException(
+                f'{NODE_ENV_VAR}="{node}" does not name a known server. Use one '
+                f'of {sorted(CANONICAL_SERVER_NAMES)}, an indexed name such as '
+                f'"acquisition_0", or a string containing STM, ACQ or CTR.'
+            )
+        return resolved
+    return get_server_name(local_identity())
 
 
 def validate_folder(value: str) -> None:
@@ -180,22 +251,32 @@ class NeuroboothConfig(BaseModel):
         ``'presentation'``, ``'control'``, or ``'acquisition_0'``.
 
         When the generic role ``'acquisition'`` is detected and multiple
-        acquisition servers exist, the OS username (from ``USERPROFILE``) is
-        matched against each acquisition server's ``user`` field to determine
-        the correct index.
+        acquisition servers exist, this machine's identity is matched against
+        each acquisition server's ``user`` field to determine the correct
+        index. Set ``NB_NODE=acquisition_<N>`` to name the index outright and
+        skip the matching entirely.
         """
         server_name = get_server_name_from_env()
         if server_name is None:
-            raise ConfigException('Could not detect current server from local environment.')
+            raise ConfigException(
+                'Could not detect current server from local environment '
+                f'("{local_identity()}"). Set {NODE_ENV_VAR} to the role this '
+                'machine runs, e.g. NB_NODE=control.'
+            )
         if server_name == 'acquisition' and len(self._acquisition_specs) > 1:
-            user_profile = getenv("USERPROFILE", "").upper()
+            identity = local_identity().upper()
             for i, acq in enumerate(self._acquisition_specs):
                 machine = self.machines[acq.machine]
-                if machine.user.upper() in user_profile:
+                # An empty user matches vacuously -- "" is a substring of every
+                # string -- which would silently bind this process to the first
+                # acquisition server. Single-machine configs set user: "", so
+                # require a real value before trusting the match.
+                if machine.user and machine.user.upper() in identity:
                     return f'acquisition_{i}'
             raise ConfigException(
-                f'Could not match USERPROFILE "{getenv("USERPROFILE")}" '
-                f'to any acquisition server.'
+                f'Could not match this machine ("{local_identity()}") to any '
+                f'acquisition server. Set {NODE_ENV_VAR}=acquisition_<N> to '
+                f'choose one explicitly.'
             )
         return server_name
 
