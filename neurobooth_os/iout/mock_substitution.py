@@ -74,13 +74,11 @@ def active_mock_targets() -> Set[str]:
         return _parse_target_list(env_raw)
 
     # Fallback to the config field. Config may not be loaded yet (e.g. unit
-    # tests that import this module before calling load_config); treat that
-    # as "no config-driven targets".
-    try:
-        from neurobooth_os import config as cfg
-        targets = getattr(cfg.neurobooth_config, "mock_devices", None)
-    except Exception:
-        return set()
+    # tests that import this module before calling load_config), in which case
+    # neurobooth_config is None and getattr yields None — "no config-driven
+    # targets" — without needing to catch anything.
+    from neurobooth_os import config as cfg
+    targets = getattr(cfg.neurobooth_config, "mock_devices", None)
     if not targets:
         return set()
     return {t.strip() for t in targets if t and t.strip()}

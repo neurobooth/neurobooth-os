@@ -17,12 +17,28 @@ from neurobooth_os.iout.mock_substitution import (
 from neurobooth_os.msg.messages import DeviceInitialization, Request
 
 
-config.load_config(validate_paths=False)
-SERVER_ASSIGNMENTS: Dict[str, List[str]] = {}
-for _i, _acq in enumerate(config.neurobooth_config.acquisition):
-    SERVER_ASSIGNMENTS[f'acquisition_{_i}'] = _acq.devices
-SERVER_ASSIGNMENTS['presentation'] = config.neurobooth_config.presentation.devices
-SERVER_ASSIGNMENTS['control'] = config.neurobooth_config.control.devices
+def server_assignments() -> Dict[str, List[str]]:
+    """Device ID lists keyed by server name, read from the loaded configuration.
+
+    Built on demand rather than at import time. This used to be a module-level
+    dict populated by a ``load_config()`` call at import, which meant that
+    merely importing :class:`DeviceManager` raised ``ConfigException`` on any
+    machine without ``NB_CONFIG`` set -- including a test run, where it aborted
+    collection for the whole suite.
+
+    Returns:
+        A mapping of ``'acquisition_0'``, ``'presentation'``, ``'control'`` and
+        friends to the device IDs assigned to each.
+    """
+    if config.neurobooth_config is None:
+        config.load_config(validate_paths=False)
+    assignments: Dict[str, List[str]] = {
+        f'acquisition_{index}': acquisition.devices
+        for index, acquisition in enumerate(config.neurobooth_config.acquisition)
+    }
+    assignments['presentation'] = config.neurobooth_config.presentation.devices
+    assignments['control'] = config.neurobooth_config.control.devices
+    return assignments
 
 
 N_ASYNC_THREADS: int = 3
@@ -46,7 +62,7 @@ def get_device_assignment(device_id: str) -> str:
     Raises:
         DeviceNotFoundException: If the device is not in any server's assignment list.
     """
-    for server_name, device_list in SERVER_ASSIGNMENTS.items():
+    for server_name, device_list in server_assignments().items():
         if device_id in device_list:
             return server_name
     raise DeviceNotFoundException(f'{device_id} is not assigned to any server.')
@@ -66,12 +82,13 @@ def is_device_assigned(device_id: str, server_name: str) -> bool:
     Returns:
         True if the device is assigned to the server.
     """
-    if server_name in SERVER_ASSIGNMENTS:
-        return device_id in SERVER_ASSIGNMENTS[server_name]
+    assignments = server_assignments()
+    if server_name in assignments:
+        return device_id in assignments[server_name]
     if server_name == 'acquisition':
         return any(
             device_id in devices
-            for key, devices in SERVER_ASSIGNMENTS.items()
+            for key, devices in assignments.items()
             if key.startswith('acquisition_')
         )
     return False
@@ -85,9 +102,10 @@ class DeviceManager:
         self.logger = logging.getLogger(APP_LOG_NAME)
         self.streams: Dict[str, Any] = {}
 
-        if node_name not in SERVER_ASSIGNMENTS:
+        assignments = server_assignments()
+        if node_name not in assignments:
             raise ValueError(f'Unrecognized node name ({node_name}) given to device manger!')
-        self.assigned_devices = SERVER_ASSIGNMENTS[node_name]
+        self.assigned_devices = assignments[node_name]
         self.logger.debug(f'Devices assigned to {node_name}: {self.assigned_devices}')
 
     def create_streams(self, win=None, task_params=None) -> None:

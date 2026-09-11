@@ -3,10 +3,16 @@
 The cross-process race test uses a **subprocess**, NOT a same-process
 second acquire. Windows byte-range lock semantics for two handles in the
 same process are historically documented as "undefined" by Microsoft and
-differ across Windows editions. The real-world scenario the lock protects
-against is always two separate processes (double-click race), so the test
-exercises that path directly. Do not simplify this to a same-process
-re-acquire — it can appear to pass on one Windows SKU and fail on another.
+differ across Windows editions, and POSIX ``lockf`` locks are owned per
+process, so a same-process re-acquire succeeds there by design. The
+real-world scenario the lock protects against is always two separate
+processes (double-click race), so the test exercises that path directly.
+Do not simplify this to a same-process re-acquire — it proves nothing on
+POSIX and can appear to pass on one Windows SKU and fail on another.
+
+These ran on Windows only until the lock moved to
+``neurobooth_os.util.file_lock``, which uses msvcrt there and fcntl
+elsewhere. They now cover ``gui.py``'s lock-file payload on both.
 """
 import json
 import os
@@ -16,12 +22,6 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
-
-pytestmark = pytest.mark.skipif(
-    sys.platform != "win32",
-    reason="msvcrt byte-range locks are Windows-only",
-)
-
 
 @pytest.fixture
 def lock_env(tmp_path, monkeypatch):
@@ -63,13 +63,18 @@ def test_acquire_writes_lock_file_and_locks_it(lock_env):
 def test_second_acquire_is_refused_via_subprocess(lock_env):
     import neurobooth_os.gui as gui_mod
 
+    # The helper locks through neurobooth_os.util.file_lock rather than
+    # msvcrt directly, so it exercises the same primitive gui.py uses on
+    # whichever platform the suite is running on.
     helper = (
-        'import os, msvcrt, json, sys\n'
+        'import os, json, sys\n'
+        f'sys.path.insert(0, {os.getcwd()!r})\n'
         'from datetime import datetime, timezone\n'
+        'from neurobooth_os.util import file_lock\n'
         'path = os.path.join(os.environ["NB_INSTALL"], "gui.lock")\n'
         'fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)\n'
-        'os.lseek(fd, 0, os.SEEK_SET)\n'
-        'msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)\n'
+        'if not file_lock.try_lock(fd):\n'
+        '    sys.exit("helper could not take the lock")\n'
         'payload = json.dumps({"pid": os.getpid(), '
         '"started": datetime.now(timezone.utc).isoformat()}).encode("utf-8")\n'
         'os.lseek(fd, 0, os.SEEK_SET)\n'

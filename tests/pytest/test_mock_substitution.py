@@ -13,6 +13,7 @@ import builtins
 import importlib
 import os
 import sys
+from types import SimpleNamespace
 from typing import Type
 from unittest.mock import patch
 
@@ -97,7 +98,55 @@ class TestRegister:
 # ---------------------------------------------------------------------------
 
 class TestActiveMockTargets:
-    def test_unset_returns_empty(self):
+    def test_unset_returns_empty(self, monkeypatch):
+        """Neither source set means no mocks.
+
+        Both sources have to be pinned explicitly. Reading the ambient config
+        made this test pass or fail depending on which NB_CONFIG the machine
+        happened to have, and a local_test environment sets
+        ``mock_devices: ["all"]``, so it failed against a realistic config.
+        """
+        from neurobooth_os import config as cfg
+
+        monkeypatch.delenv(ms.ENV_VAR, raising=False)
+        monkeypatch.setattr(cfg, "neurobooth_config", None)
+        assert ms.active_mock_targets() == set()
+
+    def test_config_field_is_the_fallback(self, monkeypatch):
+        """With no env var, the config field supplies the targets."""
+        from neurobooth_os import config as cfg
+
+        monkeypatch.delenv(ms.ENV_VAR, raising=False)
+        monkeypatch.setattr(
+            cfg, "neurobooth_config", SimpleNamespace(mock_devices=["Mbient", "IPhone"])
+        )
+        assert ms.active_mock_targets() == {"Mbient", "IPhone"}
+
+    def test_config_field_entries_are_stripped(self, monkeypatch):
+        from neurobooth_os import config as cfg
+
+        monkeypatch.delenv(ms.ENV_VAR, raising=False)
+        monkeypatch.setattr(
+            cfg, "neurobooth_config", SimpleNamespace(mock_devices=[" Mbient ", "", "  "])
+        )
+        assert ms.active_mock_targets() == {"Mbient"}
+
+    def test_empty_config_field_returns_empty(self, monkeypatch):
+        from neurobooth_os import config as cfg
+
+        monkeypatch.delenv(ms.ENV_VAR, raising=False)
+        monkeypatch.setattr(cfg, "neurobooth_config", SimpleNamespace(mock_devices=[]))
+        assert ms.active_mock_targets() == set()
+
+    def test_env_var_wins_over_config_field(self, monkeypatch):
+        """Documented precedence: a set env var overrides the config field,
+        including when it is set to empty to force a real-hardware run."""
+        from neurobooth_os import config as cfg
+
+        monkeypatch.setattr(
+            cfg, "neurobooth_config", SimpleNamespace(mock_devices=["all"])
+        )
+        monkeypatch.setenv(ms.ENV_VAR, "")
         assert ms.active_mock_targets() == set()
 
     def test_env_var_single(self, monkeypatch):
