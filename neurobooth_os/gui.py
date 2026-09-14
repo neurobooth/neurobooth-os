@@ -9,6 +9,7 @@ import logging
 import msvcrt
 import os
 import os.path as op
+import subprocess
 import sys
 import threading
 import time as time_mod
@@ -586,6 +587,31 @@ def write_output(window, text: str, text_color: Optional[str] =None):
 ######### Server communication ############
 
 
+def server_start_failure_message(error: subprocess.CalledProcessError) -> str:
+    """Build the operator-facing message for a failed server launch.
+
+    Args:
+        error: The failure raised by the command that launches a server.
+
+    Returns:
+        A message naming the command that failed and what the operator can do
+        about it.
+    """
+    detail = (error.stderr or "").strip()
+    if not detail:
+        detail = f"exit status {error.returncode}"
+
+    command = error.cmd[0] if isinstance(error.cmd, (list, tuple)) and error.cmd else str(error.cmd)
+    message = f"Could not start the servers.\n\n{command} failed: {detail}"
+
+    if "access is denied" in detail.lower():
+        message += (
+            "\n\nCreating a Windows scheduled task requires administrator rights. "
+            "Close Neurobooth and relaunch it as Administrator, then try again."
+        )
+    return message
+
+
 def report_version_error_and_close(logger, version_error: VersionMismatchError, window):
 
     heading = "Critical Error: "
@@ -801,7 +827,21 @@ def gui(logger):
                 window["-init_servs-"].Update(disabled=True)
                 write_output(window, "Starting servers. Please wait....")
                 event, values = window.read(0.1)
-                controller.start_servers()
+                try:
+                    controller.start_servers()
+                except subprocess.CalledProcessError as launch_error:
+                    # Launching a server shells out to SCHTASKS, which fails
+                    # for an operator without administrator rights. That is a
+                    # recoverable setup problem, so keep the GUI alive and let
+                    # them retry instead of losing the session to os._exit.
+                    logger.error("Starting servers failed: %s", launch_error,
+                                 exc_info=True)
+                    message = server_start_failure_message(launch_error)
+                    write_output(window, f"\n{message}", text_color="red")
+                    sg.popup_error(message, title="Could not start servers",
+                                   location=get_popup_location(window))
+                    window["-init_servs-"].Update(disabled=False)
+                    continue
 
             # Turn on devices
             elif event == "-Connect-":

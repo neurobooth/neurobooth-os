@@ -148,6 +148,19 @@ def make_db_logger(subject: str = None,
         logger = logging.getLogger(APP_LOG_NAME)
         handler = PostgreSQLHandler(log_level)
         logger.addHandler(handler)
+
+        # Errors also go to stderr. Without this the database handler is the
+        # only destination, so a crash after startup is recorded in
+        # log_application and nowhere an operator can see it -- the process
+        # just disappears. Held at ERROR rather than log_level so routine
+        # DEBUG/INFO traffic stays out of the console; pythonw.exe has no
+        # stderr, and a StreamHandler wrapping None drops every record.
+        if sys.stderr is not None:
+            console_handler = logging.StreamHandler(sys.stderr)
+            console_handler.setLevel(logging.ERROR)
+            console_handler.setFormatter(LOG_FORMAT)
+            logger.addHandler(console_handler)
+
         logger.setLevel(log_level)
         extra = {"device": ""}
         logging.LoggerAdapter(logger, extra)

@@ -9,6 +9,7 @@ only ``print()``'d to a hidden console.
 from __future__ import annotations
 
 import logging
+import sys
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,6 +22,35 @@ def _record(msg: str = "boom") -> logging.LogRecord:
         name="app", level=logging.ERROR, pathname=__file__, lineno=10,
         msg=msg, args=(), exc_info=None,
     )
+
+
+def _stub_db_connection(monkeypatch) -> None:
+    """Let PostgreSQLHandler construct without touching a real database."""
+    monkeypatch.setattr(lm.config, "get_server_name_from_env", lambda: "CTR")
+
+    def fake_get_conn(*args, **kwargs):
+        conn = MagicMock()
+        conn.cursor.return_value = MagicMock()
+        return conn
+
+    monkeypatch.setattr(lm.metadator, "get_database_connection", fake_get_conn)
+
+
+@pytest.fixture
+def app_logger(monkeypatch):
+    """Reset the make_db_logger singleton and restore the shared 'app' logger.
+
+    make_db_logger caches into the module-global APP_LOGGER and attaches to a
+    process-wide logger, so without this a test would either reuse another
+    test's handlers or leak its own into the rest of the session.
+    """
+    monkeypatch.setattr(lm, "APP_LOGGER", None)
+    logger = logging.getLogger(lm.APP_LOG_NAME)
+    saved = list(logger.handlers)
+    logger.handlers.clear()
+    yield logger
+    logger.handlers.clear()
+    logger.handlers.extend(saved)
 
 
 @pytest.fixture
@@ -79,6 +109,34 @@ def test_emit_never_raises(handler, monkeypatch):
     monkeypatch.setattr(
         handler, "_build_args", MagicMock(side_effect=Exception("kaboom")))
     handler.emit(_record())  # must not raise
+
+
+def test_db_logger_mirrors_errors_to_stderr(app_logger, monkeypatch):
+    """An error after startup must reach the console, not only the database.
+
+    The database handler is otherwise the only destination, so a crash past
+    startup is written to log_application and nowhere an operator can see it.
+    """
+    _stub_db_connection(monkeypatch)
+
+    logger = lm.make_db_logger("", "")
+
+    console = [h for h in logger.handlers if isinstance(h, logging.StreamHandler)]
+    assert len(console) == 1
+    assert console[0].stream is sys.stderr
+    # ERROR, not the logger's DEBUG level: routine traffic stays off the console.
+    assert console[0].level == logging.ERROR
+
+
+def test_db_logger_adds_no_console_handler_without_stderr(app_logger, monkeypatch):
+    """Under pythonw.exe there is no stderr, and a StreamHandler wrapping None
+    drops every record it is asked to emit."""
+    _stub_db_connection(monkeypatch)
+    monkeypatch.setattr(lm.sys, "stderr", None)
+
+    logger = lm.make_db_logger("", "")
+
+    assert not [h for h in logger.handlers if isinstance(h, logging.StreamHandler)]
 
 
 def test_connect_uses_bounded_timeout(monkeypatch):
