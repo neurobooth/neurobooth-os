@@ -52,7 +52,13 @@ class Pacer:
             ``False`` if the stop event fired during the wait, ``True``
             otherwise. Always ``True`` when no stop event was supplied.
         """
-        now = time.monotonic()
+        # perf_counter, not monotonic: on Windows time.monotonic() is
+        # GetTickCount64(), whose resolution is 15.625 ms -- larger than a
+        # single period at any rate above 64 Hz, so the deadline arithmetic
+        # would quantize to the tick and lose the cadence this class exists to
+        # hold. perf_counter is QueryPerformanceCounter (~100 ns) on Windows
+        # and clock_gettime elsewhere, and is monotonic on every platform.
+        now = time.perf_counter()
         if self._deadline is None:
             # First call: the clock starts when the loop starts, not when the
             # Pacer was constructed, so setup time is not charged to tick one.

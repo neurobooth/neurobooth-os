@@ -30,9 +30,9 @@ class TestPeriod:
         """Better to spin than to divide by zero inside a device thread."""
         pacer = Pacer(rate)
         assert pacer.period == 0.0
-        start = time.monotonic()
+        start = time.perf_counter()
         pacer.wait()
-        assert time.monotonic() - start < 0.05
+        assert time.perf_counter() - start < 0.05
 
 
 class TestPacing:
@@ -45,11 +45,11 @@ class TestPacing:
         """
         pacer = Pacer(50)  # 20 ms
         pacer.wait()  # start the clock
-        start = time.monotonic()
+        start = time.perf_counter()
         for _ in range(5):
             time.sleep(0.010)  # stand in for pushing an LSL sample
             pacer.wait()
-        elapsed = time.monotonic() - start
+        elapsed = time.perf_counter() - start
 
         assert elapsed == pytest.approx(0.100, abs=0.035), (
             f"5 ticks at 20 ms should take ~100 ms, took {elapsed*1000:.1f} ms"
@@ -60,10 +60,10 @@ class TestPacing:
     def test_rate_is_close_to_configured_with_no_work(self):
         pacer = Pacer(100)
         pacer.wait()
-        start = time.monotonic()
+        start = time.perf_counter()
         for _ in range(20):
             pacer.wait()
-        measured = 20 / (time.monotonic() - start)
+        measured = 20 / (time.perf_counter() - start)
         assert measured == pytest.approx(100, rel=0.35)
 
     def test_overrun_resyncs_rather_than_bursting(self):
@@ -76,13 +76,13 @@ class TestPacing:
         pacer.wait()
         time.sleep(0.08)  # overrun by ~8 periods
 
-        start = time.monotonic()
+        start = time.perf_counter()
         pacer.wait()
-        first = time.monotonic() - start
+        first = time.perf_counter() - start
 
-        start = time.monotonic()
+        start = time.perf_counter()
         pacer.wait()
-        second = time.monotonic() - start
+        second = time.perf_counter() - start
 
         assert first < 0.005, "the overrun tick should return immediately"
         assert second == pytest.approx(0.010, abs=0.010), (
@@ -91,13 +91,20 @@ class TestPacing:
 
     def test_clock_starts_on_first_wait_not_construction(self):
         """Setup between constructing the Pacer and entering the loop must not
-        be charged against the first tick."""
-        pacer = Pacer(100)
-        time.sleep(0.05)  # slow setup
-        start = time.monotonic()
+        be charged against the first tick.
+
+        Two ticks on a fresh Pacer are two whole periods. Had the clock started
+        at construction, the 50 ms of setup would have blown five periods, the
+        first tick would resync and return immediately, and this would measure
+        one period rather than two -- so the bound has to exclude 10 ms instead
+        of straddling it.
+        """
+        pacer = Pacer(100)  # 10 ms
+        time.sleep(0.05)  # slow setup, five periods' worth
+        start = time.perf_counter()
         pacer.wait()
         pacer.wait()
-        assert time.monotonic() - start == pytest.approx(0.010, abs=0.012)
+        assert time.perf_counter() - start == pytest.approx(0.020, abs=0.006)
 
 
 class TestStopEvent:
@@ -113,12 +120,12 @@ class TestStopEvent:
         """A 1 Hz mock must not take a second to notice it was stopped."""
         event = threading.Event()
         pacer = Pacer(1, event)
-        pacer._deadline = time.monotonic()  # pretend the loop has already ticked
+        pacer._deadline = time.perf_counter()  # pretend the loop has already ticked
 
         threading.Timer(0.05, event.set).start()
-        start = time.monotonic()
+        start = time.perf_counter()
         result = pacer.wait()
-        elapsed = time.monotonic() - start
+        elapsed = time.perf_counter() - start
 
         assert result is False
         assert elapsed < 0.5, f"took {elapsed:.3f}s to notice the stop event"
