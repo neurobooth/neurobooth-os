@@ -10,6 +10,8 @@ Covers the three pure / easily-mockable seams:
   ordering and ``str.split(',')`` on quoted CSV.
 * ``_read_pid_file`` / ``_write_pid_file`` — pid-file round-trip,
   malformed-line tolerance, and the atomic-write contract.
+* ``_wait_for_server_pids`` — waits for the process ``SCHTASKS /Run`` launches
+  rather than sampling once and hoping.
 """
 
 import subprocess
@@ -336,3 +338,69 @@ def test_pid_file_round_trip_preserves_order(tmp_path) -> None:
     ]
     client._write_pid_file([f"{p}|{n}|{t}\n" for p, n, t in entries], str(target))
     assert client._read_pid_file(str(target)) == entries
+
+
+# ---------------------------------------------------------------------------
+# _wait_for_server_pids
+# ---------------------------------------------------------------------------
+
+class TestWaitForServerPids:
+    """``SCHTASKS /Run`` returns when the task is *triggered*, not when the
+    process exists. Sampling the process list once after a fixed 0.3s sleep
+    recorded no PID for a server that took seconds to come up; the empty list
+    was then written to server_pids.txt, and because kill_pid_txt iterates the
+    stored PIDs, shutdown became a silent no-op that orphaned the server.
+    """
+
+    @staticmethod
+    def _polls(monkeypatch, *results):
+        """Feed successive process-list snapshots, and don't really sleep."""
+        monkeypatch.setattr(client, "sleep", lambda _seconds: None)
+        snapshots = iter(results)
+        monkeypatch.setattr(
+            client, "get_python_pids",
+            lambda *args, **kwargs: list(next(snapshots)),
+        )
+
+    def test_returns_as_soon_as_the_process_appears(self, monkeypatch):
+        self._polls(monkeypatch, ["1", "2"])
+
+        new_pids, all_pids = client._wait_for_server_pids(None, None, None, ["1"])
+
+        assert new_pids == ["2"]
+        assert all_pids == ["1", "2"]
+
+    def test_keeps_polling_for_a_slow_starting_server(self, monkeypatch):
+        """The regression: the process showed up several seconds late."""
+        self._polls(monkeypatch, ["1"], ["1"], ["1"], ["1"], ["1", "9"])
+
+        new_pids, all_pids = client._wait_for_server_pids(None, None, None, ["1"])
+
+        assert new_pids == ["9"]
+        assert all_pids == ["1", "9"]
+
+    def test_gives_up_once_the_timeout_expires(self, monkeypatch):
+        self._polls(monkeypatch, ["1"])
+
+        new_pids, all_pids = client._wait_for_server_pids(
+            None, None, None, ["1"], timeout_sec=0)
+
+        assert new_pids == []
+        assert all_pids == ["1"]
+
+    def test_reports_every_new_pid(self, monkeypatch):
+        self._polls(monkeypatch, ["1", "7", "8"])
+
+        new_pids, _ = client._wait_for_server_pids(None, None, None, ["1"])
+
+        assert new_pids == ["7", "8"]
+
+    def test_ignores_processes_that_disappear(self, monkeypatch):
+        """A PID vanishing between snapshots is not a new server."""
+        self._polls(monkeypatch, ["2"])
+
+        new_pids, all_pids = client._wait_for_server_pids(
+            None, None, None, ["1", "2"], timeout_sec=0)
+
+        assert new_pids == []
+        assert all_pids == ["2"]

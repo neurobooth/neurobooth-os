@@ -134,3 +134,16 @@ Neurobooth runs on three computers; the entry point is `gui.py` on CTR.
 
 Each computer has a server that listens for messages from the other
 computers. CTR and STM also communicate with the database.
+
+### Run the GUI as Administrator
+
+`gui.py` must be launched from an elevated shell, or from a shortcut with
+**Run as administrator** set. Pressing *Start servers* registers a Windows
+scheduled task for each server, and `SCHTASKS /Create` fails with
+`ERROR: Access is denied.` for an account without administrator rights. This
+applies to a single-machine setup as much as to a booth; for the cross-machine
+case the remote token requirements are covered separately in the
+[inter-machine setup runbook](https://github.com/neurobooth/neurobooth-os/blob/master/docs/inter_machine_setup.md).
+
+Without elevation the GUI stays running and reports the failure, so the session
+is not lost — relaunch elevated and press *Start servers* again.

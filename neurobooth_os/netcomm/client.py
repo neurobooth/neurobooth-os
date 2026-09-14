@@ -273,6 +273,43 @@ def _build_task_xml(bat_path: str, acq_index: Optional[int],
     )
 
 
+# SCHTASKS /Run returns once the task is triggered, not once the process it
+# launches exists, so the new PID has to be waited for. Observed on a booth
+# control machine: presentation appeared almost immediately while acquisition
+# took roughly five seconds, which a single short sleep missed entirely.
+_SERVER_START_TIMEOUT_SEC = 15.0
+_SERVER_START_POLL_SEC = 0.5
+
+
+def _wait_for_server_pids(
+        server_name: Optional[str],
+        user: Optional[str],
+        password: Optional[str],
+        pids_before: List[str],
+        timeout_sec: float = _SERVER_START_TIMEOUT_SEC,
+) -> Tuple[List[str], List[str]]:
+    """Poll until a new Python process appears, or the timeout expires.
+
+    Args:
+        server_name: Host to inspect, or None for the local machine.
+        user: Remote user, when the host is remote.
+        password: Remote password, when the host is remote.
+        pids_before: Python PIDs seen before the task was run.
+        timeout_sec: How long to keep polling before giving up.
+
+    Returns:
+        A tuple of (newly appeared PIDs, all PIDs seen on the final poll). The
+        first element is empty if nothing new appeared before the timeout.
+    """
+    deadline = time() + timeout_sec
+    while True:
+        sleep(_SERVER_START_POLL_SEC)
+        pids_after = get_python_pids(server_name, user, password)
+        new_pids = [pid for pid in pids_after if pid not in pids_before]
+        if new_pids or time() >= deadline:
+            return new_pids, pids_after
+
+
 def start_server(node_name, acq_index=None, save_pid_txt=True):
     """Makes a network call to run script serv_{node_name}.bat
 
@@ -387,15 +424,24 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
     cmd_2 = cmd_schtasks_base + ["/Run", "/TN", task_name]
     _run_cmd(cmd_2, s.name, s.user, pwd)
 
-    sleep(0.3)
-    pids_new = get_python_pids(s.name, s.user, pwd)
+    pid, pids_new = _wait_for_server_pids(s.name, s.user, pwd, pids_old)
     logger.debug(f"Python processes found after: {pids_new}")
 
-    pid = [p for p in pids_new if p not in pids_old]
-    print(f"{node_name.upper()} server initiated with pid {pid}")
-    logger.info(f"{node_name.upper()} server initiated with pid {pid}")
+    if pid:
+        print(f"{node_name.upper()} server initiated with pid {pid}")
+        logger.info(f"{node_name.upper()} server initiated with pid {pid}")
+    else:
+        print(f"{node_name.upper()} scheduled task ran but no new process appeared")
+        logger.warning(
+            f"{node_name.upper()} scheduled task ran, but no new Python process "
+            f"appeared within {_SERVER_START_TIMEOUT_SEC:.0f}s. Its PID cannot be "
+            f"recorded, so shutdown will not be able to stop it by PID."
+        )
 
-    if save_pid_txt:
+    # Only record a PID we actually have. kill_pid_txt iterates the stored
+    # pids, so an empty entry turns shutdown into a silent no-op and leaves the
+    # server running for the next session to discover and kill by command line.
+    if save_pid_txt and pid:
         entries = _read_pid_file()
         entries.append((str(pid), node_name, str(time())))
         _write_pid_file([f"{p}|{n}|{t}\n" for p, n, t in entries])
