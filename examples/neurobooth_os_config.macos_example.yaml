@@ -1,9 +1,17 @@
 # Single-machine macOS / Linux development environment.
 #
 # Point NB_CONFIG at the directory holding this file (renamed to
-# neurobooth_os_config.yaml) alongside a secrets.yaml and the shared
-# assets/collections/devices/sensors/stimuli/studies/tasks directories from
-# the configs repo.
+# neurobooth_os_config.yaml) alongside a secrets.yaml, the shared
+# assets/collections/devices/instructions/sensors/stimuli/studies/tasks
+# directories from the configs repo, and an environment.yml -- the GUI reads
+# that last one before it draws its first window and exits without it. This
+# is what deploy.bat assembles on Windows: configs/shared/ first, then
+# configs/environments/<env>/. For this file, environments/local_test/ is the
+# match, and its environment.yml carries no platform-specific paths.
+#
+# The environment is `local`, so secrets.yaml needs a `local:` section with a
+# database.password. Homebrew Postgres trusts 127.0.0.1 connections, but the
+# field is still required.
 #
 # Differences from the Windows local_test environment, all deliberate:
 #
