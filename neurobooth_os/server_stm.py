@@ -32,7 +32,9 @@ import neurobooth_os.tasks.utils as utl
 from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received, enable_crash_handler
 from neurobooth_os.perf_monitor import ProcessMonitor
 
-prefs.hardware["audioLib"] = ["PTB"]
+# Backend names are case-sensitive from PsychoPy 2025 on: "PTB" is rejected at
+# the first tone with ModuleNotFoundError, which ends the STM task loop.
+prefs.hardware["audioLib"] = ["ptb"]
 prefs.hardware["audioLatencyMode"] = 3
 calib_instructions: bool = True  # True if we have not yet performed an eyetracker calibration task
 

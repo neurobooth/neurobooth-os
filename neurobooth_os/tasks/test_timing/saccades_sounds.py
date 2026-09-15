@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from psychopy import prefs
 
-prefs.hardware["audioLib"] = ["PTB"]
+prefs.hardware["audioLib"] = ["ptb"]
 prefs.hardware["audioLatencyMode"] = 3
 
 from pylsl import local_clock
