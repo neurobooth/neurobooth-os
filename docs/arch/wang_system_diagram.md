@@ -27,7 +27,7 @@ flowchart TB
 
     subgraph REMOTE["Remote Network · MGH/HMS"]
         Z["Z: drive (SMB share)<br/>Z:/data/ — XDF, HDF5, video files"]
-        DROP["Dropbox — Videos_to_present/<br/>task instruction videos"]
+        DROP["OneDrive — Videos_to_present/<br/>task instruction videos"]
     end
 
     WANG -- "SSH tunnel via neurodoor.nmr.mgh.harvard.edu (SSH user sp1022)" --> REMOTE
