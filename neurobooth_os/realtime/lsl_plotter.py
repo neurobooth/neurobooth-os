@@ -34,7 +34,7 @@ def create_lsl_inlets(stream_ids):
     logger = logging.getLogger(APP_LOG_NAME)
     inlets = {}
     for outlet_name, id_stream in stream_ids.items():
-        stream = pylsl.resolve_byprop("source_id", id_stream, timeout=1)
+        stream = pylsl.resolve_byprop("source_id", id_stream, timeout=10)
         if stream:
             inlet = pylsl.StreamInlet(stream[0])
             inlets[stream[0].name()] = inlet
