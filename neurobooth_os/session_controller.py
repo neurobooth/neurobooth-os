@@ -12,7 +12,7 @@ import os.path as op
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import cv2
@@ -294,6 +294,11 @@ class SessionController:
     controller methods.
     """
 
+    # Pauses between LabRecorderCLI start attempts (#811 failsafe). Worst case
+    # with the stop-thread wait: 10 s join timeout + 3 x ~2 s failed starts
+    # + 3 s of pauses = ~19 s, inside STM's ~30 s LslRecording wait.
+    LSL_START_RETRY_DELAYS_S: Tuple[float, ...] = (1.0, 2.0)
+
     def __init__(self, state: SessionState, logger: logging.Logger,
                  listener: Optional[SessionEventListener] = None):
         self.state = state
@@ -506,13 +511,75 @@ class SessionController:
             self.logger.critical(f"{msg} (liesl: {e!r})")
             raise RuntimeError(msg) from e
 
+    def _missing_stream_names(self, error: Exception) -> List[str]:
+        """Map the source_ids in a LabRecorderCLI error back to stream names.
+
+        LabRecorderCLI's "matched no stream" line names only the source_id.
+        Its output also lists the streams it did find ("Found <name>
+        matching ..."), so only the "matched no stream" lines are searched.
+        """
+        raw = error.args[0] if error.args else ""
+        text = raw.decode(errors="replace") if isinstance(raw, bytes) else str(raw)
+        missing_lines = [ln for ln in text.splitlines() if "matched no stream" in ln]
+        return [
+            name
+            for name, sid in self.state.stream_ids.items()
+            if any(sid in ln for ln in missing_lines)
+        ]
+
+    def _start_recording_with_retry(self, rec_fname: str) -> None:
+        """Start the liesl recording, retrying if LabRecorderCLI misses a stream.
+
+        LabRecorderCLI resolves the streams itself with a fixed 1 s search and
+        exits if any requested stream did not answer in time (#811). Waiting
+        for the previous recorder to exit removes the known trigger; this
+        retry is a failsafe for any remaining transient miss. Each failure
+        logs the missed stream by name. The total time here, plus the wait in
+        ``start_lsl_recording``, must stay well inside STM's ~30 s wait for
+        the LslRecording message.
+
+        Args:
+            rec_fname: Recording file name passed to liesl.
+
+        Raises:
+            ConnectionError: If every attempt fails.
+        """
+        n_attempts = len(self.LSL_START_RETRY_DELAYS_S) + 1
+        for attempt, delay in enumerate((*self.LSL_START_RETRY_DELAYS_S, None), 1):
+            try:
+                self.state.session.start_recording(rec_fname)
+            except ConnectionError as e:
+                self.logger.warning(
+                    f"LabRecorderCLI attempt {attempt}/{n_attempts} for {rec_fname} "
+                    f"missed stream(s) {self._missing_stream_names(e)}: {e!r}"
+                )
+                if delay is None:
+                    raise
+                time_mod.sleep(delay)
+            else:
+                if attempt > 1:
+                    self.logger.warning(
+                        f"LabRecorderCLI started on attempt {attempt}/{n_attempts} "
+                        f"for {rec_fname}"
+                    )
+                return
+
     def start_lsl_recording(self, subject_id: str, task_id: str,
                             t_obs_id: str, obs_log_id: str,
                             tsk_strt_time: str) -> str:
         """Start recording LSL data for a task and notify STM."""
         rec_fname = f"{subject_id}_{tsk_strt_time}_{t_obs_id}"
+        # A LabRecorderCLI started while the previous task's recorder is still
+        # finalizing its XDF regularly misses a stream during its 1 s discovery
+        # (#811: every chained task on a single-laptop booth). Starting it only
+        # after the old one has exited removed the failure.
+        t_join = time_mod.time()
+        self._join_lsl_stop()
+        self.logger.info(
+            f"Waited {time_mod.time() - t_join:.2f}s for previous LabRecorderCLI to exit"
+        )
         t0 = time_mod.time()
-        self.state.session.start_recording(rec_fname)
+        self._start_recording_with_retry(rec_fname)
         self.logger.info(f"liesl start_recording took: {time_mod.time() - t0:.2f}")
 
         msg = Request(source="CTR", destination='STM', body=LslRecording())
@@ -527,11 +594,11 @@ class SessionController:
         """Stop LSL recording in the background and trigger XDF split.
 
         The underlying LabRecorderCLI subprocess takes 3-5s to finalize
-        the XDF file.  Rather than blocking the GUI event loop (which
-        would delay the next task's ``start_lsl_recording``), we capture
-        the old subprocess handle and finalize it in a background thread.
-        ``start_lsl_recording`` spawns a *new* LabRecorderCLI process, so
-        the two can safely run concurrently.
+        the XDF file. Rather than blocking the GUI event loop here, we
+        capture the old subprocess handle and finalize it in a background
+        thread. The next ``start_lsl_recording`` waits for that thread
+        before spawning a new LabRecorderCLI, because a new recorder started
+        while the old one finalizes can miss streams (#811).
         """
         import threading as threading_mod
 
