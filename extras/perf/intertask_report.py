@@ -124,7 +124,7 @@ _tunnel = None
 
 
 def get_connection_direct():
-    """Connect via SSH tunnel to the production database."""
+    """Connect using extras/perf/db_credentials.json (SSH tunnel or local)."""
     global _tunnel
     conn, _tunnel = _get_db_conn()
     return conn
@@ -142,7 +142,7 @@ def get_connection_config(database=None):
 
 
 def cleanup():
-    """Stop the SSH tunnel if one was opened."""
+    """Stop the SSH tunnel if one was opened (no-op for direct connections)."""
     global _tunnel
     if _tunnel is not None:
         _tunnel.stop()
