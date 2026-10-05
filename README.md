@@ -97,11 +97,17 @@ on the booths that is `%USERPROFILE%\nb_os_env\neurobooth-os`. The legacy
 `NB_CONDA_INSTALL` and `NB_CONDA_ENV` variables are no longer set or read by
 anything; delete them if they are still present on a machine.
 
-> **Deploy chain note:** the `configs` repo deploy chain
+> **Deploying updates:** once a booth is set up as above, update all three
+> machines of an environment with one command on its CTR machine —
+> `%NB_INSTALL%\nb_deploy.bat`. It checks out both repos, syncs each venv with
+> that machine's extras, and switches over blue-green so `nb_deploy rollback`
+> undoes it in seconds. See [docs/deployment.md](docs/deployment.md).
+>
+> The older per-machine chain in the `configs` repo
 > (`checkout_and_deploy.bat` → `github_checkout.bat` → `deploy.bat` → `version.bat`)
-> checks out the release tag and copies config files. It does **not** create,
-> activate, or sync the virtual environment — run `uv sync` yourself after a deploy
-> if dependencies changed.
+> still exists but does not sync the venv, and must not be used on a machine
+> that `nb_deploy` has switched to the blue-green layout (it would write into
+> the live slot directly).
 
 ## Setup
 

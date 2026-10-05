@@ -8,7 +8,7 @@ The goals for this process are:
 3. To make it easier to determine what code modifications are in each environment, and whether issues identified in one environment are likely to affect another. 
 
 This process uses GitHub's release support. In this model, a release is a bundle of code with a name and a git tag. By convention, the release name and tag are the same.
-The release name also appears in the deployed code so anyone looking at the environment can tell what version is deployed. In source, `neurobooth_os/current_config.py` holds the version inside a `version = ...` assignment. The file is marked as a generated file; the deployment scripts (`configs/checkout_and_deploy.bat` / `configs/version.bat`) overwrite the assignment with the real release tag at deploy time. A plain master checkout reads the sentinel `'NO VERSION SET'`.
+The release name also appears in the deployed code so anyone looking at the environment can tell what version is deployed. In source, `neurobooth_os/current_config.py` holds the version inside a `version = ...` assignment. The file is marked as a generated file; `nb_deploy` (see [deployment.md](deployment.md)) overwrites the assignment at deploy time with the release tag, or with `branch@sha` when a branch is deployed. `neurobooth_os/current_release.py` is stamped the same way for the code version. A plain master checkout reads the sentinel `'NO VERSION SET'`.
 
 Because deploy stamps the version in, **the source value is never edited by hand**. There is no pre-release version-bump commit and no post-release increment — release numbering is driven entirely by git tags + GitHub releases.
 
@@ -21,9 +21,9 @@ A release that isn't ready for production deployment should be flagged in GitHub
 Development is performed on feature branches as usual. When complete, feature branches are merged into master. Frequent merges of small branches simplifies coordination between developers and makes it easier to review code. The rest of the process is as follows:
 
 1. Create a candidate release in GitHub against master HEAD, ensuring that it is marked as "pre-release". This tags the code in the release to the current state in the git history. Do **not** edit `current_config.py` first — deploy will stamp it.
-2. Deploy the candidate release into staging and complete testing.
+2. Deploy the candidate release into staging and complete testing: on staging's CTR, `nb_deploy --os-ref <tag> --config-ref <config tag>`. (Plain `nb_deploy` on staging deploys the tip of `master`/`main` for day-to-day testing.)
 3. Publish the release in GitHub (remove the "pre-release" flag).
-4. Deploy the published release into production environment(s). 
+4. Deploy the published release into production environment(s): on each environment's CTR, `nb_deploy --os-ref <tag> --config-ref <config tag>`. Production environments refuse to deploy without explicit refs. If something is wrong, `nb_deploy rollback` restores the previous release in seconds.
 
 Checking out and deploying releases:
 

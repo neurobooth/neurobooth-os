@@ -70,6 +70,10 @@ class MachineSpec(BaseModel):
     local_data_dir: str
     local_log_dir: Optional[str] = None
     unqualified_user: bool = False
+    # Path, on this machine, of the FLIR Spinnaker wheel that nb_deploy installs
+    # into each new venv. Required on machines with FLIR devices; the SDK is
+    # proprietary and not in uv.lock (see README.md, "Per-machine extras").
+    spinnaker_wheel: Optional[str] = None
 
 
 class ServiceSpec(BaseModel):
