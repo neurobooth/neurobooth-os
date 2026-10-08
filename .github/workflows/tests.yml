@@ -34,26 +34,27 @@ jobs:
   # The full suite needs the booth venv, which uv.lock only resolves for Windows,
   # and a loaded booth config (neurobooth_os/iout/lsl_streamer.py loads it at
   # import), so it runs against the private configs repo's all-mocked
-  # local_test environment, as on a developer machine. Reading configs needs
-  # the CONFIGS_REPO_TOKEN secret: a fine-grained token with read-only
-  # Contents access to neurobooth/configs.
+  # local_test environment, as on a developer machine. The workflow's own
+  # GITHUB_TOKEN can only read this repo, so reading configs needs the
+  # CONFIGS_DEPLOY_KEY secret: the private half of a read-only deploy key
+  # added to neurobooth/configs (see docs/deployment.md, "Continuous integration").
   full-suite:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Check for the configs token
+      - name: Check for the configs deploy key
         shell: bash
         env:
-          CONFIGS_REPO_TOKEN: ${{ secrets.CONFIGS_REPO_TOKEN }}
+          CONFIGS_DEPLOY_KEY: ${{ secrets.CONFIGS_DEPLOY_KEY }}
         run: |
-          if [ -z "$CONFIGS_REPO_TOKEN" ]; then
-            echo "::error::Secret CONFIGS_REPO_TOKEN is not set; the full suite needs read access to neurobooth/configs."
+          if [ -z "$CONFIGS_DEPLOY_KEY" ]; then
+            echo "::error::Secret CONFIGS_DEPLOY_KEY is not set; the full suite needs read access to neurobooth/configs."
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: neurobooth/configs
-          token: ${{ secrets.CONFIGS_REPO_TOKEN }}
+          ssh-key: ${{ secrets.CONFIGS_DEPLOY_KEY }}
           path: configs-checkout
           persist-credentials: false
       - name: Stage the local_test config (what configs/deploy.bat does)

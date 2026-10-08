@@ -169,10 +169,32 @@ uv run --no-project --python 3.8 --with pytest --with pyyaml --with pydantic pyt
   because it creates (and deletes) scheduled tasks: set
   `NB_DEPLOY_TEST_SCHTASKS=1`.
 
+### Continuous integration
+
 CI (`.github/workflows/tests.yml`) runs these on all three OSes, with the Task
 Scheduler test on Windows, plus the full suite on Windows.
 
-**Not covered by the simulation:** the cross-machine login (SMB to `C$` and
+The full suite needs the private `configs` repo (it runs against the
+`local_test` config), and a workflow's own `GITHUB_TOKEN` can only read the
+repo it runs in. CI reads `configs` with a read-only deploy key instead: the
+public half is a deploy key on `neurobooth/configs` (write access off), the
+private half is the `CONFIGS_DEPLOY_KEY` Actions secret on neurobooth-os. It
+belongs to the repos, not to a person. To create or rotate it (repo admin on
+both; in Git Bash, or put `--%` after `ssh-keygen` in PowerShell):
+
+```
+ssh-keygen -t ed25519 -C "neurobooth-os CI read-only" -N "" -f configs_deploy_key
+gh repo deploy-key add configs_deploy_key.pub --repo neurobooth/configs --title "neurobooth-os CI (read-only)"
+gh secret set CONFIGS_DEPLOY_KEY --repo neurobooth/neurobooth-os < configs_deploy_key
+rm configs_deploy_key configs_deploy_key.pub
+```
+
+Without the secret, the full-suite job fails at its first step with a message
+naming it.
+
+### Not covered by the simulation
+
+The cross-machine login (SMB to `C$` and
 `SCHTASKS /S /U /P` with booth credentials). `extras/perf/intermachine_check.py`
 validates the SCHTASKS and `admin$` parts of that channel on the booths; `C$`
 is the same kind of administrative share but is not checked by it. To exercise it off-site you need a
