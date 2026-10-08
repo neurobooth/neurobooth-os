@@ -74,7 +74,8 @@ venv-*
 
 # Secrets
 secrets.yaml
-db_credentials.json
+db_credentials*.json
+!db_credentials*.example.json
 
 # Misc
 server_pids.txt
