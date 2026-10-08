@@ -1,0 +1,3 @@
+# cmd.exe parses parenthesized blocks unreliably with LF line endings, and
+# nb_deploy.bat depends on one (see the comment in the file).
+nb_deploy.bat text eol=crlf

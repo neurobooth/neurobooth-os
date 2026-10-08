@@ -162,7 +162,6 @@ dev = [
 ]
 
 [tool.uv]
-extra-index-url = ["https://pypi.sr-support.com"]
 # Booth machines run on Windows only; restrict the resolver to win32 so it
 # doesn't reject the lock over darwin/linux-only conflicts (e.g. psychopy's
 # pyobjc-framework-quartz pin chains).
@@ -177,6 +176,15 @@ constraint-dependencies = ["psycopg2<2.9.10"]
 # update-browser code path that actually uses it. Override the transitive
 # to a marker that resolves trivially.
 override-dependencies = ["pypi-search; sys_platform == 'never'"]
+
+# SR Research's index, kept available for EyeLink packages but used only for
+# packages pinned to it under [tool.uv.sources] (none today: sr-research-pylink
+# is on PyPI). As a plain extra index uv asked it about every package, and it
+# answers 403 to some networks (e.g. GitHub Actions), which stops uv's search.
+[[tool.uv.index]]
+name = "sr-research"
+url = "https://pypi.sr-support.com"
+explicit = true
 
 [tool.setuptools.packages.find]
 include = ["neurobooth_os*"]

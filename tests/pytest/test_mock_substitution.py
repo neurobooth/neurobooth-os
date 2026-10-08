@@ -97,7 +97,13 @@ class TestRegister:
 # ---------------------------------------------------------------------------
 
 class TestActiveMockTargets:
-    def test_unset_returns_empty(self):
+    def test_unset_returns_empty(self, monkeypatch):
+        from neurobooth_os import config as cfg
+        # "Unset" means no env var and no loaded config. Other test modules
+        # load the config from NB_CONFIG at import (via lsl_streamer), and the
+        # local_test config mocks every device, so clear it explicitly.
+        monkeypatch.delenv(ms.ENV_VAR, raising=False)
+        monkeypatch.setattr(cfg, "neurobooth_config", None)
         assert ms.active_mock_targets() == set()
 
     def test_env_var_single(self, monkeypatch):

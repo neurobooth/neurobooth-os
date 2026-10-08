@@ -6,11 +6,10 @@ import subprocess
 import ast
 import csv
 import io
-import tempfile
-import xml.sax.saxutils as _saxutils
 from typing import List, Optional, Tuple
 
 import neurobooth_os.config as cfg
+from neurobooth_os.deploy import schtasks
 
 
 # Route through the "app" logger so messages reach the PostgreSQLHandler
@@ -21,39 +20,9 @@ import neurobooth_os.config as cfg
 logger = logging.getLogger("app")
 
 
-def _run_cmd(cmd_list: list, server_name: str = None, user: str = None, password: str = None,
-             error_level: int = logging.ERROR) -> str:
-    """Run a subprocess command and return its stdout.
-
-    Args:
-        cmd_list: The command and arguments to run.
-        server_name, user, password: For remote execution via /S /U /P.
-        error_level: Log level used when the command fails or times out.
-            Defaults to ERROR. Callers wrapping benign-failure operations
-            (e.g. taskkill where the target PID may already be gone) can
-            pass ``logging.WARNING`` to keep log_application uncluttered.
-    """
-    full_cmd = list(cmd_list)
-    # Single-machine testing: an empty user means "run on this machine" — skip
-    # /S /U /P so tasklist/SCHTASKS execute locally. See
-    # docs/single_machine_testing.md.
-    if server_name and user:
-        full_cmd = full_cmd[:1] + ["/S", server_name, "/U", user, "/P", password] + full_cmd[1:]
-
-    try:
-        logger.debug(f"Running command: {' '.join(cmd_list)} (on {server_name or 'localhost'})")
-        result = subprocess.run(full_cmd, capture_output=True, text=True, check=True, timeout=30)
-        return result.stdout
-    except subprocess.CalledProcessError as e:
-        logger.log(error_level,
-                   f"Command failed (on {server_name or 'localhost'}): {' '.join(cmd_list)}, "
-                   f"stdout: {e.stdout}, stderr: {e.stderr}")
-        raise
-    except subprocess.TimeoutExpired as e:
-        logger.log(error_level,
-                   f"Command timed out (on {server_name or 'localhost'}): {' '.join(cmd_list)}, "
-                   f"stdout: {e.stdout}, stderr: {e.stderr}")
-        raise
+# Moved to neurobooth_os.deploy.schtasks so the deploy tool can use it without
+# importing the booth config stack; kept under the old name for callers here.
+_run_cmd = schtasks.run_cmd
 
 
 def get_python_pids(server_name: str = None, user: str = None, password: str = None) -> list:
@@ -195,82 +164,14 @@ def _build_task_xml(bat_path: str, acq_index: Optional[int],
                     user: Optional[str] = None,
                     machine: Optional[str] = None,
                     unqualified_user: bool = False) -> str:
-    """Build a Task Scheduler XML for an event-triggered server task.
+    """Build the Task Scheduler XML for a booth server task.
 
-    SCHTASKS /Create has no CLI flag for the battery-condition setting, so a
-    CLI-created task inherits the Windows default DisallowStartIfOnBatteries=true
-    and silently sits in "Queued" on a laptop running on battery (the .bat
-    never launches). /Create /XML lets us write that setting explicitly.
-
-    The trigger keys off Application Event ID 777 — nothing emits that event;
-    it exists only so /Run can launch the task on demand.
-
-    When ``user`` is provided, a <Principals> block is included so SCHTASKS
-    /S /XML accepts the file: remote task creation requires an explicit
-    UserId, and the /TR flow that this code replaced got it from /U
-    automatically. The UserId is qualified as ``machine\\user`` unless
-    ``user`` already contains a backslash or ``unqualified_user`` is set
-    (IP-addressed host), in which case the bare ``user`` is used. Local
-    creation (no /S) auto-fills Principals, so we omit the block when
-    ``user`` is empty/None.
+    Thin adapter over :func:`neurobooth_os.deploy.schtasks.build_task_xml`:
+    the acquisition index becomes the .bat argument.
     """
-    command = _saxutils.escape(bat_path)
-    args_block = ""
-    if acq_index is not None:
-        args_block = f"      <Arguments>{_saxutils.escape(str(acq_index))}</Arguments>\n"
-
-    principals_block = ""
-    actions_open = "  <Actions>\n"
-    if user:
-        # Qualify with the target machine name when not already domain-qualified.
-        # Bare "ACQ" is rejected by Task Scheduler XML validation as ambiguous;
-        # "ACQ\\ACQ" (which is what /Query shows for the existing task) is not.
-        if unqualified_user:
-            # IP-addressed host: emit the bare user, unqualified.
-            qualified_user = user
-        elif "\\" not in user and machine:
-            qualified_user = f"{machine}\\{user}"
-        else:
-            qualified_user = user
-        user_escaped = _saxutils.escape(qualified_user)
-        principals_block = (
-            '  <Principals>\n'
-            '    <Principal id="Author">\n'
-            f'      <UserId>{user_escaped}</UserId>\n'
-            '      <LogonType>InteractiveToken</LogonType>\n'
-            '      <RunLevel>LeastPrivilege</RunLevel>\n'
-            '    </Principal>\n'
-            '  </Principals>\n'
-        )
-        actions_open = '  <Actions Context="Author">\n'
-
-    return (
-        '<?xml version="1.0" encoding="UTF-16"?>\n'
-        '<Task version="1.3" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">\n'
-        '  <Triggers>\n'
-        '    <EventTrigger>\n'
-        '      <Enabled>true</Enabled>\n'
-        "      <Subscription>&lt;QueryList&gt;&lt;Query&gt;&lt;Select Path='Application'&gt;"
-        "*[System/EventID=777]&lt;/Select&gt;&lt;/Query&gt;&lt;/QueryList&gt;</Subscription>\n"
-        '    </EventTrigger>\n'
-        '  </Triggers>\n'
-        f'{principals_block}'
-        '  <Settings>\n'
-        '    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>\n'
-        '    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n'
-        '    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>\n'
-        '    <AllowStartOnDemand>true</AllowStartOnDemand>\n'
-        '    <Enabled>true</Enabled>\n'
-        '    <ExecutionTimeLimit>PT72H</ExecutionTimeLimit>\n'
-        '  </Settings>\n'
-        f'{actions_open}'
-        '    <Exec>\n'
-        f'      <Command>{command}</Command>\n'
-        f'{args_block}'
-        '    </Exec>\n'
-        '  </Actions>\n'
-        '</Task>\n'
-    )
+    arguments = str(acq_index) if acq_index is not None else None
+    return schtasks.build_task_xml(bat_path, arguments, user=user, machine=machine,
+                                   unqualified_user=unqualified_user)
 
 
 def start_server(node_name, acq_index=None, save_pid_txt=True):
@@ -362,8 +263,6 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
                 continue
         break
 
-    cmd_schtasks_base = ["SCHTASKS"]
-
     # Always (re)create via /XML /F. /F overwrites stale tasks left by older
     # versions of this code that used /TR — those were created with the
     # default DisallowStartIfOnBatteries=true and would queue forever on a
@@ -371,21 +270,8 @@ def start_server(node_name, acq_index=None, save_pid_txt=True):
     print(f"Creating Windows task: {task_name}")
     xml_content = _build_task_xml(s.bat, acq_index, user=s.user, machine=s.name,
                                   unqualified_user=s.unqualified_user)
-    fd, xml_path = tempfile.mkstemp(suffix='.xml')
-    try:
-        with os.fdopen(fd, 'wb') as f:
-            f.write(b'\xff\xfe')  # SCHTASKS /XML expects UTF-16 LE with BOM
-            f.write(xml_content.encode('utf-16-le'))
-        cmd_1 = cmd_schtasks_base + ["/Create", "/TN", task_name, "/XML", xml_path, "/F"]
-        _run_cmd(cmd_1, s.name, s.user, pwd)
-    finally:
-        try:
-            os.remove(xml_path)
-        except OSError:
-            pass
-
-    cmd_2 = cmd_schtasks_base + ["/Run", "/TN", task_name]
-    _run_cmd(cmd_2, s.name, s.user, pwd)
+    schtasks.create_task(task_name, xml_content, s.name, s.user, pwd)
+    schtasks.run_task(task_name, s.name, s.user, pwd)
 
     sleep(0.3)
     pids_new = get_python_pids(s.name, s.user, pwd)
