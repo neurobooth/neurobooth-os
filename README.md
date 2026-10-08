@@ -46,9 +46,10 @@ Run these **after** `uv sync`.
 uv sync --extra eyelink
 ```
 
-The `eyelink` extra installs `sr-research-pylink` from the SR Research custom
-index (configured in `pyproject.toml`). If that fails, fall back to the
-manual installer:
+The `eyelink` extra installs `sr-research-pylink` from PyPI. SR Research's own
+index stays configured in `pyproject.toml` as an explicit index: uv uses it
+only for packages pinned to it under `[tool.uv.sources]`. If the install
+fails, fall back to the manual installer:
 
 * Create an SR Research support account
 * Download the `EyeLink Developers Kit v2.1.1 (32 and 64 bit)` installer
