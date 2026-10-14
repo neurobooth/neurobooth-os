@@ -54,6 +54,7 @@ production:
 | `database.password` | PostgreSQL auth | Required | Required | Required |
 | `machines.<name>.password` | Remote process management | Required | - | - |
 | SSH key (`~/.ssh/id_rsa`) | SSH tunnel to DB | Required | Required | Required |
+| `alerting.teams_webhook_url`, `alerting.smtp.password` | Booth alerter notifications (optional; see `docs/booth_alerting.md`) | If used | - | - |
 
 ## Machine clock
 

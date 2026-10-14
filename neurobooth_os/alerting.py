@@ -1,7 +1,7 @@
 """Notify the team when a booth service (CTR, STM, ACQ_n) logs an error or dies.
 
-Runs on neurodoor every minute (cron or a systemd timer) against the neurobooth
-database. Each run:
+Runs on each environment's CTR machine every minute, as a Task Scheduler entry
+(``extras/register_alerter_task.bat``), against that environment's database. Each run:
 
 1. Reads ``log_application`` rows at level error/critical since the last run, and
    ``service_heartbeat`` rows whose process stopped beating without a clean shutdown.
@@ -13,16 +13,13 @@ database. Each run:
 Subject and session IDs never leave the database: they are scrubbed from every message
 and traceback before it is stored in ``alert_history`` or sent. See
 ``docs/booth_alerting.md`` for the design and ``sql/migration/booth_alerts_v0.96.0.sql``
-for the tables.
-
-Only the standard library and psycopg2 are needed, so the script can be copied to
-neurodoor on its own.
+for the tables. Settings come from the ``alerting`` section of the neurobooth config.
 
 Usage:
-    python booth_alerter.py --config booth_alerter.json run
-    python booth_alerter.py --config booth_alerter.json list [--all]
-    python booth_alerter.py --config booth_alerter.json ack FINGERPRINT --by NAME
-    python booth_alerter.py --config booth_alerter.json test-notify
+    python -m neurobooth_os.alerting run
+    python -m neurobooth_os.alerting list [--all]
+    python -m neurobooth_os.alerting ack FINGERPRINT --by NAME
+    python -m neurobooth_os.alerting test-notify
 """
 
 from __future__ import annotations
@@ -38,10 +35,18 @@ import urllib.request
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from email.message import EmailMessage
-from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Protocol, Sequence, Tuple
 
+import neurobooth_os.config as cfg
+import neurobooth_os.log_manager as log_manager
+from neurobooth_os.config import AlertingSpec, SmtpSpec
+from neurobooth_os.iout import metadator
+
 LOGGER = logging.getLogger("booth_alerter")
+
+# Arbitrary constant naming the PostgreSQL advisory lock that lets only one alerter run
+# against a database at a time (staging and production share the CTR machines).
+ADVISORY_LOCK_KEY = 0x4E42414C
 
 KIND_LOG = "log"
 KIND_DEAD_SERVICE = "dead_service"
@@ -485,14 +490,14 @@ def format_notification(alerts: Sequence[Alert], label: str) -> Tuple[str, str]:
             lines.append("  Traceback (last lines):")
             lines.extend(f"    {line}" for line in record.sample_traceback.splitlines())
         lines.append(
-            f"  Acknowledge: booth_alerter.py ack {record.fingerprint} --by <name>"
+            f"  Acknowledge: python -m neurobooth_os.alerting ack {record.fingerprint} --by <name>"
         )
         sections.append("\n".join(lines))
 
     body = "\n\n".join(sections)
     body += (
         "\n\nRepeats are counted but not re-sent until acknowledged. "
-        "Full rows, including the session, are in log_application on neurodoor."
+        "Full rows, including the session, are in log_application in this environment's database."
     )
     return subject, body
 
@@ -501,21 +506,10 @@ class Sender(Protocol):
     def send(self, subject: str, body: str) -> None: ...
 
 
-@dataclass(frozen=True)
-class SmtpSettings:
-    host: str
-    sender: str
-    recipients: Tuple[str, ...]
-    port: int = 25
-    starttls: bool = False
-    username: Optional[str] = None
-    password: Optional[str] = None
-
-
 class SmtpSender:
     """Sends notifications as plain-text email through an SMTP relay."""
 
-    def __init__(self, settings: SmtpSettings):
+    def __init__(self, settings: SmtpSpec):
         self.settings = settings
 
     def send(self, subject: str, body: str) -> None:
@@ -528,7 +522,11 @@ class SmtpSender:
             if self.settings.starttls:
                 smtp.starttls()
             if self.settings.username:
-                smtp.login(self.settings.username, self.settings.password or "")
+                password = self.settings.password
+                smtp.login(
+                    self.settings.username,
+                    password.get_secret_value() if password else "",
+                )
             smtp.send_message(message)
 
 
@@ -612,58 +610,23 @@ class MultiSender:
             ) from errors[0]
 
 
-# --- Settings -------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class DatabaseSettings:
-    host: str
-    dbname: str
-    user: str
-    port: int = 5432
-    password: Optional[str] = None  # None: psycopg2 falls back to ~/.pgpass
-
-
-@dataclass(frozen=True)
-class AlerterSettings:
-    database: DatabaseSettings
-    smtp: Optional[SmtpSettings] = None
-    teams_webhook_url: Optional[str] = None
-    label: str = "Neurobooth"
-    timezone: str = (
-        "America/New_York"  # booths write log_application.server_time in local time
-    )
-    heartbeat_stale_sec: int = 300
-    log_overlap_min: int = 60
-    dead_service_max_age_hours: int = 24
-    first_run_lookback_hours: int = 24
-
-    @classmethod
-    def load(cls, path: Path) -> AlerterSettings:
-        """Read settings from a JSON file (see ``booth_alerter.example.json``)."""
-        raw = json.loads(Path(path).read_text())
-        smtp = raw.pop("smtp", None)
-        return cls(
-            database=DatabaseSettings(**raw.pop("database")),
-            smtp=SmtpSettings(**{**smtp, "recipients": tuple(smtp["recipients"])})
-            if smtp
-            else None,
-            **raw,
+def make_sender(settings: AlertingSpec) -> MultiSender:
+    """Build a sender for every channel configured in ``settings``."""
+    senders: List[Sender] = []
+    if settings.smtp is not None:
+        senders.append(SmtpSender(settings.smtp))
+    if settings.teams_webhook_url is not None:
+        senders.append(
+            TeamsWorkflowSender(settings.teams_webhook_url.get_secret_value())
         )
-
-    def make_sender(self) -> MultiSender:
-        senders: List[Sender] = []
-        if self.smtp is not None:
-            senders.append(SmtpSender(self.smtp))
-        if self.teams_webhook_url:
-            senders.append(TeamsWorkflowSender(self.teams_webhook_url))
-        return MultiSender(senders)
+    return MultiSender(senders)
 
 
 # --- Storage --------------------------------------------------------------------------
 
 
 class AlertStore(Protocol):
+    def try_lock(self) -> bool: ...
     def now(self) -> datetime: ...
     def get_log_watermark(self) -> Optional[datetime]: ...
     def fetch_log_rows(self, since: datetime) -> List[LogRow]: ...
@@ -707,6 +670,11 @@ class PostgresAlertStore:
         with self.connection.cursor() as cursor:
             cursor.execute(query, args)
             return cursor.fetchall()
+
+    def try_lock(self) -> bool:
+        # Transaction-scoped: released by the commit or rollback that ends the run.
+        rows = self._fetch("SELECT pg_try_advisory_xact_lock(%s)", (ADVISORY_LOCK_KEY,))
+        return rows[0][0]
 
     def now(self) -> datetime:
         return self._fetch("SELECT now()")[0][0]
@@ -816,9 +784,7 @@ class PostgresAlertStore:
 # --- Run ------------------------------------------------------------------------------
 
 
-def run_once(
-    store: AlertStore, sender: Sender, settings: AlerterSettings
-) -> List[Alert]:
+def run_once(store: AlertStore, sender: Sender, settings: AlertingSpec) -> List[Alert]:
     """Read new failures, update the alert history and send one notification if needed.
 
     The caller commits only after this returns, so a failed send leaves the history and
@@ -830,8 +796,11 @@ def run_once(
         settings: Thresholds and labels.
 
     Returns:
-        The alerts that were sent.
+        The alerts that were sent; empty if another alerter holds the lock.
     """
+    if not store.try_lock():
+        LOGGER.info("Another alerter is running against this database; skipping.")
+        return []
     now = store.now()
     watermark = store.get_log_watermark() or now - timedelta(
         hours=settings.first_run_lookback_hours
@@ -870,25 +839,16 @@ def run_once(
     return alerts
 
 
-def connect(settings: AlerterSettings):
-    import psycopg2  # imported here so the pure logic can be tested without it
-
-    database = settings.database
-    connection = psycopg2.connect(
-        host=database.host,
-        port=database.port,
-        dbname=database.dbname,
-        user=database.user,
-        password=database.password,
-        connect_timeout=10,
-        options=f"-c TimeZone={settings.timezone}",
-    )
+def connect(settings: AlertingSpec):
+    """Open the environment's database connection, in the configured time zone."""
+    connection = metadator.get_database_connection(connect_timeout=10)
+    with connection.cursor() as cursor:
+        cursor.execute("SET TIME ZONE %s", (settings.timezone,))
     return connection
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--config", type=Path, required=True, help="Settings JSON file")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("run", help="Check for new failures and notify")
     list_parser = commands.add_parser("list", help="Show unacknowledged alerts")
@@ -906,20 +866,37 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
-    settings = AlerterSettings.load(args.config)
-
-    if args.command == "test-notify":
-        settings.make_sender().send(
-            f"[{settings.label}] Booth alerter test",
-            "This is a test notification from booth_alerter.py.",
+    cfg.load_config(validate_paths=False)
+    settings = cfg.neurobooth_config.alerting
+    if settings is None:
+        raise cfg.ConfigException(
+            "The neurobooth config has no 'alerting' section; see docs/booth_alerting.md."
         )
-        return 0
 
+    try:
+        if args.command == "test-notify":
+            make_sender(settings).send(
+                f"[{settings.label}] Booth alerter test",
+                "This is a test notification from neurobooth_os.alerting.",
+            )
+        else:
+            _run_database_command(args, settings)
+    except Exception:
+        # Scheduled runs have no console, so log_application is where this gets seen,
+        # and the next successful run alerts on it like any other error.
+        log_manager.make_db_logger(log_level=logging.WARNING).exception(
+            "Booth alerter '%s' failed.", args.command
+        )
+        raise
+    return 0
+
+
+def _run_database_command(args: argparse.Namespace, settings: AlertingSpec) -> None:
     connection = connect(settings)
     try:
         store = PostgresAlertStore(connection)
         if args.command == "run":
-            run_once(store, settings.make_sender(), settings)
+            run_once(store, make_sender(settings), settings)
         elif args.command == "list":
             for record in store.list_alerts(include_acknowledged=args.all):
                 state = "acked" if record.acknowledged else "OPEN "
@@ -937,7 +914,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         raise
     finally:
         connection.close()
-    return 0
 
 
 if __name__ == "__main__":

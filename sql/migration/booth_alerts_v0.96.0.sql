@@ -9,9 +9,9 @@
 
 -- The changes are applied in the order required.
 
--- required for the booth alerter (extras/booth_alerter.py, docs/booth_alerting.md),
--- which runs on neurodoor and reads log_application and service_heartbeat
--- (service_heartbeat_v0.96.0.sql). No booth service reads or writes these tables.
+-- required for the booth alerter (neurobooth_os/alerting.py, docs/booth_alerting.md),
+-- which runs on each CTR machine and reads log_application and service_heartbeat
+-- (service_heartbeat_v0.96.0.sql). Only the alerter reads or writes these tables.
 
 --   One row per distinct failure. A fingerprint is a hash of the service, machine,
 --   source location and normalized message, so repeats of the same error share a row.

@@ -1,4 +1,4 @@
-"""Unit tests for extras/booth_alerter.py.
+"""Unit tests for neurobooth_os/alerting.py.
 
 The SQL in ``PostgresAlertStore`` is not exercised here (no database in the unit
 suite); ``run_once`` is driven through an in-memory store with the same interface.
@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
 import pytest
 
-import booth_alerter as ba
+import neurobooth_os.alerting as ba
+from neurobooth_os.config import AlertingSpec, NeuroboothConfig
 
 EASTERN = timezone(timedelta(hours=-4))
 T0 = datetime(2026, 10, 14, 9, 0, 0, tzinfo=EASTERN)
@@ -237,7 +237,7 @@ def test_notification_never_contains_subject_or_session_ids():
     for text in (subject, body):
         assert SUBJECT not in text
     assert "2 new booth failures" in subject
-    assert "booth_alerter.py ack" in body
+    assert "python -m neurobooth_os.alerting ack" in body
 
 
 def test_teams_payload_truncates_long_bodies():
@@ -289,6 +289,10 @@ class InMemoryStore:
         self.watermark: Optional[datetime] = None
         self.last_run_at: Optional[datetime] = None
         self.fetched_since: List[datetime] = []
+        self.locked_by_another = False
+
+    def try_lock(self) -> bool:
+        return not self.locked_by_another
 
     def now(self) -> datetime:
         return self.current_time
@@ -324,9 +328,7 @@ class InMemoryStore:
         self.watermark, self.last_run_at = log_watermark, run_at
 
 
-SETTINGS = ba.AlerterSettings(
-    database=ba.DatabaseSettings(host="h", dbname="d", user="u")
-)
+SETTINGS = AlertingSpec(label="Neurobooth test")
 
 
 def test_run_sends_one_notification_for_errors_and_dead_services():
@@ -379,11 +381,27 @@ def test_failed_send_propagates_so_the_caller_rolls_back():
         ba.run_once(store, RecordingSender(OSError("relay down")), SETTINGS)
 
 
-def test_example_settings_load():
-    example = Path(ba.__file__).with_name("booth_alerter.example.json")
-    settings = ba.AlerterSettings.load(example)
-    assert settings.smtp is not None and settings.smtp.recipients == (
-        "neurobooth-team@example.org",
+def test_run_is_skipped_while_another_alerter_holds_the_lock():
+    store = InMemoryStore(T0 + timedelta(minutes=1), log_rows=[log_row()])
+    store.locked_by_another = True
+    sender = RecordingSender()
+    assert ba.run_once(store, sender, SETTINGS) == []
+    assert sender.sent == [] and store.history == {} and store.watermark is None
+
+
+def test_alerting_settings_come_from_the_neurobooth_config():
+    spec = NeuroboothConfig.model_fields["alerting"]
+    assert spec.default is None  # configs without the section still load
+    settings = AlertingSpec(
+        label="Neurobooth Wang",
+        smtp={"host": "relay", "sender": "a@x.org", "recipients": ["b@x.org"]},
+        teams_webhook_url="https://example.invalid/flow",
     )
-    assert settings.database.password is None
-    assert isinstance(settings.make_sender(), ba.MultiSender)
+    assert "flow" not in repr(settings)  # the URL is a secret
+    sender = ba.make_sender(settings)
+    assert [type(s) for s in sender.senders] == [ba.SmtpSender, ba.TeamsWorkflowSender]
+
+
+def test_alerting_settings_need_a_channel():
+    with pytest.raises(ValueError):
+        ba.make_sender(SETTINGS)
