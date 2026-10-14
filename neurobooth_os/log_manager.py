@@ -8,7 +8,10 @@ from typing import Optional, List, Dict, Any, IO
 import psutil
 from threading import Thread, Event
 import platform
+import re
+import threading
 import traceback
+from pathlib import Path
 
 from neurobooth_terra import Table
 from pydantic import BaseModel
@@ -22,6 +25,18 @@ LOG_FORMAT = logging.Formatter('|%(levelname)s| [%(asctime)s] %(filename)s, %(fu
 # Globals: Set using make_db_logger(). Must be set to log session and subject data
 SESSION_ID: str = ""
 SUBJECT_ID: str = ""
+
+# Global: Set by enable_crash_handler(). Identifies this process's service (e.g. "ACQ_0") so
+# that processes sharing a machine (STM and ACQ_1) keep separate local log files.
+SERVICE_ID: str = ""
+
+# Written by enable_crash_handler() at each launch; read back by the crash-log backfill in
+# service_monitor.py to split a crash log into one block per process launch.
+CRASH_LOG_HEADER = "--- {service_id} started at {started} (PID {pid}) ---"
+CRASH_LOG_HEADER_PATTERN = re.compile(
+    rb"^--- (?P<service_id>\S+) started at (?P<started>\S+) \(PID (?P<pid>\d+)\) ---\r?$",
+    re.MULTILINE,
+)
 
 # Create APP_LOGGER as a singleton. Otherwise, multiple calls to make_db_logger will add redundant handlers
 APP_LOGGER: Optional[logging.Logger] = None
@@ -41,34 +56,94 @@ def _get_log_dir() -> str:
     return os.environ.get("NB_INSTALL", os.path.expanduser("~"))
 
 
+def crash_log_path(service_id: str) -> Path:
+    """Return the faulthandler crash log for one service, e.g. ``neurobooth_crash_ACQ_0.log``."""
+    return Path(_get_log_dir()) / f"neurobooth_crash_{service_id}.log"
+
+
+def db_fallback_log_path(service_id: str) -> Path:
+    """Return the file ``PostgreSQLHandler`` falls back to when the database is unreachable.
+
+    Per-service when the service is known, so the startup backfill in service_monitor.py only
+    re-sends records its own service wrote.
+    """
+    if service_id:
+        return Path(_get_log_dir()) / f"neurobooth_db_log_fallback_{service_id}.log"
+    return Path(_get_log_dir()) / "neurobooth_db_log_fallback.log"
+
+
 # Keep a module-level reference so the file stays open for the lifetime of the process.
 _crash_log_file: Optional[IO] = None
 
 
 def enable_crash_handler(server_name: str) -> None:
-    """Enable faulthandler to capture fatal C-level crashes (e.g. segfaults).
+    """Capture crashes that would otherwise never reach the database log.
 
-    Writes to ``neurobooth_crash.log`` in the NB_INSTALL directory (or the
-    user's home directory if NB_INSTALL is not set). The file is opened in
-    append mode so traces from successive runs accumulate. A timestamped
-    header is written on each call so crashes can be correlated with a
-    specific process launch.
+    - Enables faulthandler for fatal C-level crashes (segfault, abort). Traces are appended
+      to ``neurobooth_crash_<server_name>.log`` in the log directory, one file per service
+      because faulthandler output carries no PID and STM and ACQ_1 share a machine. A
+      timestamped header is written on each call so a trace can be tied to one launch.
+    - Installs Python exception hooks (see ``install_exception_hooks``) so an exception that
+      escapes a thread or the main module is logged to the ``app`` logger.
 
-    This should be called as early as possible in each server's ``main()``
-    — before config loading, database connections, or any imports that
-    pull in C extensions.
+    This should be called as early as possible in each server's ``main()``, before database
+    connections or any imports that pull in C extensions.
 
     Args:
         server_name: Identifier for the process (e.g. ``"CTR"``, ``"STM"``, ``"ACQ_0"``).
     """
-    global _crash_log_file
-    log_path = os.path.join(_get_log_dir(), "neurobooth_crash.log")
-    _crash_log_file = open(log_path, "a")
-    _crash_log_file.write(
-        f"\n--- {server_name} started at {datetime.now().isoformat()} (PID {os.getpid()}) ---\n"
+    global _crash_log_file, SERVICE_ID
+    SERVICE_ID = server_name
+    _crash_log_file = open(crash_log_path(server_name), "a")
+    header = CRASH_LOG_HEADER.format(
+        service_id=server_name, started=datetime.now().isoformat(), pid=os.getpid()
     )
+    _crash_log_file.write(f"\n{header}\n")
     _crash_log_file.flush()
     faulthandler.enable(file=_crash_log_file)
+    install_exception_hooks()
+
+
+_exception_hooks_installed = False
+
+
+def install_exception_hooks() -> None:
+    """Log exceptions that escape a thread or the main module to the ``app`` logger.
+
+    Python's default hooks print these to stderr, which on the booth machines is a hidden
+    console, so a device thread that dies leaves no trace in ``log_application``. The
+    previous hooks still run afterwards, so console output is unchanged. Calling this more
+    than once has no further effect.
+    """
+    global _exception_hooks_installed
+    if _exception_hooks_installed:
+        return
+    _exception_hooks_installed = True
+
+    previous_excepthook = sys.excepthook
+    previous_thread_excepthook = threading.excepthook
+
+    def log_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:
+        if not issubclass(exc_type, KeyboardInterrupt):
+            logging.getLogger(APP_LOG_NAME).critical(
+                "Uncaught exception; the process is exiting.",
+                exc_info=(exc_type, exc_value, exc_traceback),
+            )
+        previous_excepthook(exc_type, exc_value, exc_traceback)
+
+    def log_uncaught_thread_exception(args) -> None:
+        # SystemExit is the documented way to end a thread quietly; the default hook ignores it too.
+        if args.exc_type is not SystemExit:
+            thread_name = args.thread.name if args.thread is not None else "<unknown>"
+            logging.getLogger(APP_LOG_NAME).critical(
+                "Uncaught exception in thread %s; the thread has stopped.",
+                thread_name,
+                exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+            )
+        previous_thread_excepthook(args)
+
+    sys.excepthook = log_uncaught_exception
+    threading.excepthook = log_uncaught_thread_exception
 
 
 def make_fallback_logger() -> logging.Logger:
@@ -437,8 +512,7 @@ class PostgreSQLHandler(logging.Handler):
         never silently lost. Best-effort; never raises."""
         try:
             if self._fallback_file is None:
-                path = os.path.join(_get_log_dir(), "neurobooth_db_log_fallback.log")
-                self._fallback_file = open(path, "a")
+                self._fallback_file = open(db_fallback_log_path(SERVICE_ID), "a")
             self._fallback_file.write(
                 f"[{datetime.fromtimestamp(record.created).isoformat()}] "
                 f"{record.levelname} {record.filename}:{record.lineno} "

@@ -15,6 +15,7 @@ two biggest topics live in their own documents:
 | `log_system_resource` | RAM / swap / CPU / disk / network sampled every ~10 s | `SystemResourceLogger` thread (`log_manager.py`) |
 | `log_sensor_file` | One row per recording file — camera video, EyeLink `.edf`, HDF5 path + timing | Each machine at record time; see [video_filename_tracking.md](arch/video_filename_tracking.md) |
 | `log_session` / `log_task` / `log_device_param` | Session, task, and per-task device-parameter provenance (what was run, with which settings) | `metadator.py` / `server_stm.py` (`make_new_task_row`, `log_task_params`) |
+| `service_heartbeat` | One row per CTR / STM / ACQ_n process launch, refreshed every ~30 s; `stopped_at` / `exit_code` set on a clean shutdown | `ServiceHeartbeat` thread (`service_monitor.py`) |
 
 ### Application log — `log_application`
 
@@ -32,6 +33,31 @@ WHERE  created_at::date = '<yyyy-mm-dd>'
 ORDER  BY server_time;
 ```
 
+Exceptions that escape a thread or the main module are logged here at CRITICAL
+by the hooks `enable_crash_handler()` installs (`install_exception_hooks()`),
+with the message `Uncaught exception in thread <name>; the thread has stopped.`
+Without them, a device thread that died printed its traceback only to the
+hidden console.
+
+### Service liveness — `service_heartbeat`
+
+A hard crash (access violation, SIGABRT) kills the process before it can write
+to `log_application`, so silence there doesn't mean a service is healthy. Each
+server's `main()` starts a `ServiceHeartbeat` that upserts its row every 30 s
+and marks it stopped, with the exit code, on a clean shutdown. A row that has
+stopped beating without a `stopped_at` is a process that died:
+
+```sql
+SELECT service_id, server_id, pid, process_start, last_beat, session_id
+FROM   service_heartbeat
+WHERE  stopped_at IS NULL
+  AND  last_beat < now() - interval '2 minutes'
+ORDER  BY last_beat DESC;
+```
+
+The table is created by `sql/migration/service_heartbeat_v0.96.0.sql`. Without
+it the servers still run; the heartbeat logs one warning and keeps retrying.
+
 ## On-disk file logs
 
 These live in the **log directory** for each machine (see below). They exist so
@@ -39,12 +65,30 @@ that failures *before* or *around* the database logger are never lost.
 
 | File | Purpose | Written by |
 | ---- | ------- | ---------- |
-| `neurobooth_crash.log` | `faulthandler` traceback for fatal C-level crashes (segfault / abort) | `enable_crash_handler()` |
-| `neurobooth_db_log_fallback.log` | `log_application` records that could not reach the DB, so a DB blip never silently drops logs | `PostgreSQLHandler` fallback |
+| `neurobooth_crash_<service>.log` | `faulthandler` traceback for fatal C-level crashes (segfault / abort). One file per service; before v0.96.0 all services shared `neurobooth_crash.log` | `enable_crash_handler()` |
+| `neurobooth_db_log_fallback_<service>.log` | `log_application` records that could not reach the DB, so a DB blip never silently drops logs. Processes that never call `enable_crash_handler()` (e.g. `transfer_data.py`) still use `neurobooth_db_log_fallback.log` | `PostgreSQLHandler` fallback |
 | `neurobooth_startup.log` | Last-resort errors before the DB connection exists | `make_fallback_logger()` |
+| `<log file>.offset` | Byte offset the startup backfill has read up to | `service_monitor.py` |
 
 A session file/console logger (`make_session_logger_debug()`) is also available
 for local debugging.
+
+### Startup backfill
+
+When CTR, STM or ACQ_n starts, `start_service_monitor()` copies into
+`log_application` anything its own files gained since the last launch:
+
+- **Crash traces** from `neurobooth_crash_<service>.log`, one ERROR row per
+  trace with `device = 'crash_log'`. The current launch's own block is skipped
+  and read by the next launch, so a crash is in the database once the service
+  has been restarted.
+- **DB-fallback records** from `neurobooth_db_log_fallback_<service>.log`.
+  WARNING and above are re-logged at their original level, with
+  `device = 'db_fallback_log'` and the original timestamp in the message, up to
+  200 per launch. Lower levels and anything past the limit are reported as a
+  single count.
+
+A backfill failure is logged and never stops the service from starting.
 
 ### Where log files go
 
@@ -64,7 +108,7 @@ Hard-won behavior worth knowing before touching the DB logging path
 
 - **`emit()` never raises.** On a DB error it attempts a **rate-limited
   reconnect** (at most once per 30 s) and one retry, then appends to
-  `neurobooth_db_log_fallback.log`. This replaced an earlier design where a
+  `neurobooth_db_log_fallback_<service>.log`. This replaced an earlier design where a
   single DB hiccup silently blinded application logging **process-wide** until a
   restart (fixed in v0.93.4 / PR #823).
 - **Short `connect_timeout` (3 s).** A reconnect to a dead DB must not block the

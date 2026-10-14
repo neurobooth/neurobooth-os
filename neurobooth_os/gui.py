@@ -29,6 +29,7 @@ from neurobooth_os.realtime.lsl_plotter import stream_plotter
 
 from neurobooth_os.layouts import _main_layout, _win_gen, _init_layout, write_task_notes, PREVIEW_AREA
 from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, enable_crash_handler, SystemResourceLogger
+from neurobooth_os.service_monitor import ServiceHeartbeat, start_service_monitor
 from neurobooth_os.iout.metadator import LogSession
 import neurobooth_os.iout.metadator as meta
 import neurobooth_os.config as cfg
@@ -1057,6 +1058,7 @@ def get_popup_location(window):
 def main():
     """The starting point of Neurobooth"""
     logger = None
+    heartbeat: Optional[ServiceHeartbeat] = None
     exit_code = 0
     lock_state: Optional[GuiLockResult] = None
     try:
@@ -1086,6 +1088,10 @@ def main():
         if lock_state.reason:
             logger.warning("GUI lock acquired with warning: %s", lock_state.reason)
 
+        # After the lock check, so a refused second instance neither consumes the crash
+        # logs nor records a heartbeat for a process that never ran.
+        heartbeat = start_service_monitor("CTR", logger)
+
         gui(logger)
         logger.debug("Stopping GUI")
     except Exception as argument:
@@ -1095,6 +1101,8 @@ def main():
                         exc_info=sys.exc_info())
         exit_code = 1
     finally:
+        if heartbeat is not None:
+            heartbeat.stop(exit_code)
         _release_gui_lock(lock_state)
         logging.shutdown()
         os._exit(exit_code)
