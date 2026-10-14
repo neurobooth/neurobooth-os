@@ -2,7 +2,7 @@
 
 A server's main() logs `critical("An uncaught exception occurred. Exiting...")`
 on any caught exception, so a MISSING critical row means the exit bypassed that
-path: a hard crash (faulthandler->neurobooth_crash.log only), the logging
+path: a hard crash (faulthandler->neurobooth_crash_<service>.log only), the logging
 blackout (PostgreSQLHandler.emit swallows DB errors -> stdout), or an external
 kill/power-loss/force-restart after a hang.
 

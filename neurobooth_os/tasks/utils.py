@@ -266,7 +266,7 @@ def get_keys(keyList=()):
 # compare ``play_to_first_flip_ms`` (audio-vs-first-frame offset) and the
 # flip-interval distribution against a known-good machine. One CSV row per
 # video play is appended to ``neurobooth_video_timing.csv`` in the same
-# log directory as ``neurobooth_crash.log`` (resolved via _get_log_dir).
+# log directory as the ``neurobooth_crash_<service>.log`` files (resolved via _get_log_dir).
 _TIMING_LOG_FILENAME = "neurobooth_video_timing.csv"
 _TIMING_LOG_FIELDS = (
     "timestamp_iso",

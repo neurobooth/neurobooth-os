@@ -10,11 +10,27 @@ tools**. Getting this wrong wastes a downtime window, so start here.
 ## The text crash log (always present)
 
 `neurobooth_os.log_manager.enable_crash_handler()` installs Python's
-`faulthandler`, which writes a plain-text traceback to **`neurobooth_crash.log`**
-in the log directory (see [logging.md](logging.md#where-log-files-go) — on ACQ
-that is `C:\Users\ACQ\nb_os_env\neurobooth_logs`). It appends across launches
-with a timestamped `--- <server> started at <time> (PID <pid>) ---` header, so
-you can correlate a crash to a specific process.
+`faulthandler`, which writes a plain-text traceback to
+**`neurobooth_crash_<service>.log`** (e.g. `neurobooth_crash_ACQ_0.log`) in the
+log directory (see [logging.md](logging.md#where-log-files-go) — on ACQ that is
+`C:\Users\ACQ\nb_os_env\neurobooth_logs`). There is one file per service because
+faulthandler output carries no PID and STM and ACQ_1 share a machine. Releases
+before v0.96.0 wrote every service to a single `neurobooth_crash.log`, which
+still holds the older traces. Each file appends across launches with a
+timestamped `--- <server> started at <time> (PID <pid>) ---` header, so you can
+correlate a crash to a specific process.
+
+The next time the service starts, any new trace is copied into
+`log_application` at ERROR with `device = 'crash_log'` (see
+[logging.md](logging.md#startup-backfill)), so it can usually be found without
+remoting in:
+
+```sql
+SELECT server_time, server_type, server_id, message
+FROM   log_application
+WHERE  device = 'crash_log'
+ORDER  BY server_time DESC;
+```
 
 **This is the first place to look**, but it only prints **Python** frames — it
 cannot name the native module that actually faulted. For that you need a memory
@@ -22,7 +38,7 @@ dump (below).
 
 ## Two crash classes — capture the right way
 
-| Class | Signature in `neurobooth_crash.log` | Reaches WER? | Capture tool |
+| Class | Signature in `neurobooth_crash_<service>.log` | Reaches WER? | Capture tool |
 |-------|-------------------------------------|--------------|--------------|
 | **Python fatal abort (SIGABRT)** | `Fatal Python error: Aborted` | **No** | **ProcDump** |
 | **Native access violation** | `Windows fatal exception: access violation` | **Yes** | **WER LocalDumps** |

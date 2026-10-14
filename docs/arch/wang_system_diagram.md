@@ -21,7 +21,7 @@ flowchart TB
         end
 
         subgraph DB["Database Server · 192.168.100.1:5432"]
-            DBt["PostgreSQL — database 'neurobooth'<br/>message_queue (control plane), log_session,<br/>log_task, log_sensor_file, log_application,<br/>log_system_resource, log_task_param, log_device_param"]
+            DBt["PostgreSQL — database 'neurobooth'<br/>message_queue (control plane), log_session,<br/>log_task, log_sensor_file, log_application,<br/>log_system_resource, log_task_param, log_device_param,<br/>service_heartbeat"]
         end
     end
 

@@ -31,6 +31,7 @@ from neurobooth_os.tasks.welcome_finish_screens import welcome_screen, finish_sc
 import neurobooth_os.tasks.utils as utl
 from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received, enable_crash_handler
 from neurobooth_os.perf_monitor import ProcessMonitor
+from neurobooth_os.service_monitor import ServiceHeartbeat, start_service_monitor
 
 prefs.hardware["audioLib"] = ["PTB"]
 prefs.hardware["audioLatencyMode"] = 3
@@ -39,11 +40,13 @@ calib_instructions: bool = True  # True if we have not yet performed an eyetrack
 
 def main():
     logger = None
+    heartbeat: Optional[ServiceHeartbeat] = None
     exit_code = 0
     try:
         config.load_config_by_service_name("STM")  # Load Neurobooth-OS configuration
         enable_crash_handler("STM")
         logger = make_db_logger()  # Initialize logging to default
+        heartbeat = start_service_monitor("STM", logger)
         logger.debug("Starting STM")
         os.chdir(neurobooth_os.__path__[0])
         run_stm(logger)
@@ -55,6 +58,8 @@ def main():
                         exc_info=sys.exc_info())
         exit_code = 1
     finally:
+        if heartbeat is not None:
+            heartbeat.stop(exit_code)
         logging.shutdown()
         os._exit(exit_code)
 

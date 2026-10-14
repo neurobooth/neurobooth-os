@@ -16,6 +16,7 @@ from neurobooth_os import config
 from neurobooth_os.iout.stim_param_reader import TaskArgs, DeviceArgs
 from neurobooth_os.log_manager import make_db_logger, make_fallback_logger, log_message_received, enable_crash_handler
 from neurobooth_os.perf_monitor import ProcessMonitor
+from neurobooth_os.service_monitor import ServiceHeartbeat, start_service_monitor
 from neurobooth_os.iout.device import CameraPreviewException
 from neurobooth_os.iout.lsl_streamer import DeviceManager
 import neurobooth_os.iout.metadator as meta
@@ -35,12 +36,15 @@ def countdown(period):
 
 def main():
     acq_index = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    service_id = f"ACQ_{acq_index}"
     logger = None
+    heartbeat: Optional[ServiceHeartbeat] = None
     exit_code = 0
     try:
         config.load_config_by_service_name("ACQ", acq_index=acq_index)
-        enable_crash_handler(f"ACQ_{acq_index}")
+        enable_crash_handler(service_id)
         logger = make_db_logger()  # Initialize default logger
+        heartbeat = start_service_monitor(service_id, logger)
         logger.debug(f"Starting ACQ (index={acq_index})")
         os.chdir(neurobooth_os.__path__[0])
         run_acq(logger, acq_index)
@@ -52,6 +56,8 @@ def main():
                         exc_info=sys.exc_info())
         exit_code = 1
     finally:
+        if heartbeat is not None:
+            heartbeat.stop(exit_code)
         logging.shutdown()
         os._exit(exit_code)
 

@@ -770,7 +770,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     crash = classify_exit(exit_code)
     if dump_dir and Path(dump_dir).is_dir():
         crash["dump_paths"] = [str(p) for p in Path(dump_dir).glob("*.dmp")]
-    crash["faulthandler_log"] = "neurobooth_crash.log (in the configured log dir)"
+    crash["faulthandler_log"] = "neurobooth_crash_MBIENT_SOAK.log (in the configured log dir)"
     crash["cycles_jsonl"] = str(jsonl_path)
     crash["app_log"] = str(log_file)
 
