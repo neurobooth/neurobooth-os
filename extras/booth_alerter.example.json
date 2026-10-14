@@ -1,0 +1,23 @@
+{
+  "label": "Neurobooth production",
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "dbname": "neurobooth",
+    "user": "neurobooth_alerter",
+    "password": null
+  },
+  "smtp": {
+    "host": "smtp-relay.example.org",
+    "port": 25,
+    "starttls": false,
+    "sender": "neurobooth-alerts@example.org",
+    "recipients": ["neurobooth-team@example.org"]
+  },
+  "teams_webhook_url": null,
+  "timezone": "America/New_York",
+  "heartbeat_stale_sec": 300,
+  "log_overlap_min": 60,
+  "dead_service_max_age_hours": 24,
+  "first_run_lookback_hours": 24
+}

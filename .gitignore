@@ -76,6 +76,8 @@ venv-*
 secrets.yaml
 db_credentials*.json
 !db_credentials*.example.json
+booth_alerter*.json
+!booth_alerter*.example.json
 
 # Misc
 server_pids.txt
