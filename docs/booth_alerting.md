@@ -100,6 +100,22 @@ and `service_heartbeat`.
 
 ## Fingerprinting and dedup
 
+A fingerprint is a short ID for one distinct problem. Every repeat of the same error
+gets the same fingerprint, which is how the alerter tells "this is new" from "this is
+the same thing again". It is what you acknowledge, and `alert_history` has one row per
+fingerprint.
+
+For example, these two rows:
+
+```
+ACQ_0  mbient.py:412  Mbient F7 failed to connect after 3 attempts
+ACQ_0  mbient.py:412  Mbient F7 failed to connect after 5 attempts
+```
+
+both normalize to `Mbient F7 failed to connect after <n> attempts` and share one
+fingerprint, such as `3f9c2a71b04e8d15`. The same error on another machine or at
+another line gets a different one.
+
 A fingerprint is the first 16 hex digits of SHA-256 over:
 
 - **kind**: `log` or `dead_service`
