@@ -63,6 +63,31 @@ class DatabaseSpec(BaseModel):
     remote_host: str
 
 
+class SmtpSpec(BaseModel):
+    host: str
+    sender: str
+    recipients: List[str]
+    port: int = 25
+    starttls: bool = False
+    username: Optional[str] = None
+    password: Optional[SecretStr] = None
+
+
+class AlertingSpec(BaseModel):
+    """Settings for ``neurobooth_os.alerting``; see docs/booth_alerting.md."""
+    label: str  # Shown in notification subjects, e.g. "Neurobooth Wang"
+    smtp: Optional[SmtpSpec] = None
+    # A Teams Workflows "webhook request" URL. Anyone holding it can post to the
+    # channel, so keep it in secrets.yaml.
+    teams_webhook_url: Optional[SecretStr] = None
+    # Booths write log_application.server_time in local time without a zone.
+    timezone: str = "America/New_York"
+    heartbeat_stale_sec: int = 300
+    log_overlap_min: int = 60
+    dead_service_max_age_hours: int = 24
+    first_run_lookback_hours: int = 24
+
+
 class MachineSpec(BaseModel):
     """A physical or logical host."""
     user: str
@@ -113,6 +138,8 @@ class NeuroboothConfig(BaseModel):
     # DeviceManager startup. See docs/arch/adding_a_device.md → "Running
     # with mocks".
     mock_devices: Optional[List[str]] = None
+    # Only the CTR machine's config needs this; see docs/booth_alerting.md.
+    alerting: Optional[AlertingSpec] = None
 
     _acquisition_specs: List[ServiceSpec] = PrivateAttr(default_factory=list)
     _presentation_spec: Optional[ServiceSpec] = PrivateAttr(default=None)
