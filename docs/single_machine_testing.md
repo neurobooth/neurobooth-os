@@ -72,7 +72,7 @@ local:
     password: "<your_db_password>"
 ```
 
-`machines.<name>.password` is **not** required for single-machine testing; it is only needed on the CTR machine in a multi-machine production deployment.
+`machines.<name>.password` is **not** required for single-machine testing; in a multi-machine deployment it is needed on CTR, and on any machine you run `deploy_all.bat` from.
 
 If you're running the database on the same machine as the neurobooth code, set `database.host` to `127.0.0.1` and `database.ssh_tunnel: false` (as in the example above), and update the other `database` fields (`user`, `dbname`, etc.) to match your local Postgres install.
 
