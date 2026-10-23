@@ -29,6 +29,14 @@ Checking out and deploying releases:
 
 Release `v0.0.1` is used in the examples below.
 
+To deploy a release to every machine of a booth environment (CTR, STM and ACQ) at once, run this from the neurobooth-os repo root on any one of them:
+
+```
+deploy_all.bat v0.0.1
+```
+
+It runs `github_checkout.bat v0.0.1` on the other machines through Windows Task Scheduler, then on this machine, and stops at the first failure. A remote machine's output goes to `deploy_all.log` in its repo folder. The machine list comes from `%NB_CONFIG%\neurobooth_os_config.yaml`, and the `secrets.yaml` beside it needs `machines.<name>.password` for every other machine. The configs repo has the same command (`deploy_all.bat v0.0.1 staging`). Both run `neurobooth_os/deploy_all.py`. Like `github_checkout.bat`, it does not run `uv sync`.
+
 To checkout a release without installing, specify the tag:
 
 ```
