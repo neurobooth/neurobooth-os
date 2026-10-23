@@ -78,6 +78,45 @@ def test_wrong_arguments_show_usage(arguments: List[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# check_ref_exists
+# ---------------------------------------------------------------------------
+
+
+def _git(repo: Path, *arguments: str) -> None:
+    subprocess.run(["git", "-c", "user.name=test", "-c", "user.email=test@example.com",
+                    *arguments], cwd=repo, check=True, capture_output=True)
+
+
+@pytest.fixture
+def clone_of_tagged_origin(tmp_path: Path) -> Path:
+    """A clone whose origin gets tag v1.0.0 only after the clone was made."""
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    _git(origin, "init", "-q")
+    _git(origin, "commit", "-q", "--allow-empty", "-m", "first")
+    clone = tmp_path / "clone"
+    _git(tmp_path, "clone", "-q", str(origin), str(clone))
+    _git(origin, "tag", "v1.0.0")
+    return clone
+
+
+def test_ref_check_fetches_then_finds_a_new_tag(clone_of_tagged_origin: Path) -> None:
+    deploy_all.check_ref_exists(_plan(clone_of_tagged_origin, ["github_checkout.bat", "v1.0.0"]))
+
+
+def test_ref_check_rejects_a_missing_tag_before_any_machine(clone_of_tagged_origin: Path) -> None:
+    with pytest.raises(RuntimeError, match="'v0.96.0' is not a tag or branch .* No machine was changed"):
+        deploy_all.check_ref_exists(_plan(clone_of_tagged_origin, ["github_checkout.bat", "v0.96.0"]))
+
+
+def test_ref_check_reports_a_failed_fetch(tmp_path: Path) -> None:
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "remote", "add", "origin", str(tmp_path / "missing"))
+    with pytest.raises(RuntimeError, match="git fetch failed"):
+        deploy_all.check_ref_exists(_plan(tmp_path, ["github_checkout.bat", "v1.0.0"]))
+
+
+# ---------------------------------------------------------------------------
 # deploy_everywhere
 # ---------------------------------------------------------------------------
 

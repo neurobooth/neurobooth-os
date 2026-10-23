@@ -58,6 +58,28 @@ class DeployPlan:
         """
         return [f".\\{self.script_args[0]}", *self.script_args[1:]]
 
+    @property
+    def ref(self) -> str:
+        """The tag (or other git ref) being deployed: both scripts take it first."""
+        return self.script_args[1]
+
+
+def check_ref_exists(plan: DeployPlan) -> None:
+    """Fetch here and fail before touching any machine if the ref doesn't exist.
+
+    Raises:
+        RuntimeError: The fetch failed, or the ref is not in the repo after it.
+    """
+    fetch = subprocess.run(["git", "fetch", "--tags", "--force"], cwd=plan.repo_dir,
+                           capture_output=True, text=True)
+    if fetch.returncode != 0:
+        raise RuntimeError(f"git fetch failed in {plan.repo_dir}:\n{fetch.stderr}")
+    lookup = subprocess.run(["git", "rev-parse", "--verify", "--quiet", f"{plan.ref}^{{commit}}"],
+                            cwd=plan.repo_dir, capture_output=True, text=True)
+    if lookup.returncode != 0:
+        raise RuntimeError(f"'{plan.ref}' is not a tag or branch in {plan.repo_dir} "
+                           f"(after git fetch). No machine was changed.")
+
 
 def is_this_machine(machine: MachineSpec) -> bool:
     """True if ``machine`` is the account this script runs as.
@@ -210,7 +232,8 @@ def plan_from_args(arguments: List[str]) -> DeployPlan:
 def main() -> int:
     try:
         plan = plan_from_args(sys.argv[1:])
-    except ValueError as error:
+        check_ref_exists(plan)
+    except (ValueError, RuntimeError) as error:
         print(error)
         return 1
     return deploy_everywhere(plan)
