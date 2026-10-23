@@ -192,6 +192,22 @@ def deploy_local(plan: DeployPlan) -> None:
         raise RuntimeError(f"Deploy on this machine failed (exit code {result.returncode}).")
 
 
+def describe_failure(
+    error: RuntimeError | subprocess.CalledProcessError | subprocess.TimeoutExpired,
+) -> str:
+    """Say what failed without the command line.
+
+    A failed or timed-out SCHTASKS call from ``_run_cmd`` carries the full
+    command, which includes ``/P <password>``, so its own text is never shown.
+    Only the program name, exit code or timeout, and Windows' error text are.
+    """
+    if isinstance(error, subprocess.CalledProcessError):
+        return f"{error.cmd[0]} failed (exit code {error.returncode}): {(error.stderr or '').strip()}"
+    if isinstance(error, subprocess.TimeoutExpired):
+        return f"{error.cmd[0]} got no answer within {error.timeout:g}s."
+    return str(error)
+
+
 def deploy_everywhere(plan: DeployPlan) -> int:
     """Deploy to the other machines of the environment, then this one.
 
@@ -220,13 +236,10 @@ def deploy_everywhere(plan: DeployPlan) -> int:
                 deploy_remote(host, machines[host], plan)
             else:
                 deploy_local(plan)
-        except (RuntimeError, subprocess.CalledProcessError) as error:
-            # Stop at the first failure: say what went wrong (with Windows' own
-            # error text when a SCHTASKS command failed), what is done, and
+        except (RuntimeError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+            # Stop at the first failure: say what went wrong, what is done, and
             # what was not started. Machines after a failure are not touched.
-            print(f"\nFAILED on {host}: {error}")
-            if isinstance(error, subprocess.CalledProcessError):
-                print(error.stderr)
+            print(f"\nFAILED on {host}: {describe_failure(error)}")
             not_started = [other for other in remote_hosts + local_hosts
                            if other != host and other not in finished]
             print(f"Deployed: {finished or 'none'}. Not started: {not_started or 'none'}.")

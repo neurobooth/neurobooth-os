@@ -160,6 +160,32 @@ def test_stops_at_the_first_failure(staging_machines: List[Tuple[str, str]], tmp
     assert "Not started: ['ctr-staging', 'acq-staging']" in capsys.readouterr().out
 
 
+# What _run_cmd passes to subprocess for a remote SCHTASKS call.
+REMOTE_COMMAND = ["SCHTASKS", "/S", "stm-staging", "/U", "TEST_STM", "/P", "hunter2",
+                  "/Run", "/TN", deploy_all.TASK_NAME]
+
+
+@pytest.mark.parametrize("error, expected", [
+    (subprocess.CalledProcessError(1, REMOTE_COMMAND, stderr="ERROR: Access is denied.\n"),
+     "SCHTASKS failed (exit code 1): ERROR: Access is denied."),
+    (subprocess.TimeoutExpired(REMOTE_COMMAND, 30),
+     "SCHTASKS got no answer within 30s."),
+])
+def test_failed_remote_command_never_prints_the_password(
+        error: Exception, expected: str, staging_machines: List[Tuple[str, str]],
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture) -> None:
+    def fail(host: str, machine: MachineSpec, plan: deploy_all.DeployPlan) -> None:
+        raise error
+
+    monkeypatch.setattr(deploy_all, "deploy_remote", fail)
+    assert deploy_all.deploy_everywhere(_plan(tmp_path, ["github_checkout.bat", "v1"])) == 1
+    output = capsys.readouterr().out
+    assert "hunter2" not in output
+    assert f"FAILED on stm-staging: {expected}" in output
+    assert "Not started: ['ctr-staging', 'acq-staging']" in output
+
+
 def test_refuses_when_this_machine_is_not_in_the_environment(
         staging_machines: List[Tuple[str, str]], tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch) -> None:
