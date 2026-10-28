@@ -113,7 +113,8 @@ def remote_repo_dir(repo_dir: Path, user: str) -> Path:
     """Where the repo is on another machine: same place under that user's home."""
     # e.g. C:\Users\TEST_CTR\nb_os_env\neurobooth-os on this machine
     # becomes C:\Users\TEST_ACQ\nb_os_env\neurobooth-os for TEST_ACQ.
-    return Path("C:/Users", user) / repo_dir.relative_to(Path.home())
+    profile_user = user.rsplit("\\", 1)[-1]
+    return Path("C:/Users", profile_user) / repo_dir.relative_to(Path.home())
 
 
 def deploy_remote(host: str, machine: MachineSpec, plan: DeployPlan) -> None:
