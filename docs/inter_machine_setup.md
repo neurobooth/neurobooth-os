@@ -33,7 +33,7 @@ On each booth, create a local account whose username matches the booth's role an
 | `STM` | `STM` |
 | `ACQ` | `ACQ` |
 
-The exact password is set on each booth and stored on CTR in `secrets.yaml` (`machines.<name>.password`) — see `neurobooth_os/config.py` for the schema. CTR uses these credentials to authenticate the four primitives in the table above.
+The exact password is set on each booth and stored on CTR in `secrets.yaml` (`machines.<name>.password`) — see `neurobooth_os/config.py` for the schema. CTR uses these credentials to authenticate the four primitives in the table above. `deploy_all.bat` uses them the same way from whichever machine it is run on (see `docs/release process.md`).
 
 ## 2. Pin the network profile to Private
 
